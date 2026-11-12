@@ -125,7 +125,7 @@ def negative_controls(events):
     return results
 
 
-def readback(value):
+def readback(value, child_exec=False):
     require(value['passed'] and value.get('failure') is None, 'native run incomplete')
     require(value['pending'] is None and value['active_case'] is None, 'native work retained')
     events, cases = value['events'], value['cases']
@@ -143,11 +143,11 @@ def readback(value):
         require(row['returned']['result']==0 and row['returned']['cs']&3==3
                 and row['returned']['sp']==row['sp']+8 and row['returned']['callee']==row['callee'], 'ordinary native case return')
         require(before['ids'][:3] == after['ids'][:3] and after['ids'][3:6] == [0]*3, 'parent MM changed')
-        require(after['ids'][6] == before['ids'][6] + 1, 'fork MM issuance')
+        require(after['ids'][6] == before['ids'][6] + (2 if child_exec else 1), 'fork/exec MM issuance')
         require(before['state'][1:3] == after['state'][1:3] == [0x619000,34], 'parent break restoration')
         require(digest(bytes.fromhex(before['active']['bytes']))['sha256'] == row['prefix']
                 == digest(bytes.fromhex(after['active']['bytes']))['sha256'], 'parent prefix restoration')
-    require(counts[7] == 3 and counts[6] == 1, 'outer exec/retirement count')
+    require(counts[7] == (7 if child_exec else 3) and counts[6] == 1, 'exec/retirement count')
     require(set(value['final'])=={'ids','inactive_token','inactive_state','prepared_token',
                                'prepared_state','prepared_owner','transition'}
             and all(not any(v) for v in value['final'].values()), 'final owner storage')

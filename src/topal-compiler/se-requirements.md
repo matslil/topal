@@ -12599,8 +12599,11 @@ inactive and prepared extent exactly once. Do not roll back issued identities.
 Keep fatal partial-effect retirement distinct from ordinary unavailability.
 Qualify complete caller costs, entry/loan exclusion, every actual producer,
 native process scenarios, unchanged application regressions and cold public
-artifact/boot reconstruction before activating the replacement. Model results
-alone cannot authorize activation. Trace:
+artifact/boot reconstruction before activating the replacement. Retain imported
+descriptor/process ownership across exec; bind actual PID/TID, registration and
+handoff during replacement startup independently of its image-stage counter.
+Startup observations must not decide ordinary request legality or PID/TID values.
+Model results alone cannot authorize activation. Trace:
 [design](../../linux-kernel/design/process-memory-ownership.md),
 [rule](../../spec/systems-profile.md#topal-systems-process-mm-001--process-address-space-ownership).
 

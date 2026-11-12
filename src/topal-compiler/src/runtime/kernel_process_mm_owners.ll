@@ -48,7 +48,7 @@ end:
   call void @pm.zero(ptr %to,i64 %count)
   ret void
 }
-define internal ptr @p.table() nounwind noinline noredzone {
+define internal ptr @p.table_storage() nounwind noinline noredzone {
   %ctx = call ptr @m.context()
   %word = call i64 @m.word(ptr %ctx,i64 116)
   %mask = and i64 %word,4095
@@ -66,6 +66,10 @@ define internal ptr @p.table() nounwind noinline noredzone {
   %ok = and i1 %ab,%supervisor
   call void @pm.require(i1 %ok)
   %table = inttoptr i64 %word to ptr
+  ret ptr %table
+}
+define internal ptr @p.table() nounwind noinline noredzone {
+  %table = call ptr @p.table_storage()
   %live = call i64 @m.word(ptr %table,i64 0)
   %one = icmp eq i64 %live,1
   call void @pm.require(i1 %one)
@@ -525,12 +529,14 @@ check:
   call void @p.prepared_empty()
   ; The ordinary MM request has already bound its exact active context/base,
   ; complete heap and allocator handle. Descriptor initialization is a distinct
-  ; startup lifetime, so early brk does not follow an unready descriptor table.
+  ; lifetime: exec retains it even while the new image's phase counter is zero.
   call void @p.bank(ptr @topal_x86_frame_mm_state_v1,ptr @topal_x86_frame_mm_tokens_v1)
   call void @p.inactive()
-  %ctx = call ptr @m.context()
-  %phase = call i64 @m.word(ptr %ctx,i64 13)
-  %ready = icmp uge i64 %phase,11
+  %table = call ptr @p.table_storage()
+  %state = call i64 @m.word(ptr %table,i64 0)
+  %known = icmp ule i64 %state,1
+  call void @pm.require(i1 %known)
+  %ready = icmp eq i64 %state,1
   br i1 %ready,label %descriptor,label %end
 descriptor:
   call void @p.bind(i1 false)

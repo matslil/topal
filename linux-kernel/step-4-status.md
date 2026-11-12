@@ -64,9 +64,17 @@ passes eight real fork/clone creations and exits, eight handoffs, independent
 parent/child resize at 67/101 pages, wait-output retry and three parent execs in the
 complete ordinary ABI witness. Saved records cover 32 consumed/zeroed extents,
 with twenty offline controls and thirteen byte-identical predecessor artifacts.
-This is a test-only selection: child exec, live-child cancellation, complete
+That archive is a test-only selection: child exec, live-child cancellation, complete
 caller/loan/mode/publication/fatal proofs and production reconstruction remain
 required. The full original step remains incomplete.
+The subsequent [child-exec cohort](step-4-process-memory-ownership.md#child-exec-and-replacement-startup)
+passes four child execs while retaining the parent, fresh empty/new child heaps,
+actual FS/registration reset and later FS restoration. It also passes the full
+ABI witness, checks 101 MM boundaries and 36 consumed/zeroed extents, and rejects
+thirty saved-data controls. Imported process ownership now stays usable during
+replacement startup independently of the image-stage counter. This remains a
+test-only component; live-child cancellation, broader exec/mapping/lifetime/fatal
+cases and production qualification remain required.
 
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.

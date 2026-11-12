@@ -9,10 +9,12 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
     e.load(R11, R11, 0);
     e.cmp(R11, 1);
     e.0.jump_if(0x85, "process-observations-dispatch-end");
-    e.gs(0x8b, R11, 104);
-    e.arith(4, R11, 255);
-    e.cmp(R11, 11);
-    e.0.jump_if(0x82, "process-observations-dispatch-end");
+    if !e.0.process_memory {
+        e.gs(0x8b, R11, 104);
+        e.arith(4, R11, 255);
+        e.cmp(R11, 11);
+        e.0.jump_if(0x82, "process-observations-dispatch-end");
+    }
     for (number, label) in [
         (39, "process-observations-self"),
         (186, "process-observations-self"),

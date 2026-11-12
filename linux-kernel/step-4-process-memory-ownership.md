@@ -200,14 +200,87 @@ share a model. The additional resize and whole-case reader checks do not replace
 independent native instruction/lifetime qualification. This component remains
 unpublished; original Step 4 acceptance is still open.
 
+## Child exec and replacement startup
+
+The next experimental cohort retains the initialized descriptor/process owner
+through replacement startup. Child, identity and registration dispatch no longer
+use the image-stage counter as eligibility. Ordinary registrations retain their
+opaque values and return the actual thread identity; matching legacy startup
+observations may still progress. The MM entry now checks actual descriptor
+readiness before binding its process identity, including phase-zero exec startup.
+The existing predecessor selections retain their original emitted paths.
+
+The [child-exec source](labs/qemu/x86_64/user_extent_process_mm_exec_cases.c)
+uses normal fork, exec, identity/registration, FS-base, break, yield, exit and
+wait calls. A child grows its copied heap to 101 pages, sets nondefault FS and
+opaque registration values, then execs. The replacement observes a fresh empty
+heap, cleared registrations and zero actual FS base before allocating and
+checking all 101 new pages for zero. It chooses its own distinct FS base and
+heap bytes, yields to the retained 67-page parent, resumes after the parent's
+independent shrink, and exits. The parent keeps its own identity, original FS,
+heap bytes and wait-retry behavior. Four parent image generations exercise four
+child execs; the complete ABI witness's four existing child/clone cases also run.
+
+The freshly constructed first-party image includes an ordinary Linux-entry to
+System V adapter for the C startup routine. Userspace alone selects its routine
+from argv. The adapter reserves disjoint scratch below the retained initial
+payloads and contributes 144 bytes plus that 1,024-byte separation to the user
+stack bound. It does not modify a completed application or any pinned third-party
+binary. This is a userspace component for the existing qualified image shape,
+not qualification of a general ELF loader or an arbitrary distribution binary.
+
+The complete native test passes in **193.26 seconds** under the unchanged
+two-CPU VM and 600-second deadline. Its [saved-record reader](tools/process-memory/readback_exec.py)
+checks **101 boundaries**, four child replacement entries, seven execs in total,
+eight creations/exits, eight handoffs and final cleanup. Twenty existing controls
+and ten child-exec controls reject altered saved data. The checks bind reset
+observations to nonzero pre-exec FS/registration values and retain the complete
+parent allocation and bytes across child exec. They record **36 consumed/zeroed
+extents / 7,766,016 bytes**, with **1,654,784 fork-copy bytes** and 28 allocation-free
+queries plus four within-page changes. These remain boundary and saved-data
+observations, not independent continuous exclusion or pre-release-order proof.
+
+The [child-exec archive](tools/process-memory/results/stage-3-child-exec/report.json)
+binds kernel SHA-256
+`fd61f94f31f24ca3209b8b291446da2bb09f2e398680e32c2c81e8fb314995a0`,
+source-built image, native inputs and debugger program. The compiled complete
+stack bound remains **2,280 / 4,096 bytes**, and physical retirement remains
+**4,088 / 4,096**. The swap-free native cgroup sample peaks at **687,190,016 bytes**
+under its **2,969,485,312-byte** limit, with all sampled event counters zero.
+Its last live sample and subsequent group retirement do not measure an unseen
+final instant.
+
+The archive retains the initial adapter failure: its first stack placement
+overlapped auxiliary data and the existing credential check rejected startup.
+Moving userspace scratch preserved that check and its required data. An earlier
+successful child-exec run with less reset observation remains separate history;
+only the expanded run above supports these reset claims. No repository failure
+or successful retry establishes the reason for any AI safeguard decision.
+
+Risk remains high for ownership, exec/reset, stack layout and restored native
+state. Review uses the authority chain, source/diff review, native ordinary
+requests, saved-data controls and predecessor comparisons; no independent human
+security review is claimed. This does not activate the component in production.
+
+The previous fork/handoff cohort also passes on the updated experimental kernel
+in **176.73 seconds**. Its provider, gateway, target and dispatch objects match
+the child-exec run byte-for-byte. Thirteen predecessor contributions remain
+byte-identical, including unselected owned provider/gateway artifacts. All seven
+generated LLVM modules verify. Locked workspace/all-target checking, 196 existing
+user-memory tests, 17 process-memory tests, the unchanged default ABI-fixture
+hash test, formatting and Rust source-size validation pass. The frozen replay
+rechecks both cohorts from their selected saved inputs. These checks preserve
+the earlier archives as historical evidence and do not newly run the complete
+51-workload production corpus.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and actual allocation-miss
    behavior, and native fatal partial-effect retirement. The first integrated
    cohort does not complete native owner qualification. Queries and within-page
    changes in its real process path retain allocation-free behavior.
-3. Complete active-child exec with an inactive parent, live inactive-child
-   cancellation on every parent terminal path, every remaining switch/exit and
+3. Complete live inactive-child cancellation on every parent terminal path,
+   broader child exec/image cases, every remaining switch/exit and
    overlapping leaf-table writer. Qualify native empty/one/maximum heaps,
    prepublication resource failure and full invalidation/pre-release ordering.
    Existing child cases pass in this component; full pipe and 51-workload

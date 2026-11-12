@@ -45,15 +45,25 @@ def main():
     raw=checked(gzip.decompress((archive/'native-observations.json.gz').read_bytes()),report['observation'])
     (output/'observations.json').write_bytes(raw)
     (output/'expected.json').write_text(json.dumps(report))
+    if 'native_regression' in report:
+        raw=checked(gzip.decompress((archive/'regression/observations.json.gz').read_bytes()),report['native_regression']['observation'])
+        (output/'regression.json').write_bytes(raw)
     script='''import json,sys
 from pathlib import Path
 sys.path.insert(0,'linux-kernel/tools/process-memory')
-from readback_process import readback
-actual=json.loads(json.dumps(readback(json.loads(Path('observations.json').read_text()))))
+from readback_process import readback as process_readback
 expected=json.loads(Path('expected.json').read_text())
+if expected['schema']=='topal-process-mm-native-child-exec-v1':
+    from readback_exec import readback
+else:
+    readback=process_readback
+actual=json.loads(json.dumps(readback(json.loads(Path('observations.json').read_text()))))
 assert all(actual[k]==expected[k] for k in actual)
+if 'native_regression' in expected:
+    regression=json.loads(json.dumps(process_readback(json.loads(Path('regression.json').read_text()))))
+    assert all(regression[k]==v for k,v in expected['native_regression']['summary'].items())
 Path('replayed.json').write_text(json.dumps(actual,indent=2,sort_keys=True)+'\\n')
-print(json.dumps(dict(passed=True,cases=actual['cases'],controls=len(actual['controls']),operations=actual['operations'])))
+print(json.dumps(dict(passed=True,cases=actual['cases'],controls=len(actual['controls'])+len(actual.get('child_exec_controls',[])),operations=actual['operations'],native_regression_replayed='native_regression' in expected)))
 '''
     subprocess.run(['rtk','proxy','python3','-c',script],cwd=output,check=True)
     print('Frozen process/MM saved-record replay passed:',output)

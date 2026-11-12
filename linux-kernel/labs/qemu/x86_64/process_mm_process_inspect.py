@@ -17,7 +17,8 @@ def memory(p,n):return bytes(gdb.selected_inferior().read_memory(p,n)) if n else
 def words(p,n):return list(struct.unpack('<'+'Q'*n,memory(p,n*8)))
 def word(p):return words(p,1)[0]
 context=address('topal_bootstrap_storage')+512
-observed=dict(passed=False,cases=[],events=[])
+observed=dict(passed=False,cases=[],events=[],child_exec_entries=[])
+child_exec=component['mode']=='process-mm-exec'
 pending=case=None
 returns={}
 callee=['rbx','rbp','r12','r13','r14','r15']
@@ -53,10 +54,11 @@ def capture():
         epoch=words(address('topal_x86_frame_mm_epoch_v1'),2),
         context=dict(address=context,state=word(context),root=root,low=low,heap=word(context+120),
             self=word(context+256),bootstrap=word(context+16),user_arg=word(context+312),phase=word(context+104),
+            tls=word(context+128),registered_tid=word(context+152),robust=word(context+160),
             table=table,pid=word(table+56),child=word(table+0x2010),relationship=word(table+0x2000),
             saved_pid=word(table+0x3038),saved_heap=word(table+0x2178)),
         tables={str(a):words(a,512) for a in [root,root+4096,root+8192,root+12288,root+16384,low]},
-        kernel_spans=kernel_spans,cr3=reg('cr3'),cr0=reg('cr0'),cr4=reg('cr4'),cs=reg('cs'),flags=reg('eflags'),gs_base=reg('gs_base'),
+        kernel_spans=kernel_spans,cr3=reg('cr3'),cr0=reg('cr0'),cr4=reg('cr4'),cs=reg('cs'),flags=reg('eflags'),gs_base=reg('gs_base'),fs_base=reg('fs_base'),
         thread=list(gdb.selected_thread().ptid))
 
 def save():
@@ -118,7 +120,7 @@ class CaseReturned(Checked):
         after=capture();model['snapshot'](after)
         case['returned']=dict(result=reg('rax'),sp=reg('rsp'),callee={r:reg(r) for r in callee},cs=reg('cs'))
         assert after['ids'][:3]==case['before']['ids'][:3] and after['ids'][3:6]==[0]*3
-        assert after['ids'][6]==case['before']['ids'][6]+1
+        assert after['ids'][6]==case['before']['ids'][6]+(2 if child_exec else 1)
         assert after['state'][1:3]==case['before']['state'][1:3]
         assert hashlib.sha256(bytes.fromhex(after['active']['bytes'])).hexdigest()==case['prefix']
         case['after']=after
@@ -140,6 +142,28 @@ class CaseEntered(Checked):
         returns[site].enabled=True
         return False
 
+class ImageEntered(Checked):
+    def observe(self):
+        assert reg('cs')&3==3 and pending is None
+        value=capture()
+        if value['ids'][0]<2:return False
+        assert child_exec and case is not None
+        model['snapshot'](value)
+        assert value['state']==[0]*4 and value['tokens']==[0]*6
+        assert value['fs_base']==value['context']['tls']==0
+        assert value['context']['registered_tid']==value['context']['robust']==0
+        assert value['ids'][3:6]==case['before']['ids'][:3]
+        assert value['ids'][2]==case['before']['ids'][2]+1
+        assert value['inactive_state'][2]==67
+        last=observed['events'][-1]
+        assert last['operation']==7 and last['before']['ids'][0]==value['ids'][0]
+        assert last['after']['ids']==value['ids']
+        assert last['before']['inactive']==last['after']['inactive']==value['inactive']
+        assert word(reg('rsp'))==2
+        observed['child_exec_entries'].append(dict(snapshot=value,initial_sp=reg('rsp')))
+        save()
+        return False
+
 class Halt(Checked):
     def observe(self):
         value=capture()
@@ -158,6 +182,8 @@ class Complete(Checked):
         assert [ops.count(n) for n in [9,10,11,12]]==[8,8,8,8]
         preparations=[r['before']['state'][2] for r in observed['events'] if r['operation']==9]
         assert sorted(preparations)==[34]*4+[67]*4
+        assert ops.count(7)==(7 if child_exec else 3)
+        assert len(observed['child_exec_entries'])==(4 if child_exec else 0)
         assert words(address('topal_x86_frame_mm_tokens_v1'),6)==[0]*6
         assert words(address('topal_x86_frame_mm_state_v1'),4)==[0]*4
         observed['final']={}
@@ -174,6 +200,7 @@ try:
     Gateway('topal_x86_frame_gateway_v1',True)
     Gateway('topal_x86_frame_gateway_return_reclaimed_v1',False)
     CaseEntered('*'+hex(component['entry']),internal=True)
+    if child_exec:ImageEntered('*'+hex(component['image_entry']),internal=True)
     Halt('*'+hex(native_halt),internal=True)
     Complete('*topal_x86_systems_fatal',internal=True)
     gdb.execute('continue')
@@ -190,9 +217,10 @@ except Exception:
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
-    assert component['mode'] == 'process-mm'
-    source = Path(__file__).with_name('user_extent_process_mm_cases.c').read_bytes()
-    assert hashlib.sha256(source).hexdigest() == component['process_mm_source_sha256']
+    assert component['mode'] in ['process-mm','process-mm-exec']
+    suffix='_exec' if component['mode']=='process-mm-exec' else ''
+    source = Path(__file__).with_name('user_extent_process_mm'+suffix+'_cases.c').read_bytes()
+    assert hashlib.sha256(source).hexdigest() == component['process_mm'+suffix+'_source_sha256']
     kernel = (build / 'kernel.elf').read_bytes()
     phoff = struct.unpack_from('<Q', kernel, 32)[0]
     phsize, phcount = struct.unpack_from('<HH', kernel, 54)

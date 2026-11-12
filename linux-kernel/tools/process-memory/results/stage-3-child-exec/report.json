@@ -1,0 +1,1766 @@
+{
+  "allocation_free_queries": 28,
+  "allocation_free_within_page_changes": 4,
+  "artifacts": {
+    "boundary.o": {
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    "bzImage": {
+      "bytes": 45241744,
+      "sha256": "18168dc9e119e0d8ef79771042bf47e3ad51656e853d0885650758b0eb400640"
+    },
+    "command-cases.o": {
+      "bytes": 7848,
+      "sha256": "9f8548371d2e7832b67add965750e275b7912241bd4328ab7f0d11f15853c83f"
+    },
+    "controller.ll": {
+      "bytes": 22671,
+      "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+    },
+    "controller.o": {
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    "dispatch.ll": {
+      "bytes": 50437,
+      "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+    },
+    "dispatch.o": {
+      "bytes": 44304,
+      "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+    },
+    "extent-bridge.o": {
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    "extent-callers.o": {
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    "extent.ll": {
+      "bytes": 4670,
+      "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+    },
+    "extent.o": {
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    "file-cases.o": {
+      "bytes": 16056,
+      "sha256": "f3eee3122fadb736eacd7d098cb6a57f84749e1a4e03fad3d2dc69daff398d71"
+    },
+    "gateway.o": {
+      "bytes": 10168,
+      "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+    },
+    "initramfs.cpio": {
+      "bytes": 2037200,
+      "sha256": "abbe2b5bf5cb6d6c3f5875b5f7068f2658f34172a617df55ad57cb332b09d69d"
+    },
+    "kernel.elf": {
+      "bytes": 1676656,
+      "sha256": "fd61f94f31f24ca3209b8b291446da2bb09f2e398680e32c2c81e8fb314995a0"
+    },
+    "owner.ll": {
+      "bytes": 12741,
+      "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+    },
+    "owner.o": {
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    "predecessor-gateway.o": {
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    "predecessor-provider.o": {
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    "process-mm-exec-cases.o": {
+      "bytes": 17784,
+      "sha256": "7d14a22cdb89ea1534ebbc6de2d0fc19effcbfa2e3568ff9953627dc2d1be395"
+    },
+    "provider.o": {
+      "bytes": 1062064,
+      "sha256": "578ad9d50d4636d6a95f42d166849640980b2f4eb3bd3e239edb5add8908d530"
+    },
+    "retained-owned-gateway.o": {
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    "retained-owned-provider.o": {
+      "bytes": 1061624,
+      "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+    },
+    "root.o": {
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    "runtime.ll": {
+      "bytes": 53406,
+      "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+    },
+    "runtime.o": {
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    "shell-cases.o": {
+      "bytes": 13576,
+      "sha256": "7e2d84bda815f42416c7359c13054bb04bd8052f1b180cd6702b0d3793f6e44d"
+    },
+    "source-cases.o": {
+      "bytes": 8792,
+      "sha256": "251bf6527b225b6ced95564f986c786ab6eafbf6f80410b696585e6a1508696a"
+    },
+    "source-syscall.o": {
+      "bytes": 1496,
+      "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+    },
+    "source-user.elf": {
+      "bytes": 47120,
+      "sha256": "fc03dd680f4caf9659a3b98fa04d32be28b122235448c8b9df2e39cbe4ab8514"
+    },
+    "source.ll": {
+      "bytes": 330401,
+      "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+    },
+    "source.o": {
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    },
+    "startup-cases.o": {
+      "bytes": 13928,
+      "sha256": "01845aae904d9acf63dcc174d608d9a60af5a5aa0e75de6094bf1afefc436003"
+    },
+    "static-elf-abi-fixture.elf": {
+      "bytes": 2024544,
+      "sha256": "159f9f1cd52d07e64a4ad01fbe0c75f966763ee0e5d9a91f89e9a86ff246ea1d"
+    },
+    "target.ll": {
+      "bytes": 49107,
+      "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+    },
+    "target.o": {
+      "bytes": 29312,
+      "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+    }
+  },
+  "attempts": [
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "command-cases.o": {
+          "bytes": 7848,
+          "sha256": "348a91cd4f2175aac70af0959b3256e39f5684551d65e3f3a039b69e729f470f"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16056,
+          "sha256": "4a753b52d6966d1169a786e44eac72110b7aa2c1efabb6a350478a10449602a7"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "kernel.elf": {
+          "bytes": 1676656,
+          "sha256": "fd61f94f31f24ca3209b8b291446da2bb09f2e398680e32c2c81e8fb314995a0"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-exec-cases.o": {
+          "bytes": 15232,
+          "sha256": "0abaec8c6083d18c0964cdbc0bda0d80743b6a10ba3304a8a7d721dddcd84509"
+        },
+        "provider.o": {
+          "bytes": 1062064,
+          "sha256": "578ad9d50d4636d6a95f42d166849640980b2f4eb3bd3e239edb5add8908d530"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13576,
+          "sha256": "cad286499b362dfa5d165107ee897ba6d41980d5a62aa21a0e27cdaa983fdc46"
+        },
+        "source-cases.o": {
+          "bytes": 8792,
+          "sha256": "29314d8bc7ba679133665349618eaa88cd2925f1717f7b6e5a359ac21d551d49"
+        },
+        "source-syscall.o": {
+          "bytes": 1480,
+          "sha256": "cea72ae3e06cd47ef9ec9349da153ad58119bb2e94a90f68bbf290833b04b949"
+        },
+        "source-user.elf": {
+          "bytes": 45584,
+          "sha256": "a2e1fc5f2baa50173d67dd5c3c08c362c3a9826c40c1bfd2d6a46e8cf7798d7b"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13928,
+          "sha256": "40f80e7b3e8559f5ac82a6882c453bb977ca3538a63d24a2625b53dd38ad7838"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "6a780c70868e97990724d09f8de6df16ead1b0e8dd7249e58891d9091c15b298"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "guest_exit_code": 1,
+      "scope": "Earlier validation with its own inputs; not evidence for the current expanded scope"
+    },
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "command-cases.o": {
+          "bytes": 7848,
+          "sha256": "4726a0735896e9f6e9c2ef6aadfec5eae6c9cf90b830996ca01f816cfd84a092"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16056,
+          "sha256": "f4973c3f7dd8437c0f82ec16685fd53a5b641ebc807a42169b66f50d7c166b9e"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "kernel.elf": {
+          "bytes": 1676656,
+          "sha256": "fd61f94f31f24ca3209b8b291446da2bb09f2e398680e32c2c81e8fb314995a0"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-exec-cases.o": {
+          "bytes": 15232,
+          "sha256": "627c102771fbd36a2a8288d764f30d907d218ac5380d822e59093a60eb394930"
+        },
+        "provider.o": {
+          "bytes": 1062064,
+          "sha256": "578ad9d50d4636d6a95f42d166849640980b2f4eb3bd3e239edb5add8908d530"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13576,
+          "sha256": "8edc65b1bca203fff19d799d8ebb6448cb38804fcac2ca29a905d98f811514e2"
+        },
+        "source-cases.o": {
+          "bytes": 8792,
+          "sha256": "34bf63a7379066c83836500bb9dd6d7e907490019eb0e0e1f13a9beac35b9178"
+        },
+        "source-syscall.o": {
+          "bytes": 1496,
+          "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+        },
+        "source-user.elf": {
+          "bytes": 45584,
+          "sha256": "6eefaf20e70fa890d6c29f0ea0f370c259d011b1af8a79d1adbb542ff84742c8"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13928,
+          "sha256": "06fcf2ed02e274872874b68516c25e849f2e8631e17efd5f32d9fea982f9b7ab"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "85186635bcaac80f45be1afe133640bd4799815e78184c7cc34d8a379541401a"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "guest_exit_code": 0,
+      "scope": "Earlier validation with its own inputs; not evidence for the current expanded scope"
+    }
+  ],
+  "cases": 4,
+  "child_exec_controls": [
+    {
+      "name": "child-exec-changes-parent-byte",
+      "reason": "changed retained inactive",
+      "rejected": true
+    },
+    {
+      "name": "child-exec-restores-old-MM",
+      "reason": "exec MM generation",
+      "rejected": true
+    },
+    {
+      "name": "child-exec-restores-old-generation",
+      "reason": "exec MM generation",
+      "rejected": true
+    },
+    {
+      "name": "child-exec-retires-parent",
+      "reason": "MM state",
+      "rejected": true
+    },
+    {
+      "name": "child-entry-old-stack",
+      "reason": "child exec initial stack",
+      "rejected": true
+    },
+    {
+      "name": "child-entry-lost-parent",
+      "reason": "empty inactive owner",
+      "rejected": true
+    },
+    {
+      "name": "child-entry-retained-old-heap",
+      "reason": "fresh child heap",
+      "rejected": true
+    },
+    {
+      "name": "child-entry-retained-FS",
+      "reason": "child exec FS reset",
+      "rejected": true
+    },
+    {
+      "name": "child-entry-retained-TID",
+      "reason": "child exec registration reset",
+      "rejected": true
+    },
+    {
+      "name": "child-entry-retained-robust-list",
+      "reason": "child exec registration reset",
+      "rejected": true
+    }
+  ],
+  "child_exec_entries": [
+    {
+      "generation": 1,
+      "mm": 3,
+      "parent_mm": 1,
+      "parent_pages": 67,
+      "pid": 2
+    },
+    {
+      "generation": 2,
+      "mm": 6,
+      "parent_mm": 4,
+      "parent_pages": 67,
+      "pid": 3
+    },
+    {
+      "generation": 3,
+      "mm": 9,
+      "parent_mm": 7,
+      "parent_pages": 67,
+      "pid": 4
+    },
+    {
+      "generation": 4,
+      "mm": 12,
+      "parent_mm": 10,
+      "parent_pages": 67,
+      "pid": 5
+    }
+  ],
+  "comparisons": [
+    {
+      "active_pages": 0,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 2,
+      "inactive_pages": 67,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 2,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 2,
+      "inactive_pages": 67,
+      "operation": 7,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 2,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 2,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 2,
+      "inactive_pages": 35,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 2,
+      "inactive_pages": 35,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 7,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 3,
+      "inactive_pages": 67,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 3,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 3,
+      "inactive_pages": 67,
+      "operation": 7,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 3,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 3,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 3,
+      "inactive_pages": 35,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 3,
+      "inactive_pages": 35,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 7,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 4,
+      "inactive_pages": 67,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 4,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 4,
+      "inactive_pages": 67,
+      "operation": 7,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 4,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 4,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 4,
+      "inactive_pages": 35,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 4,
+      "inactive_pages": 35,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 7,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 1,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 5,
+      "inactive_pages": 67,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 5,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 5,
+      "inactive_pages": 67,
+      "operation": 7,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 5,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 5,
+      "inactive_pages": 67,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 67,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 101,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 5,
+      "inactive_pages": 35,
+      "operation": 11,
+      "passed": true
+    },
+    {
+      "active_pages": 101,
+      "active_pid": 5,
+      "inactive_pages": 35,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 35,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 5,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 6,
+      "inactive_pages": 34,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 7,
+      "inactive_pages": 34,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 8,
+      "inactive_pages": 34,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 9,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 9,
+      "inactive_pages": 34,
+      "operation": 10,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 12,
+      "passed": true
+    },
+    {
+      "active_pages": 34,
+      "active_pid": 1,
+      "inactive_pages": 0,
+      "operation": 13,
+      "passed": true
+    },
+    {
+      "active_pages": 0,
+      "active_pid": 0,
+      "inactive_pages": 0,
+      "operation": 6,
+      "passed": true
+    }
+  ],
+  "controls": [
+    {
+      "name": "prepared-pin-missing",
+      "reason": "heap backing/pin",
+      "rejected": true
+    },
+    {
+      "name": "prepared-wrong-epoch",
+      "reason": "prepared entry receipt",
+      "rejected": true
+    },
+    {
+      "name": "prepared-wrong-source-generation",
+      "reason": "prepared source owner",
+      "rejected": true
+    },
+    {
+      "name": "prepared-truncated-to-old-34-pages",
+      "reason": "whole allocation bytes",
+      "rejected": true
+    },
+    {
+      "name": "child-adopts-parent-MM",
+      "reason": "inactive MM identity",
+      "rejected": true
+    },
+    {
+      "name": "child-identity-counter-restored",
+      "reason": "active MM identity",
+      "rejected": true
+    },
+    {
+      "name": "handoff-loses-parent",
+      "reason": "MM state",
+      "rejected": true
+    },
+    {
+      "name": "handoff-reuses-heap-PTE",
+      "reason": "selected heap translations",
+      "rejected": true
+    },
+    {
+      "name": "exit-missing-retirement",
+      "reason": "complete retirement set",
+      "rejected": true
+    },
+    {
+      "name": "exit-truncated-erasure",
+      "reason": "complete retirement geometry",
+      "rejected": true
+    },
+    {
+      "name": "exit-retains-child-MM",
+      "reason": "inactive MM identity",
+      "rejected": true
+    },
+    {
+      "name": "hardware-root-changed",
+      "reason": "actual live root/context",
+      "rejected": true
+    },
+    {
+      "name": "write-protection-disabled",
+      "reason": "paging/write protection",
+      "rejected": true
+    },
+    {
+      "name": "retained-resize-candidate",
+      "reason": "token binding",
+      "rejected": true
+    },
+    {
+      "name": "query-consumes-frame-identity",
+      "reason": "query/within-page allocation",
+      "rejected": true
+    },
+    {
+      "name": "wrong-syscall",
+      "reason": "syscall identity",
+      "rejected": true
+    },
+    {
+      "name": "wrong-child-copy-beyond-page-34",
+      "reason": "incomplete fork copy",
+      "rejected": true
+    },
+    {
+      "name": "exit-nonzero-erasure",
+      "reason": "retired backing not consumed/zero",
+      "rejected": true
+    },
+    {
+      "name": "resize-loses-retained-byte",
+      "reason": "resize retained prefix",
+      "rejected": true
+    },
+    {
+      "name": "resize-new-page-nonzero",
+      "reason": "new heap pages not zero",
+      "rejected": true
+    }
+  ],
+  "copied_heap_bytes": 1654784,
+  "erased_released_bytes": 7766016,
+  "last_resource_sample": {
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "group": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-2435872-64ecbcba.scope",
+    "group_retired": true,
+    "memory_max_bytes": 2969485312,
+    "observed_peak_bytes": 687190016,
+    "retirement_observed_at": 1794491499.6554627,
+    "sampled_at": 1794491498.654812,
+    "swap_max_bytes": 0
+  },
+  "llvm_verified_modules": [
+    "controller",
+    "dispatch",
+    "extent",
+    "owner",
+    "runtime",
+    "source",
+    "target"
+  ],
+  "native_bounds": {
+    "complete_physical_bytes": 4088,
+    "complete_stack_bytes": 2280,
+    "inner_retirement_bytes": 3952,
+    "outer_bytes": 88,
+    "reserve_bytes": 4096
+  },
+  "native_regression": {
+    "kernel": {
+      "bytes": 1676656,
+      "sha256": "fd61f94f31f24ca3209b8b291446da2bb09f2e398680e32c2c81e8fb314995a0"
+    },
+    "observation": {
+      "bytes": 149360299,
+      "sha256": "000ef56392d15d2a930376236c10af65ae5e7bc48f96a6cafbadc202bc63ce45"
+    },
+    "summary": {
+      "cases": 4,
+      "copied_heap_bytes": 1654784,
+      "erased_released_bytes": 6111232,
+      "operations": {
+        "5": 60,
+        "6": 1,
+        "7": 3,
+        "9": 8,
+        "10": 8,
+        "11": 8,
+        "12": 8,
+        "13": 1
+      },
+      "passed": true,
+      "retired_extents": 32
+    }
+  },
+  "observation": {
+    "bytes": 152948857,
+    "sha256": "072ba87ebfce9caa940244ff62830a61b69be020f009f33f3403a978ef0fb568"
+  },
+  "operations": {
+    "5": 60,
+    "6": 1,
+    "7": 7,
+    "9": 8,
+    "10": 8,
+    "11": 8,
+    "12": 8,
+    "13": 1
+  },
+  "passed": true,
+  "preserved": {
+    "boundary.o": {
+      "bytes": 9384,
+      "reference": "boundary.o",
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    "controller.o": {
+      "bytes": 16784,
+      "reference": "controller.o",
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    "extent-bridge.o": {
+      "bytes": 1176,
+      "reference": "extent-bridge.o",
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    "extent-callers.o": {
+      "bytes": 2544,
+      "reference": "extent-callers.o",
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    "extent.o": {
+      "bytes": 1808,
+      "reference": "extent.o",
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    "owner.o": {
+      "bytes": 6280,
+      "reference": "owner.o",
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    "predecessor-gateway.o": {
+      "bytes": 8008,
+      "reference": "predecessor-gateway.o",
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    "predecessor-provider.o": {
+      "bytes": 1069736,
+      "reference": "predecessor-provider.o",
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    "retained-owned-gateway.o": {
+      "bytes": 8904,
+      "reference": "gateway.o",
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    "retained-owned-provider.o": {
+      "bytes": 1061624,
+      "reference": "provider.o",
+      "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+    },
+    "root.o": {
+      "bytes": 359056,
+      "reference": "root.o",
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    "runtime.o": {
+      "bytes": 35264,
+      "reference": "runtime.o",
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    "source.o": {
+      "bytes": 155832,
+      "reference": "source.o",
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    }
+  },
+  "regression_validation": {
+    "Rust-file-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "elapsed_seconds": 0.37349287886172533,
+      "exit_code": 0
+    },
+    "default-ABI-fixture": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "elapsed_seconds": 0.21254535112529993,
+      "exit_code": 0
+    },
+    "format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "elapsed_seconds": 1.1471738750115037,
+      "exit_code": 0
+    },
+    "process-memory-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "elapsed_seconds": 0.6859881430864334,
+      "exit_code": 0
+    },
+    "user-memory-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "elapsed_seconds": 1.865090437233448,
+      "exit_code": 0
+    },
+    "workspace-check": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "elapsed_seconds": 8.119092212058604,
+      "exit_code": 0
+    }
+  },
+  "remaining": [
+    "inactive live-child cancellation",
+    "native zero/one/maximum/partial heaps and resource failures",
+    "identity width exhaustion and fatal partial-effect cleanup",
+    "every mapping producer/caller and continuous loan/mode/exclusion proof",
+    "full post-INVLPG and pre-release publication observations",
+    "all 51 application/pipe regressions and cold public reconstruction",
+    "original full Linux/distribution/container/VM-host objectives"
+  ],
+  "retired_extents": 36,
+  "schema": "topal-process-mm-native-child-exec-v1",
+  "scope": "Experimental child exec, retained parent and early ordinary services; not public ELF-loader, continuous lifetime, cancellation or fatal-path qualification",
+  "selected_inputs": {
+    "AGENTS.md": {
+      "bytes": 8036,
+      "sha256": "3e0c41d8e027840b647762cf9899ea07b1dbc674137bae47c1b11f9542385371"
+    },
+    "docs/systems-profile.md": {
+      "bytes": 134494,
+      "sha256": "13d2d30e55265b9bcb1d830d65b7ae00213be86990efbe228e74c94877927d12"
+    },
+    "linux-kernel/design/decision-register.md": {
+      "bytes": 179174,
+      "sha256": "2c107fb5d30cd402209098a056d0736ef7fa7f66281611a20155549ef0184f39"
+    },
+    "linux-kernel/design/process-memory-ownership.md": {
+      "bytes": 10524,
+      "sha256": "d766ccbf6d2569fc63ca7ab748f999fad4bf77023685153492ae1e98a5c4702b"
+    },
+    "linux-kernel/kernel/memory/frame-metadata.t": {
+      "bytes": 8572,
+      "sha256": "b63fa2aca690d3e2c102b645f17fc872e3c4aabcf61710b73993192476076b32"
+    },
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": {
+      "bytes": 17623,
+      "sha256": "a95f8b8f332d06910b457cf1259bb4bad4a35ce7350e4a51faf33267a8c56099"
+    },
+    "linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py": {
+      "bytes": 12240,
+      "sha256": "a60a832a82a877ee85662dd647ae95a6acc68f77b62743e2aa3c99f81c8d8e66"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_cases.c": {
+      "bytes": 3276,
+      "sha256": "135d000a5ba6ce5d0f2a28b01a23a955e30f88796a8bfa5d9fda0ce8e6116acf"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_exec_cases.c": {
+      "bytes": 5028,
+      "sha256": "e129112ff5bbc268a8ff10f3bfe9f49deb23e6961b71802a5b7903bc239cb91b"
+    },
+    "linux-kernel/step-4-process-memory-ownership.md": {
+      "bytes": 19191,
+      "sha256": "76c7edc9fea271674ffe41d9028c23287ea1d08dd2b4d671dae05b8394e456c4"
+    },
+    "linux-kernel/step-4-status.md": {
+      "bytes": 24657,
+      "sha256": "459df1383ee570beefa58dd4e7cb32a4dcf42b3f8b0e67dabf41e5f8ccaede48"
+    },
+    "linux-kernel/tools/process-memory/README.md": {
+      "bytes": 8261,
+      "sha256": "269543c5a30c104515f6f3c75ce996b382306e5fe120537c516388b14bdad6dd"
+    },
+    "linux-kernel/tools/process-memory/archive_process.py": {
+      "bytes": 12265,
+      "sha256": "37f9add4cb1bb8ab66e4bd9a1cacd3254970ba478e9fd34f80ad86a6337e9ac7"
+    },
+    "linux-kernel/tools/process-memory/process_native.py": {
+      "bytes": 12225,
+      "sha256": "aa24d60cccf9fb13e8a55e5ddcc5de2d541e2c0adccf977bd78ce7955e2c3c0b"
+    },
+    "linux-kernel/tools/process-memory/readback_exec.py": {
+      "bytes": 5026,
+      "sha256": "702f094e97fa8b5b4c73083a8195cc42369586661569e07689cf1f2d9ba4d135"
+    },
+    "linux-kernel/tools/process-memory/readback_process.py": {
+      "bytes": 9401,
+      "sha256": "aaab11926bf2600e2a873e18291657197df6548cb0b3b03654ef213b79cdb73b"
+    },
+    "linux-kernel/tools/process-memory/replay_process.py": {
+      "bytes": 3510,
+      "sha256": "5342d5361aa0e9a148559b719080bedb45a864a443ab4a27a63ce91184a2ac1c"
+    },
+    "se/requirements.md": {
+      "bytes": 127724,
+      "sha256": "8a56200ca1ffb5c473dcf52093cf39a6d97fd0cd8a97b2fddcfac5d3dd2cad9b"
+    },
+    "spec/systems-profile.md": {
+      "bytes": 685792,
+      "sha256": "6f6bfa4f08036da80e7a4a304fa1fc0e8e50627a76f294e915ef93ddf2580a60"
+    },
+    "src/topal-compiler/se-requirements.md": {
+      "bytes": 814008,
+      "sha256": "e34ecd40d3903be5ea2c3ad5e11d767c40a8113e4205c2d6e96d62d2650439a4"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_controller.ll": {
+      "bytes": 21451,
+      "sha256": "c9445f96bac7a5b1d2c3e1b0e5463d098909326c2263970787781d0ca2e987f5"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_gateway_lease.ll": {
+      "bytes": 972,
+      "sha256": "8d3b31d9deb5167c1caa4958157eb8287fdc3d90536a10693eccfff0bb629b4b"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": {
+      "bytes": 14321,
+      "sha256": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory_lease.ll": {
+      "bytes": 3828,
+      "sha256": "fb3d0af5155c40ee507ccbf4bf1ae8d301c84ae08ed1e5a4022b42a207b9604a"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_target.ll": {
+      "bytes": 23887,
+      "sha256": "c0c640202dfd9788acb34b82e3ffd76e7aea3a09cbc93a0109525bbbe369f172"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm.ll": {
+      "bytes": 9723,
+      "sha256": "dedf6ea9583ffb0b2d2e6e271bae85967e07718ff7235c413e137049306d51c9"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm_context.ll": {
+      "bytes": 1998,
+      "sha256": "8867223f998abe47a8bf03c28a967fb7cd0148531d2e9ea7290924d4c551efbc"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm_owners.ll": {
+      "bytes": 23488,
+      "sha256": "08599c6f930c91135ee9ec57a642ed6ef3728728f845d49fb9111b054494c7fb"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_clean.ll": {
+      "bytes": 1107,
+      "sha256": "383acf13bef9959641de5f52bbe0bf16b0f18f11872972c363184ca64bba66b5"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_target.ll": {
+      "bytes": 14834,
+      "sha256": "ac21900da006203802acb6ec6bfb58fc14ef968579bb710d35cdf044f4ac84c5"
+    },
+    "src/topal-compiler/src/systems_artifact_static_image.rs": {
+      "bytes": 78277,
+      "sha256": "725fdae49ab7b5995f489b7ce7d1dcc3bd335795c0100a2d442bc76d44340e1e"
+    },
+    "src/topal-compiler/src/systems_frame_gateway.rs": {
+      "bytes": 14896,
+      "sha256": "662ec81c617d3936affd22e4e44709516d0fe3ac9fca24ab1b6bcdc4f1988926"
+    },
+    "src/topal-compiler/src/systems_frame_gateway_memory.rs": {
+      "bytes": 8323,
+      "sha256": "227214524e116e914ba5f595dcae3b67c4f3c7d00f6e050dadadd329ad4c250b"
+    },
+    "src/topal-compiler/src/systems_frame_gateway_process_memory.rs": {
+      "bytes": 1771,
+      "sha256": "9eb691d729fb121cfbaf0aa16b87c93c1bd9e07d0292e93c185200ead66e8351"
+    },
+    "src/topal-compiler/src/systems_frame_inspection.rs": {
+      "bytes": 7316,
+      "sha256": "cef1141c03c083e234037036b249b1fb91f21c1ecb8273bdafbb48db06991877"
+    },
+    "src/topal-compiler/src/systems_frame_root_tests.rs": {
+      "bytes": 40794,
+      "sha256": "3b9c1f05bc032ff16eda8533b2eaf83bf51e6b6874547afe21ada7bfac9a43f2"
+    },
+    "src/topal-compiler/src/systems_frame_target.rs": {
+      "bytes": 5896,
+      "sha256": "739b8b778a382a6d67e4bc44c773a314470104e0eb902993e810afe6178f71d9"
+    },
+    "src/topal-compiler/src/systems_process_children.rs": {
+      "bytes": 18645,
+      "sha256": "1594fbfc1e838f38bdf67119401811e5a8bc9789c95115ee824c9117691eae54"
+    },
+    "src/topal-compiler/src/systems_process_mm.rs": {
+      "bytes": 6124,
+      "sha256": "812e710f0ff44b6e95a03f464808aef390c376d5895183ec6a1c513cb34f8f2f"
+    },
+    "src/topal-compiler/src/systems_process_observations.rs": {
+      "bytes": 2523,
+      "sha256": "b46572bc80fd44259c6ee6904a6c5091433cd580c7caa3c47d874f4f6b130817"
+    },
+    "src/topal-compiler/src/systems_process_pair.rs": {
+      "bytes": 8815,
+      "sha256": "342f57ac03e0b849b535b35dd45570b74aca7930778ea2feec1660178ab9ce1f"
+    },
+    "src/topal-compiler/src/systems_provider_emit_process_entry.rs": {
+      "bytes": 14558,
+      "sha256": "09820e85648bdf67267a159c982e3caa27d7c0f2279045d907c8b07f089730e5"
+    },
+    "src/topal-compiler/src/systems_provider_emit_publication.rs": {
+      "bytes": 35909,
+      "sha256": "4239b656d7288921728b497a9236d54e73176b388eee7993eff0b709fb992b10"
+    },
+    "src/topal-compiler/src/systems_provider_emit_translation.rs": {
+      "bytes": 23934,
+      "sha256": "58c705379703d7b2f2e0e317f5e17829b25bd3ef7e3e5c6ecb9e9214b3262992"
+    },
+    "src/topal-compiler/src/systems_provider_object.rs": {
+      "bytes": 28046,
+      "sha256": "fa45d24b2440596b989ca97176f9cac73a0c5c4a49d6b7634b8b735e89205d0d"
+    },
+    "src/topal-compiler/src/systems_user_extent.rs": {
+      "bytes": 7956,
+      "sha256": "ea9c09eccfd8e243158f0ed22eba78f0163a295a5b06e31e2fd35c68a9f45771"
+    },
+    "src/topal-compiler/src/systems_user_extent_clean.rs": {
+      "bytes": 2146,
+      "sha256": "a8784718accfb2a64b565d7d99554c99f3ce26e61498d07bd35bd311d806b67f"
+    },
+    "src/topal-compiler/src/systems_user_source_fixture.rs": {
+      "bytes": 21163,
+      "sha256": "e3b024921718ded666536bfa9358d14c453a99436b2da9ec825fb5d3b19b3e9a"
+    }
+  }
+}

@@ -1969,7 +1969,11 @@ prepublication failure shall preserve existing memory and consume no child PID;
 performed allocator issuance shall not be rolled back. Partial-publication
 failure shall preserve held identities and fail fatally without user resumption.
 Portable state models, native allocator/context binding, process integration and
-public source/boot reconstruction shall remain separate acceptance gates. See
+public source/boot reconstruction shall remain separate acceptance gates.
+Imported descriptor/process ownership shall remain usable for PID/TID queries,
+registration and handoff while a replacement image restarts its own startup
+observations. Those observations shall not decide request legality or substitute
+PID one for a child's identity. See
 [TK-DEC-284](../linux-kernel/design/process-memory-ownership.md).
 
 ## TOPAL-REQ-SYSTEMS-USER-EXTENT-001 — Owned user-memory admission

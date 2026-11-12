@@ -114,7 +114,7 @@ pub(crate) fn static_time_fixture_entry() -> u32 {
 /// The payload is not an application and exists only for ABI qualification.
 #[must_use]
 pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
-    static_user_image_fixture_with_source(None)
+    static_user_image_fixture_with_source(None, None)
 }
 
 #[cfg(test)]
@@ -132,11 +132,24 @@ pub(crate) fn source_built_static_user_image_fixture(
     if let Some(header) = header {
         assert!((0x570000..0x570000 + text.len() as u32).contains(&header));
     }
-    static_user_image_fixture_with_source(Some((entry, startup, header, text)))
+    static_user_image_fixture_with_source(Some((entry, startup, header, text)), None)
+}
+
+#[cfg(test)]
+pub(crate) fn source_built_static_user_image_with_entry_fixture(
+    entry: u32,
+    image_entry: u32,
+    text: &[u8],
+) -> Vec<u8> {
+    assert!(!text.is_empty() && text.len() <= 0x10000);
+    assert!((0x570000..0x570000 + text.len() as u32).contains(&entry));
+    assert!((0x570000..0x570000 + text.len() as u32).contains(&image_entry));
+    static_user_image_fixture_with_source(Some((entry, None, None, text)), Some(image_entry))
 }
 
 fn static_user_image_fixture_with_source(
     component: Option<(u32, Option<u32>, Option<u32>, &[u8])>,
+    image_entry: Option<u32>,
 ) -> Vec<u8> {
     fn source_call(code: &mut Vec<u8>, entry: Option<u32>, base: u32) {
         if let Some(entry) = entry {
@@ -467,9 +480,14 @@ fn static_user_image_fixture_with_source(
     entry_code[exit + 5..exit + 11].fill(0x90);
     assert!(entry_offset + entry_code.len() <= 0x0a_6580);
     image[entry_offset..entry_offset + entry_code.len()].copy_from_slice(&entry_code);
-    image[0x0a_6580..0x0a_6585].copy_from_slice(&[
-        0xe9, 0x7b, 0xfb, 0xff, 0xff, // ordinary fixture body at 0x4a6100
-    ]);
+    // Construct the entry branch before the new first-party image is linked
+    // into the guest. An optional ordinary userspace entry adapter can select
+    // its own C startup using argv; it supplies no kernel authority.
+    image[0x0a_6580] = 0xe9;
+    let target = i64::from(image_entry.unwrap_or(0x4a6100));
+    image[0x0a_6581..0x0a_6585].copy_from_slice(
+        &i32::try_from(target - 0x4a6585).unwrap().to_le_bytes(),
+    );
     let continuation_offset = 0x0a_7000;
     let mut continuation_code = vec![
         0x48, 0x81, 0xec, 0x00, 0x04, 0, 0, // disjoint shell scratch

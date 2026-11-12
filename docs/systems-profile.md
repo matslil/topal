@@ -2191,6 +2191,11 @@ also retires any inactive child exactly once. Ordinary prepublication resource
 failure preserves the existing processes and consumes no child PID. Actual
 allocator issuance already performed during preparation is never rolled back.
 
+Exec replaces an image while retaining its initialized descriptor/process owner.
+Process/thread identity and registration services bind that owner during replacement
+startup too. Restarting an image's startup observations cannot revoke the
+process's eligibility or change the PID/TID returned by an ordinary query.
+
 This systems-only refinement preserves the qualified serialized child/pair
 interfaces and core-language meaning. Separate address spaces, general mapping
 types and scheduling remain required for the complete kernel. The

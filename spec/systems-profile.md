@@ -10828,6 +10828,11 @@ this refinement. Legacy image/stack parking MAY remain only with separate owned
 bytes/permissions, no overwritten heap entries and complete native qualification.
 
 Resize and successful exec SHALL mutate/revoke only the active process's heap.
+Initialized descriptor/process ownership SHALL outlive successful exec. Process/
+thread identity, registration and handoff SHALL bind that retained owner during replacement
+startup; a restarted image-stage counter SHALL NOT revoke its eligibility or
+change its actual PID/TID. Preserved predecessor startup observations SHALL NOT
+decide whether an ordinary request is legal in the process-MM selection.
 Child exit SHALL restore and invalidate the retained parent mappings before
 releasing child backing, retaining the original child-status/wait lifetime.
 Outer-owner cancellation SHALL also consume inactive child backing exactly once.

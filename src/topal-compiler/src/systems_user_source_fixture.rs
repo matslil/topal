@@ -10,7 +10,7 @@ use std::{fs, path::Path, process::Command};
 const BASE: u64 = 0x570000;
 const PREDECESSOR_SHA256: &str = "41a3dcd7b7e42a2f77ad995e6259e43ef84f7abf95e2dfd36cff7bea187c9fda";
 
-fn syscall_adapter(target_name: &[u8]) -> Vec<u8> {
+fn syscall_adapter(target_name: &[u8], image_entry: bool) -> Vec<u8> {
     use object::write::{Object, Symbol, SymbolSection};
     use object::{
         Architecture, BinaryFormat, Endianness, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
@@ -108,7 +108,89 @@ fn syscall_adapter(target_name: &[u8]) -> Vec<u8> {
             },
         )
         .unwrap();
+    if image_entry {
+        append_image_entry(&mut object);
+    }
     object.write().unwrap()
+}
+
+fn append_image_entry(object: &mut object::write::Object<'_>) {
+    use object::write::{Symbol, SymbolSection};
+    use object::{
+        RelocationEncoding, RelocationFlags, RelocationKind, SectionKind, SymbolFlags, SymbolKind,
+        SymbolScope,
+    };
+    let section = object.add_section(
+        vec![],
+        b".text.topal_test_image_entry".to_vec(),
+        SectionKind::Text,
+    );
+    let mut bytes = vec![
+        0x48, 0x81, 0xec, 0x00, 0x04, 0, 0, // scratch below retained initial payloads
+        0x50, 0x53, 0x51, 0x52, 0x56, 0x57, 0x55, 0x41, 0x50, 0x41, 0x51, 0x41, 0x52, 0x41, 0x53,
+        0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x49, 0x89,
+        0xe4, // saved caller stack in callee-preserved R12
+        0x48, 0x8d, 0xbc, 0x24, 0x78, 0x04, 0, 0, // original SP: scratch + saved registers
+        0x48, 0x83, 0xe4, 0xf0, 0xe8, 0, 0, 0, 0,
+    ];
+    let call = bytes.len() as u64 - 4;
+    bytes.extend_from_slice(&[
+        0x4c, 0x89, 0xe4, 0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5c, 0x41, 0x5b, 0x41, 0x5a,
+        0x41, 0x59, 0x41, 0x58, 0x5d, 0x5f, 0x5e, 0x5a, 0x59, 0x5b, 0x58, 0x48, 0x81, 0xc4, 0x00,
+        0x04, 0, 0, 0xe9, 0, 0, 0, 0,
+    ]);
+    let jump = bytes.len() as u64 - 4;
+    object.append_section_data(section, &bytes, 16);
+    object.add_symbol(Symbol {
+        name: b"topal_test_image_entry".to_vec(),
+        value: 0,
+        size: bytes.len() as u64,
+        kind: SymbolKind::Text,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(section),
+        flags: SymbolFlags::None,
+    });
+    for (offset, name, value, symbol_section) in [
+        (
+            call,
+            b"topal_process_exec_entry".as_slice(),
+            0,
+            SymbolSection::Undefined,
+        ),
+        (
+            jump,
+            b"topal_test_fixture_start".as_slice(),
+            0x4a6100,
+            SymbolSection::Absolute,
+        ),
+    ] {
+        let symbol = object.add_symbol(Symbol {
+            name: name.to_vec(),
+            value,
+            size: 0,
+            kind: SymbolKind::Text,
+            scope: SymbolScope::Linkage,
+            weak: false,
+            section: symbol_section,
+            flags: SymbolFlags::None,
+        });
+        object
+            .add_relocation(
+                section,
+                object::write::Relocation {
+                    offset,
+                    symbol,
+                    addend: -4,
+                    flags: RelocationFlags::Generic {
+                        kind: RelocationKind::Relative,
+                        encoding: RelocationEncoding::X86Branch,
+                        size: 32,
+                    },
+                },
+            )
+            .unwrap();
+    }
 }
 
 pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
@@ -143,6 +225,10 @@ pub(crate) fn build_process_memory(work: &Path, tools: &crate::LlvmTools) -> Vec
     build_selected(work, tools, "process-mm")
 }
 
+pub(crate) fn build_process_memory_exec(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, "process-mm-exec")
+}
+
 pub(crate) fn build_serial(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     build_selected(work, tools, "serial")
 }
@@ -153,6 +239,10 @@ pub(crate) fn build_stat(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
 
 fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> {
     let (entry_name, extra) = match mode {
+        "process-mm-exec" => (
+            "topal_process_memory_exec_cases",
+            Some(("process_mm_exec", "process-mm-exec-cases")),
+        ),
         "process-mm" => (
             "topal_process_memory_cases",
             Some(("process_mm", "process-mm-cases")),
@@ -242,7 +332,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     };
     fs::write(
         work.join("source-syscall.o"),
-        syscall_adapter(startup_name.as_bytes()),
+        syscall_adapter(startup_name.as_bytes(), mode == "process-mm-exec"),
     )
     .unwrap();
     let script = "SECTIONS { . = 0x570000; .text : { *(.text .text.*) *(.rodata .rodata.*) } \
@@ -324,7 +414,10 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     } else {
         frames["source-cases"].max(frames["startup-cases"] + delegated)
     };
-    let user_stack = 1024 + 128 + source_stack;
+    // The alternate image-entry adapter saves all fifteen non-SP registers,
+    // alignment and its return word, before calling the C entry selector.
+    let adapter_stack = if mode == "process-mm-exec" { 144 } else { 128 };
+    let user_stack = 1024 + adapter_stack + source_stack;
     assert!(
         user_stack <= 2048,
         "source call must fit below the witness's live user stack"
@@ -332,20 +425,31 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     let startup = elf.symbol_by_name("topal_test_startup_call").unwrap();
     let source_startup = elf.symbol_by_name(startup_name).unwrap();
     let syscall4 = elf.symbol_by_name("topal_test_syscall4").unwrap();
-    let image = crate::systems_artifact::source_built_static_user_image_fixture(
-        u32::try_from(elf.entry()).unwrap(),
-        if extra.is_some() {
-            None
-        } else {
-            Some(u32::try_from(startup.address()).unwrap())
-        },
-        if mode == "poll" {
-            Some(u32::try_from(startup.address()).unwrap())
-        } else {
-            None
-        },
-        bytes,
-    );
+    let image_entry = elf
+        .symbol_by_name("topal_test_image_entry")
+        .map(|s| s.address());
+    let image = if mode == "process-mm-exec" {
+        crate::systems_artifact::source_built_static_user_image_with_entry_fixture(
+            u32::try_from(elf.entry()).unwrap(),
+            u32::try_from(image_entry.unwrap()).unwrap(),
+            bytes,
+        )
+    } else {
+        crate::systems_artifact::source_built_static_user_image_fixture(
+            u32::try_from(elf.entry()).unwrap(),
+            if extra.is_some() {
+                None
+            } else {
+                Some(u32::try_from(startup.address()).unwrap())
+            },
+            if mode == "poll" {
+                Some(u32::try_from(startup.address()).unwrap())
+            } else {
+                None
+            },
+            bytes,
+        )
+    };
     let report = serde_json::json!({
         "source_sha256": format!("{:x}", Sha256::digest(fs::read(&source).unwrap())),
         "linked_sha256": format!("{:x}", Sha256::digest(&linked)),
@@ -354,6 +458,8 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
         "startup": source_startup.address(), "startup_call": startup.address(),
         "syscall4": syscall4.address(),
         "mode": mode,
+        "image_entry": image_entry,
+        "process_mm_exec_source_sha256": if mode == "process-mm-exec" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_process_mm_exec_cases.c")).unwrap()))) } else { None },
         "exec_source_sha256": if mode == "exec" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_exec_cases.c")).unwrap()))) } else { None },
         "signal_source_sha256": if mode == "signals" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_signal_cases.c")).unwrap()))) } else { None },
         "poll_source_sha256": if mode == "poll" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_poll_cases.c")).unwrap()))) } else { None },

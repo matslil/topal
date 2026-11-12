@@ -56,21 +56,43 @@ fn read_msr(e: &mut E<'_>, msr: u32) {
     e.0.bytes(&[0x0f, 0x32, 0x48, 0xc1, 0xe2, 0x20]);
     e.rr(0x09, A, D);
 }
+
+// Preserve the predecessor startup observations without using them to admit
+// an otherwise legal request. Imported process ownership survives exec.
+fn startup_progress(
+    e: &mut E<'_>,
+    phase: i32,
+    input: super::R,
+    expected: i32,
+) -> Result<(), CompileError> {
+    if e.0.process_memory {
+        let done = format!("process-mm-registration-progress-{phase}");
+        e.gs(0x8b, R11, 104);
+        e.cmp(R11, phase);
+        e.0.jump_if(0x85, &done);
+        e.cmp(input, expected);
+        e.0.jump_if(0x85, &done);
+        e.imm(R11, (phase + 1) as u64);
+        e.gs(0x89, R11, 104);
+        e.0.bind(&done)?;
+    }
+    Ok(())
+}
 pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     let mut e = E(code);
     e.gs(0x8b, R11, TABLE_CONTEXT);
     e.load(R11, R11, 0);
     e.cmp(R11, 1);
     e.0.jump_if(0x85, "child-dispatch-done");
-    e.gs(0x8b, R11, 104);
-    e.cmp(R11, 11);
-    e.0.jump_if(0x82, "child-dispatch-done");
     if !e.0.process_memory {
+        e.gs(0x8b, R11, 104);
+        e.cmp(R11, 11);
+        e.0.jump_if(0x82, "child-dispatch-done");
         e.cmp(R11, 15);
         e.0.jump_if(0x87, "child-dispatch-done");
     }
-    // The MM selection binds the actual descriptor/process owner. A later
-    // shell startup phase does not invalidate that initialized owner.
+    // Exec retains the initialized descriptor/process owner even while its
+    // replacement image starts up. Its phase counter cannot revoke that owner.
     for (number, label) in [
         (57, "child-fork"),
         (56, "child-clone"),
@@ -138,6 +160,7 @@ pub(in super::super) fn emit_services(
     let mut e = E(code);
     e.0.bind("child-register-tid")?;
     e.gs(0x89, Di, 152);
+    startup_progress(&mut e, 3, Di, 0x5f76d0)?;
     e.gs(0x8b, R12, TABLE_CONTEXT);
     e.load(A, R12, 56);
     emit_static_process_sysret(e.0);
@@ -145,6 +168,7 @@ pub(in super::super) fn emit_services(
     e.cmp(Si, 24);
     e.0.jump_if(0x85, "child-einval");
     e.gs(0x89, Di, 160);
+    startup_progress(&mut e, 4, Di, 0x5f76e0)?;
     e.imm(A, 0);
     emit_static_process_sysret(e.0);
     e.0.bind("child-thread-local")?;
@@ -171,6 +195,7 @@ pub(in super::super) fn emit_services(
     e.0.bytes(&[0x48, 0xc1, 0xea, 0x20]);
     e.imm(C, 0xc0000100);
     e.0.bytes(&[0x0f, 0x30]);
+    startup_progress(&mut e, 2, Si, 0x5f7400)?;
     e.imm(A, 0);
     emit_static_process_sysret(e.0);
 

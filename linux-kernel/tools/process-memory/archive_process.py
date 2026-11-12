@@ -35,6 +35,8 @@ SELECTED = [
     'src/topal-compiler/src/systems_provider_object.rs',
     'src/topal-compiler/src/systems_process_children.rs',
     'src/topal-compiler/src/systems_process_pair.rs',
+    'src/topal-compiler/src/systems_process_observations.rs',
+    'src/topal-compiler/src/systems_artifact_static_image.rs',
     'src/topal-compiler/src/systems_user_source_fixture.rs',
     'src/topal-compiler/src/systems_frame_inspection.rs',
     'src/topal-compiler/src/runtime/kernel_frame_memory.ll',
@@ -49,9 +51,11 @@ SELECTED = [
     'linux-kernel/kernel/memory/frame-metadata.t',
     'linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py',
     'linux-kernel/labs/qemu/x86_64/user_extent_process_mm_cases.c',
+    'linux-kernel/labs/qemu/x86_64/user_extent_process_mm_exec_cases.c',
     'linux-kernel/labs/qemu/x86_64/frame_root_inspect.py',
     'linux-kernel/tools/process-memory/process_native.py',
     'linux-kernel/tools/process-memory/readback_process.py',
+    'linux-kernel/tools/process-memory/readback_exec.py',
     'linux-kernel/tools/process-memory/archive_process.py',
     'linux-kernel/tools/process-memory/replay_process.py',
 ]
@@ -68,11 +72,18 @@ def main():
     parser.add_argument('--reference', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--attempt', action='append',default=[],type=Path)
+    parser.add_argument('--regression', type=Path)
     args = parser.parse_args()
     build, reference, output = args.build.resolve(), args.reference.resolve(), args.output.resolve()
     require(output.is_relative_to(ROOT/'linux-kernel'), 'Linux output directory')
+    component = json.loads((build/'source-component.json').read_text())
+    child_exec=component['mode']=='process-mm-exec'
     raw = (build/'process-mm-users/observations.json').read_bytes()
-    report = readback(json.loads(raw))
+    if child_exec:
+        from readback_exec import readback as exec_readback
+        report=exec_readback(json.loads(raw))
+    else:
+        report = readback(json.loads(raw))
     frame = json.loads((build/'frame-inspection.json').read_text())
     for key in ['complete_stack_bytes','complete_physical_bytes']:
         require(frame['user_extent_callers'][key] <= 4096, 'complete native bound')
@@ -84,10 +95,11 @@ def main():
         payload = (build/actual).read_bytes()
         require(payload == (reference/old).read_bytes(), 'changed predecessor artifact: '+actual)
         preserved[actual] = dict(reference=old, **digest(payload))
-    component = json.loads((build/'source-component.json').read_text())
-    source = ROOT/'linux-kernel/labs/qemu/x86_64/user_extent_process_mm_cases.c'
-    require(component['process_mm_source_sha256'] == digest(source.read_bytes())['sha256'], 'application source binding')
-    require((build/'process-mm-cases.c').read_bytes()==source.read_bytes(), 'compiled application source differs')
+    suffix='_exec' if child_exec else ''
+    stem='process-mm-exec-cases' if child_exec else 'process-mm-cases'
+    source = ROOT/('linux-kernel/labs/qemu/x86_64/user_extent_process_mm'+suffix+'_cases.c')
+    require(component['process_mm'+suffix+'_source_sha256'] == digest(source.read_bytes())['sha256'], 'application source binding')
+    require((build/(stem+'.c')).read_bytes()==source.read_bytes(), 'compiled application source differs')
     inspector=(build/'process-mm-users/inspect.gdb').read_text()
     model=(ROOT/'linux-kernel/tools/process-memory/process_native.py').read_text()
     require(inspector.count('exec('+repr(model)+',model)')==1, 'actual debugger model differs')
@@ -101,14 +113,17 @@ def main():
     for role, result in verification.items():
         require(result['passed'] and result['sha256']==artifacts[role+'.ll']['sha256'], 'LLVM verification binding')
     validation=json.loads((build/'validation.json').read_text())
-    require(set(validation)=={'user-memory-models','process-memory-models','default-ABI-fixture','format','Rust-file-ceiling'}
+    require(set(validation)=={'workspace-check','user-memory-models','process-memory-models','default-ABI-fixture','format','Rust-file-ceiling'}
             and all(r['exit_code']==0 for r in validation.values()), 'regression validation incomplete')
-    report.update(schema='topal-process-mm-native-integration-v1', observation=digest(raw),
+    require('Ran 196 tests' in (build/'user-memory-models.stderr.log').read_text()
+            and 'Ran 17 tests' in (build/'process-memory-models.stderr.log').read_text(), 'model-suite coverage differs')
+    require('test result: ok. 1 passed' in (build/'default-ABI-fixture.stdout.log').read_text(), 'default fixture test did not run')
+    report.update(schema='topal-process-mm-native-child-exec-v1' if child_exec else 'topal-process-mm-native-integration-v1', observation=digest(raw),
         selected_inputs={name:digest((ROOT/name).read_bytes()) for name in SELECTED},
         artifacts=artifacts, preserved=preserved, native_bounds=frame['user_extent_callers'],
         regression_validation=validation,
         last_resource_sample=resources, llvm_verified_modules=sorted(verification),
-        remaining=['child exec with inactive parent','inactive live-child cancellation',
+        remaining=([] if child_exec else ['child exec with inactive parent'])+['inactive live-child cancellation',
                    'native zero/one/maximum/partial heaps and resource failures',
                    'identity width exhaustion and fatal partial-effect cleanup',
                    'every mapping producer/caller and continuous loan/mode/exclusion proof',
@@ -117,6 +132,21 @@ def main():
                    'original full Linux/distribution/container/VM-host objectives'])
     output.mkdir(parents=True,exist_ok=False)
     archive = {'native-observations.json':raw}
+    if args.regression is not None:
+        regression=args.regression.resolve()
+        require(regression.is_relative_to(ROOT/'linux-kernel'), 'Linux regression directory')
+        regression_raw=(regression/'process-mm-users/observations.json').read_bytes()
+        regression_report=readback(json.loads(regression_raw))
+        report['native_regression']=dict(observation=digest(regression_raw),
+            kernel=digest((regression/'kernel.elf').read_bytes()),
+            summary={k:regression_report[k] for k in ['passed','cases','operations','copied_heap_bytes','erased_released_bytes','retired_extents']})
+        for name in ['provider.o','gateway.o','target.o','dispatch.o']:
+            require((regression/name).read_bytes()==(build/name).read_bytes(), 'changed kernel component in baseline regression: '+name)
+        archive['regression/observations.json']=regression_raw
+        for p in sorted((regression/'process-mm-users').iterdir()):
+            if p.is_file() and p.name!='observations.json':archive['regression/'+p.name]=p.read_bytes()
+        for name in ['guest.command.json','guest.stdout.log','guest.stderr.log','source-component.json','frame-inspection.json']:
+            archive['regression/'+name]=(regression/name).read_bytes()
     for name in SELECTED:
         archive['inputs/'+name] = (ROOT/name).read_bytes()
     for p in sorted(build.iterdir()):
@@ -134,7 +164,10 @@ def main():
         require(attempt.is_relative_to(ROOT/'linux-kernel'), 'Linux attempt directory')
         identity={p.name:digest(p.read_bytes()) for p in sorted(attempt.iterdir())
                   if p.is_file() and p.suffix in ['.o','.ll','.elf']}
-        report['attempts'].append(dict(artifacts=identity,scope='Earlier failed validation; no passing claim'))
+        guest=attempt/'guest.command.json'
+        code=json.loads(guest.read_text())['exit_code'] if guest.is_file() else None
+        report['attempts'].append(dict(artifacts=identity,guest_exit_code=code,
+            scope='Earlier validation with its own inputs; not evidence for the current expanded scope'))
         for p in sorted(attempt.iterdir()):
             if p.is_file() and (p.suffix in ['.ll','.c'] or p.name.endswith('.command.json')):
                 archive[f'history/{index}/'+p.name]=p.read_bytes()

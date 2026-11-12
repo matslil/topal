@@ -108,3 +108,23 @@ does not independently establish the recorded load or any unobserved native
 lifetime. Child exec, inactive-child cancellation, empty/maximum/resource/fatal
 cases, continuous exclusion, complete publication observations and public
 production qualification remain blockers listed in the stage report.
+
+## Child exec component
+
+The subsequent [child-exec archive](results/stage-3-child-exec/report.json)
+records four actual child replacements with retained parents, zero/fresh heaps,
+FS/registration reset and repeated handoff/restoration. The source program uses
+ordinary syscall arguments and selects its own userspace startup from argv;
+no test string selects kernel behavior. [readback_exec.py](readback_exec.py)
+extends the boundary checks with exact replacement-entry/reset binding and ten
+additional saved-data controls. The earlier twenty controls also run.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_process.py linux-kernel/tools/process-memory/results/stage-3-child-exec linux-kernel/.cache/x86_64/process-memory-child-exec-replay-new
+```
+
+Use a fresh output directory. Frozen replay supplies no native load, continuous
+mapping lifetime, general executable-loader or production authority. The
+[stage report](../../step-4-process-memory-ownership.md#child-exec-and-replacement-startup)
+retains those blockers, the initial userspace scratch-placement failure and the
+separate scope of earlier successful observations.
