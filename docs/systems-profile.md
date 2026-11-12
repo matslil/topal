@@ -2171,6 +2171,33 @@ effects and enters fatal cleanup. The initial target's finite translation
 geometry does not complete general virtual memory support. See
 [runtime memory design](../linux-kernel/design/dynamic-frame-memory.md).
 
+### Process address-space ownership
+
+A process keeps its own address-space identity, program break, mapping owners
+and backing lifetimes across fork, scheduling, exec and exit. Fork-like creation
+copies the parent's private memory state into independently owned child storage;
+later writes, resize or exec in either process cannot alter the other's memory.
+An inactive process retains its backing ownership. Reusing an active translation
+window does not make that window the owner of both processes' memory.
+
+The initial serialized pair may retain its existing image/stack parking, but
+frame-backed heaps require distinct live extents sized from each actual heap.
+Handoff publishes the selected process's mappings and completes required
+invalidation before its user continuation resumes. It neither exchanges a fixed
+number of heap bytes nor revives saved heap translations independently of their
+live backing owners. No user-memory loan or live kernel continuation crosses a
+handoff. Child exec/exit retires only the child's heap; outer-owner cancellation
+also retires any inactive child exactly once. Ordinary prepublication resource
+failure preserves the existing processes and consumes no child PID. Actual
+allocator issuance already performed during preparation is never rolled back.
+
+This systems-only refinement preserves the qualified serialized child/pair
+interfaces and core-language meaning. Separate address spaces, general mapping
+types and scheduling remain required for the complete kernel. The
+[process memory design](../linux-kernel/design/process-memory-ownership.md)
+defines staged integration; a reference model supplies no native or publication
+authority.
+
 ### Owned user-memory extents
 
 The frame-backed process profile validates transfer candidates against its

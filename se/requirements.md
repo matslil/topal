@@ -1955,6 +1955,23 @@ Initial x86-64 implementation shall retain existing memory reserves and legacy
 profile behavior; architecture-neutral obligations shall consider AArch64 and
 RISC-V. See `TK-DEC-282`.
 
+## TOPAL-REQ-SYSTEMS-PROCESS-MM-001 — Independent process memory ownership
+
+Frame-backed processes shall retain independent address-space identity, break,
+mapping/backing owners and exact reclamation across creation, inactive parking,
+handoff, resize, exec, child exit and outer-owner cancellation. Creation shall
+copy the actual private heap into disjoint owned storage, preserving existing
+qualified child/pair behavior without imposing the predecessor snapshot size as
+a heap quota. Inactive backing shall remain owned and pinned while retained.
+Handoff shall end user-memory loans, bind the selected process/context and
+complete translation publication/invalidation before user return. Ordinary
+prepublication failure shall preserve existing memory and consume no child PID;
+performed allocator issuance shall not be rolled back. Partial-publication
+failure shall preserve held identities and fail fatally without user resumption.
+Portable state models, native allocator/context binding, process integration and
+public source/boot reconstruction shall remain separate acceptance gates. See
+[TK-DEC-284](../linux-kernel/design/process-memory-ownership.md).
+
 ## TOPAL-REQ-SYSTEMS-USER-EXTENT-001 — Owned user-memory admission
 
 Frame-profile user transfers shall validate complete runtime extents against

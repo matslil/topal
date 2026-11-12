@@ -10797,6 +10797,57 @@ while poisoning the owner and retiring invocation temporaries; it SHALL NOT
 resume the process or restore a comparison snapshot. A target geometry limit
 SHALL NOT establish general virtual-memory or application qualification.
 
+### TOPAL-SYSTEMS-PROCESS-MM-001 — Process address-space ownership
+
+Each live independently mapped process SHALL retain a distinct address-space
+identity, image generation, break and complete mapping/backing ownership while
+active or inactive. Fork-like creation SHALL preserve the parent's private
+state and give the child equal private contents in independently owned backing.
+This refinement SHALL preserve `TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-PAIR-001` and their shared-description/service laws.
+It SHALL NOT introduce shared-mm clone semantics or a predecessor heap-size
+quota. Unsupported shapes and existing occupied-slot errors SHALL retain their
+qualified native admission and error order.
+
+The frame-backed heap count SHALL derive from that process's actual break and
+checked geometry. Creation SHALL obtain disjoint zeroed backing, copy the
+complete mapped parent heap and pin the child extent before publication.
+Inactive heaps SHALL retain their whole live extent identities and pins;
+numeric pointers or saved PTE bytes SHALL NOT construct those identities.
+Preparation failure before publication SHALL leave existing processes' bytes,
+breaks, mappings, handles and child relationship unchanged and consume no PID.
+Already issued allocator identities SHALL NOT be rolled back; prepared backing
+SHALL be retired under its actual owner.
+
+A handoff SHALL finish or abandon every current user-memory observation and
+transfer, retain no live kernel continuation, and bind the selected process's
+actual owner/context. It SHALL publish that process's heap mappings and complete
+all required translation invalidation before user resumption. Fixed-size heap
+exchange and independent restoration of saved heap PTEs SHALL NOT implement
+this refinement. Legacy image/stack parking MAY remain only with separate owned
+bytes/permissions, no overwritten heap entries and complete native qualification.
+
+Resize and successful exec SHALL mutate/revoke only the active process's heap.
+Child exit SHALL restore and invalidate the retained parent mappings before
+releasing child backing, retaining the original child-status/wait lifetime.
+Outer-owner cancellation SHALL also consume inactive child backing exactly once.
+Revocation/invalidation SHALL precede unpinning, complete erasure and release.
+Failure during publication or another incomplete trusted mutation SHALL retain
+performed effects and all held identities for nonreturning poisoned-owner
+cleanup; it SHALL NOT restore comparison
+snapshots, roll back issuance or resume either process. A stale entry/loan,
+foreign extent, alias or missing pin SHALL be an invariant failure.
+
+Qualification SHALL distinguish portable reference transitions from actual
+allocator/context/native integration and reconstructed public publication.
+Independent resize/exec and repeated handoff, complete heap contents beyond the
+predecessor size, prepublication failures, wait-output retry, inactive-child
+cancellation, stale-entry/loan exclusion and complete physical retirement SHALL
+have evidence at their applicable levels. Native gaps SHALL remain blockers;
+models and saved-data controls SHALL NOT replace unrun native checks. The
+initial serialized geometry SHALL NOT qualify general MM, shared address spaces,
+preemption, SMP, demand paging, distribution, container or VM-host support.
+
 ### TOPAL-SYSTEMS-USER-EXTENT-001 — Owned user-memory extents
 
 The frame-profile transfer boundary SHALL admit a nonempty candidate only when

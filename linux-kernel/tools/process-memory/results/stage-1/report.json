@@ -1,0 +1,230 @@
+{
+  "command": [
+    "rtk",
+    "proxy",
+    "env",
+    "RUST_MIN_STACK=16777216",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "scripts/run_bounded.py",
+    "--",
+    "python3",
+    "linux-kernel/tools/process-memory/qualify.py",
+    "--output",
+    "linux-kernel/tools/process-memory/results/stage-1"
+  ],
+  "elapsed_seconds": 0.632744493894279,
+  "inputs": {
+    "docs/systems-profile.md": {
+      "bytes": 134178,
+      "sha256": "509592d4c1a3482ec9b3dc33d2a70661856ecb25ccad9925ffdb1a1378dd247c"
+    },
+    "linux-kernel/design/decision-register.md": {
+      "bytes": 178744,
+      "sha256": "a6a53c1ac3c9094347c560094f6d226966fac671f39de94d18be6b9fc2e7e8e3"
+    },
+    "linux-kernel/design/process-memory-ownership.md": {
+      "bytes": 9808,
+      "sha256": "5def1a13c885c798fcbb1335f965a09e9fb95cda3444d34664b0ac0a1969144c"
+    },
+    "linux-kernel/design/resumable-static-process-pair.md": {
+      "bytes": 6304,
+      "sha256": "1555b3eb7f842cd710513ea713c3370aa943c1e1946a0652cbeb2494822c31f7"
+    },
+    "linux-kernel/design/serialized-static-process-children.md": {
+      "bytes": 9300,
+      "sha256": "46a9ced21f8024e31d52545a3b270227634c53728a07a08e7b77788cc42eddb6"
+    },
+    "linux-kernel/step-4-process-memory-ownership.md": {
+      "bytes": 4022,
+      "sha256": "100a019081420c8145f3fa488dfa84a24b23ce81e54a4886c0aeede1b7360323"
+    },
+    "linux-kernel/step-4-status.md": {
+      "bytes": 22800,
+      "sha256": "52e2c0d2fb2b2cead59621639631064cb467eeaf49aa9f2d8a25f0b13f99c9ae"
+    },
+    "linux-kernel/tools/process-memory/README.md": {
+      "bytes": 3709,
+      "sha256": "8e9ed0d93d69096699d6671978118a603a1519c24023d298c78ae8caf49a12fa"
+    },
+    "linux-kernel/tools/process-memory/model.py": {
+      "bytes": 12994,
+      "sha256": "e4983eaa8c58c6cd9920af00e3084aa4f1223a2df3d8726f69ee7206fa1ff6d1"
+    },
+    "linux-kernel/tools/process-memory/qualify.py": {
+      "bytes": 6874,
+      "sha256": "678af9ca7c4c6408f3ff632d6d10303aa2e5be5f2802a42e9a2e41a0edb7a93e"
+    },
+    "linux-kernel/tools/process-memory/test_model.py": {
+      "bytes": 16446,
+      "sha256": "037a463ba5a587e0daecb8fd432ab4269654e4ba3d2498c9f0884d26ab5fcb9c"
+    },
+    "linux-kernel/tools/process-memory/trace_check.py": {
+      "bytes": 3321,
+      "sha256": "9296070cc3e6d4ccf8deec07076c56f4f77d0fda31629108b4cd7918c480f4b3"
+    },
+    "se/requirements.md": {
+      "bytes": 127456,
+      "sha256": "ef5cd24a7da3489a0d9aa74e94748085085322844b805a3a1d00cabadf627a97"
+    },
+    "spec/systems-profile.md": {
+      "bytes": 685389,
+      "sha256": "c19b89db5ae99ebd9f8c27a836c0457481aebd8ebe542fd7f0bea2024e08c5f5"
+    },
+    "src/topal-compiler/se-requirements.md": {
+      "bytes": 813753,
+      "sha256": "01039013eb296f5429b864b19390373e9beb873a54a905838ef5d7006bcc4f54"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": {
+      "bytes": 14321,
+      "sha256": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be"
+    },
+    "src/topal-compiler/src/systems_process_children.rs": {
+      "bytes": 15374,
+      "sha256": "eed4eb4741265e46132f62da63e0dfd9b557759a8de330eda3c9aa6ada56df87"
+    },
+    "src/topal-compiler/src/systems_process_entry_start.rs": {
+      "bytes": 56861,
+      "sha256": "f807dd8b9f44bd9b0f947e81098c5921a933f7d6c7519d6ec43249d55b87a500"
+    },
+    "src/topal-compiler/src/systems_process_pair.rs": {
+      "bytes": 8141,
+      "sha256": "42600a5cbee9afb9050733d3f499fa4bc64c81f2c08fae50b5b90992e6bd3847"
+    }
+  },
+  "links": [
+    {
+      "source": "linux-kernel/design/process-memory-ownership.md",
+      "target": "dynamic-frame-memory.md"
+    },
+    {
+      "source": "linux-kernel/design/process-memory-ownership.md",
+      "target": "serialized-static-process-children.md"
+    },
+    {
+      "source": "linux-kernel/design/process-memory-ownership.md",
+      "target": "resumable-static-process-pair.md"
+    },
+    {
+      "source": "linux-kernel/design/process-memory-ownership.md",
+      "target": "../step-4-process-memory-ownership.md"
+    },
+    {
+      "source": "linux-kernel/design/process-memory-ownership.md",
+      "target": "owned-user-extents.md"
+    },
+    {
+      "source": "linux-kernel/step-4-process-memory-ownership.md",
+      "target": "design/process-memory-ownership.md"
+    },
+    {
+      "source": "linux-kernel/step-4-process-memory-ownership.md",
+      "target": "tools/process-memory/README.md"
+    },
+    {
+      "source": "linux-kernel/step-4-process-memory-ownership.md",
+      "target": "tools/process-memory/results/stage-1/report.json"
+    },
+    {
+      "source": "linux-kernel/step-4-process-memory-ownership.md",
+      "target": "step-4-owned-user-extents.md"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "model.py"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "trace_check.py"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "test_model.py"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "results/stage-1/report.json"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "../../../docs/systems-profile.md#process-address-space-ownership"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "../../../se/requirements.md#topal-req-systems-process-mm-001--independent-process-memory-ownership"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "../../../spec/systems-profile.md#topal-systems-process-mm-001--process-address-space-ownership"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "../../../src/topal-compiler/se-requirements.md#topal-comp-systems-process-mm-001--process-memory-owner-binding"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "../../design/process-memory-ownership.md"
+    },
+    {
+      "source": "linux-kernel/tools/process-memory/README.md",
+      "target": "../../step-4-process-memory-ownership.md"
+    }
+  ],
+  "log": {
+    "file": "tests.log",
+    "sha256": "67a5ea05826988a8a28c9240bb45a418e2097a46501b6b577a3297f272e9478a"
+  },
+  "passed": true,
+  "remaining": [
+    "native owner/entry/caller binding",
+    "every overlapping mapping producer",
+    "image/stack/register/descriptor preservation",
+    "identity width exhaustion",
+    "fatal partial-mutation cleanup",
+    "physical erasure and translation evidence",
+    "AP/DMA/asynchronous exclusion and fault stability",
+    "ordinary child/pipe/application regressions",
+    "public source/load/boot reconstruction"
+  ],
+  "resources_after": {
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "group": "/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-2422976-771a4f32.scope",
+    "memory_max_bytes": 2912604160,
+    "observed_peak_bytes": 23474176,
+    "swap_max_bytes": 0
+  },
+  "resources_before": {
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "group": "/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-2422976-771a4f32.scope",
+    "memory_max_bytes": 2912604160,
+    "observed_peak_bytes": 10850304,
+    "swap_max_bytes": 0
+  },
+  "schema": "topal-process-memory-model-stage-1-v1",
+  "scope": "Portable normal/prepublication-unavailable heap transitions only; no native, physical or publication authority",
+  "tests": {
+    "application_seeds": 32,
+    "application_transitions": 3200,
+    "errors": 0,
+    "failures": 0,
+    "inconsistent_state_controls": 7,
+    "run": 17,
+    "saved_history_controls": 19,
+    "skipped": 0
+  }
+}

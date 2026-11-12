@@ -12584,6 +12584,26 @@ program-only refusal. Exercise this public path and rehashed native mutations
 in `systems_frame_artifact_tests.rs` as well as the component reconstruction
 tests.
 
+## TOPAL-COMP-SYSTEMS-PROCESS-MM-001 — Process memory owner binding
+
+Implement `TOPAL-SYSTEMS-PROCESS-MM-001` through actual per-process frame owners,
+not copies of the active global MM token or a fixed heap snapshot. Preserve the
+qualified child/pair, descriptor, signal, TLS/extended-state, shared-service and
+wait contracts. Bind active/inactive owners to the real relationship, syscall
+entry, generation, context, translation storage and compiled caller. Allocate,
+zero, copy and pin the complete child heap before publication; preserve inactive
+backing through unrelated resize/exec. Exclude heap entries from independent
+legacy leaf-page restoration, and use the qualified publisher/invalidation for
+every heap switch. Revoke access before unpin/erase/release; reclaim each active,
+inactive and prepared extent exactly once. Do not roll back issued identities.
+Keep fatal partial-effect retirement distinct from ordinary unavailability.
+Qualify complete caller costs, entry/loan exclusion, every actual producer,
+native process scenarios, unchanged application regressions and cold public
+artifact/boot reconstruction before activating the replacement. Model results
+alone cannot authorize activation. Trace:
+[design](../../linux-kernel/design/process-memory-ownership.md),
+[rule](../../spec/systems-profile.md#topal-systems-process-mm-001--process-address-space-ownership).
+
 ## TOPAL-COMP-SYSTEMS-USER-EXTENT-001 — Owned user-memory validation
 
 Implement `TOPAL-SYSTEMS-USER-EXTENT-001` for the frame-profile process boundary.

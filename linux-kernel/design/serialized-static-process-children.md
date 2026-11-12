@@ -4,6 +4,10 @@ Status: systems-only direction adopted under standing authorization
 (`TK-DEC-254`); implemented and physically qualified in the
 [Step 4 report](../step-4-static-process-children.md).
 
+The [process-MM refinement](process-memory-ownership.md) retains this qualified
+profile while defining independent dynamic heap ownership beyond its fixed
+snapshot. Its model foundation does not qualify a new native child path.
+
 ## Purpose and selected realization
 
 The initial shell can replace itself but cannot launch a child and subsequently

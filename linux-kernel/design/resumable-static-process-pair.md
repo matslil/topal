@@ -4,6 +4,10 @@ Status: systems-only refinement adopted under standing chat authorization,
 `TK-DEC-255`; implemented and physically qualified in the
 [Step 4 report](../step-4-resumable-static-process-pair.md).
 
+The [process-MM refinement](process-memory-ownership.md) preserves this qualified
+schedule and shared-state separation while replacing fixed heap exchange with
+independent frame owners. Its native integration remains a separate gate.
+
 ## Purpose and alternatives
 
 The [first child implementation](serialized-static-process-children.md) cannot

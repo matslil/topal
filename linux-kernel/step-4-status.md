@@ -47,6 +47,13 @@ editors, continuous mode/lifetime and production gates remain required.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 
+The [process-MM foundation](step-4-process-memory-ownership.md) addresses the
+remaining fixed child/pair heap snapshot and shared active MM state. Its design
+preserves qualified child/pipe behavior with independent frame-backed heaps.
+Seventeen portable tests, 3,200 application-oracle transitions and saved-data
+controls pass. No native kernel behavior changes; actual process integration,
+mapping-producer migration and public production qualification remain required.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,
