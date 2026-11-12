@@ -33,6 +33,7 @@ def main():
     parser.add_argument('builds',nargs=4,type=Path)
     parser.add_argument('--reference',required=True,type=Path)
     parser.add_argument('--regression',required=True,type=Path)
+    parser.add_argument('--validation',type=Path)
     parser.add_argument('--resource',required=True,type=Path)
     parser.add_argument('--output',required=True,type=Path)
     parser.add_argument('--attempt',action='append',default=[],type=Path)
@@ -41,7 +42,7 @@ def main():
     require(output.is_relative_to(ROOT/'linux-kernel'), 'Linux output directory')
     sys.path.insert(0,str(ROOT/'linux-kernel/labs/qemu/x86_64'))
     from process_mm_process_inspect import PROGRAM
-    payloads={};report=dict(passed=True,schema='topal-process-mm-native-cancellation-v1',cohorts=[])
+    payloads={};report=dict(passed=True,schema='topal-process-mm-native-cancellation-v2',cohorts=[])
     components={}
     for i,path in enumerate(args.builds):
         build=path.resolve();require(build.is_relative_to(ROOT/'linux-kernel'),'Linux build directory')
@@ -57,7 +58,8 @@ def main():
         command=json.loads((build/'process-mm-cancel-cases-compile.command.json').read_text())
         config=result['case'];argv=command['argv']
         require(all(s in argv for s in [f'-DTOPAL_CANCEL_EARLY={int(config["early"])}',
-                f'-DTOPAL_CANCEL_EXIT_SYSCALL={config["syscall"]}',f'-DTOPAL_CANCEL_STATUS={config["status"]}']), 'compile configuration')
+                f'-DTOPAL_CANCEL_EXIT_SYSCALL={config["syscall"]}',f'-DTOPAL_CANCEL_STATUS={config["status"]}',
+                f'-DTOPAL_CANCEL_WRITER={int(config["writer"])}']), 'compile configuration')
         serial=(build/'process-mm-users/serial.log').read_bytes()
         markers=[line for line in serial.splitlines() if line.startswith(b'TOPAL_KERNEL_PROCESS_EXIT_STATUS=')]
         require(markers==[f'TOPAL_KERNEL_PROCESS_EXIT_STATUS={config["status"]&255:02x}'.encode()], 'actual terminal status witness')
@@ -94,22 +96,31 @@ def main():
             if p.is_file() and p.name!='observations.json':payloads[prefix+'native/'+p.name]=p.read_bytes()
     require([(r['case']['early'],r['case']['syscall'],r['case']['status']) for r in report['cohorts']]
             ==[(False,60,0x13a),(False,231,0x200),(True,60,0x2c5),(True,231,0x301)],'four-case closure')
+    writer=report['cohorts'][0]['case']['writer']
+    require(all(r['case']['writer']==writer for r in report['cohorts']),'wait-kind closure')
+    report['wait_kind']='writer' if writer else 'reader'
     regression_raw=(regression/'process-mm-users/observations.json').read_bytes()
     regression_result=exec_readback(json.loads(regression_raw))
     report['regression']=dict(observation=digest(regression_raw),summary=regression_result)
     payloads['regression/observations.json']=regression_raw
     for p in sorted((regression/'process-mm-users').iterdir()):
         if p.is_file() and p.name!='observations.json':payloads['regression/'+p.name]=p.read_bytes()
-    validation=json.loads((regression/'validation.json').read_text())
+    validation_build=args.validation.resolve() if args.validation is not None else regression
+    require(validation_build.is_relative_to(ROOT/'linux-kernel'),'Linux validation directory')
+    validation=json.loads((validation_build/'validation.json').read_text())
     require(set(validation)=={'workspace-check','user-memory-models','process-memory-models','default-ABI-fixture','format','Rust-file-ceiling'}
             and all(v['exit_code']==0 for v in validation.values()),'regression validation')
-    require('Ran 196 tests' in (regression/'user-memory-models.stderr.log').read_text()
-            and 'Ran 17 tests' in (regression/'process-memory-models.stderr.log').read_text(),'model coverage')
-    require('test result: ok. 1 passed' in (regression/'default-ABI-fixture.stdout.log').read_text(),'default fixture coverage')
+    require('Ran 196 tests' in (validation_build/'user-memory-models.stderr.log').read_text()
+            and 'Ran 17 tests' in (validation_build/'process-memory-models.stderr.log').read_text(),'model coverage')
+    require('test result: ok. 1 passed' in (validation_build/'default-ABI-fixture.stdout.log').read_text(),'default fixture coverage')
     report['validation']=validation
     for p in sorted(regression.iterdir()):
         if p.is_file() and (p.name.endswith(('.command.json','.stdout.log','.stderr.log')) or p.name in ['source-component.json','validation.json']):
             payloads['regression/'+p.name]=p.read_bytes()
+    for name in validation:
+        for suffix in ['.command.json','.stdout.log','.stderr.log']:
+            payloads['validation/'+name+suffix]=(validation_build/(name+suffix)).read_bytes()
+    payloads['validation/validation.json']=(validation_build/'validation.json').read_bytes()
     resource=json.loads(args.resource.read_text())
     require(resource['swap_max_bytes']==0 and all(v==0 for v in resource['events'].values()),'resource failure')
     report['last_resource_sample']=resource

@@ -351,6 +351,55 @@ does not qualify every wait kind, inconsistent internal-state fatal retirement,
 every invalidation/pre-release instruction, continuous exclusion, general Linux
 orphan/init semantics or public activation.
 
+## Blocked-writer cancellation and dirty FIFO retirement
+
+The next qualification stage changes the source-built application and evidence
+tools, without changing native kernel behavior. Its four cases use both parent
+exit operations at shell and early replacement startup. The child retains the
+last writer description and its dirty 101-page heap/anonymous file. Ordinary
+256-byte writes fill all 4,096 FIFO bytes with a repeated nontrivial pattern;
+the next one-byte write parks. The parent retains two reader aliases, closes
+its writer, selects its independent 35-page heap and exits. The existing
+wait-owner validator now executes its writer branch against that retained FD
+and actual FIFO generation. Cancellation precedes endpoint destruction, and
+the whole dirty FIFO is erased/read back with the shared store.
+
+All four native cases pass in **162.47 seconds**, including builds. They retain
+the preceding 60 MM boundaries, 20 retired heap extents and 3,899,392 erased
+heap bytes. The [reader](tools/process-memory/readback_cancel.py) now checks both
+wait kinds, corresponding endpoint reference counts, parent aliases and all
+4,096 pre-cancellation FIFO payload bytes. Its **64 saved-data controls** reject
+the altered writer records, including lost occupancy, wrong reference count,
+wait-kind mismatch and a changed final FIFO byte. The
+[archive](tools/process-memory/results/stage-3-writer-cancellation/report.json)
+retains these records and the exact userspace compile choice; this choice never
+selects kernel behavior.
+
+All four linked kernels are byte-identical to the preceding parent-cancellation
+and child-exec kernel, SHA-256
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+The child-exec execution is retained from the preceding stage rather than newly
+run here; its thirty saved-data controls run again. Thirteen predecessor object
+contributions remain unchanged. All seven LLVM modules verify in each new
+build. Fresh locked workspace/all-target checking, 196 user-memory tests,
+17 process-memory tests, default ABI fixture hash, formatting and source-size
+validation pass. The existing reader-cancellation archive replays from its own
+frozen inputs with the extended replay command, retaining all 48 of its controls.
+
+Complete stack and physical-retirement bounds remain 2,280 and 4,088 bytes.
+The swap-free four-case group peaks at **1,561,300,992 / 3,102,629,888 bytes**,
+including compiler activity, with every sampled event counter zero. The last
+live sample plus group retirement does not measure an unseen final instant.
+
+Risk is high for validation completeness and false acceptance of ownership or
+FIFO reclamation. Review uses the authority chain, full source/diff review,
+ordinary native requests, unchanged-kernel comparison and saved-record controls.
+No independent human review is claimed. This adds blocked-writer boundary
+evidence, not continuous loan/exclusion or complete invalidation/release-order
+proof. Ready/zombie relationship variants, native allocation misses, identity
+exhaustion, fatal partial effects, the full application corpus and cold public
+activation remain required.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and actual allocation-miss

@@ -141,8 +141,10 @@ two writer aliases and its independent 35-page heap when it exits.
 dirty heap and file bytes to complete destructor readback and detached active
 MM cleanup. Its twelve controls per case alter saved records only.
 [archive_cancel.py](archive_cancel.py) retains all four cases, exact build and
-debugger inputs, unchanged predecessor comparisons, bounds and a fresh complete
-child-exec regression. [replay_cancel.py](replay_cancel.py) repeats these checks
+debugger inputs, unchanged predecessor comparisons, bounds and an identified
+complete child-exec regression on the byte-identical kernel. Its optional
+`--validation` argument selects fresh validation logs independently of a retained
+native regression. [replay_cancel.py](replay_cancel.py) repeats these checks
 from frozen selected inputs without executing a VM.
 
 ```sh
@@ -153,3 +155,16 @@ Native boundary snapshots and whole-storage readback do not prove continuous
 exclusion, each release/invalidation instruction, invalid internal-state fatal
 retirement, every wait kind or general Linux orphan/init semantics. The complete
 application corpus and public kernel activation remain separate gates.
+
+The [writer archive](results/stage-3-writer-cancellation/report.json) reverses
+endpoint ownership and parks on a full-ring write. It checks all 4,096 nontrivial
+FIFO bytes before cancellation and the complete zeroed shared store afterward.
+Four additional saved-data controls per case give 64 writer controls. Archive
+schema v2 records the userspace writer/read choice and separate validation logs;
+the replay command still accepts the preceding v1 reader archive and runs its
+original frozen reader. No historical evidence is rewritten.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_parent_exit_cancels_blocked_writer_and_dirty_fifo -- --ignored --nocapture
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_cancel.py linux-kernel/tools/process-memory/results/stage-3-writer-cancellation linux-kernel/.cache/x86_64/process-memory-writer-replay-new
+```

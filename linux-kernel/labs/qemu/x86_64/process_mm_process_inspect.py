@@ -193,7 +193,7 @@ class Terminal(Checked):
         else:
             assert observed['terminal']==[]
             assert value['ids'][3]>=2 and value['inactive_state'][2]==101
-            assert value['inactive_wait'][0]==2 and value['inactive_wait'][1]>0
+            assert value['inactive_wait'][0]==(3 if cancel_config.get('writer',False) else 2) and value['inactive_wait'][1]>0
             assert value['context']['phase']==(1 if cancel_config['early'] else 32)
             child=bytes.fromhex(value['inactive']['bytes'])
             assert [child[i] for i in [34*4096+128,66*4096+64,101*4096-1]]==[0xc1,0xc2,0xc7]

@@ -117,7 +117,24 @@ fn process_mm_parent_exit_cancels_blocked_child_and_all_resources() {
                 true,
                 true,
                 true,
-                Some(CallerFocus::SourceProcessCancel(early, group)),
+                Some(CallerFocus::SourceProcessCancel(early, group, false)),
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires the bounded QEMU/GDB blocked-writer cancellation cohort"]
+fn process_mm_parent_exit_cancels_blocked_writer_and_dirty_fifo() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001; STATIC-PROCESS-PIPE-001:
+    // ordinary full-pipe write, inactive last writer, parent reader aliases.
+    for early in [false, true] {
+        for group in [false, true] {
+            execute_selected(
+                true,
+                true,
+                true,
+                Some(CallerFocus::SourceProcessCancel(early, group, true)),
             );
         }
     }
@@ -182,7 +199,7 @@ enum CallerFocus {
     SourceProcessMemory,
     SourceProcessOwners,
     SourceProcessExec,
-    SourceProcessCancel(bool, bool),
+    SourceProcessCancel(bool, bool, bool),
     SourceSerial,
     SourceStat,
     Startup,
@@ -252,7 +269,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if matches!(focus, Some(CallerFocus::SourceProcessCancel(..))) {
+    let prefix = if matches!(focus, Some(CallerFocus::SourceProcessCancel(_, _, true))) {
+        "process-mm-writer-cancel"
+    } else if matches!(focus, Some(CallerFocus::SourceProcessCancel(..))) {
         "process-mm-parent-cancel"
     } else if focus == Some(CallerFocus::SourceProcessExec) {
         "process-mm-child-exec"
@@ -410,9 +429,10 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if let Some(CallerFocus::SourceProcessCancel(early, group)) = focus {
+    let fixture_bytes = if let Some(CallerFocus::SourceProcessCancel(early, group, writer)) = focus
+    {
         crate::systems_user_extent::source_fixture::build_process_memory_cancel(
-            work, tools, early, group,
+            work, tools, early, group, writer,
         )
     } else if focus == Some(CallerFocus::SourceProcessExec) {
         crate::systems_user_extent::source_fixture::build_process_memory_exec(work, tools)

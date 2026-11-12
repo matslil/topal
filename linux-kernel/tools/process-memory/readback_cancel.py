@@ -21,7 +21,8 @@ def terminal(rows, config):
         require(value['context']['phase']==(1 if config['early'] else 32), 'actual early/late stage')
     require(before['ids'][3]>=2 and before['inactive_state'][2]==101, 'live inactive child')
     require(before['context']['pid']==1 and after['context']['pid']==0, 'descriptor owner destruction')
-    require(before['inactive_wait'][0]==2 and before['inactive_wait'][1]>0, 'actual blocked pipe read')
+    writer=config.get('writer',False)
+    require(before['inactive_wait'][0]==(3 if writer else 2) and before['inactive_wait'][1]>0, 'actual blocked pipe operation')
     child=bytes.fromhex(before['inactive']['bytes'])
     require([child[i] for i in [34*4096+128,66*4096+64,101*4096-1]]==[0xc1,0xc2,0xc7],
             'complete nontrivial child heap')
@@ -37,13 +38,20 @@ def terminal(rows, config):
     require(len(matches)==1, 'exact FIFO generation')
     pipe=matches[0]
     parent=words(64,32)[0::2];child_slots=words(0x3040,32)[0::2]
-    require(pipe[4:6]==[0,0] and pipe[2] in child_slots and pipe[2] not in parent,
-            'empty FIFO with inactive last reader')
-    require(parent.count(pipe[3])==2 and pipe[3] not in child_slots, 'parent writer aliases')
+    inactive_endpoint,parent_endpoint=(pipe[3],pipe[2]) if writer else (pipe[2],pipe[3])
+    require(pipe[4:6]==[0,4096 if writer else 0]
+            and inactive_endpoint in child_slots and inactive_endpoint not in parent,
+            'parked operation and inactive last endpoint')
+    require(parent.count(parent_endpoint)==2 and parent_endpoint not in child_slots, 'parent endpoint aliases')
     descriptions=([words(320+i*64,8) for i in range(16)]
                   +[words(0x3d000+i*64,8) for i in range(16)])
-    require(descriptions[pipe[2]-1][:2]==[5,1] and descriptions[pipe[3]-1][:2]==[6,2],
+    require(descriptions[pipe[2]-1][:2]==[5,2 if writer else 1]
+            and descriptions[pipe[3]-1][:2]==[6,1 if writer else 2],
             'live endpoint description references')
+    if writer:
+        index=next(i for i,r in enumerate(pipes) if r==pipe)
+        fifo=raw[0x3f000+index*4096:0x3f000+(index+1)*4096]
+        require(fifo==bytes(i^0x5a for i in range(256))*16, 'whole dirty FIFO payload')
     files=[(i+1,r) for i,r in enumerate(descriptions) if r[0]==7]
     require(len(files)==1, 'one retained anonymous file')
     index,file=files[0]
@@ -126,6 +134,23 @@ def readback(value):
         try:check(altered)
         except ValueError as error:controls.append(dict(name=name,rejected=True,reason=str(error)))
         else:raise AssertionError('accepted saved retirement control: '+name)
+    if value['cancellation'].get('writer',False):
+        original=bytes.fromhex(value['terminal'][0]['storage'])
+        for name,offset,word in [
+            ('full-FIFO-count-lost',0x3e000+40,0),
+            ('writer-wait-replaced-with-reader',0x2060,2),
+            ('writer-reference-not-last',320+(struct.unpack_from('<Q',original,0x3e000+24)[0]-1)*64+8,2),
+        ]:
+            altered=deepcopy(value);raw=bytearray(original);struct.pack_into('<Q',raw,offset,word)
+            altered['terminal'][0]['storage']=raw.hex()
+            try:check(altered)
+            except ValueError as error:controls.append(dict(name=name,rejected=True,reason=str(error)))
+            else:raise AssertionError('accepted saved writer control: '+name)
+        altered=deepcopy(value);raw=bytearray(original);raw[0x3f000+4095]^=1
+        altered['terminal'][0]['storage']=raw.hex()
+        try:check(altered)
+        except ValueError as error:controls.append(dict(name='dirty-FIFO-last-byte-lost',rejected=True,reason=str(error)))
+        else:raise AssertionError('accepted saved FIFO payload control')
     retired=[r for e in value['events'] for r in e['retired']]
     return dict(passed=True,case=value['cancellation'],operations=dict(sorted(counts.items())),
         boundaries=len(value['events']),retired_extents=len(retired),

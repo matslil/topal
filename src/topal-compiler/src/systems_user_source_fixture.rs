@@ -234,8 +234,14 @@ pub(crate) fn build_process_memory_cancel(
     tools: &crate::LlvmTools,
     early: bool,
     group: bool,
+    writer: bool,
 ) -> Vec<u8> {
-    build_configured(work, tools, "process-mm-cancel", Some((early, group)))
+    build_configured(
+        work,
+        tools,
+        "process-mm-cancel",
+        Some((early, group, writer)),
+    )
 }
 
 pub(crate) fn build_serial(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
@@ -254,17 +260,17 @@ fn build_configured(
     work: &Path,
     tools: &crate::LlvmTools,
     mode: &str,
-    cancellation: Option<(bool, bool)>,
+    cancellation: Option<(bool, bool, bool)>,
 ) -> Vec<u8> {
     let image_entry_selected = matches!(mode, "process-mm-exec" | "process-mm-cancel");
-    let cancellation_config = cancellation.map(|(early, group)| {
+    let cancellation_config = cancellation.map(|(early, group, writer)| {
         let status = match (early, group) {
             (false, false) => 0x13a,
             (false, true) => 0x200,
             (true, false) => 0x2c5,
             (true, true) => 0x301,
         };
-        (early, if group { 231 } else { 60 }, status)
+        (early, if group { 231 } else { 60 }, status, writer)
     });
     let (entry_name, extra) = match mode {
         "process-mm-cancel" => (
@@ -326,11 +332,12 @@ fn build_configured(
     for (input, stem) in &inputs {
         fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
         let defines = if *stem == "process-mm-cancel-cases" {
-            let (early, syscall, status) = cancellation_config.unwrap();
+            let (early, syscall, status, writer) = cancellation_config.unwrap();
             vec![
                 format!("-DTOPAL_CANCEL_EARLY={}", u8::from(early)),
                 format!("-DTOPAL_CANCEL_EXIT_SYSCALL={syscall}"),
                 format!("-DTOPAL_CANCEL_STATUS={status}"),
+                format!("-DTOPAL_CANCEL_WRITER={}", u8::from(writer)),
             ]
         } else {
             vec![]
@@ -502,8 +509,9 @@ fn build_configured(
         "syscall4": syscall4.address(),
         "mode": mode,
         "image_entry": image_entry,
-        "cancellation": cancellation_config.map(|(early, syscall, status)| serde_json::json!({
+        "cancellation": cancellation_config.map(|(early, syscall, status, writer)| serde_json::json!({
             "early": early, "syscall": syscall, "status": status,
+            "writer": writer,
             "process_storage_bytes": crate::systems_provider_object::PROCESS_MM_TABLE_BYTES,
         })),
         "process_mm_cancel_source_sha256": if mode == "process-mm-cancel" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_process_mm_cancel_cases.c")).unwrap()))) } else { None },

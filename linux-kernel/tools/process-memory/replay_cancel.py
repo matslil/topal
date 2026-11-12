@@ -23,7 +23,7 @@ def main():
         if not target.is_relative_to(archive):raise ValueError('archive path escapes root')
         checked(target.read_bytes(),fact)
     report=json.loads((archive/'report.json').read_text())
-    if not report['passed'] or report['schema']!='topal-process-mm-native-cancellation-v1':raise ValueError('archive schema')
+    if not report['passed'] or report['schema'] not in ['topal-process-mm-native-cancellation-v1','topal-process-mm-native-cancellation-v2']:raise ValueError('archive schema')
     output.mkdir(parents=True,exist_ok=False)
     for name,fact in report['selected_inputs'].items():
         target=(output/name).resolve()
@@ -42,12 +42,15 @@ sys.path.insert(0,'linux-kernel/tools/process-memory')
 from readback_cancel import readback
 from readback_exec import readback as exec_readback
 expected=json.loads(Path('expected.json').read_text())
+control_count=0
 for i,row in enumerate(expected['cohorts']):
     actual=json.loads(json.dumps(readback(json.loads(Path(f'case-{i}.json').read_text()))))
     assert all(actual[k]==row[k] for k in actual)
+    control_count+=len(actual['controls'])
 actual=json.loads(json.dumps(exec_readback(json.loads(Path('regression.json').read_text()))))
 assert actual==expected['regression']['summary']
-Path('replayed.json').write_text(json.dumps(dict(passed=True,cases=4,cancellation_controls=48,regression_controls=30))+'\\n')
+Path('replayed.json').write_text(json.dumps(dict(passed=True,cases=4,cancellation_controls=control_count,
+    regression_controls=len(actual['controls'])+len(actual['child_exec_controls'])))+'\\n')
 print('Frozen cancellation and child-exec records passed')
 '''
     subprocess.run(['rtk','proxy','python3','-c',script],cwd=output,check=True)

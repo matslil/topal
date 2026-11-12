@@ -85,6 +85,14 @@ remains an experimental selection; other wait/relationship shapes, complete
 native lifetime/fatal proofs, application regressions and public activation
 remain required.
 
+The subsequent [blocked-writer cancellation cohort](step-4-process-memory-ownership.md#blocked-writer-cancellation-and-dirty-fifo-retirement)
+passes both parent exit operations at shell and early replacement startup with
+a child parked on a full FIFO write. It checks all dirty FIFO bytes, inverse
+endpoint ownership and whole-store erasure using the byte-identical kernel from
+the preceding cancellation stage. Four new VM cases and 64 saved-data controls
+pass. This extends experimental cancellation evidence; allocation-miss, other
+relationship, continuous lifetime/fatal and production gates remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,
