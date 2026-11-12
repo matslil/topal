@@ -339,3 +339,55 @@ suite leaves no overall replay success report.
 Public activation
 and the original complete Linux/distribution/container/VM-host objective remain
 separate acceptance work.
+
+## Process publication and retirement records
+
+`TOPAL-SYSTEMS-PROCESS-MM-001` / `TOPAL-SYSTEMS-USER-EXTENT-001`.
+[publication.py](publication.py) checks actual owner/pin routes for resize,
+exec, equal-size fork/handoff/child-exit and empty-heap publication. Retirement
+requires an earlier completed demap, successful unpin, complete physical erasure
+before release and consumed owner storage. Its model evidence does not prove
+continuous access exclusion or other-CPU invalidation.
+
+The optional native observer is enabled with
+`TOPAL_TEST_PROCESS_MM_PUBLICATION=1` for the seven existing ignored
+process-memory tests: owner handoff, child exec, allocation refusal, maximum
+geometry, blocked-reader cancellation, blocked-writer cancellation and
+ready/zombie relationships. Together these create 21 VMs, retaining each
+cohort's normal RAM, CPU and timeout configuration. The default observer and
+native kernel behavior retain their existing selection.
+
+[readback_publication.py](readback_publication.py) requires the complete bound
+observer, actual publisher/caller bytes, all hierarchy pages and MM boundaries,
+every raw CPU-log header and every observed retirement. It also runs the
+original cohort reader. Terminal source cases retain their marker through
+exec/exit; returning cases must clear it. Neither kind may retain a pending MM
+request or refusal. Completion tests distinguish these states without weakening
+the original terminal cleanup assertions. Twelve altered-record controls test
+the new publication/retirement checks separately from native execution.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/readback_publication.py linux-kernel/.cache/x86_64/BUILD
+```
+
+[archive_publication.py](archive_publication.py) is intended for the completed
+seven-test matrix. It requires 21 distinct builds, exact source/command/artifact
+bindings, unchanged predecessor contributions, LLVM/bounds checks and fresh
+validation. It preserves raw CPU logs and the earlier failed/pilot attempts
+with their original input identities and separate scope. The previous 51
+application, nine interface and twenty process histories are rechecked using
+their original kernel and boot-resource facts; those are historical native
+executions. [replay_publication.py](replay_publication.py) restores frozen inputs
+and repeats the complete source-bound readers and model suites. Its final
+`replayed.json` is written only after both the record checks and the 203/59
+model suites pass. It does not run a VM or rebuild a kernel.
+
+Historical matrix build directories also retain later host readbacks and LLVM
+verification. The original matrix command/error logs establish what passed or
+failed in that invocation; a later successful readback does not rewrite its
+failure or imply another native execution. Historical source manifests identify
+their captured or explicitly reconstructed input bytes separately.
+
+The full matrix/archive/replay qualification is still in progress. All remaining
+caller/loan/writer, continuous lifetime, AP/DMA/asynchronous, fatal and public
+activation gates remain acceptance obligations.

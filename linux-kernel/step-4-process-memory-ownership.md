@@ -803,6 +803,66 @@ obligations still apply. This qualifies the unchanged application-corpus
 component, not initial Step 4 or the full Linux/distribution/container/VM-host
 objective.
 
+## Process publication and retirement observations in progress
+
+`TOPAL-SYSTEMS-PROCESS-MM-001` and `TOPAL-SYSTEMS-USER-EXTENT-001` require
+completed publication/invalidation before releasing an old heap. The optional
+`TOPAL_TEST_PROCESS_MM_PUBLICATION=1` observer adds stops at the complete
+149-byte publisher, actual unpin/erase/release boundaries and terminal root
+handoff. It records fresh owner/table metadata and raw per-CPU post-INVLPG
+states. The kernel remains byte-identical to the application-corpus kernel;
+this component changes observation and saved-record validation only.
+
+The reader binds the complete observer program, linked publisher and caller
+instructions, all six hierarchy pages, surrounding MM boundaries, raw CPU-log
+slices and every observed heap retirement. It supports equal-size process
+publications, including empty heaps. Twelve saved-data controls exercise missing
+CPU states, owner/span/root/call mismatches, barrier and mapping changes, early
+unpin, failed unpin, dirty release and retained authority. These controls are
+distinct from native execution and from the original cohort's assertions.
+
+The first matrix attempt completed the owner, child-exec and small-RAM
+allocation-refusal native tests. Owner and child-exec acceptance readbacks
+passed. The allocation readback then rejected its intentionally retained source
+case: that ordinary fixture terminates through exec/exit instead of its case
+return marker. The original allocation reader already requires that state and
+checks replacement startup, actual terminal retirement and final authority.
+The publication reader now distinguishes returning and terminal source cases
+while requiring no pending memory request or refusal in either. The unchanged
+allocation records pass the corrected reader. Five new completion controls
+bring the process-memory suite to **59 passing tests**.
+
+Exact watched inputs and the failed matrix result are retained before this
+reader correction. All three native tests passed; the failure was in the host
+readback. The matrix had unchanged source hashes, zero swap and zero memory
+events. Neither this failure nor its correction explains an AI safeguard.
+The complete seven-test, **21-VM** matrix, final archive, frozen replay and
+publication review remain pending. No continuous lifetime, other mapping writer,
+AP/DMA/asynchronous invalidation, fatal cleanup or public activation is qualified
+by these local observations.
+
+### Review of the publication evidence boundary
+
+Risk is high because false acceptance could hide stale mappings or premature
+frame release. Review uses the authority chain, the complete observer/model/
+reader diff, the native call sites and saved-data controls. This is single-agent
+review; it is not an independent human security review or a complete formal
+proof. The native runtime and compiler outputs are unchanged by this observer
+component.
+
+| Required behavior | Evidence supplied by this component | Remaining acceptance work |
+| --- | --- | --- |
+| Publish the selected heap before return | Bound calls in `topal_frame_memory_request_v1`, `p.commit`, `p.switch` and `p.child_exit`; complete local publisher layout, table states and raw post-INVLPG loop records | All callers and mapping producers, continuous observation/access lifetime and asynchronous or other-CPU access |
+| Revoke access before retiring active or inactive backing | Actual active/inactive token slots, completed demap history, unpin result, complete zero readback before release and consumed token/registry/cells | Other alias domains, all release paths and fatal partial effects |
+| Retire an abandoned prepared owner | Earlier preparation-component evidence remains separately scoped | This observer hooks active and inactive token slots; it does not observe prepared-token cancellation in `pm.cancel` |
+| Keep image/stack parking separate from heap translation | Source review confirms the process-MM child/pair branches copy only low slots 0..502 and high slots 510..511; heap publication is observed separately | Complete producer/caller binding and byte/permission ownership for every image/stack lifetime; selected table snapshots do not prove every intervening write |
+| Finish user-copy loans before switching | Original admission/entry and cohort assertions remain active | Complete native caller/private-loan exclusion; a local interrupt or mode observation is insufficient |
+| Preserve held identities after a trusted partial failure | Existing poisoned-owner requirement remains unchanged | Actual nonreturning fatal cleanup and identity-width/resource-edge qualification; successful ordinary cohorts do not exercise these paths |
+| Activate a reconstructed public kernel | Exact experimental artifacts and retained application records remain available | Cold source/native/load/boot reconstruction and all activation gates, followed by the complete Linux application/distribution/container/VM-host objective |
+
+The review maps current evidence to the existing requirements. It adds no new
+language design or relaxation of the process/MM or owned-extent contracts.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

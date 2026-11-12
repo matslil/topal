@@ -1,6 +1,7 @@
 """Observe ordinary fork/yield/resize/wait with actual independent heap owners."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 import sys
@@ -467,9 +468,26 @@ if __name__ == '__main__':
     # The shared harness reads only its normal build argument. Separate names
     # preserve prior attempts instead of overwriting their observations.
     sys.argv = sys.argv[:2]
+    publication_setting=os.environ.get('TOPAL_TEST_PROCESS_MM_PUBLICATION')
+    assert publication_setting in [None,'1']
+    publication_prefix='';trace_sites=()
     harness.GDB_PROGRAM = PROGRAM
+    if publication_setting is not None:
+        sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'tools/user-memory'))
+        from inspect_translation_publication import inspect
+        from inspect_call_inventory import Elf
+        from process_mm_publication_observer import augment
+        publication_profile=inspect(build)
+        elf=Elf(build/'kernel.elf')
+        publication_profile.update(pin_entry=elf.symbols['topal_frame_allocator_pin_v1']['value'],
+            release_entry=elf.symbols['topal_frame_allocator_release_v1']['value'])
+        (build/'process-publication-layout.json').write_text(json.dumps(publication_profile,indent=2)+'\n')
+        publication_prefix=f'publication_profile={publication_profile!r}\n'
+        trace_sites=(publication_profile['sites']['invalidated'],)
+        harness.GDB_PROGRAM=augment(PROGRAM)
     harness.main(work_name=work_name,
-        program_prefix=f'component={component!r}\nkernel_spans={spans!r}\nnative_halt={invariant_halt(build / "kernel.elf")["halt"]!r}\n',
+        program_prefix=f'component={component!r}\nkernel_spans={spans!r}\nnative_halt={invariant_halt(build / "kernel.elf")["halt"]!r}\n'+publication_prefix,
         input_scope='source-built ordinary fork/yield/resize/wait and real MM owners',
         guest_timeout_seconds=600,
-        ram_mib=component['allocation_profile']['guest_ram_mib'] if component.get('allocation_profile') is not None else None)
+        ram_mib=component['allocation_profile']['guest_ram_mib'] if component.get('allocation_profile') is not None else None,
+        cpu_trace_sites=trace_sites)
