@@ -92,7 +92,7 @@ def check_graph(graph, kernel, symbol, body):
             lstar.append(at + 7 + struct.unpack_from('<i', body, at + 3)[0])
     assert len(lstar) == 1 and body[lstar[0]:lstar[0] + 3] == bytes.fromhex('0f 01 f8')
     roots = {0, lstar[0]}
-    roots.update(s['value'] - symbol['value'] for s in kernel.symbols.values()
+    roots.update(s['value'] - symbol['value'] for s in kernel.defined_symbols
                  if s['section'] == symbol['section'] and s['info'] & 15 == 2
                  and symbol['value'] < s['value'] < symbol['value'] + len(body))
     assert roots == {r['offset'] for r in graph['roots']}, 'graph roots'

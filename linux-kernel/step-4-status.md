@@ -118,6 +118,12 @@ for twelve retained same-kernel native runs pass. This adds bounded lifetime
 evidence; general orphan/init behavior, broader caller/loan/fatal and production
 qualification remain open.
 
+The [native ELF audit reader](step-4-process-memory-ownership.md#elf-symbol-scopes-in-native-audits)
+now preserves distinct local symbols in complete address-based enumeration and
+rejects ambiguous named lookups. Seven scope controls bring the user-memory
+suite to 203 passing tests. This prepares ordinary-interface process-MM
+regressions; it does not itself qualify new VM behavior or production use.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

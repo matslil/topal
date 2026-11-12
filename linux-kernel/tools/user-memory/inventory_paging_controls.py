@@ -183,7 +183,7 @@ def inventory(kernel,llvm,gnu,graph):
             assert address in selected and selected[address]['bytes']==raw.hex() and selected[address]['kind']==kind,'graph has unlisted privileged instruction'
         if address not in first:recovered.append(address)
     for row in selected.values():
-        owners=[s for s in elf.symbols.values() if s['section']==section_index and s['info']&15==2
+        owners=[s for s in elf.defined_symbols if s['section']==section_index and s['info']&15==2
             and s['value']<=row['address']<s['value']+s['size']]
         assert owners,'selected privileged instruction has no function symbol'
         row['functions']=sorted(set(s['name'] for s in owners))

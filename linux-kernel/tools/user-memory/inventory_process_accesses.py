@@ -122,7 +122,8 @@ def inventory(build, tool):
     assert body[syscall:syscall+3] == bytes.fromhex('0f 01 f8')
     roots = [dict(offset=0, source='selected function entry'),
              dict(offset=syscall, source='actual RIP-relative LSTAR setup', setup_offset=lstar_site)]
-    for name, value in sorted(elf.symbols.items()):
+    for value in sorted(elf.defined_symbols, key=lambda s:(s['name'],s['section'],s['value'])):
+        name = value['name']
         if (value['section'] == symbol['section'] and value['value'] != symbol['value']
                 and symbol['value'] <= value['value'] < symbol['value'] + len(body)):
             assert value['info'] & 15 == 2
@@ -164,8 +165,8 @@ def inventory(build, tool):
                     pending.append(destination)
                     edges.append(dict(source=at, target=destination, kind='direct-transfer'))
                 else:
-                    names = sorted(n for n, s in elf.symbols.items()
-                                   if s['section'] and s['value'] == address)
+                    names = sorted({s['name'] for s in elf.defined_symbols
+                                    if s['value'] == address})
                     assert names, ('external transfer has no exact symbol', row)
                     external.append(dict(offset=at, address=address, symbols=names,
                         instruction=row['instruction']))

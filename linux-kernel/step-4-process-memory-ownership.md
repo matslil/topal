@@ -593,6 +593,35 @@ evidence without changing kernel behavior or core-language meaning. Broader
 mapping/loan/caller, identity/fatal, continuous lifetime/invalidation and public
 activation obligations remain open.
 
+## ELF symbol scopes in native audits
+
+Preparing the ordinary-interface matrix exposed a host-side inventory failure
+before VM execution: the linked process-MM kernel has two distinct local
+functions named `p.copy`, while the small ELF reader required every definition's
+name to be globally unique. The [ELF binding rules](https://gabi.xinuos.com/v42/elf/05-symtab.html#symbol-binding)
+permit local names from separate input files to coexist. This is an artifact
+reader issue, distinct from a guest, resource or model/provider safeguard failure.
+
+The [reader](tools/user-memory/inspect_call_inventory.py) now keeps complete
+defined-symbol enumeration separately from unambiguous name lookup. Process
+roots, exact external-transfer addresses, dominance roots and paging-instruction
+owners use the complete enumeration, including ambiguous local definitions.
+Function lookup rejects ambiguous local names; conflicting external definitions
+still fail. A local definition cannot satisfy an undefined global name. The
+name-only relocation API rejects a defined target whose indexed identity that
+name cannot represent; exact table indices remain available to indexed readers.
+This is conservative validation of the compiler-owned artifacts, not a general
+linker implementation or new kernel authority.
+
+Seven [ELF scope controls](tools/user-memory/test_elf_symbol_scopes.py) cover
+distinct local definitions, local/global coexistence, undefined declarations,
+conflicting globals, identical definitions and indexed relocation identity.
+The full user-memory suite passes **203 tests**. No native kernel, application,
+core-language meaning or host protection changes. Risk is high for silent
+omission or conflation in security evidence; review covers all consumers of
+symbol enumeration and tests explicit ambiguity rejection. Ordinary-interface
+matrix execution and frozen qualification remain subsequent work.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

@@ -37,6 +37,9 @@ class Elf:
                          for i in range(count)]
         self.tables = {}
         self.symbols = {}
+        self.defined_symbols = []
+        self.ambiguous_symbols = {}
+        by_name = {}
         for index, section in enumerate(self.sections):
             if section[1] != 2:
                 continue
@@ -49,16 +52,23 @@ class Elf:
                 symbol = dict(name=name, info=info, section=owner, value=value, size=size)
                 symbols.append(symbol)
                 if name:
-                    previous = self.symbols.get(name)
-                    # Relocatable objects may retain an undefined declaration
-                    # as well as the later definition. Relocations still use
-                    # their exact symbol-table index; named lookup prefers the
-                    # definition and rejects conflicting definitions.
-                    if previous and previous['section'] and owner:
-                        assert previous == symbol, name
-                    if previous is None or owner:
-                        self.symbols[name] = symbol
+                    by_name.setdefault(name, []).append(symbol)
+                    if owner and symbol not in self.defined_symbols:
+                        self.defined_symbols.append(symbol)
             self.tables[index] = symbols
+        for name, candidates in by_name.items():
+            # ELF local names are scoped to their input object, so the linked
+            # image can contain distinct local definitions with the same name.
+            # Keep all definitions for complete address/root enumeration. A
+            # name alone cannot choose among those local identities.
+            external = [s for s in candidates if s['info'] >> 4]
+            visible = external or candidates
+            definitions = [s for s in visible if s['section']]
+            if definitions and any(s != definitions[0] for s in definitions):
+                assert not external, ('conflicting external definitions', name)
+                self.ambiguous_symbols[name] = definitions
+            else:
+                self.symbols[name] = (definitions or visible)[0]
 
     def section_bytes(self, index):
         section = self.sections[index]
@@ -67,6 +77,7 @@ class Elf:
         return self.data[start:start + size]
 
     def function(self, name):
+        assert name not in self.ambiguous_symbols, ('ambiguous local symbol', name)
         symbol = self.symbols[name]
         assert symbol['info'] & 15 == 2 and symbol['size'] and symbol['section']
         section = self.sections[symbol['section']]
@@ -83,8 +94,13 @@ class Elf:
             for at in range(section[4], section[4] + section[5], 24):
                 offset, info, addend = struct.unpack_from('<QQq', self.data, at)
                 assert offset not in result
-                result[offset] = (self.tables[section[6]][info >> 32]['name'],
-                                  info & 0xffffffff, addend)
+                target = self.tables[section[6]][info >> 32]
+                # This convenience API returns a name rather than an indexed
+                # identity. Refuse a defined target whose scope that name
+                # cannot represent; exact records remain available in tables.
+                if target['name'] and target['section']:
+                    assert self.symbols.get(target['name']) == target, ('ambiguous named relocation', target['name'])
+                result[offset] = (target['name'], info & 0xffffffff, addend)
         return result
 
 
