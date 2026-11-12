@@ -86,6 +86,13 @@ fn owned_source_fixture_checks_metadata_lifetimes() {
 }
 
 #[test]
+#[ignore = "requires the bounded QEMU/GDB process-MM preparation cohort"]
+fn process_mm_preparation_copies_and_retires_real_frame_backing() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001: native preparation only, not fork activation.
+    execute_selected(true, true, true, Some(CallerFocus::SourceProcessMemory));
+}
+
+#[test]
 #[ignore = "requires a C compiler, QEMU and GDB"]
 fn owned_source_fixture_checks_serial_transfer_boundaries() {
     // TOPAL-SYSTEMS-USER-EXTENT-001; STATIC-PROCESS-FD-TABLE-001.
@@ -141,6 +148,7 @@ enum CallerFocus {
     SourcePipes,
     SourceStorage,
     SourceMetadata,
+    SourceProcessMemory,
     SourceSerial,
     SourceStat,
     Startup,
@@ -199,7 +207,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::SourceMetadata) {
+    let prefix = if focus == Some(CallerFocus::SourceProcessMemory) {
+        "process-mm-preparation"
+    } else if focus == Some(CallerFocus::SourceMetadata) {
         "user-extent-source-metadata"
     } else if focus == Some(CallerFocus::SourceStat) {
         "user-extent-source-stat"
@@ -249,6 +259,7 @@ fn execute_selected(
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
                 | CallerFocus::SourceMetadata
+                | CallerFocus::SourceProcessMemory
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
         )
@@ -299,7 +310,9 @@ fn execute_selected(
             .arg(work.join("root.o")),
     );
     let target = if let Some(owners) = &owners {
-        if owned_callers {
+        if focus == Some(CallerFocus::SourceProcessMemory) {
+            super::process_mm::target_llvm(&checked.component, owners)
+        } else if owned_callers {
             crate::systems_user_extent::caller_target_llvm(&checked.component, owners)
         } else {
             crate::systems_user_extent::target_llvm(&checked.component, owners)
@@ -341,7 +354,10 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if focus == Some(CallerFocus::SourceMetadata) {
+    let fixture_bytes = if matches!(
+        focus,
+        Some(CallerFocus::SourceMetadata | CallerFocus::SourceProcessMemory)
+    ) {
         crate::systems_user_extent::source_fixture::build_metadata(work, tools)
     } else if focus == Some(CallerFocus::SourceStat) {
         crate::systems_user_extent::source_fixture::build_stat(work, tools)
@@ -433,7 +449,9 @@ fn build_guest(
     }
     fs::write(
         work.join("dispatch.ll"),
-        if user_extents {
+        if focus == Some(CallerFocus::SourceProcessMemory) {
+            super::process_mm::dispatch_llvm().unwrap()
+        } else if user_extents {
             crate::systems_user_extent::dispatch_llvm().unwrap()
         } else if memory {
             super::memory_dispatch()
@@ -611,6 +629,7 @@ fn build_guest(
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
                 | CallerFocus::SourceMetadata
+                | CallerFocus::SourceProcessMemory
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
         )
@@ -942,6 +961,7 @@ fn build_guest(
                             | CallerFocus::SourcePipes
                             | CallerFocus::SourceStorage
                             | CallerFocus::SourceMetadata
+                            | CallerFocus::SourceProcessMemory
                             | CallerFocus::SourceSerial
                             | CallerFocus::SourceStat
                     )
@@ -959,7 +979,11 @@ fn build_guest(
                     "../../linux-kernel/labs/qemu/x86_64/frame_root_inspect.py"
                 },
             ))
-            .arg(work),
+            .arg(work)
+            .envs(
+                (focus == Some(CallerFocus::SourceProcessMemory))
+                    .then_some(("TOPAL_TEST_PROCESS_MM_PREPARATION", "metadata")),
+            ),
     );
     if access_audit_selected {
         run(

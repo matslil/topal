@@ -1,0 +1,690 @@
+{
+  "artifacts": {
+    "boundary.o": {
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    "bzImage": {
+      "bytes": 45235088,
+      "sha256": "fe0341999d316e1199de929b7ed8045694bf230d147aae5712fb8b923aa823aa"
+    },
+    "command-cases.o": {
+      "bytes": 7856,
+      "sha256": "dc124500ce4b825e30497f5211ce3bf30e1c7c028f76874fb70f650390b75f44"
+    },
+    "controller.ll": {
+      "bytes": 22671,
+      "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+    },
+    "controller.o": {
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    "dispatch.ll": {
+      "bytes": 26643,
+      "sha256": "86dd50fde05d9c9ee113928b4749bde737d6b4dd7bf5262e365207cee8ce73ab"
+    },
+    "dispatch.o": {
+      "bytes": 21664,
+      "sha256": "18073922a12849bb9d90cb840b53d68b0168c5b802d5186247ee0ec95ed1c26a"
+    },
+    "extent-bridge.o": {
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    "extent-callers.o": {
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    "extent.ll": {
+      "bytes": 4670,
+      "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+    },
+    "extent.o": {
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    "file-cases.o": {
+      "bytes": 16056,
+      "sha256": "bdccfe985d438c96b16e6dc92b95d354141b7a65f158c43602f77275b894362e"
+    },
+    "gateway.o": {
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    "initramfs.cpio": {
+      "bytes": 2037200,
+      "sha256": "335b54ea11cf0f0e76709df27199c093b2a09869513a811ffb6d730a30d4fd92"
+    },
+    "kernel.elf": {
+      "bytes": 1668192,
+      "sha256": "85a83944f206b19b1135f45f18c77cc615b47f5392c77399c65ad09d734cc9de"
+    },
+    "metadata-cases.o": {
+      "bytes": 24720,
+      "sha256": "5daf5ae9ec33298097fb4483060fe82fe0f641ee53910d9797c9230371a0d0af"
+    },
+    "owner.ll": {
+      "bytes": 12741,
+      "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+    },
+    "owner.o": {
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    "predecessor-gateway.o": {
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    "predecessor-provider.o": {
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    "provider.o": {
+      "bytes": 1061624,
+      "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+    },
+    "root.o": {
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    "runtime.ll": {
+      "bytes": 53406,
+      "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+    },
+    "runtime.o": {
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    "shell-cases.o": {
+      "bytes": 13584,
+      "sha256": "0f53d5cf299df2ea1df48ded552de72091131f5a817633136927748750d92cc6"
+    },
+    "source-cases.o": {
+      "bytes": 8792,
+      "sha256": "02a22346341b6ef2fa08db98fe6ebc85d4e2a0445589b3630269096aa62d028e"
+    },
+    "source-syscall.o": {
+      "bytes": 1056,
+      "sha256": "158f2f856adfab794a41c758848e8b009979233401e90c7780b190d9dc966111"
+    },
+    "source-user.elf": {
+      "bytes": 49000,
+      "sha256": "a795aee6e58a817598bf2f80defaac88b7da8126f4f8a4c29a91b51bebd2c990"
+    },
+    "source.ll": {
+      "bytes": 330401,
+      "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+    },
+    "source.o": {
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    },
+    "startup-cases.o": {
+      "bytes": 13928,
+      "sha256": "bcf125e2169d744d970816004c2892c93feb91779f350f88cd85f883f0fa0dde"
+    },
+    "static-elf-abi-fixture.elf": {
+      "bytes": 2024544,
+      "sha256": "1fe95385ee7f89c5a20a7f5530020ade0ff2d6cbbbf7c41fd51127e7e8361351"
+    },
+    "target.ll": {
+      "bytes": 46617,
+      "sha256": "3dcf6859798e5a822bca0a77559dae716fb943f06ffd5818ccf6226d7dc51305"
+    },
+    "target.o": {
+      "bytes": 27464,
+      "sha256": "d9e3f55d90f2e47370f365249ea4e1ebdc4fca99e3fcf7f17d2c58af12e7b56f"
+    }
+  },
+  "comparisons": [
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 274432,
+      "pages": 67,
+      "passed": true,
+      "released_bytes": 274432,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 274432,
+      "pages": 67,
+      "passed": true,
+      "released_bytes": 274432,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 274432,
+      "pages": 67,
+      "passed": true,
+      "released_bytes": 274432,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 0,
+      "pages": 0,
+      "passed": true,
+      "released_bytes": 0,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 4096,
+      "pages": 1,
+      "passed": true,
+      "released_bytes": 4096,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 139264,
+      "pages": 34,
+      "passed": true,
+      "released_bytes": 139264,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    },
+    {
+      "copied_bytes": 274432,
+      "pages": 67,
+      "passed": true,
+      "released_bytes": 274432,
+      "scope": "Observed preparation/cancellation within an actual brk gateway; no process switch, complete mapping-alias, asynchronous or production proof"
+    }
+  ],
+  "console": {
+    "bytes": 7606,
+    "sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435"
+  },
+  "controls": [
+    {
+      "name": "unpinned-preparation",
+      "reason": "pin/lifetime",
+      "rejected": true
+    },
+    {
+      "name": "wrong-epoch",
+      "reason": "prepared entry binding",
+      "rejected": true
+    },
+    {
+      "name": "wrong-context",
+      "reason": "prepared entry binding",
+      "rejected": true
+    },
+    {
+      "name": "wrong-root",
+      "reason": "prepared entry binding",
+      "rejected": true
+    },
+    {
+      "name": "restored-issuance",
+      "reason": "allocator issuance/state",
+      "rejected": true
+    },
+    {
+      "name": "nonzero-erasure",
+      "reason": "unpin/physical erasure before release",
+      "rejected": true
+    },
+    {
+      "name": "erase-still-pinned",
+      "reason": "unpin/physical erasure before release",
+      "rejected": true
+    },
+    {
+      "name": "unconsumed-registry",
+      "reason": "consumed registry owner",
+      "rejected": true
+    },
+    {
+      "name": "unreleased-cell",
+      "reason": "released cell ownership/provenance",
+      "rejected": true
+    },
+    {
+      "name": "retained-receipt",
+      "reason": "receipt retirement",
+      "rejected": true
+    },
+    {
+      "name": "changed-parent",
+      "reason": "changed active owner/context: active",
+      "rejected": true
+    },
+    {
+      "name": "truncated-to-34-pages",
+      "reason": "whole bytes",
+      "rejected": true
+    },
+    {
+      "name": "wrong-copy-beyond-page-34",
+      "reason": "complete copied heap",
+      "rejected": true
+    },
+    {
+      "name": "prepared-aliases-parent",
+      "reason": "parent/prepared alias",
+      "rejected": true
+    }
+  ],
+  "copied_bytes": 2801664,
+  "erased_before_release_bytes": 2801664,
+  "exact_target_and_dispatch_delta": true,
+  "last_resource_sample": {
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "group": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-2424279-13266b7d.scope",
+    "group_retired": true,
+    "memory_max_bytes": 2947301376,
+    "memory_peak_bytes": 2220826624,
+    "sample_time_ns": 1794484406691041564,
+    "swap_max_bytes": 0
+  },
+  "llvm_verified_modules": [
+    "controller",
+    "dispatch",
+    "extent",
+    "owner",
+    "runtime",
+    "source",
+    "target"
+  ],
+  "metadata_readback": {
+    "clock_returns": 44,
+    "modeled_calls": 124,
+    "stat_outputs": 44,
+    "syscalls": 136
+  },
+  "metadata_syscalls": 136,
+  "native_bounds": {
+    "complete_physical_bytes": 4088,
+    "complete_stack_bytes": 2312,
+    "inner_retirement_bytes": 3952,
+    "outer_bytes": 88,
+    "reserve_bytes": 4096
+  },
+  "nonzero_large_heap_copies": 4,
+  "observation": {
+    "bytes": 38681315,
+    "sha256": "d0fe4b5c49505b560599f06ca1a91701239ff4ae0d31512a9b25e0ca29f3e613"
+  },
+  "pages": {
+    "0": 8,
+    "1": 8,
+    "34": 12,
+    "67": 4
+  },
+  "passed": true,
+  "preparations": 32,
+  "preserved": {
+    "boundary.o": {
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    "controller.o": {
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    "extent-bridge.o": {
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    "extent-callers.o": {
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    "extent.o": {
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    "gateway.o": {
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    "initramfs.cpio": {
+      "bytes": 2037200,
+      "sha256": "335b54ea11cf0f0e76709df27199c093b2a09869513a811ffb6d730a30d4fd92"
+    },
+    "owner.o": {
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    "predecessor-gateway.o": {
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    "predecessor-provider.o": {
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    "provider.o": {
+      "bytes": 1061624,
+      "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+    },
+    "root.o": {
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    "runtime.o": {
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    "source.o": {
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    },
+    "static-elf-abi-fixture.elf": {
+      "bytes": 2024544,
+      "sha256": "1fe95385ee7f89c5a20a7f5530020ade0ff2d6cbbbf7c41fd51127e7e8361351"
+    }
+  },
+  "schema": "topal-process-mm-preparation-native-v1",
+  "scope": "Experimental native preparation/cancellation only; active/inactive MM switching, fatal/refusal paths, general lifetime and production activation remain unqualified",
+  "selected_inputs": {
+    "linux-kernel/kernel/memory/frame-metadata.t": {
+      "bytes": 8572,
+      "sha256": "b63fa2aca690d3e2c102b645f17fc872e3c4aabcf61710b73993192476076b32"
+    },
+    "linux-kernel/labs/qemu/x86_64/process_mm_preparation_observer.py": {
+      "bytes": 6069,
+      "sha256": "752bed3a79c4cbb275093adbef606d64ecfe39250abfbad764203eccfcc7e910"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": {
+      "bytes": 37949,
+      "sha256": "c7e7344f679df647626ba0de05d48d34ad46e33c453163a2dab6c5a0f7141414"
+    },
+    "linux-kernel/tools/process-memory/preparation_native.py": {
+      "bytes": 7637,
+      "sha256": "41c775cfb60bbd5e9e9005bf4cf20f82b1e5496a34aad40c71ca60a7f29e0615"
+    },
+    "linux-kernel/tools/process-memory/readback_preparation.py": {
+      "bytes": 15178,
+      "sha256": "b5f9ef46d31565dcbf72a5dd96cdcc205cbe30452558d1d052ec47d532e2858c"
+    },
+    "linux-kernel/tools/process-memory/replay_preparation.py": {
+      "bytes": 3378,
+      "sha256": "83c435d65b7076096b53ff515b73ebd2b68838415fc1730514c2839743418dd9"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-source-metadata/readback-source-metadata.py": {
+      "bytes": 8501,
+      "sha256": "353e0ea17545a5eef4789451af74ea059a6ea36297b7b96480216abc016f4aba"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_controller.ll": {
+      "bytes": 21451,
+      "sha256": "c9445f96bac7a5b1d2c3e1b0e5463d098909326c2263970787781d0ca2e987f5"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_gateway_lease.ll": {
+      "bytes": 972,
+      "sha256": "8d3b31d9deb5167c1caa4958157eb8287fdc3d90536a10693eccfff0bb629b4b"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": {
+      "bytes": 14321,
+      "sha256": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory_lease.ll": {
+      "bytes": 3828,
+      "sha256": "fb3d0af5155c40ee507ccbf4bf1ae8d301c84ae08ed1e5a4022b42a207b9604a"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_target.ll": {
+      "bytes": 23887,
+      "sha256": "c0c640202dfd9788acb34b82e3ffd76e7aea3a09cbc93a0109525bbbe369f172"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm.ll": {
+      "bytes": 9723,
+      "sha256": "dedf6ea9583ffb0b2d2e6e271bae85967e07718ff7235c413e137049306d51c9"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_clean.ll": {
+      "bytes": 1107,
+      "sha256": "383acf13bef9959641de5f52bbe0bf16b0f18f11872972c363184ca64bba66b5"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_target.ll": {
+      "bytes": 14834,
+      "sha256": "ac21900da006203802acb6ec6bfb58fc14ef968579bb710d35cdf044f4ac84c5"
+    },
+    "src/topal-compiler/src/systems_frame_gateway_memory.rs": {
+      "bytes": 7318,
+      "sha256": "35956014e7ce9bc78ec4b42e16a234032ba943e63f44e2b8848b7317ea4111a5"
+    },
+    "src/topal-compiler/src/systems_frame_inspection.rs": {
+      "bytes": 7316,
+      "sha256": "cef1141c03c083e234037036b249b1fb91f21c1ecb8273bdafbb48db06991877"
+    },
+    "src/topal-compiler/src/systems_frame_root_tests.rs": {
+      "bytes": 37562,
+      "sha256": "611994ac967104f8e521e20c59a0e1767973a539101fe5d806216469e0df01d6"
+    },
+    "src/topal-compiler/src/systems_frame_target.rs": {
+      "bytes": 5896,
+      "sha256": "739b8b778a382a6d67e4bc44c773a314470104e0eb902993e810afe6178f71d9"
+    },
+    "src/topal-compiler/src/systems_process_mm.rs": {
+      "bytes": 1685,
+      "sha256": "b057e6febc188e42834a8b86686480d26ae0cc79569dcfcf408f4feed2bba1e5"
+    },
+    "src/topal-compiler/src/systems_user_extent.rs": {
+      "bytes": 7956,
+      "sha256": "ea9c09eccfd8e243158f0ed22eba78f0163a295a5b06e31e2fd35c68a9f45771"
+    },
+    "src/topal-compiler/src/systems_user_extent_clean.rs": {
+      "bytes": 2146,
+      "sha256": "a8784718accfb2a64b565d7d99554c99f3ce26e61498d07bd35bd311d806b67f"
+    }
+  },
+  "source_elf_delta": {
+    "changed_nonallocated_debug_sections": {
+      ".debug_info": {
+        "after": {
+          "bytes": 11629,
+          "sha256": "241675fd639e746b6691cd756b9758345cae60069ff30eb78fdcdddaccc2238c"
+        },
+        "before": {
+          "bytes": 11629,
+          "sha256": "4638d02672b7960fd26b369a7cfb5aea7f8cfb2746108f97154b14f0a0c127a0"
+        }
+      },
+      ".debug_line": {
+        "after": {
+          "bytes": 7451,
+          "sha256": "fc76f7431dfed446dc84b5bcb9e2f07e1703f5a0b2e3366dcf44336056a1c24c"
+        },
+        "before": {
+          "bytes": 7451,
+          "sha256": "9ad5df032b101675fca61bf32f0609253c99ccc156c6a2bfa2db62c06a1aa2a8"
+        }
+      },
+      ".debug_line_str": {
+        "after": {
+          "bytes": 1090,
+          "sha256": "528b61717a67721d67a51fd47b9634efeefecf8ab818321bd9571354beda49c7"
+        },
+        "before": {
+          "bytes": 1125,
+          "sha256": "8be26a975668c9a93c4c95663f6bebf9b537cc2544969c689c1ae52df1346fbf"
+        }
+      }
+    },
+    "entry_equal": true,
+    "loadable_bytes_equal": true,
+    "other_sections_equal": true,
+    "scope": "Exact loaded bytes, entry and other sections; debug bytes differ and no debug-equivalence proof is claimed"
+  }
+}

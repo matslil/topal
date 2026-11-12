@@ -25,6 +25,7 @@ from user_extent_owner_observer import PROGRAM as OWNER_PROGRAM, MODEL as OWNER_
 from user_extent_interval_observer import PROGRAM as INTERVAL_PROGRAM, MODEL as INTERVAL_MODEL
 from user_extent_translation_observer import PROGRAM as TRANSLATION_PROGRAM, MODEL as TRANSLATION_MODEL, TRACE_MODEL as TRANSLATION_TRACE_MODEL
 from user_extent_image_observer import PROGRAM as IMAGE_PROGRAM, MODEL as IMAGE_MODEL
+from process_mm_preparation_observer import PROGRAM as PROCESS_PREPARATION_PROGRAM, MODEL as PROCESS_PREPARATION_MODEL
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -70,6 +71,8 @@ class Checked(gdb.Breakpoint):
                 observed['pending_translation_root_switch']=translation_root_switch_pending
             if image_publication_profile is not None:
                 observed['active_image_publication']=image_publication_active
+            if process_preparation_profile is not None:
+                observed['active_process_preparation']=process_preparation_active
             with open(observation_path, 'w') as handle:
                 json.dump(observed, handle, indent=2)
             return True
@@ -499,6 +502,7 @@ def file_returned(row):
 # INTERVAL_OBSERVER
 # TRANSLATION_OBSERVER
 # IMAGE_PUBLICATION_OBSERVER
+# PROCESS_PREPARATION_OBSERVER
 
 class Complete(Checked):
     def observe(self):
@@ -529,6 +533,7 @@ class Complete(Checked):
         interval_observation_complete()
         translation_observation_complete()
         image_publication_observation_complete()
+        process_preparation_observation_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -552,6 +557,7 @@ try:
     install_interval_observation()
     install_translation_observation()
     install_image_publication_observation()
+    install_process_preparation_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -596,11 +602,30 @@ assert PROGRAM.count('# TRANSLATION_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# TRANSLATION_OBSERVER', TRANSLATION_PROGRAM)
 assert PROGRAM.count('# IMAGE_PUBLICATION_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# IMAGE_PUBLICATION_OBSERVER', IMAGE_PROGRAM)
+assert PROGRAM.count('# PROCESS_PREPARATION_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# PROCESS_PREPARATION_OBSERVER', PROCESS_PREPARATION_PROGRAM)
 
 
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
+    process_preparation_profile = None
+    preparation_setting = os.environ.get('TOPAL_TEST_PROCESS_MM_PREPARATION')
+    assert preparation_setting in [None,'metadata']
+    if preparation_setting is not None:
+        assert component['mode'] == preparation_setting
+        kernel = (build / 'kernel.elf').read_bytes()
+        phoff = struct.unpack_from('<Q',kernel,32)[0]
+        phsize,phcount = struct.unpack_from('<HH',kernel,54)
+        spans=[]
+        for index in range(phcount):
+            kind,flags,offset,virtual,physical,filesize,memsize,alignment=struct.unpack_from('<IIQQQQQQ',kernel,phoff+index*phsize)
+            if kind==1:
+                assert virtual==physical and physical+memsize<=1<<30
+                spans.append([physical,physical+memsize])
+        assert spans
+        process_preparation_profile=dict(reserved_spans=spans,
+            bindings=json.loads((build/'user-owners.json').read_text()))
     owner_profile = None
     image_publication_profile = None
     image_setting = os.environ.get('TOPAL_TEST_IMAGE_PUBLICATION')
@@ -658,6 +683,8 @@ if __name__ == '__main__':
     harness.main(
         work_name='source-user-extents',
         program_prefix=(f'component={component!r}\n'
+                        f'process_preparation_profile={process_preparation_profile!r}\n'
+                        f'process_preparation_model_source={PROCESS_PREPARATION_MODEL!r}\n'
                         f'owner_profile={owner_profile!r}\n'
                         f'image_publication_profile={image_publication_profile!r}\n'
                         f'image_publication_model_source={IMAGE_MODEL!r}\n'

@@ -56,3 +56,29 @@ normal/prepublication-unavailable transitions. It provides no evidence for those
 omitted obligations or for distribution, containers, virtualization or general
 scheduling/MM. Native integration and public source/load/boot reconstruction
 must preserve the existing qualified child and pipe workloads before activation.
+
+## Native preparation component
+
+The subsequent [stage-2 preparation archive](results/stage-2-preparation/report.json)
+records 32 actual prepared-heap lifetimes inside ordinary captured `brk` calls.
+[preparation_native.py](preparation_native.py) checks saved live frame/entry/table
+and byte observations. [readback_preparation.py](readback_preparation.py) also
+binds exact generated LLVM deltas, preserved contributions and fourteen saved
+data controls. It retains an earlier overbroad intermediate-ELF comparison failure;
+the actual application image is byte-identical, while three nonloaded intermediate
+debug sections differ. The [stage report](../../step-4-process-memory-ownership.md)
+states the precise native scope and unresolved activation/fatal/lifetime gates.
+
+Replay the archived records with selected frozen inputs, under the same wrapper:
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_preparation.py linux-kernel/tools/process-memory/results/stage-2-preparation linux-kernel/.cache/x86_64/process-memory-preparation-replay-new
+```
+
+Use a new output directory. This checks archive identities and repeats the
+record/control comparisons from frozen Python; it does not build or execute a
+kernel. Native preparation/cancellation does not qualify independent child MM
+activation, fork/exec/switch integration or general Linux compatibility.
+The test-only `brk` hook is a component witness, including deliberately allocating
+on queries; it is not a publishable `brk` policy. Actual process callers must
+replace it while preserving the production allocation-free query contract.

@@ -9,6 +9,9 @@ pub(crate) mod inspection;
 #[path = "systems_frame_memory_tests.rs"]
 pub(crate) mod memory_tests;
 #[cfg(test)]
+#[path = "systems_process_mm.rs"]
+pub(crate) mod process_mm;
+#[cfg(test)]
 #[path = "systems_frame_root_tests.rs"]
 pub(crate) mod root_tests;
 #[cfg(test)]
