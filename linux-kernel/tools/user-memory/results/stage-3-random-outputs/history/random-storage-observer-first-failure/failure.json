@@ -1,0 +1,6 @@
+{
+  "exit_code": 101,
+  "stage": "Read-only random completion in ordinary storage VM",
+  "reason": "New GDB observer assertion at generated program line 2158; native cause under investigation, with no memory event or provider notice",
+  "build": "user-extent-source-storage-2390370-1794459181759936035"
+}

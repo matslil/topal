@@ -1,0 +1,59 @@
+{
+  "passed": true,
+  "old_sha256": "6d0e56922302691c473b10c6143c97fa5e2367e91720afcb4362e3b934d25212",
+  "new_sha256": "3cba54f6b1a5b393a79f4420f349d165c9de198b8bfc7512eb9ac78d28077e42",
+  "section_headers_equal": true,
+  "elf_and_program_headers_equal": true,
+  "unchanged_allocated_sections": [
+    {
+      "section": ".text",
+      "sha256": "5ebdc67ed90b4cd5ea51bbafd34ce40bcbbe4e0565aa795ed2cfbb1b2e12925c",
+      "bytes": 10912
+    },
+    {
+      "section": ".data",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "section": ".bss",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ],
+  "unchanged_load_segments": [
+    {
+      "offset": 4096,
+      "virtual": 5701632,
+      "bytes": 10912,
+      "sha256": "5ebdc67ed90b4cd5ea51bbafd34ce40bcbbe4e0565aa795ed2cfbb1b2e12925c"
+    }
+  ],
+  "changed_sections": [
+    {
+      "section": ".debug_info",
+      "flags": 0,
+      "bytes": 14090,
+      "changed_bytes": 23,
+      "before_sha256": "5235b9357ab6addcdc958aff4b448ae42e3672621dec992e2a3707ba7c09fc8d",
+      "after_sha256": "c78c39ce771f311a775b1068f4fd5a8b0b1682c9ebd2472b84ef72f68f3c06b5"
+    },
+    {
+      "section": ".debug_line",
+      "flags": 0,
+      "bytes": 8998,
+      "changed_bytes": 36,
+      "before_sha256": "8d0c461f39cb470a2231881de23ce24dd3e29045ba89775ecd6e991ceedf1ddc",
+      "after_sha256": "ecebaf7a22952739f51087bea3f67655e1494de274ede2e676e24a7eb133a12c"
+    },
+    {
+      "section": ".debug_line_str",
+      "flags": 48,
+      "bytes": 1116,
+      "changed_bytes": 1026,
+      "before_sha256": "ff04e08dd93db86a1c4072bbeaf0224908843fd65ea2e4dc3ebd14a62fef2eaa",
+      "after_sha256": "afe192bafe167dd83409f694d40f1db7f5abea1ed2d82606c2da3afe2062b9c6"
+    }
+  ],
+  "scope": "Exact ELF/header/allocated-section/load-byte comparison of the recorded first-party source intermediates. Only the three reviewed nonallocated DWARF sections may differ; no complete clean producer, debug-content reproducibility or kernel owner/lifetime qualification"
+}

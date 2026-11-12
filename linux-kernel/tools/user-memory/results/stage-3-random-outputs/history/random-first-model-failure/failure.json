@@ -1,0 +1,5 @@
+{
+  "exit_code": 1,
+  "stage": "Synthetic alternate branch retirement control",
+  "reason": "Redirecting the only failure edge made that block unreachable, so the checker rejected an alternate entry before the intended scratch-retirement assertion; preserve another reachable failure edge in the model"
+}

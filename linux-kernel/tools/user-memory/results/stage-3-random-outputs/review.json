@@ -1,0 +1,50 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High: suspended-stack shape, extraction scratch retirement, user output and evidence accuracy. Executable kernel, core language, authority meaning and canonical production selection unchanged.",
+  "review": "Single-agent higher-authority/source/full-diff review, complete selected extractor effects/frame dataflow, separate saved GNU effects/cuts, 23 offline controls, 121 model/reader tests, three native regressions and two fixture tests. The isolated model mock repair is explicitly versioned after native commands.",
+  "selected_inputs": 164,
+  "native_recorded_inputs": 8,
+  "native_nonexecuted_model_repair": 1,
+  "model_reader_tests": 121,
+  "source_admissions": 48,
+  "source_refusals": 40,
+  "source_completions": 8,
+  "source_bytes": 64,
+  "source_early_results": 24,
+  "native_lengths": [
+    8
+  ],
+  "extract_instructions": 1843,
+  "extract_scratch_bytes": 128,
+  "selected_switched_stack_bytes": 168,
+  "retired_random_outer_spill_bytes": 32,
+  "retired_random_outer_spill_erasure_verified": false,
+  "conditional_sites": 90,
+  "user_access_instructions": 325,
+  "remaining_sites": 1,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "executable_kernel_changed": false,
+  "core_language_or_authority_meaning_changed": false,
+  "failures": [
+    "history/random-first-model-failure/failure.json",
+    "history/random-table-model-namespace-failure/failure.json",
+    "history/random-storage-observer-first-failure/failure.json"
+  ],
+  "diagnostic_exit_code": 1,
+  "safeguard_notices": [],
+  "retired_clock_spill_erasure_verified": false,
+  "remaining": [
+    "Actual key/output/stack/user owners, nonalias and continuous entry/mapping lifetime",
+    "Complete shared helper/entry/callee/return/fatal/exception and whole-syscall retirement",
+    "Unrun native random lengths, extraction scratch failure paths and outer spill/return-word cleanup",
+    "One site, three fallback obligations, clock spills, further profiles and canonical clean production qualification",
+    "Complete original Linux-compatible kernel acceptance"
+  ]
+}

@@ -721,3 +721,45 @@ owners/nonalias, continuous lifetime, complete helper/entry/callee/return/fatal/
 exception/staging/output effects, remaining sites, fallback obligations, retired
 clock spills, further profiles and canonical clean production qualification
 remain required. Stage 3, initial Step 4 and the original goal remain unfinished.
+
+## Stage 3 bounded random outputs
+
+The [random-output checkpoint](tools/user-memory/results/stage-3-random-outputs/README.md)
+checks both initial and reusable output paths, positive counts capped at sixteen,
+the suspended privileged-stack switch/save/restore and two indexed user
+store/readback instructions. Closed effects/frame dataflow covers all 1843
+extractor instructions, preserves the argument registers and proves that both
+allocated paths erase 128 scratch bytes before release. The selected switched
+stack cost is 168 bytes; actual owner/nonalias/lifetime and retired caller words
+remain separate obligations.
+
+The ordinary buffer VM observes 48 admissions, forty refusals and eight complete
+eight-byte outputs totaling 64 bytes, plus twenty-four early zero/invalid-flag/
+excessive-count results without admission. Separate saved-record readback joins
+actual syscall arguments/results, byte indices and opaque returned-output hashes.
+Fresh storage/pinned regressions and two fixture tests pass. Native coverage
+still uses length eight; other lengths and extractor failure paths remain gaps.
+
+The initial raw-table comparison rejected the hardware's Accessed/Dirty update
+on an admitted destination leaf. An unchanged-kernel diagnostic records exactly
+that `0x60` change. Complete table observations now permit only monotonic A/D
+sets on the admitted writable user destination leaves; permission, backing,
+page-size, NX, bit-clearing and unrelated-entry changes remain rejected.
+Models cover those exclusions. All 121 final models/readers pass after a
+separately versioned one-line repair of an unexecuted unittest mock namespace.
+The four native/build commands retain their exact recorded source versions;
+all runtime inputs remain identical.
+
+Saved GNU readback agrees on 1900 selected instructions and three guard cuts;
+twenty-three offline controls reject malformed loop/stack/cleanup artifacts.
+Seventeen core objects/images and fifteen preceding metadata/reports compare
+equal per cohort. Exact frozen source-join/twelve-report/model/native/GNU/
+intermediate replay binds 164 selected sources and 36 artifacts without changing
+kernel or installed storage fixture bytes. The conditional index is 90/91 sites
+and 325 user instructions, leaving the named-root fallback outside the listed
+graph. First reach remains 83/91 fresh and 87/91 with preceding same-kernel
+evidence. Complete owners/nonalias/lifetime, helper/entry/callee/return/fatal/
+exception/whole-syscall effects, unrun native cases, the 32 random and 96 clock
+retired spill bytes, remaining site, all fallback obligations, further profiles
+and canonical clean production qualification remain required. Stage 3, initial
+Step 4 and the original kernel goal remain unfinished.

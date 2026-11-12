@@ -1,0 +1,816 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "3ec2352ace9d658ee0940313b1e68aed65d320a6f3982987951d0a79134d01d2",
+  "observation_sha256": "feee6d555401af4a6c69cc0f0564c4b70304f3a26e8dbca46170dc54a68bf5a8",
+  "events": [
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 1,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 1,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 1,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 1,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 1,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 1,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "e911cfea8e4f7d21580873bb8a38c482f09d0dca4c3432ca84e4c4674d182e18",
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 2,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 2,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 2,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 2,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 2,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 2,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "a5c194b54f7e4436fec20667b6dbc5fbe475220a560fcce85775ff139cc50238",
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 3,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "47d3656cd9ddce037b0d803b667321f7b60d01c6e89e27b1dabea63a13711767",
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 3,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "1612674d390a4000fb565dee0f49e80f77c74a964ea5c7e42f411045fe46d337",
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 3,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "b4761e34be5e97b9ab885ef9ae523c4adc5d8eddcf04035343ac85ebc9706cc1",
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 3,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "e071c8c1d23290d63031d69dcf8947fb5ca41574d570c53701bc1a7e0dc57bc5",
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 3,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "0b28d71689254e4d396df936ef2489ba383a7ed44abd36828087ac4f4657fef5",
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529024,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 18446744073709551615,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 4194304,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 8388608,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6529023,
+      "size": 8,
+      "marker": 3,
+      "result": -14,
+      "accepted": false,
+      "stores": [],
+      "readbacks": [],
+      "payload_sha256": null,
+      "table_status_sets": []
+    },
+    {
+      "candidate": 6524920,
+      "size": 8,
+      "marker": 3,
+      "result": 8,
+      "accepted": true,
+      "stores": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "readbacks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "payload_sha256": "8cbb24b51f4eb42ade690bbb14d7c891f7a63e00b06010b0d1da78a4ea639fcd",
+      "table_status_sets": []
+    }
+  ],
+  "early_results_without_admission": [
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    },
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    },
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    },
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    },
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    },
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    },
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    },
+    {
+      "size": 0,
+      "flags": 1,
+      "result": 0
+    },
+    {
+      "size": 8,
+      "flags": 8,
+      "result": -22
+    },
+    {
+      "size": 17,
+      "flags": 1,
+      "result": -22
+    }
+  ],
+  "admissions": 48,
+  "refusals": 40,
+  "completions": 8,
+  "bytes": 64,
+  "initial_completions": 1,
+  "reusable_completions": 7,
+  "native_lengths": [
+    8
+  ],
+  "indexed_stores": 64,
+  "indexed_readbacks": 64,
+  "source_syscall_order_results_and_opaque_output_hashes_equal": true,
+  "saved_observer_program_present": true,
+  "scope": "Independent saved record/source syscall ordering, actual candidate/count/results, 24 early no-admission results, complete byte indices and opaque returned-output hashes. Private/helper/mapping assertions retain their native observer evidence. No new native execution, cryptographic proof, full 1..16 native length coverage, extraction scratch/retired outer spill/owner/lifetime or production qualification"
+}

@@ -1,0 +1,8 @@
+{
+  "exit_code": 1,
+  "stage": "Standalone table-status model setup",
+  "tests": 121,
+  "errors": 12,
+  "reason": "The mock execution namespace omitted struct, which both actual GDB programs already import",
+  "source_sha256": "f78fb39fb73bbb2c92e3c638efa5c99d9a38d427cf43060702b901036963bf86"
+}

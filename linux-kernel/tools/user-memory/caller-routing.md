@@ -293,3 +293,19 @@ lacking intervals. First reach remains 83/91 fresh and 87/91 with preceding
 same-kernel evidence. Actual owners/nonalias, continuous lifetime, full helper/
 entry/callee/return/fatal/exception/staging/output effects, retired clock spills,
 fallback and canonical production obligations remain open.
+
+The [bounded random outputs](results/stage-3-random-outputs/README.md) join the
+initial/reusable paths to positive capped admission and a checked scalar byte
+loop. Closed effects/frame dataflow covers the 1843-instruction extractor,
+including 128-byte scratch erasure before both releases and restored argument
+registers. Actual key/output/stack owners and nonaliasing remain conditions.
+The source VM observes forty refusals and eight eight-byte outputs; ordinary
+storage/pinned regressions, two fixture tests, 121 models/readers, 23 offline
+controls and exact twelve-report replay pass. Complete table observations admit
+only recorded monotonic A/D sets on admitted destination leaves, following the
+retained diagnostic. The isolated unittest namespace repair is separately
+versioned from native commands. Kernel bytes remain unchanged. The conditional
+index is 90/91 sites and 325 user instructions; first reach remains 83/91 fresh
+and 87/91 joined. Native lengths beyond eight, full owners/nonalias/lifetime,
+complete caller/helper/fatal/exception/retirement, random/clock saved-word cleanup,
+the remaining site, fallback and canonical production obligations remain open.
