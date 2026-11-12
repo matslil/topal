@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "risk": "high",
+  "executable_kernel_changed": false,
+  "core_language_or_authority_meaning_changed": false,
+  "safeguard_notices": [],
+  "review": "Single-agent authority/source/full-diff review, independent complete-state model and saved-delta/stat/source-image readback, offline record controls and exact kernel/object/report comparison. No independent human security review is claimed.",
+  "native_scope": "Four source-built ordinary metadata iterations, with actual source/syscall/clock and complete filesystem/descriptor transitions. The pure byte model grants no kernel owners.",
+  "remaining": [
+    "actual owners/nonalias and continuous lifetime",
+    "complete helper/entry/callee/fatal/exception/whole-syscall effects",
+    "all fallback and unrun native length/failure paths",
+    "canonical clean source/native/load/boot producer and activation",
+    "full original Linux distribution/container/VM-host acceptance"
+  ],
+  "history": "The initial 128-call cohort lacked descriptor truncation; the final 136-call cohort adds it. Readback controls exposed a missing explicit membership assertion, which previously failed closed with KeyError. Diagnostic/provenance byte differences remain separately bound; no retained-intermediate equivalence or new GNU decode is claimed."
+}

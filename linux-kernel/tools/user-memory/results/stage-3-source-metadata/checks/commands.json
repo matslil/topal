@@ -1,0 +1,88 @@
+[
+  {
+    "label": "fixtures",
+    "command": [
+      "/usr/bin/python3",
+      "linux-kernel/.cache/x86_64/run-staging-focused-tests.py",
+      "source_fixture::",
+      "--prefix"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.8902805214747787
+  },
+  {
+    "label": "models",
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "linux-kernel/tools/user-memory",
+      "-v"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.496658836491406
+  },
+  {
+    "label": "all-targets",
+    "command": [
+      "cargo",
+      "check",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "-j1"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 3.779986950568855
+  },
+  {
+    "label": "format",
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.193577934987843
+  },
+  {
+    "label": "source-format",
+    "command": [
+      "rustfmt",
+      "--edition",
+      "2024",
+      "--check",
+      "--config",
+      "skip_children=true,reorder_imports=false",
+      "src/topal-compiler/src/systems_frame_root_tests.rs",
+      "src/topal-compiler/src/systems_user_source_fixture.rs"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.03404794912785292
+  },
+  {
+    "label": "source-size",
+    "command": [
+      "/usr/bin/python3",
+      "scripts/check_rust_file_sizes.py"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.3056943491101265
+  },
+  {
+    "label": "whitespace",
+    "command": [
+      "git",
+      "-c",
+      "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06315039936453104
+  }
+]

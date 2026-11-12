@@ -18,6 +18,7 @@ from user_extent_pipe_observer import PROGRAM as PIPE_PROGRAM
 from user_extent_storage_observer import PROGRAM as STORAGE_PROGRAM
 from user_extent_serial_observer import PROGRAM as SERIAL_PROGRAM, DIALOGUE, native_sites as serial_native_sites
 from user_extent_stat_observer import PROGRAM as STAT_PROGRAM
+from user_extent_metadata_observer import PROGRAM as METADATA_PROGRAM
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -82,6 +83,8 @@ class SourceReturned(Checked):
             return pipe_returned(current,after)
         if component.get('mode') == 'storage':
             return storage_returned(current,after)
+        if component.get('mode') == 'metadata':
+            return metadata_returned(current,after)
         if component.get('mode') == 'serial':
             return serial_returned(current,after)
         if component.get('mode') == 'stat':
@@ -141,6 +144,8 @@ class SourceEntered(Checked):
         if component.get('mode') == 'storage':
             current['storage_table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
             current['_storage_initial'] = memory(word(context+928)+STORAGE_BASE,STORAGE_BYTES).hex()
+        if component.get('mode') == 'metadata':
+            metadata_begin(current)
         if component.get('mode') == 'serial':
             current['serial_table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
             current['serial_received']=[]
@@ -176,6 +181,8 @@ class SyscallReturned(Checked):
             pipe_result(pending)
         if current and component.get('mode') == 'storage' and pending['number'] != 12:
             storage_result(pending)
+        if current and component.get('mode') == 'metadata' and pending['number'] != 12:
+            metadata_result(pending)
         if current and component.get('mode') == 'serial' and pending['number'] != 12:
             serial_result(pending)
         if current and component.get('mode') == 'stat' and pending['number'] in [5,262]:
@@ -221,6 +228,8 @@ class SyscallEntered(Checked):
             pipe_request(pending)
         if current and component.get('mode') == 'storage' and pending['number'] != 12:
             storage_request(pending)
+        if current and component.get('mode') == 'metadata' and pending['number'] != 12:
+            metadata_request(pending)
         if current and component.get('mode') == 'serial' and pending['number'] != 12:
             serial_request(pending)
         if current and component.get('mode') == 'stat' and pending['number'] in [5,262]:
@@ -468,22 +477,24 @@ def file_returned(row):
 
 # STAT_OBSERVER
 
+# METADATA_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
         numbers = [row['number'] for row in observed['startup_executions']]
-        if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat']:
+        if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat','metadata']:
             assert len(observed['executions']) == 4
             assert all(not observed[key] for key in [
                 'startup_executions','file_executions','shell_executions','command_executions'])
         else:
             assert numbers and len(numbers) % 5 == 0
         assert numbers == [302,318,318,157,262]*(len(numbers)//5)
-        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat'] else [
+        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat','metadata'] else [
             5,257,262,257,5,0,257,5,217,217,262,257,5,217,217,262,262,262,257,257]
         )
-        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat'] else 5)
-        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat'] else 38)
+        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat','metadata'] else 5)
+        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat','metadata'] else 38)
         assert len(observed['poll_executions']) == (4 if component.get('mode') == 'poll' else 0)
         assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])+len(observed['shell_executions'])+len(observed['command_executions'])+len(observed['poll_executions'])
         assert state() == [0,0,0,0]
@@ -511,6 +522,7 @@ try:
     install_extent_coverage()
     install_serial_observation()
     install_storage_input_observation()
+    install_metadata_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -545,6 +557,8 @@ assert PROGRAM.count('# SERIAL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# SERIAL_OBSERVER', SERIAL_PROGRAM)
 assert PROGRAM.count('# STAT_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# STAT_OBSERVER', STAT_PROGRAM)
+assert PROGRAM.count('# METADATA_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# METADATA_OBSERVER', METADATA_PROGRAM)
 
 
 if __name__ == '__main__':
@@ -554,7 +568,7 @@ if __name__ == '__main__':
     assert hashlib.sha256(image).hexdigest() == component['image_sha256']
     archive = members((build / 'initramfs.cpio').read_bytes())
     assert archive['static-user.elf'] == image
-    extent_inventory = linked_inventory(build) if component.get('mode') in ['transfers','poll','pipes','storage','serial','stat'] else None
+    extent_inventory = linked_inventory(build) if component.get('mode') in ['transfers','poll','pipes','storage','serial','stat','metadata'] else None
     if component.get('mode') == 'transfers':
         extent_inventory['native_observers'] = ['staged','copies']
         extent_inventory['source_scoped_staged'] = True
@@ -579,7 +593,8 @@ if __name__ == '__main__':
         input_scope='source-built ordinary user-buffer boundary cases',
         # The additional read-only stack breakpoints consume debugger wall time.
         # Keep a finite deadline and the same guest/host resource boundaries.
-        guest_timeout_seconds=(480 if component.get('mode')=='transfers' and extent_inventory is not None and
+        guest_timeout_seconds=(600 if component.get('mode')=='metadata' else
+                               480 if component.get('mode')=='transfers' and extent_inventory is not None and
                                extent_inventory.get('stack_retirement_audit') is not None else 300),
         serial_dialogue=DIALOGUE*4 if component.get('mode')=='serial' else (),
     )

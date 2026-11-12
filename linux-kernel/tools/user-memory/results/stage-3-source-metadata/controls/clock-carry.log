@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/x86_64/readback-source-metadata.py", line 83, in <module>
+    assert len(clocks)==int(mutation) and all(clock['carry']==0 for clock in clocks)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

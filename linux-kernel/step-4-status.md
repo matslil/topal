@@ -11,6 +11,9 @@ The experimental [owned user-memory work](step-4-owned-user-extents.md) now
 includes [selected clock/random stack retirement](tools/user-memory/results/stage-3-stack-retirement/README.md).
 Thirteen normal-return cleanup blocks preserve registers/flags and the existing
 stack bounds, with fresh native regressions and exact emission comparison.
+The subsequent [ordinary metadata cohort](tools/user-memory/results/stage-3-source-metadata/README.md)
+checks complete filesystem/descriptor transitions and observes the remaining
+clock callers, giving all thirteen selected cleanup blocks in same-kernel union.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 

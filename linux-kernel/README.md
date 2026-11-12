@@ -13,8 +13,11 @@ in this phase.
 
 The experimental [owned user-memory work](step-4-owned-user-extents.md) now
 qualifies selected [clock/random stack retirement](tools/user-memory/results/stage-3-stack-retirement/README.md).
-Fresh VM regressions and exact emitted-byte comparison cover the new cleanup;
-actual ownership/lifetime, complete caller qualification and canonical production
+Fresh VM regressions and exact emitted-byte comparison cover the new cleanup.
+The subsequent [ordinary metadata cohort](tools/user-memory/results/stage-3-source-metadata/README.md)
+joins named-file, mode, link/rename and truncation effects to all thirteen
+selected cleanup blocks in the same kernel.
+Actual ownership/lifetime, complete caller qualification and canonical production
 activation remain required. This does not complete Step 4 or distribution,
 container or VM-host acceptance.
 

@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/x86_64/readback-source-metadata.py", line 99, in <module>
+    assert apply(fs,call['metadata_filesystem_delta'])==expected_fs
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

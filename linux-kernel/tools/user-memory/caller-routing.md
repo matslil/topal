@@ -323,3 +323,15 @@ including predecessors, remain equal. The conditional user-access index stays
 90/91 sites and 325 instructions. Actual owners/nonaliasing, continuous lifetime,
 complete caller/helper/entry/fatal/exception effects, unrun native paths, fallback
 obligations and canonical production qualification remain open.
+
+The [ordinary metadata cohort](results/stage-3-source-metadata/README.md) adds
+136 real syscalls over named inode/description lifetimes, with complete private
+byte-delta replay, 44 stat outputs and 44 actual clock returns. It reaches the
+mode, truncating-open, unlink, link, rename and descriptor-truncate callers;
+combined with the unchanged preceding kernel this observes all thirteen selected
+cleanup blocks. The fresh run reaches 76/91 helper sites and the same-kernel
+union remains 83/91; the conditional index remains 90/91 and 325 user accesses.
+All 141 models/readers, fourteen offline record controls and two fixture tests
+pass. Actual owners/nonaliasing, continuous lifetime, complete entry/helper/
+callee/fatal/exception/whole-syscall effects, fallback and canonical clean
+production obligations retain their separate acceptance gates.

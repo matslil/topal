@@ -1,0 +1,44 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "source_fixture::",
+    "--",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "selected_tests": 2,
+  "exit_code": 0,
+  "elapsed_seconds": 0.6522197108715773,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794466398635573127/temporary",
+  "resources": {
+    "memory.max": "3208658944",
+    "memory.swap.max": "0",
+    "memory.peak": "46100480",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "6f9d7113085829e5572976dc132d5d4194371ce237fcd100203ca0749421b794",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "401424d9898cca86f54eff4eb7584fba70eea8b4108b1cd7e7ef88ce50c09687",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "cc60e879edcb846b217b335b89565dc188ce863368220b4e0fd2147892c0230d",
+    "linux-kernel/labs/qemu/x86_64/user_extent_metadata_cases.c": "1298e54c4451ff0e6dff331063110d189e49f39ae5e68a6744678a2018b8f4ea",
+    "linux-kernel/labs/qemu/x86_64/user_extent_metadata_observer.py": "56bc92bda72950c9ece9ef343a28a36f0dbbf34e507083bdfc66bdf000e486c1",
+    "linux-kernel/tools/user-memory/metadata_model.py": "0d33dd2afd81b614dcd0a8b4ba414cd8c88e6754f89a18ea0e743fb75e314e4e",
+    "linux-kernel/tools/user-memory/test_metadata_model.py": "f831ccaae9dd4417b2b1159f585546135d68e6c052f38dca1d0aafcb950c9483"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "6f9d7113085829e5572976dc132d5d4194371ce237fcd100203ca0749421b794",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "401424d9898cca86f54eff4eb7584fba70eea8b4108b1cd7e7ef88ce50c09687",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "cc60e879edcb846b217b335b89565dc188ce863368220b4e0fd2147892c0230d",
+    "linux-kernel/labs/qemu/x86_64/user_extent_metadata_cases.c": "1298e54c4451ff0e6dff331063110d189e49f39ae5e68a6744678a2018b8f4ea",
+    "linux-kernel/labs/qemu/x86_64/user_extent_metadata_observer.py": "56bc92bda72950c9ece9ef343a28a36f0dbbf34e507083bdfc66bdf000e486c1",
+    "linux-kernel/tools/user-memory/metadata_model.py": "0d33dd2afd81b614dcd0a8b4ba414cd8c88e6754f89a18ea0e743fb75e314e4e",
+    "linux-kernel/tools/user-memory/test_metadata_model.py": "f831ccaae9dd4417b2b1159f585546135d68e6c052f38dca1d0aafcb950c9483"
+  },
+  "source_changes_during_run": false
+}

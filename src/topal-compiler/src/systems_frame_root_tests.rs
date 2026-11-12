@@ -80,6 +80,12 @@ fn owned_source_fixture_checks_storage_transfer_boundaries() {
 }
 
 #[test]
+#[ignore = "requires the bounded QEMU/GDB metadata cohort"]
+fn owned_source_fixture_checks_metadata_lifetimes() {
+    execute_selected(true, true, true, Some(CallerFocus::SourceMetadata));
+}
+
+#[test]
 #[ignore = "requires a C compiler, QEMU and GDB"]
 fn owned_source_fixture_checks_serial_transfer_boundaries() {
     // TOPAL-SYSTEMS-USER-EXTENT-001; STATIC-PROCESS-FD-TABLE-001.
@@ -134,6 +140,7 @@ enum CallerFocus {
     SourcePoll,
     SourcePipes,
     SourceStorage,
+    SourceMetadata,
     SourceSerial,
     SourceStat,
     Startup,
@@ -192,7 +199,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::SourceStat) {
+    let prefix = if focus == Some(CallerFocus::SourceMetadata) {
+        "user-extent-source-metadata"
+    } else if focus == Some(CallerFocus::SourceStat) {
         "user-extent-source-stat"
     } else if focus == Some(CallerFocus::SourceSerial) {
         "user-extent-source-serial"
@@ -239,6 +248,7 @@ fn execute_selected(
                 | CallerFocus::SourcePoll
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
+                | CallerFocus::SourceMetadata
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
         )
@@ -331,7 +341,9 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if focus == Some(CallerFocus::SourceStat) {
+    let fixture_bytes = if focus == Some(CallerFocus::SourceMetadata) {
+        crate::systems_user_extent::source_fixture::build_metadata(work, tools)
+    } else if focus == Some(CallerFocus::SourceStat) {
         crate::systems_user_extent::source_fixture::build_stat(work, tools)
     } else if focus == Some(CallerFocus::SourceSerial) {
         crate::systems_user_extent::source_fixture::build_serial(work, tools)
@@ -598,6 +610,7 @@ fn build_guest(
                 | CallerFocus::SourcePoll
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
+                | CallerFocus::SourceMetadata
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
         )
@@ -928,6 +941,7 @@ fn build_guest(
                             | CallerFocus::SourcePoll
                             | CallerFocus::SourcePipes
                             | CallerFocus::SourceStorage
+                            | CallerFocus::SourceMetadata
                             | CallerFocus::SourceSerial
                             | CallerFocus::SourceStat
                     )

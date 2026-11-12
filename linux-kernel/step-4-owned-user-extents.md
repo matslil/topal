@@ -802,3 +802,39 @@ fatal/exception and whole-syscall effects, unrun native paths and lengths,
 remaining site/fallback obligations and canonical clean production qualification
 remain required. Stage 3, initial Step 4 and the original kernel goal remain
 unfinished.
+
+## Stage 3 ordinary metadata and named-inode lifetimes
+
+The [source metadata checkpoint](tools/user-memory/results/stage-3-source-metadata/README.md)
+executes four source-built iterations of 34 ordinary syscalls. Complete saved
+byte models check 124 filesystem/descriptor-table transitions, 44 stat outputs
+and 44 actual admitted clock returns. Requests cover named creation, positional
+write, descriptor shrink with complete page-tail erasure, shared modes, hard
+link, rename, unlink, truncating reopen and final-reference reclamation. Five
+refusals per iteration preserve complete private state and issue no clock call.
+The user program supplies no kernel-private state.
+
+The fresh run observes twelve cleanup blocks, 146 activations and 5208 zeroed
+bytes. It reaches all nine direct clock callers when joined with the preceding
+identical-kernel storage run, giving all thirteen selected normal-return blocks.
+First reach remains 76/91 fresh and 83/91 in the explicitly bound same-kernel
+union; the conditional index remains 90/91 sites and 325 user instructions.
+This closes the selected cleanup-block reach gap, not every path or caller.
+
+Independent saved-record replay reconstructs complete private transitions and
+checks returned stat bytes, immutable source inputs, loaded source text, the
+ordinary syscall adapter and the unchanged 2048-byte user-stack ceiling. All
+141 models/readers, fourteen offline record controls, two fixture tests and
+the affected workspace/format/size checks pass. Seventeen core objects/images,
+thirteen audits and four other metadata artifacts remain byte-identical.
+Diagnostic filename differences and separately versioned baseline provenance
+remain explicitly bound; actual baseline sources/modules/objects are equal.
+Retained intermediate-text equivalence and a new GNU run are not claimed.
+
+The new cohort has a finite 600-second debugger deadline; its complete test
+finishes in about 291 seconds with zero memory events and no swap. Guest and
+host protections, memory limits, kernel behavior and core language meaning are
+unchanged. Actual owners/nonaliasing, continuous lifetime, complete helper/
+entry/callee/fatal/exception and whole-syscall effects, remaining user-access and
+fallback obligations, canonical clean production reconstruction and full original
+kernel acceptance remain required. Stage 3 and initial Step 4 remain unfinished.
