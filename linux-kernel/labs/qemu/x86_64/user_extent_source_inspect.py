@@ -577,6 +577,9 @@ if __name__ == '__main__':
                         f'extent_inventory={extent_inventory!r}\n'
                         f'native_sites={invariant_halt(build / "kernel.elf")!r}\n'),
         input_scope='source-built ordinary user-buffer boundary cases',
-        guest_timeout_seconds=300,
+        # The additional read-only stack breakpoints consume debugger wall time.
+        # Keep a finite deadline and the same guest/host resource boundaries.
+        guest_timeout_seconds=(480 if component.get('mode')=='transfers' and extent_inventory is not None and
+                               extent_inventory.get('stack_retirement_audit') is not None else 300),
         serial_dialogue=DIALOGUE*4 if component.get('mode')=='serial' else (),
     )

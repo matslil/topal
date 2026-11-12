@@ -1396,7 +1396,9 @@ fn emit_static_process_completion(
     code.bytes(&[0x48, 0x81, 0xc7]);
     code.bytes(&192_u32.to_le_bytes());
     code.call("static-process-getrandom-extract");
+    x86_function::E(code).retire_owned_stack_words(1);
     code.bytes(&[0x5e, 0x5f, 0x59, 0x41, 0x5b]);
+    x86_function::E(code).retire_owned_stack_words(4);
     code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25]);
     code.bytes(&272_u32.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);

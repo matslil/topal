@@ -13,6 +13,7 @@ from audit_fixed_transfers import check_graph,reachable
 from audit_warning_inputs import Slice
 from inspect_call_inventory import Elf,digest,verify_calls
 from random_extract_effects import effects
+from retired_stack_words import take as retired_words
 
 
 def extract_contract(body,nodes,roots,successors,predecessors,entry):
@@ -144,7 +145,11 @@ def audit(build):
     extract_entry=s.at+5+struct.unpack_from('<i',encoded,1)[0]
     s.take(encoded.hex())
     callee=extract_contract(body,nodes,roots,successors,predecessors,extract_entry)
-    for raw in ['5e','5f','59','415b','65488b242510010000','6548c704251001000000000000','85c0']:
+    extract_return_word=retired_words(s,1)
+    for raw in ['5e','5f','59','415b']:
+        s.take(raw)
+    caller_spills=retired_words(s,4)
+    for raw in ['65488b242510010000','6548c704251001000000000000','85c0']:
         s.take(raw)
     s.fatal('0f84')
     s.take('654c8b0c2500010000')
@@ -192,12 +197,13 @@ def audit(build):
             initial_output=initial,extract_call=extract_call,extract_entry=extract_entry,
             switched_stack_gs_offset=8,suspended_stack_gs_offset=272,outer_saved_words=4,
             selected_switched_stack_bytes=32+callee['borrowed_stack_bytes_including_return'],
-            retired_outer_spill_erasure_verified=False,
+            extract_return_word_retirement=extract_return_word,caller_spill_retirement=caller_spills,
+            retired_outer_spill_erasure_verified=True,
             loop_offset=loop,load_offset=load,start_offset=store,readback_offset=readback,
             end_offset=complete,back_edge=[back,loop],zero_exit=zero,excessive_exit=excessive,failure_exit=failure,
             source=dict(captured_gs_field=256,initial_offset=168,reusable_offset=224,capacity=32))],
         extract_contract=callee,transfer_regions=1,user_access_instructions=2,
-        scope='Conditional 1..16 count and success-edge dominance, exact initial/reusable preparation, suspended-stack save/switch/restore, closed extraction frame/effects, and scalar output/readback loop. Actual key/output/stack/user owners and nonalias, GS stack/reference stability, retired outer spill/return-word cleanup, complete helpers/entry/fatal/exception/retirement/production remain open; this report alone does not extend the published index')
+        scope='Conditional 1..16 count and success-edge dominance, exact initial/reusable preparation, suspended-stack save/switch/restore, closed extraction frame/effects, explicit returned-callee-word and four popped-word retirement, and scalar output/readback loop. Actual key/output/stack/user owners and nonalias, GS stack/reference stability, complete helpers/entry/fatal/exception/retirement/production remain open; this report alone does not extend the published index')
     (build/'random-output-audit.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(dict(passed=True,regions=1,user_instructions=2,extract_instructions=len(callee['instructions']),
         switched_stack_bytes=168,complete=False)))

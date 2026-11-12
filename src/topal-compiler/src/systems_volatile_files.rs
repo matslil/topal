@@ -25,6 +25,12 @@ pub(super) const KIND: i32 = 7;
 // One call to file-clock, twelve saved GPRs and its RTC observation call.
 const MAXIMUM_HELPER_STACK: u64 = 8 + 12 * 8 + 8;
 
+#[cfg_attr(test, track_caller)]
+pub(super) fn call_clock(e: &mut E<'_>) {
+    e.0.call("file-clock");
+    e.retire_owned_stack_words(1);
+}
+
 const _: () = {
     assert!(UMASK >= STAGING + 256);
     assert!(UMASK + 8 <= super::signals::ACTIONS);
@@ -212,10 +218,12 @@ fn emit_lookup(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileErro
         0x41, 0x56, 0x41, 0x57,
     ]);
     e.0.call("realtime-observe");
+    e.retire_owned_stack_words(1);
     e.0.bytes(&[
         0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5b, 0x41, 0x5a, 0x41, 0x59, 0x41, 0x58, 0x5a,
         0x5e, 0x5f, 0x5d, 0x5b,
     ]);
+    e.retire_owned_stack_words(12);
     e.0.bytes(&[0xc3]);
     // Checked descriptor lookup preserves transfer arguments and object identity.
     e.0.bind("file-object-lookup")?;

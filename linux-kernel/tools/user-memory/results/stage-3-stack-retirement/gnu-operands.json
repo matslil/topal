@@ -1,0 +1,156 @@
+{
+  "passed": true,
+  "kernel_sha256": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+  "audit_sha256": "c197e0748cd0025791b7b0e34c8065a7d5820762cc715d3fa0f35e77ceb5f688",
+  "graph_sha256": "62a92404a664e1be515652803b2e5007ddf0c716e57a9b656ba62a7afff5d2f0",
+  "gnu_transcript_sha256": "fd627d74c225a065a7e657f8d19c0b4ee2223aead4ff46d7496f56cec099ef1b",
+  "blocks": [
+    {
+      "name": "clock-leaf-return",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-saved-registers",
+      "stores": 12,
+      "negative_offsets": [
+        -8,
+        -16,
+        -24,
+        -32,
+        -40,
+        -48,
+        -56,
+        -64,
+        -72,
+        -80,
+        -88,
+        -96
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-148223",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-159315",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-160123",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-163408",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-164174",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-223501",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-224584",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-226335",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "clock-caller-227530",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "random-extract-return",
+      "stores": 1,
+      "negative_offsets": [
+        -8
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    },
+    {
+      "name": "random-saved-registers",
+      "stores": 4,
+      "negative_offsets": [
+        -8,
+        -16,
+        -24,
+        -32
+      ],
+      "predecessor_chain_closed": true,
+      "register_writes": [],
+      "flags_unchanged": true
+    }
+  ],
+  "selected_instructions": 27,
+  "exact_zero_store_operands_equal": true,
+  "scope": "Fresh complete GNU graph re-decode plus independent qword/immediate-zero/negative-RSP operand and predecessor-chain checks. MOV memory-immediate has no GPR/RSP/flag writes. Actual owners/nonalias, frame/lifetime, full caller and production qualification remain separate"
+}

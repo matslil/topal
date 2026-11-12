@@ -763,3 +763,42 @@ exception/whole-syscall effects, unrun native cases, the 32 random and 96 clock
 retired spill bytes, remaining site, all fallback obligations, further profiles
 and canonical clean production qualification remain required. Stage 3, initial
 Step 4 and the original kernel goal remain unfinished.
+
+## Stage 3 selected private stack retirement
+
+The [stack-retirement checkpoint](tools/user-memory/results/stage-3-stack-retirement/README.md)
+adds actual immediate-zero stores for the clock's twelve popped registers,
+returned RTC word and all nine direct caller return words. Random extraction
+similarly retires its returned word and four popped caller words before stack
+restoration. The selected normal-return clock and random call-tree costs remain
+112 and 168 bytes. Actual stack/key/output owners, nonaliasing, continuous
+lifetime, enclosing caller and fatal/exception effects remain conditions.
+
+Thirteen closed blocks contain 27 stores. Fresh GNU decoding agrees with all
+31051 graph nodes and 36977 edges; separate operand/predecessor readback checks
+every cleanup store. Complete 232003-byte process reconstruction derives exactly
+324 inserted bytes and all 4262 relative-displacement updates, including 85
+outside the selected graph using the full preceding GNU linear decode. All
+other 162 provider functions and fourteen component objects, including the
+predecessor provider/gateway, remain byte-identical.
+
+Three fresh VM regressions and two fixture tests pass with the same seventeen
+recorded changed input versions. Read-only observations check all GPRs, RSP,
+flags, exact zeroed bytes and adjacent words at each reached cleanup activation.
+The fresh matching-kernel union reaches 7/13 cleanup blocks and 83/91
+helper sites; no preceding kernel's native reach is reused. Sixteen offline
+ELF controls, all 132 model/reader tests and six affected checks pass.
+
+The long ordinary-buffer VM retained partial failures at 300 and 420 seconds,
+after 51 and 84 of 87 source-case markers. Its additional stack observer now
+uses a finite 480-second deadline; other cohorts retain their earlier deadlines.
+No observations, memory/swap bounds, guest isolation or host protections were
+removed. These are debugger deadline failures, not model/provider safety notices.
+
+The fresh conditional index remains 90/91 sites and 325 user instructions.
+The selected saved-word cleanup gap is addressed on normal returns; actual
+owners/nonaliasing, continuous lifetime, complete helper/entry/callee/return/
+fatal/exception and whole-syscall effects, unrun native paths and lengths,
+remaining site/fallback obligations and canonical clean production qualification
+remain required. Stage 3, initial Step 4 and the original kernel goal remain
+unfinished.

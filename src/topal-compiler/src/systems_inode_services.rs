@@ -121,7 +121,7 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.bind("inode-admitted")?;
     // All recoverable lookup/access checks precede the clock and source grant.
     // The checked clock preserves kind, actual record and adapted permissions.
-    e.0.call("file-clock");
+    super::volatile_files::call_clock(&mut e);
     e.0.jump_if(0x82, "inode-eio");
     e.mov(R8, A);
     e.mov(Di, R12);

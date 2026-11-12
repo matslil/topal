@@ -1,0 +1,165 @@
+{
+  "count": 101,
+  "examples": [
+    {
+      "offset": 22608,
+      "expected": "070f8419050000e9c28b01004881ff80",
+      "actual": "070f8419050000e9fe8b01004881ff80"
+    },
+    {
+      "offset": 22621,
+      "expected": "81ff807d5f000f85b58b010065488b14",
+      "actual": "81ff807d5f000f85f18b010065488b14"
+    },
+    {
+      "offset": 22648,
+      "expected": "0000004885d20f849a8b01004d85c00f",
+      "actual": "0000004885d20f84d68b01004d85c00f"
+    },
+    {
+      "offset": 22657,
+      "expected": "8b01004d85c00f84918b01004c89c048",
+      "actual": "8b01004d85c00f84cd8b01004c89c048"
+    },
+    {
+      "offset": 23064,
+      "expected": "81ff808d61000f85fa8901004881f900",
+      "actual": "81ff808d61000f85368a01004881f900"
+    },
+    {
+      "offset": 23065,
+      "expected": "ff808d61000f85fa8901004881f90010",
+      "actual": "ff808d61000f85368a01004881f90010"
+    },
+    {
+      "offset": 23077,
+      "expected": "81f9001040000f82ed8901004881f985",
+      "actual": "81f9001040000f82298a01004881f985"
+    },
+    {
+      "offset": 23078,
+      "expected": "f9001040000f82ed8901004881f985c2",
+      "actual": "f9001040000f82298a01004881f985c2"
+    },
+    {
+      "offset": 23090,
+      "expected": "81f985c258000f83e08901006548833c",
+      "actual": "81f985c258000f831c8a01006548833c"
+    },
+    {
+      "offset": 23091,
+      "expected": "f985c258000f83e08901006548833c25",
+      "actual": "f985c258000f831c8a01006548833c25"
+    },
+    {
+      "offset": 23106,
+      "expected": "2510010000000f85d08901006548890c",
+      "actual": "2510010000000f850c8a01006548890c"
+    },
+    {
+      "offset": 23107,
+      "expected": "10010000000f85d08901006548890c25",
+      "actual": "10010000000f850c8a01006548890c25"
+    },
+    {
+      "offset": 23142,
+      "expected": "0000004885d20f84ac8901004d85c00f",
+      "actual": "0000004885d20f84e88901004d85c00f"
+    },
+    {
+      "offset": 23151,
+      "expected": "8901004d85c00f84a389010041f7c0ff",
+      "actual": "8901004d85c00f84df89010041f7c0ff"
+    },
+    {
+      "offset": 23164,
+      "expected": "f7c0ff0f00000f8596890100488b82b8",
+      "actual": "f7c0ff0f00000f85d2890100488b82b8"
+    },
+    {
+      "offset": 23196,
+      "expected": "baea3f4c39d00f85768901004883bac0",
+      "actual": "baea3f4c39d00f85b28901004883bac0"
+    },
+    {
+      "offset": 23210,
+      "expected": "bac00f0000000f85688901004883bac8",
+      "actual": "bac00f0000000f85a48901004883bac8"
+    },
+    {
+      "offset": 23224,
+      "expected": "bac80f0000000f855a8901004883bad0",
+      "actual": "bac80f0000000f85968901004883bad0"
+    },
+    {
+      "offset": 23238,
+      "expected": "bad00f0000000f854c8901004883bad8",
+      "actual": "bad00f0000000f85888901004883bad8"
+    },
+    {
+      "offset": 23252,
+      "expected": "bad80f0000000f853e8901004883bae0",
+      "actual": "bad80f0000000f857a8901004883bae0"
+    },
+    {
+      "offset": 23266,
+      "expected": "bae00f0000000f85308901004883bae8",
+      "actual": "bae00f0000000f856c8901004883bae8"
+    },
+    {
+      "offset": 23280,
+      "expected": "bae80f0000000f85228901004883baf0",
+      "actual": "bae80f0000000f855e8901004883baf0"
+    },
+    {
+      "offset": 23294,
+      "expected": "baf00f0000000f85148901004883baf8",
+      "actual": "baf00f0000000f85508901004883baf8"
+    },
+    {
+      "offset": 23308,
+      "expected": "baf80f0000000f8506890100654c8b14",
+      "actual": "baf80f0000000f8542890100654c8b14"
+    },
+    {
+      "offset": 23341,
+      "expected": "0000fcf348af0f85e58801004d8d9000",
+      "actual": "0000fcf348af0f85218901004d8d9000"
+    },
+    {
+      "offset": 23342,
+      "expected": "00fcf348af0f85e58801004d8d900090",
+      "actual": "00fcf348af0f85218901004d8d900090"
+    },
+    {
+      "offset": 23462,
+      "expected": "0000004d85d20f846c880100498b8218",
+      "actual": "0000004d85d20f84a8880100498b8218"
+    },
+    {
+      "offset": 23493,
+      "expected": "83ca074839d00f854d8801000faef048",
+      "actual": "83ca074839d00f85898801000faef048"
+    },
+    {
+      "offset": 23921,
+      "expected": "81ff009061000f85a18601004881f900",
+      "actual": "81ff009061000f85dd8601004881f900"
+    },
+    {
+      "offset": 23934,
+      "expected": "81f9001040000f82948601004881f985",
+      "actual": "81f9001040000f82d08601004881f985"
+    },
+    {
+      "offset": 23947,
+      "expected": "81f985c258000f83878601006548833c",
+      "actual": "81f985c258000f83c38601006548833c"
+    },
+    {
+      "offset": 23963,
+      "expected": "2510010000000f85778601006548890c",
+      "actual": "2510010000000f85b38601006548890c"
+    }
+  ]
+}

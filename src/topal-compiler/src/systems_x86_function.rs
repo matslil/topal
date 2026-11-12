@@ -90,4 +90,18 @@ impl E<'_> {
         ]);
         self.0.bytes(&offset.to_le_bytes());
     }
+
+    /// Erase already-popped private words without changing GPRs or flags.
+    /// The caller still supplies the actual stack owner and retired layout.
+    #[cfg_attr(test, track_caller)]
+    pub(super) fn retire_owned_stack_words(&mut self, words: u8) {
+        if !self.0.owned_user_extents {
+            return;
+        }
+        assert!(words > 0);
+        for index in 1..=i32::from(words) {
+            self.mem(0xc7, R::A, R::_Sp, -8 * index);
+            self.0.bytes(&0_i32.to_le_bytes());
+        }
+    }
 }

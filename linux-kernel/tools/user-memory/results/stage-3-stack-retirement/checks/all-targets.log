@@ -1,0 +1,108 @@
+warning: function `generate_frame_user_extent_root` is never used
+  --> src/topal-compiler/src/systems_artifact_root_object.rs:48:15
+   |
+48 | pub(crate) fn generate_frame_user_extent_root(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `bootstrap_target` is never read
+  --> src/topal-compiler/src/systems_frame_policy_binding.rs:31:9
+   |
+26 | pub(crate) struct Checked {
+   |                   ------- field in this struct
+...
+31 |     pub bootstrap_target: String,
+   |         ^^^^^^^^^^^^^^^^
+
+warning: method `native_binding_required` is never used
+  --> src/topal-compiler/src/systems_frame_policy_binding.rs:41:19
+   |
+38 | impl Checked {
+   | ------------ method in this implementation
+...
+41 |     pub(crate) fn native_binding_required(&self) -> CompileError {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_binding` is never used
+   --> src/topal-compiler/src/systems_frame_publication.rs:315:15
+    |
+315 | pub(crate) fn validate_binding(
+    |               ^^^^^^^^^^^^^^^^
+
+warning: function `inspect` is never used
+ --> src/topal-compiler/src/systems_frame_inspection.rs:6:15
+  |
+6 | pub(super) fn inspect(
+  |               ^^^^^^^
+
+warning: function `inspect_user_extents` is never used
+  --> src/topal-compiler/src/systems_frame_inspection.rs:21:15
+   |
+21 | pub(crate) fn inspect_user_extents(
+   |               ^^^^^^^^^^^^^^^^^^^^
+
+warning: method `validate` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:23:19
+   |
+22 | impl Owners {
+   | ----------- method in this implementation
+23 |     pub(crate) fn validate(&self) -> Result<(), CompileError> {
+   |                   ^^^^^^^^
+
+warning: function `llvm` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:43:15
+   |
+43 | pub(crate) fn llvm() -> String {
+   |               ^^^^
+
+warning: function `target_llvm` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:51:15
+   |
+51 | pub(crate) fn target_llvm(
+   |               ^^^^^^^^^^^
+
+warning: function `dispatch_llvm` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:94:15
+   |
+94 | pub(crate) fn dispatch_llvm() -> Result<String, CompileError> {
+   |               ^^^^^^^^^^^^^
+
+warning: function `inspect_target_instructions` is never used
+   --> src/topal-compiler/src/systems_user_extent.rs:132:15
+    |
+132 | pub(crate) fn inspect_target_instructions(text: &str) -> Result<(), CompileError> {
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ORIGINAL` is never used
+ --> src/topal-compiler/src/systems_user_extent_clean.rs:5:7
+  |
+5 | const ORIGINAL: &str = r#"define internal i1 @t.clean(ptr %p,i64 %bytes) nounwind noinline noredzone noimplicitfloat "disable-tail-ca...
+  |       ^^^^^^^^
+
+warning: constant `WIDE` is never used
+  --> src/topal-compiler/src/systems_user_extent_clean.rs:23:7
+   |
+23 | const WIDE: &str = include_str!("runtime/kernel_user_extent_clean.ll");
+   |       ^^^^
+
+warning: function `adapt` is never used
+  --> src/topal-compiler/src/systems_user_extent_clean.rs:25:15
+   |
+25 | pub(super) fn adapt(text: String) -> Result<String, CompileError> {
+   |               ^^^^^
+
+warning: function `component_object` is never used
+   --> src/topal-compiler/src/systems_frame_gateway.rs:322:15
+    |
+322 | pub(crate) fn component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
+    |               ^^^^^^^^^^^^^^^^
+
+warning: function `user_extent_component_object` is never used
+   --> src/topal-compiler/src/systems_frame_gateway.rs:328:15
+    |
+328 | pub(crate) fn user_extent_component_object(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `topal-compiler` (lib) generated 16 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s

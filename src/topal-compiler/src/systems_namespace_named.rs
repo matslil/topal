@@ -142,7 +142,7 @@ fn reopen(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
     e.cmp(A, 0);
     e.0.jump_if(0x84, "named-open-publish");
     // RTC clears private transfer staging, but retains every owned GPR here.
-    e.0.call("file-clock");
+    files::call_clock(e);
     e.0.jump_if(0x82, "namespace-eio");
     e.mov(R15, A);
     e.0.call("file-release-pages");
@@ -215,7 +215,7 @@ fn unlink(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
         e.cmp(A, 1);
         e.0.jump_if(0x85, "fatal");
     }
-    e.0.call("file-clock");
+    files::call_clock(e);
     e.0.jump_if(0x82, "namespace-eio");
     e.mov(R13, A);
     if namespace_entries {

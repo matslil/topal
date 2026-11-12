@@ -309,3 +309,17 @@ index is 90/91 sites and 325 user instructions; first reach remains 83/91 fresh
 and 87/91 joined. Native lengths beyond eight, full owners/nonalias/lifetime,
 complete caller/helper/fatal/exception/retirement, random/clock saved-word cleanup,
 the remaining site, fallback and canonical production obligations remain open.
+
+The [selected stack-retirement increment](results/stage-3-stack-retirement/README.md)
+now clears the clock's retired twelve-register frame, nested return word and
+all nine direct caller return words, plus random extraction's returned word and
+four popped caller words. Thirteen closed blocks/27 stores preserve GPRs, RSP
+and flags within the unchanged 112/168-byte selected call-tree bounds. Three
+fresh VM regressions reach 7/13 cleanup blocks and 83/91 helper sites;
+all 132 models/readers, sixteen offline controls and exact thirteen-report replay
+pass. Full process-byte reconstruction accounts for the exact 324 added bytes
+and displacement changes; all other provider functions and fourteen components,
+including predecessors, remain equal. The conditional user-access index stays
+90/91 sites and 325 instructions. Actual owners/nonaliasing, continuous lifetime,
+complete caller/helper/entry/fatal/exception effects, unrun native paths, fallback
+obligations and canonical production qualification remain open.

@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stack_retirement.py", line 100, in <module>
+    if __name__=='__main__': audit(Path(sys.argv[1]).resolve())
+                             ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stack_retirement.py", line 55, in audit
+    clock=clock_contract(body,nodes,roots,successors,predecessors,files['clock_contracts'][0]['entry'])
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 113, in clock_contract
+    leaf_return_word=retired_words(s,1)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/retired_stack_words.py", line 20, in take
+    assert row['size']==len(raw) and row['bytes']==raw.hex(), 'retired stack word store'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: retired stack word store

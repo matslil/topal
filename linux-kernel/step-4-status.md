@@ -7,6 +7,13 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The experimental [owned user-memory work](step-4-owned-user-extents.md) now
+includes [selected clock/random stack retirement](tools/user-memory/results/stage-3-stack-retirement/README.md).
+Thirteen normal-return cleanup blocks preserve registers/flags and the existing
+stack bounds, with fresh native regressions and exact emission comparison.
+Actual ownership/lifetime and complete caller qualification, canonical production
+selection and original kernel acceptance remain required.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

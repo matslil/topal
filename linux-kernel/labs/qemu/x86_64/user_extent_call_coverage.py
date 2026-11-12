@@ -14,6 +14,7 @@ from user_extent_pipe_fixed_observer import PROGRAM as PIPE_FIXED_PROGRAM
 from user_extent_pipe_loop_observer import PROGRAM as PIPE_LOOP_PROGRAM
 from user_extent_warning_observer import PROGRAM as WARNING_PROGRAM
 from user_extent_random_observer import PROGRAM as RANDOM_PROGRAM
+from user_extent_stack_observer import PROGRAM as STACK_PROGRAM
 
 
 def linked_inventory(build):
@@ -100,6 +101,13 @@ def linked_inventory(build):
         assert random_output['passed'] and not random_output['complete']
         assert random_output['kernel_sha256'] == reader.digest(elf.data)
         assert random_output['graph_sha256'] == bindings['process_graph_sha256']
+    stack_path = build / 'stack-retirement-audit.json'
+    stack_bytes = stack_path.read_bytes() if stack_path.exists() else None
+    stack = json.loads(stack_bytes) if stack_bytes is not None else None
+    if stack is not None:
+        assert stack['passed'] and not stack['complete']
+        assert stack['kernel_sha256'] == reader.digest(elf.data)
+        assert stack['graph_sha256'] == bindings['process_graph_sha256']
     return dict(function=inventory['function'], address=symbol['value'], calls=inventory['calls'],
                 callback_bindings=native_bindings,
                 copy_transfer_audit=copies, copy_transfer_audit_sha256=reader.digest(copy_bytes),
@@ -120,6 +128,8 @@ def linked_inventory(build):
                 warning_input_audit_sha256=reader.digest(warning_bytes) if warning_bytes is not None else None,
                 random_output_audit=random_output,
                 random_output_audit_sha256=reader.digest(random_bytes) if random_bytes is not None else None,
+                stack_retirement_audit=stack,
+                stack_retirement_audit_sha256=reader.digest(stack_bytes) if stack_bytes is not None else None,
                 callback_header_hex=(build / 'static-elf-abi-fixture.elf').read_bytes()[:64].hex(),
                 kernel_sha256=reader.digest(elf.data), inventory_sha256=inspection['inventory_sha256'])
 
@@ -159,6 +169,7 @@ def extent_coverage_complete():
     calls = extent_inventory['calls']
     warning_observation_complete()
     random_observation_complete()
+    stack_retirement_observation_complete()
     assert extent_first_reach and set(extent_first_reach) <= {row['offset'] for row in calls}
     observed['extent_call_coverage'] = dict(
         observation_passed=True, total_sites=len(calls), reached_sites=len(extent_first_reach),
@@ -186,6 +197,7 @@ def install_extent_coverage():
         assert address(extent_inventory['function']) == extent_inventory['address']
         install_warning_observation()
         install_random_observation()
+        install_stack_retirement_observation()
         if not extent_inventory.get('source_scoped_staged'):
             for row in extent_inventory['calls']:
                 ExtentFirstReach(row)
@@ -198,3 +210,4 @@ PROGRAM += PIPE_FIXED_PROGRAM
 PROGRAM += PIPE_LOOP_PROGRAM
 PROGRAM += WARNING_PROGRAM
 PROGRAM += RANDOM_PROGRAM
+PROGRAM += STACK_PROGRAM

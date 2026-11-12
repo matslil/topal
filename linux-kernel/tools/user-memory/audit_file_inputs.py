@@ -1,8 +1,8 @@
 """Conditional volatile write/pwrite input copies through page and RTC lookup.
 
 TOPAL-SYSTEMS-USER-EXTENT-001; TOPAL-SYSTEMS-VOLATILE-FILE-TRANSFER-001.
-Normal-return register/stack shape does not establish owner, nonalias, retired
-spill cleanup, exception behavior or continuous check-to-copy lifetime.
+Normal-return register/stack shape and explicit retired-word cleanup do not
+establish owner, nonalias, exception behavior or continuous check-to-copy lifetime.
 """
 import json
 from pathlib import Path
@@ -13,6 +13,7 @@ from audit_fixed_transfers import check_graph,reachable
 from audit_pipe_fixed_outputs import Instructions
 from audit_staging_copies import Slice,clipped_prelude,page_lookup_contract
 from file_input_effects import effects
+from retired_stack_words import take as retired_words
 from inspect_call_inventory import Elf,digest,verify_calls
 
 
@@ -109,7 +110,9 @@ def clock_contract(body,nodes,roots,successors,predecessors,entry):
     pops=['415f','415e','415d','415b','415a','4159','4158','5a','5e','5f','5d','5b']
     for raw in pushes: s.take(raw)
     leaf=leaf_contract(body,nodes,roots,successors,predecessors,call_target(s))
+    leaf_return_word=retired_words(s,1)
     for raw in pops: s.take(raw)
+    spills=retired_words(s,12)
     s.take('c3')
     for left,right in zip(s.rows,s.rows[1:]):
         assert right['offset'] not in roots and predecessors[right['offset']]=={left['offset']}
@@ -117,8 +120,9 @@ def clock_contract(body,nodes,roots,successors,predecessors,entry):
     return dict(entry=entry,instructions=s.rows,leaf=leaf,
         saved_registers=[3,5,7,6,2,8,9,10,11,13,14,15],spill_bytes=96,
         maximum_selected_stack_bytes=8+96+leaf['stack_bytes'],normal_return_stack_delta=8,
-        retired_spill_erasure_verified=False,
-        scope='Exact twelve-register save/reverse restore around the closed RTC leaf, RSP/IF checks and selected maximum stack cost. R12/captured table identity, actual stack/nonalias, retired spill cleanup, fatal/exception and continuous lifetime remain separate')
+        leaf_return_word_retirement=leaf_return_word,spill_retirement=spills,
+        retired_spill_erasure_verified=True,
+        scope='Exact twelve-register save/reverse restore around the closed RTC leaf, RSP/IF checks and selected maximum stack cost, with explicit zeroing of its retired return word and twelve popped words preserving registers/flags. R12/captured table identity, actual stack/nonalias, fatal/exception and continuous lifetime remain separate')
 
 
 def audit(build):
@@ -187,6 +191,7 @@ def audit(build):
         assert s.at==clock
         clock_entry=call_target(s)
         clocks[clock_entry]=clock_contract(body,nodes,roots,successors,predecessors,clock_entry)
+        clock_return_word=retired_words(s,1)
         clock_error=s.branch('0f82')
         s.take('4989c5574989f34c89c64c89e74881c7800500004889e9fc')
         copy=s.at
@@ -208,6 +213,7 @@ def audit(build):
             copy_live_stack_words=1,retain_transfer_records=True,
             counterpart=dict(kind='process-table-staging',base_register=12,offset=1408,capacity=256),
             page_lookup_entry=page_entry,clock_entry=clock_entry,resident_entry=resident,
+            clock_return_word_retirement=clock_return_word,
             capacity_scan=scan,no_space_exit=no_space,clock_error_exit=clock_error,
             byte_origins=origin['byte_origins'],post_copy_pop=nodes[end]))
     report=dict(passed=True,complete=False,function=census['function'],kernel_sha256=digest(kernel.data),
@@ -216,7 +222,7 @@ def audit(build):
         cases=cases,transfer_regions=2,copy_instructions=2,
         copy_groups=[dict(copy_offset=r['copy_offset'],cases=[r['name']],admission_edges=[[r['carry_gate'],r['success_offset']]]) for r in cases],
         page_lookup_contracts=list(pages.values()),clock_contracts=list(clocks.values()),
-        scope='Conditional first user-to-staging REP for write/pwrite: clipped byte count, saved RBP/R8 through exact page/clock preparation and normal-return frames, captured-table reload condition, one live DI word and explicit CLD. Actual table/staging/calendar/stack owners and nonalias, retired spill cleanup, continuous lifetime and complete helper/entry/callee/fatal/exception/post-copy/publication/production remain open; this report alone does not extend the published index')
+        scope='Conditional first user-to-staging REP for write/pwrite: clipped byte count, saved RBP/R8 through exact page/clock preparation and normal-return frames, explicit clock return/save retirement, captured-table reload condition, one live DI word and explicit CLD. Actual table/staging/calendar/stack owners and nonalias, continuous lifetime and complete helper/entry/callee/fatal/exception/post-copy/publication/production remain open; this report alone does not extend the published index')
     (build/'file-input-audit.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(dict(passed=True,regions=2,copies=2,clock_leaves=len(clocks),complete=False)))
 

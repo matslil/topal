@@ -131,7 +131,7 @@ fn emit_source_page_preparation(e: &mut E<'_>, prefix: &str) -> Result<(), Compi
     payload(e, Di, C);
     e.mov(Si, R11);
     e.0.bind(&clock)?;
-    e.0.call("file-clock");
+    super::call_clock(e);
     e.0.jump_if(0x82, "file-eio");
     e.mov(R13, A);
     e.0.bytes(&[0x57]);
@@ -238,7 +238,7 @@ fn emit_write(
             e.0.jump_if(0x85, "fatal");
         }
         e.0.bind(&format!("{prefix}-page-checked"))?;
-        e.0.call("file-clock");
+        super::call_clock(e);
         e.0.jump_if(0x82, "file-eio");
         e.mov(R13, A);
         // The complete input prefix was admitted. Its private copy precedes any
@@ -403,7 +403,7 @@ fn emit_truncate(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     e.load(A, R10, 16);
     e.rr(0x39, R15, A);
     e.0.jump_if(0x84, "file-zero");
-    e.0.call("file-clock");
+    super::call_clock(e);
     e.0.jump_if(0x82, "file-eio");
     e.mov(R13, A);
     e.load(A, B, 16);

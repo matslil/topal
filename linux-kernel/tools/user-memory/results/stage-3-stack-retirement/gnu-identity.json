@@ -1,0 +1,14 @@
+{
+  "gnu-verification.json": {
+    "snapshot": "gnu/gnu-verification.json.gz",
+    "sha256": "bffc039e6b8b05989219b6a6c13ad662658c878ca789c7fd055fd920068ab6ba",
+    "bytes": 740,
+    "snapshot_sha256": "f89af3fac0c70c0fb06971a4d28ce7c0fdaa3f19aa117bf880a7100c48c72063"
+  },
+  "gnu-decoder-transcript.json": {
+    "snapshot": "gnu/gnu-decoder-transcript.json.gz",
+    "sha256": "fd627d74c225a065a7e657f8d19c0b4ee2223aead4ff46d7496f56cec099ef1b",
+    "bytes": 2448879,
+    "snapshot_sha256": "a3b724232c5f7d645b659bc900dbf4f77c01616d4a9d611ad10e68bbb0b443ac"
+  }
+}

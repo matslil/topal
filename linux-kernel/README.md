@@ -11,6 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The experimental [owned user-memory work](step-4-owned-user-extents.md) now
+qualifies selected [clock/random stack retirement](tools/user-memory/results/stage-3-stack-retirement/README.md).
+Fresh VM regressions and exact emitted-byte comparison cover the new cleanup;
+actual ownership/lifetime, complete caller qualification and canonical production
+activation remain required. This does not complete Step 4 or distribution,
+container or VM-host acceptance.
+
 The preceding Step 4 maintenance [restores reviewable systems implementation
 files](step-4-modular-systems-implementation.md). The unchanged source-size ceiling,
 complete workspace checks and an independently compared primary VM pass; kernel

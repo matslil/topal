@@ -133,7 +133,7 @@ pub(super) fn emit(
         e.imm(D, 0);
     }
     // Clock failure is recoverable before any resource has been installed.
-    e.0.call("file-clock");
+    super::call_clock(&mut e);
     e.0.jump_if(0x82, "namespace-eio");
     e.mov(R15, A);
     e.cmp(D, 0);

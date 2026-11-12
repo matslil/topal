@@ -179,7 +179,7 @@ fn plan_source(e: &mut E<'_>) {
 }
 
 fn committed(e: &mut E<'_>) {
-    e.0.call("file-clock");
+    files::call_clock(e);
     e.0.jump_if(0x82, "namespace-transaction-clock-failed");
     e.mov(D, A);
     retire_clock_stack(e);
