@@ -29,6 +29,11 @@ now enumerates every descriptor and protected physical route at 156 boundaries.
 A separate flat reader agrees, with 164 models and twenty saved-data controls
 passing. This reuses the existing native run; stale TLB, DMA and continuous
 asynchronous/mapping stability remain unqualified.
+The subsequent [local heap-publication record](tools/user-memory/results/stage-3-translation-publication/README.md)
+checks 20 publications, 812 invalidation-loop states, old-backing retirement and
+the actual final CR3 handoff. The complete ordinary VM, 177 models and eighteen
+offline controls pass. Other mapping editors and continuous/AP/DMA/asynchronous
+lifetime protection remain required.
 Actual ownership/lifetime, complete caller qualification and canonical production
 activation remain required. This does not complete Step 4 or distribution,
 container or VM-host acceptance.

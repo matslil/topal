@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "selected_sources": 192,
+  "artifacts": 94,
+  "models": 177,
+  "exact_layout_readback_equal": true,
+  "exact_publication_readback_equal": true,
+  "exact_owner_readback_equal": true,
+  "exact_metadata_readback_equal": true,
+  "exact_eighteen_controls_equal": true,
+  "new_native_execution": false,
+  "scope": "Current frozen selected source/artifact delta and Python-only model/saved native-data replay. Preceding mapping and thirteen-audit checks are inherited; no new ELF, compiler, GNU decoder, GDB or VM execution, general stable lifetime or production qualification"
+}

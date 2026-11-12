@@ -238,7 +238,7 @@ class OutputActivity:
 
 def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=None,
          process_command=None, input_scope='ABI fixture', guest_timeout_seconds=300,
-         serial_dialogue=(), output_activity_seconds=None):
+         serial_dialogue=(), output_activity_seconds=None, cpu_trace_sites=()):
     assert isinstance(guest_timeout_seconds, int) and 0 < guest_timeout_seconds <= 3600
     if output_activity_seconds is not None:
         assert isinstance(output_activity_seconds, int) and 0 < output_activity_seconds <= guest_timeout_seconds
@@ -258,6 +258,11 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
     os.set_blocking(master, False)
     command = topal_gate.qemu_command(build / 'bzImage', build / 'initramfs.cpio',
                                     work / 'serial.log', os.ttyname(slave))
+    if cpu_trace_sites:
+        assert isinstance(cpu_trace_sites,tuple) and all(type(site) is int and 0<=site<1<<64 for site in cpu_trace_sites)
+        command += ['-d','cpu,exec,tid','-dfilter',
+                    ','.join(hex(site)+'..'+hex(site) for site in cpu_trace_sites),
+                    '-D',str(work/'cpu-%d.log')]
     if ram_mib is not None:
         assert isinstance(ram_mib, int) and ram_mib > 0
         command[command.index('-m') + 1] = f'{ram_mib}M'

@@ -27,6 +27,13 @@ pages and unique supervisor identity routes to the 26 protected ranges.
 Independent direct-table readback, 164 models and twenty offline controls pass.
 There is no new native execution; stale TLB, DMA and continuous mode/asynchronous
 exclusion remain required.
+The subsequent [local heap-publication checkpoint](tools/user-memory/results/stage-3-translation-publication/README.md)
+observes 20 publications across 36 requests, all 812 invalidation-loop states,
+sixteen old-backing releases and final detached-root cleanup. Native observation
+binds the flushing CR3 handoff; it does not treat bootstrap-context invalidations
+as user-root invalidations. The complete ordinary VM, 177 models and eighteen
+offline controls pass. Other mapping editors and general stable lifetime remain
+unqualified.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 

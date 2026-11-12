@@ -1,0 +1,10 @@
+{
+  "../stage-3-owner-intervals/readback-owner-boundaries.py": {
+    "sha256": "c75603b20ff103c1bfa666c586587e5afc918494e33ae66c3e1e5be8af0c6b8b",
+    "bytes": 4107
+  },
+  "../stage-3-owner-intervals/readback-source-metadata.py": {
+    "sha256": "353e0ea17545a5eef4789451af74ea059a6ea36297b7b96480216abc016f4aba",
+    "bytes": 8501
+  }
+}

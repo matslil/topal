@@ -1,0 +1,68 @@
+{
+  "cpu-2415265.log": {
+    "snapshot": "native/observation/cpu-2415265.log.gz",
+    "sha256": "2b3c4a7629481fab14e2cb4883fb7d3e16c75f4605b5791581d6ef4b0962185b",
+    "bytes": 4188224,
+    "snapshot_sha256": "d2f4278ec1e122c0d23fa5885ba238651cd2efefe0d312ee8b44f1ae1ce0a02c"
+  },
+  "cpu-2415266.log": {
+    "snapshot": "native/observation/cpu-2415266.log.gz",
+    "sha256": "d9ce4ff2c46e62494bbceee240a6fa3a39ea44dbd0a1c2c15f16c28bd55a25e8",
+    "bytes": 265,
+    "snapshot_sha256": "b826cf27d8dd5e9e42d2339edce8c76f084f5c2c6b09d7e023447489572604dd"
+  },
+  "gdb.stderr.log": {
+    "snapshot": "native/observation/gdb.stderr.log.gz",
+    "sha256": "8400593065b4d1b15c530448f3991117cc0615e51582f7eb58f2984efa203df1",
+    "bytes": 220,
+    "snapshot_sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af"
+  },
+  "gdb.stdout.log": {
+    "snapshot": "native/observation/gdb.stdout.log.gz",
+    "sha256": "b6168661203d90c3b01198028f1cabfacf2670a28153d247addfaa7727bb27ac",
+    "bytes": 290,
+    "snapshot_sha256": "ecaa6cbd2cfe67b04554fce34bb39f21b0b8baefcd74bad54ae7c6c877298ca2"
+  },
+  "inspect.gdb": {
+    "snapshot": "native/observation/inspect.gdb.gz",
+    "sha256": "f227d0b517c8910341a557628798f8cd016f446427d0cc1cfa0d4e70020ba055",
+    "bytes": 1690399,
+    "snapshot_sha256": "6c84edaacd8366b77cc00cd4dafbe82d5f1ce17cd60be76ed3e08c4dccf5b092"
+  },
+  "observations.json": {
+    "snapshot": "native/observation/observations.json.gz",
+    "sha256": "bc8e46855e79304053d1e062cffc05896086c8449b071fb648d1733491dbfbae",
+    "bytes": 19510784,
+    "snapshot_sha256": "27fa8afe781cf356639f69ac322c532214d529d4a7661ace955061f236acd22e"
+  },
+  "observations.json.translation-progress.json": {
+    "snapshot": "native/observation/observations.json.translation-progress.json.gz",
+    "sha256": "294fe3e0f2ba5763c972aca7f896805176207ab82dc313388dceb328dbe756a3",
+    "bytes": 7983013,
+    "snapshot_sha256": "ae3aa10a5e9091b7a576c0aa2c2158b51c1f6672e8c291da00a532eabf9f5103"
+  },
+  "qemu.command.json": {
+    "snapshot": "native/observation/qemu.command.json.gz",
+    "sha256": "0560e48476e785cd0fa5fb67c766b2b6c9e4733e1700d6e338cf104395ee9452",
+    "bytes": 1431,
+    "snapshot_sha256": "472ac64c09b5fdef796783d49cbfaaa950b55bd356156cb7870fb0d62f3bae7c"
+  },
+  "qemu.stderr.log": {
+    "snapshot": "native/observation/qemu.stderr.log.gz",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "qemu.stdout.log": {
+    "snapshot": "native/observation/qemu.stdout.log.gz",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "serial.log": {
+    "snapshot": "native/observation/serial.log.gz",
+    "sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+    "bytes": 7606,
+    "snapshot_sha256": "6e124432abf990a1c8fcca955ef14875f427bd04592b09a7bc1744900466f66c"
+  }
+}

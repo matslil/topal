@@ -369,3 +369,15 @@ frozen source/thirteen-report/owner/interval/metadata/mapping replay. The kernel
 and original native run are unchanged. These are boundary descriptor facts;
 stale translations, DMA, alternate/continuously stable mode, AP/asynchronous
 behavior and all preceding general caller/lifetime/production gates remain open.
+
+The [local heap-publication checkpoint](results/stage-3-translation-publication/README.md)
+adds 20 publications over 36 ordinary memory requests. All changed pages,
+including removed tails, have 812 actual post-INVLPG loop observations. Two
+explicitly cancelled block attempts remain separate and require exact retries.
+Sixteen old extents are observed unpinned and completely zero before release.
+The final completed-process cleanup requires its actual PCID/global-disabled
+CR3 handoff and terminal context; its subsequent invalidations concern the
+bootstrap context. The complete enclosing VM, all 177 models, eighteen offline
+controls and exact frozen layout/publication/owner/metadata replay pass. No
+kernel/protection behavior changes. Other mapping editors, AP/DMA/asynchronous
+and continuous stable-lifetime gates remain open.

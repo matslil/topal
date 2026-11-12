@@ -23,6 +23,7 @@ from user_extent_stat_observer import PROGRAM as STAT_PROGRAM
 from user_extent_metadata_observer import PROGRAM as METADATA_PROGRAM
 from user_extent_owner_observer import PROGRAM as OWNER_PROGRAM, MODEL as OWNER_MODEL
 from user_extent_interval_observer import PROGRAM as INTERVAL_PROGRAM, MODEL as INTERVAL_MODEL
+from user_extent_translation_observer import PROGRAM as TRANSLATION_PROGRAM, MODEL as TRANSLATION_MODEL, TRACE_MODEL as TRANSLATION_TRACE_MODEL
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -62,6 +63,10 @@ class Checked(gdb.Breakpoint):
             observed['observer_failure'] = traceback.format_exc()
             observed['active_startup'] = startup_current
             observed['active_bridge'] = bridge_current
+            if translation_profile is not None:
+                observed['active_translation_publication']=translation_active
+                observed['active_translation_request']=translation_request
+                observed['pending_translation_root_switch']=translation_root_switch_pending
             with open(observation_path, 'w') as handle:
                 json.dump(observed, handle, indent=2)
             return True
@@ -489,6 +494,7 @@ def file_returned(row):
 # OWNER_OBSERVER
 
 # INTERVAL_OBSERVER
+# TRANSLATION_OBSERVER
 
 class Complete(Checked):
     def observe(self):
@@ -517,6 +523,7 @@ class Complete(Checked):
         extent_coverage_complete()
         owner_observation_complete()
         interval_observation_complete()
+        translation_observation_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -538,6 +545,7 @@ try:
     install_metadata_observation()
     install_owner_observation()
     install_interval_observation()
+    install_translation_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -578,12 +586,22 @@ assert PROGRAM.count('# OWNER_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# OWNER_OBSERVER', OWNER_PROGRAM)
 assert PROGRAM.count('# INTERVAL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# INTERVAL_OBSERVER', INTERVAL_PROGRAM)
+assert PROGRAM.count('# TRANSLATION_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# TRANSLATION_OBSERVER', TRANSLATION_PROGRAM)
 
 
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
     owner_profile = None
+    translation_profile = None
+    translation_setting = os.environ.get('TOPAL_TEST_EXTENT_TRANSLATIONS')
+    assert translation_setting in [None,'metadata']
+    if translation_setting is not None:
+        assert component['mode'] == translation_setting
+        sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'tools/user-memory'))
+        from inspect_translation_publication import inspect as inspect_translation
+        translation_profile = inspect_translation(build)
     interval_profile = os.environ.get('TOPAL_TEST_EXTENT_INTERVALS')
     assert interval_profile in [None,'metadata']
     assert interval_profile is None or os.environ.get('TOPAL_TEST_EXTENT_OWNERS')=='metadata'
@@ -625,6 +643,9 @@ if __name__ == '__main__':
         program_prefix=(f'component={component!r}\n'
                         f'owner_profile={owner_profile!r}\n'
                         f'interval_profile={interval_profile!r}\n'
+                        f'translation_profile={translation_profile!r}\n'
+                        f'translation_model_source={TRANSLATION_MODEL!r}\n'
+                        f'translation_trace_model_source={TRANSLATION_TRACE_MODEL!r}\n'
                         f'interval_model_sha256={hashlib.sha256(INTERVAL_MODEL.encode()).hexdigest()!r}\n'
                         f'immutable_head={image[:256].hex()!r}\n'
                         f'serial_sites={serial_sites!r}\n'
@@ -638,4 +659,5 @@ if __name__ == '__main__':
                                480 if component.get('mode')=='transfers' and extent_inventory is not None and
                                extent_inventory.get('stack_retirement_audit') is not None else 300),
         serial_dialogue=DIALOGUE*4 if component.get('mode')=='serial' else (),
+        cpu_trace_sites=((translation_profile['sites']['invalidated'],) if translation_profile is not None else ()),
     )

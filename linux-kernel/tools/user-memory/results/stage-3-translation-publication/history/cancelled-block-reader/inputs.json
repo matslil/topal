@@ -1,0 +1,44 @@
+{
+  "linux-kernel/tools/user-memory/translation_publication.py": {
+    "snapshot": "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/translation_publication.py.gz",
+    "sha256": "8336f6812ce7df5e2a3ebd27ce90bb6e99d02ac72dd09b682adda238a248a9cb",
+    "bytes": 3781,
+    "snapshot_sha256": "de057c7f66275cc883bbb7cd746c0253801f606b7bb94d01a724cb4201f7c35d"
+  },
+  "linux-kernel/tools/user-memory/test_translation_publication.py": {
+    "snapshot": "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/test_translation_publication.py.gz",
+    "sha256": "51a58e89b08e6bd03daed03ab1a86a8521d492ecc8b984f2675355255e30cdb7",
+    "bytes": 3947,
+    "snapshot_sha256": "6186ada618223deaa5d8dfa104a4d57386af46331cbb3d25b78ae2b0a0bb4853"
+  },
+  "linux-kernel/tools/user-memory/inspect_translation_publication.py": {
+    "snapshot": "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/inspect_translation_publication.py.gz",
+    "sha256": "115b4b7a707ae85e66168e79f81948f85c6b2b4584b66ac0e9fcd68ce388dc26",
+    "bytes": 3176,
+    "snapshot_sha256": "8c5b220c204288b4e09edeeb344ed4b930738440ac4d30bf9ddc2e0255cbdf77"
+  },
+  "linux-kernel/tools/user-memory/qemu_publication_trace.py": {
+    "snapshot": "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/qemu_publication_trace.py.gz",
+    "sha256": "8d61a29e3fc1cc5ea8ef231638f70bb0381db35cc6f93ff62e7e8848c12fab69",
+    "bytes": 1388,
+    "snapshot_sha256": "90ba660b0c90ca76cb35abceadc8aef003575da31deebb5485b47e6933855101"
+  },
+  "linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py": {
+    "snapshot": "history/cancelled-block-reader/inputs/linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py.gz",
+    "sha256": "ab5342028b3811a7eee0fe517406e48d508b4e41c26ffe42517b41667096ab52",
+    "bytes": 8973,
+    "snapshot_sha256": "a2d1b04ae723c1f18fb9ad2577c05fe3320de8fbf3dcb52c90b24ffc500a0076"
+  },
+  "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": {
+    "snapshot": "history/cancelled-block-reader/inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz",
+    "sha256": "68067eaa51aaa18cbdbbbd4f374c60ca12c9b2d6a313ff8ef789453d30cb523d",
+    "bytes": 34661,
+    "snapshot_sha256": "b3873db5d2cb75c269c9905b89a340edaa71bd8403492b6711e8fa02ac9c9e00"
+  },
+  "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": {
+    "snapshot": "history/cancelled-block-reader/inputs/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz",
+    "sha256": "a95f8b8f332d06910b457cf1259bb4bad4a35ce7350e4a51faf33267a8c56099",
+    "bytes": 17623,
+    "snapshot_sha256": "618dad96e56ae0e646bd715b447b4902ff5c935b9f0bc7fe1cbf494c4fd9f931"
+  }
+}

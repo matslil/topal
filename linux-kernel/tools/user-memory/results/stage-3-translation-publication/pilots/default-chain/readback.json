@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "post_invlpg_states": 35,
+  "publications": 2,
+  "logs": [
+    {
+      "file": "cpu-2414176.log",
+      "bytes": 1973928,
+      "sha256": "76e5aa7f5c8da51fa6e3f9a793cb45e0af84593079bb3c909609129560619373"
+    },
+    {
+      "file": "cpu-2414177.log",
+      "bytes": 265,
+      "sha256": "1dd64782dac72d208a55d0e4d2eed24c39556cc3fc9350fd36bff87263ce85b4"
+    }
+  ],
+  "full_guest_retirement_complete": false,
+  "initial_reader_failure": "Strict parser rejected a CPU log containing only QEMU TB-link diagnostics. The native pilot had completed its declared two publications; corrected saved-data readback accepts only the known link-message shape.",
+  "parser_sha256": "8d61a29e3fc1cc5ea8ef231638f70bb0381db35cc6f93ff62e7e8848c12fab69",
+  "scope": "Saved readback of the installed-version default-chaining CPU-log capability pilot; no complete guest qualification"
+}

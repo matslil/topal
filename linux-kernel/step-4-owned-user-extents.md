@@ -933,3 +933,42 @@ replacement selected. General stable lifetime, other caller/private-counterpart
 loans, complete exception/fatal/whole-syscall effects, unrun native paths, all
 fallback gates and canonical clean production reconstruction remain required.
 Stage 3, Step 4 and full original Linux/container/VM-host acceptance remain open.
+
+## Stage 3 local heap publication, invalidation and detached cleanup
+
+The [local publication checkpoint](tools/user-memory/results/stage-3-translation-publication/README.md)
+binds the complete current 149-byte heap publisher and actual compiled IR to
+20 publications across 36 ordinary memory requests. Every word of the six
+selected tables is compared around publication. QEMU per-CPU logs retain all
+812 post-INVLPG loop observations; cancelled-before-start blocks are retained
+separately and require matching retries. Unmarked duplicates remain rejected.
+All sixteen old extents are actually unpinned and completely zero before their
+release, totaling 2228224 erased bytes.
+
+Nineteen publications run in the active user context. The final whole-heap
+cleanup runs after the completed process has restored its saved bootstrap root.
+Native before/after CR3 observations bind that distinct handoff with PCID/global
+paging disabled. Its 34 later invalidations concern the bootstrap context; the
+earlier root replacement provides the local user-translation flush. Detached
+cleanup requires the completed-process state and actual handoff and cannot
+authorize growth or user-buffer access. Existing gateway and kernel rules are
+unchanged.
+
+The complete ordinary metadata VM and enclosing retirement pass in 339 seconds
+under the same 600-second deadline, with zero swap and memory events. All 177
+models and eighteen offline controls pass. Fresh owner and metadata readbacks
+retain 52 helpers, 104 owner snapshots, 136 syscalls, 124 complete state
+transitions, 44 stat outputs and 44 clock returns. The complete console remains
+byte-identical. Frozen replay restores the 192-source/94-artifact delta and
+reproduces exact current layout/publication/owner/metadata/control reports.
+The preceding mapping and thirteen-audit results remain inherited evidence.
+
+Two deadline failures, the cancelled-block reader failure and the detached-root
+scope error retain exact versions and outputs. Supporting pilots remain partial
+method evidence, and the initial frozen-replay source omission remains separate.
+None is attributed to an AI safeguard. No kernel/protection check or core
+language meaning changes. Other mapping editors, continuous mode/lifetime,
+competing AP actions, DMA, all asynchronous entries, other caller/private loans,
+complete exception/fatal/whole-syscall effects, native gaps, fallback and clean
+production reconstruction remain required. Stage 3, Step 4 and full original
+Linux/distribution/container/VM-host acceptance remain unfinished.

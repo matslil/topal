@@ -1,0 +1,56 @@
+{
+  "cpu-2413815.log": {
+    "snapshot": "pilots/nochain/observation/cpu-2413815.log.gz",
+    "sha256": "4409c9482bc3d340a1cf9b03d1d76ec4156654d1ecdb540f063e2f656d5f92a4",
+    "bytes": 60361,
+    "snapshot_sha256": "54dcec0f841169b96c3ddf0dbd432e8b121af1aed0435e70c03b2277558eeb10"
+  },
+  "gdb.stderr.log": {
+    "snapshot": "pilots/nochain/observation/gdb.stderr.log.gz",
+    "sha256": "8400593065b4d1b15c530448f3991117cc0615e51582f7eb58f2984efa203df1",
+    "bytes": 220,
+    "snapshot_sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af"
+  },
+  "gdb.stdout.log": {
+    "snapshot": "pilots/nochain/observation/gdb.stdout.log.gz",
+    "sha256": "69af2ac0cb0c1c711b4c0d7772725aaebbeea7713ae7957af7de2c2c076484db",
+    "bytes": 82,
+    "snapshot_sha256": "f20e5f826a70153c9d199237bcb253856544c2dfcd1e7327eb9eee93fe678719"
+  },
+  "inspect.gdb": {
+    "snapshot": "pilots/nochain/observation/inspect.gdb.gz",
+    "sha256": "842efd1a80af7bbb7e162a885654245f2fd14b834b70616e4187a17021a43a09",
+    "bytes": 2612,
+    "snapshot_sha256": "16a9eb79c30dbe184e47ffdb3cab829abfb9dab7b2309a1ac8577b5f0151f2f2"
+  },
+  "observations.json": {
+    "snapshot": "pilots/nochain/observation/observations.json.gz",
+    "sha256": "a28b5a9113145030b90499169e80155c01b518e734603181381f159576f8ece8",
+    "bytes": 360,
+    "snapshot_sha256": "847b8a296d87686b96f573c673f00051a6ac24e644d7bff507ba7f2554d4f3f7"
+  },
+  "qemu.command.json": {
+    "snapshot": "pilots/nochain/observation/qemu.command.json.gz",
+    "sha256": "f7c540502bef5f7610a4a56c39dc3d7b26cde8c5fbb5cc7343538a06b3e7a3c8",
+    "bytes": 1350,
+    "snapshot_sha256": "de6b945c4564a6d6ce81fee1167dc80a4ccdeafa216da444d6bba7cd13b766ac"
+  },
+  "qemu.stderr.log": {
+    "snapshot": "pilots/nochain/observation/qemu.stderr.log.gz",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "qemu.stdout.log": {
+    "snapshot": "pilots/nochain/observation/qemu.stdout.log.gz",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "serial.log": {
+    "snapshot": "pilots/nochain/observation/serial.log.gz",
+    "sha256": "b91989e8f35373d63afe4e46cf5cd038ab0aeaabe12323c6880d1240b645f065",
+    "bytes": 2270,
+    "snapshot_sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  }
+}

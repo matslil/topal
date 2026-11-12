@@ -1,0 +1,6 @@
+{
+  "passed": false,
+  "reason": "Selected source bundle omitted kernel_frame_memory.ll, which the layout reader opens independently. Add the exact current source bound by the native layout profile; no guest or compiler runs in frozen replay.",
+  "initial_inputs_sha256": "fb35c963b05ac34880a27f292a1a35cf3ed880f9464c81e33f2f046710b392fb",
+  "log_sha256": "9c990e50b8d1033b34060f872aeef1aa66b75fc60272b42c6cb64d977c45f281"
+}

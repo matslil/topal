@@ -1,0 +1,2804 @@
+{
+  "passed": true,
+  "files": {
+    "README.md": {
+      "sha256": "4cfef0269f1002637bea110039e41f6edf44bdca0a26aa087b24f61f689b7394",
+      "bytes": 9490
+    },
+    "artifacts/dispatch.ll.gz": {
+      "sha256": "d57d73f4e3fa958641f8e5fea6ef8c8524cf5f984dc86cb074223cf78c25ab38",
+      "bytes": 3685
+    },
+    "checks/commands.json": {
+      "sha256": "04690269cb5b61a394d88481d824508c33494aab42b8bc98614bdd1f97822bf6",
+      "bytes": 3224
+    },
+    "checks/controls/controls.json": {
+      "sha256": "b73664e77fc2efdf09ae3b009d35984c0af0654b6e62cbbcebbb4480f19f792b",
+      "bytes": 2779
+    },
+    "checks/controls.log": {
+      "sha256": "bd39e1517709e78c386d4c35da23dee0dd565029c8c4b3cc28cc0120b52def34",
+      "bytes": 33
+    },
+    "checks/layout.json": {
+      "sha256": "9858c34086b76b6369174232d1613602c1c8b889c7ca9a4ed4add7c58e99c68f",
+      "bytes": 1404
+    },
+    "checks/layout.log": {
+      "sha256": "a55066866d9c24f03cbbd0e2278cf19ca6fce3e3e7adfb1dbb55a1ab1310d83d",
+      "bytes": 1304
+    },
+    "checks/metadata/readback.json": {
+      "sha256": "459c4df88def3e300881d7891bd58efbb0d494e5f8ea75dd6b1c8f29a3ffe00b",
+      "bytes": 42963
+    },
+    "checks/metadata.log": {
+      "sha256": "8e67edf9fd8f2f10e923f263bee1992dae3a8ab7df0c50c810160b2ba7c31283",
+      "bytes": 97
+    },
+    "checks/models.log": {
+      "sha256": "5942175fb30ea942ad20c0ee9142a201df5cfd3766caab33d2c7d101f1c3f7de",
+      "bytes": 29875
+    },
+    "checks/owners.json": {
+      "sha256": "5135f8b7974059a293248e1969065ebe2dec33396e39abdb582005b8b85bc6a8",
+      "bytes": 726
+    },
+    "checks/owners.log": {
+      "sha256": "bb2ac4fd7487cff5db943f5cd427c5ba6584ccfa79e0e811fad22e1915eee093",
+      "bytes": 698
+    },
+    "checks/publication.json": {
+      "sha256": "48d9a823bf2f29ebdfe9356aca9412fed2cef12abc0247a3e2f31f3f3f273717",
+      "bytes": 1853
+    },
+    "checks/publication.log": {
+      "sha256": "0e34ca72c845a6fb9020fb0c56c98b78e7e5b177acbe5545672c864924e2cec8",
+      "bytes": 1335
+    },
+    "checks/qualification.json": {
+      "sha256": "1b089551f7a03ec34343e52dd8c3a377ed02847b008a8a1af7fd9279f79ec208",
+      "bytes": 3886
+    },
+    "history/cancelled-block-reader/files.json": {
+      "sha256": "20c02bf4197fb6342868e8c54c57fd963360d56ddd75b4bb242879cc781cabe9",
+      "bytes": 3344
+    },
+    "history/cancelled-block-reader/inputs/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz": {
+      "sha256": "618dad96e56ae0e646bd715b447b4902ff5c935b9f0bc7fe1cbf494c4fd9f931",
+      "bytes": 5312
+    },
+    "history/cancelled-block-reader/inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz": {
+      "sha256": "b3873db5d2cb75c269c9905b89a340edaa71bd8403492b6711e8fa02ac9c9e00",
+      "bytes": 7440
+    },
+    "history/cancelled-block-reader/inputs/linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py.gz": {
+      "sha256": "a2d1b04ae723c1f18fb9ad2577c05fe3320de8fbf3dcb52c90b24ffc500a0076",
+      "bytes": 2444
+    },
+    "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/inspect_translation_publication.py.gz": {
+      "sha256": "8c5b220c204288b4e09edeeb344ed4b930738440ac4d30bf9ddc2e0255cbdf77",
+      "bytes": 1504
+    },
+    "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/qemu_publication_trace.py.gz": {
+      "sha256": "90ba660b0c90ca76cb35abceadc8aef003575da31deebb5485b47e6933855101",
+      "bytes": 784
+    },
+    "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/test_translation_publication.py.gz": {
+      "sha256": "6186ada618223deaa5d8dfa104a4d57386af46331cbb3d25b78ae2b0a0bb4853",
+      "bytes": 1321
+    },
+    "history/cancelled-block-reader/inputs/linux-kernel/tools/user-memory/translation_publication.py.gz": {
+      "sha256": "de057c7f66275cc883bbb7cd746c0253801f606b7bb94d01a724cb4201f7c35d",
+      "bytes": 1432
+    },
+    "history/cancelled-block-reader/inputs.json": {
+      "sha256": "9e1c9b8c272905d17c6ebfbf617ce913721e254b81646615b31239ef1efd08be",
+      "bytes": 2690
+    },
+    "history/cancelled-block-reader/observation/cpu-2414311.log.gz": {
+      "sha256": "57c36a3900d924aa947afe6c22cfdd9359034f8ef5a289b1e98622a330651efb",
+      "bytes": 214192
+    },
+    "history/cancelled-block-reader/observation/cpu-2414312.log.gz": {
+      "sha256": "44bd0977ef5a92bcefb1aa38425751d391a320dc7bca6c93f994fc5be160fd8e",
+      "bytes": 100
+    },
+    "history/cancelled-block-reader/observation/gdb.stderr.log.gz": {
+      "sha256": "8ba52312c200b72cdce85a9aa8ddfde2ff316b1870f8ef426945ac32587a6096",
+      "bytes": 305
+    },
+    "history/cancelled-block-reader/observation/gdb.stdout.log.gz": {
+      "sha256": "bda963c42c793aabc692fbbaaa57e5fa8b21da3ecad8570ac7364c6c9e86b26b",
+      "bytes": 125
+    },
+    "history/cancelled-block-reader/observation/inspect.gdb.gz": {
+      "sha256": "bba5d7cbfd595289db21242281a77a16b45bac0782d3db5eff889f4656fdce86",
+      "bytes": 164237
+    },
+    "history/cancelled-block-reader/observation/observations.json.gz": {
+      "sha256": "90b4484fa4f7dff871fab42a6e15868cb425b048a13801e43517ebfe2e17af8c",
+      "bytes": 253
+    },
+    "history/cancelled-block-reader/observation/observations.json.translation-progress.json.gz": {
+      "sha256": "012b5acc382c0ab10b6ec516520fe526c473dc33e4f50470f53a320d531e58a1",
+      "bytes": 139046
+    },
+    "history/cancelled-block-reader/observation/qemu.command.json.gz": {
+      "sha256": "edb62021edc67f35a41dfd5f0729c8283a3868462f40ace277cb85267da6e741",
+      "bytes": 665
+    },
+    "history/cancelled-block-reader/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/cancelled-block-reader/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/cancelled-block-reader/observation/serial.log.gz": {
+      "sha256": "5f414b1a160a9d6779d368110c387c9a79115ca5560c16395a059997576f4d17",
+      "bytes": 705
+    },
+    "history/cancelled-block-reader/run.json": {
+      "sha256": "7d9725477fa658ef26eaec2050fab213f2bcfb481bfc817fcbab3cb47e20f5d5",
+      "bytes": 5053
+    },
+    "history/cancelled-block-reader/test.log.gz": {
+      "sha256": "ace3e8bc4884381d994bde77c72aeee9a8f4b8c48dce9c5a885b5475f89ce6bc",
+      "bytes": 631
+    },
+    "history/detached-cleanup-reader/files.json": {
+      "sha256": "c53cde535528399c24f6b8b4c9fd70e1bfd2b3b16a94d2c6b19d6d0d78db5207",
+      "bytes": 3358
+    },
+    "history/detached-cleanup-reader/inputs/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz": {
+      "sha256": "618dad96e56ae0e646bd715b447b4902ff5c935b9f0bc7fe1cbf494c4fd9f931",
+      "bytes": 5312
+    },
+    "history/detached-cleanup-reader/inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz": {
+      "sha256": "b3873db5d2cb75c269c9905b89a340edaa71bd8403492b6711e8fa02ac9c9e00",
+      "bytes": 7440
+    },
+    "history/detached-cleanup-reader/inputs/linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py.gz": {
+      "sha256": "53df4185f54294d9848102420795b538949568d2e0a1e1adb529d83b4adbd63f",
+      "bytes": 2543
+    },
+    "history/detached-cleanup-reader/inputs/linux-kernel/tools/user-memory/inspect_translation_publication.py.gz": {
+      "sha256": "8c5b220c204288b4e09edeeb344ed4b930738440ac4d30bf9ddc2e0255cbdf77",
+      "bytes": 1504
+    },
+    "history/detached-cleanup-reader/inputs/linux-kernel/tools/user-memory/qemu_publication_trace.py.gz": {
+      "sha256": "4ab6e2733c260ab780f8943b11dd4afdf99df8dc3ae2885b89f6208157c7083c",
+      "bytes": 1258
+    },
+    "history/detached-cleanup-reader/inputs/linux-kernel/tools/user-memory/test_translation_publication.py.gz": {
+      "sha256": "6186ada618223deaa5d8dfa104a4d57386af46331cbb3d25b78ae2b0a0bb4853",
+      "bytes": 1321
+    },
+    "history/detached-cleanup-reader/inputs/linux-kernel/tools/user-memory/translation_publication.py.gz": {
+      "sha256": "de057c7f66275cc883bbb7cd746c0253801f606b7bb94d01a724cb4201f7c35d",
+      "bytes": 1432
+    },
+    "history/detached-cleanup-reader/inputs.json": {
+      "sha256": "e6e9456d18313b25de2346fa55bdee541553b4442c2d8e61733508963dcb0e17",
+      "bytes": 2697
+    },
+    "history/detached-cleanup-reader/observation/cpu-2414587.log.gz": {
+      "sha256": "46531a2c8e42a0781a194de46eeff781270c3fbfc14a6ae90fd38ba46e551f1c",
+      "bytes": 240102
+    },
+    "history/detached-cleanup-reader/observation/cpu-2414588.log.gz": {
+      "sha256": "3edafea6e2a01ae99edd2d76798e30c51140b5b78ca736a43ad5489459c13c81",
+      "bytes": 106
+    },
+    "history/detached-cleanup-reader/observation/gdb.stderr.log.gz": {
+      "sha256": "bf035db7401cb3d14238d16cc2a4d1cea65c72a61291ac89f32fa1ad8ed0b679",
+      "bytes": 291
+    },
+    "history/detached-cleanup-reader/observation/gdb.stdout.log.gz": {
+      "sha256": "cc1905775d20fb43ef07abd0b745074c705a264f5177f1ecae4e63d79bed7af1",
+      "bytes": 167
+    },
+    "history/detached-cleanup-reader/observation/inspect.gdb.gz": {
+      "sha256": "19027eec0a6a0bf29cc7159d3546302f132aa0d86aca47dcd0d9dfa926386fcd",
+      "bytes": 165246
+    },
+    "history/detached-cleanup-reader/observation/observations.json.gz": {
+      "sha256": "b947faec7e7da9c5543d0c552cce4968fe5ea41470b325c3b57cc8edec05e87b",
+      "bytes": 15282
+    },
+    "history/detached-cleanup-reader/observation/observations.json.translation-progress.json.gz": {
+      "sha256": "fe5676da03cf8a1af653791cc08151fe66b2f79f25eb60c07f75d8d342693a57",
+      "bytes": 775569
+    },
+    "history/detached-cleanup-reader/observation/qemu.command.json.gz": {
+      "sha256": "d5fdfbb46a734c23cfb0e11ea72beb92779697f64182ff34ea0947f7459e8177",
+      "bytes": 665
+    },
+    "history/detached-cleanup-reader/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/detached-cleanup-reader/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/detached-cleanup-reader/observation/serial.log.gz": {
+      "sha256": "869a923780b000417733bf36bee63a12b6fd21cce44ae448a47fc69024f6503b",
+      "bytes": 764
+    },
+    "history/detached-cleanup-reader/run.json": {
+      "sha256": "97d7daf25949e77a760fa50369e65dcaf66ed387c8aebb15ff451e33dfa003c8",
+      "bytes": 5054
+    },
+    "history/detached-cleanup-reader/test.log.gz": {
+      "sha256": "4eb86e96d5b8c33e38edf01ef235c3b506f74815fe02d31556c6f941d0e962ee",
+      "bytes": 663
+    },
+    "history/first-frozen-replay/inputs-before.json": {
+      "sha256": "fb35c963b05ac34880a27f292a1a35cf3ed880f9464c81e33f2f046710b392fb",
+      "bytes": 4783
+    },
+    "history/first-frozen-replay/layout.log": {
+      "sha256": "9c990e50b8d1033b34060f872aeef1aa66b75fc60272b42c6cb64d977c45f281",
+      "bytes": 1142
+    },
+    "history/first-frozen-replay/status.json": {
+      "sha256": "1850105624923e6bb8f08d826eede61fec5c3778104bd4e9d2f895203027a314",
+      "bytes": 425
+    },
+    "history/global-nochain/files.json": {
+      "sha256": "5a7676d23ce5e96080f848a6e35be4f2062b9e8ac50161de554f5f01e9c014d9",
+      "bytes": 2666
+    },
+    "history/global-nochain/inputs/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz": {
+      "sha256": "8cc05a62c8695addd1e6f670db7acdbe2264456a003bf4746b47b8321c78c8d6",
+      "bytes": 5318
+    },
+    "history/global-nochain/inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz": {
+      "sha256": "b3873db5d2cb75c269c9905b89a340edaa71bd8403492b6711e8fa02ac9c9e00",
+      "bytes": 7440
+    },
+    "history/global-nochain/inputs/linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py.gz": {
+      "sha256": "a2d1b04ae723c1f18fb9ad2577c05fe3320de8fbf3dcb52c90b24ffc500a0076",
+      "bytes": 2444
+    },
+    "history/global-nochain/inputs/linux-kernel/tools/user-memory/inspect_translation_publication.py.gz": {
+      "sha256": "8c5b220c204288b4e09edeeb344ed4b930738440ac4d30bf9ddc2e0255cbdf77",
+      "bytes": 1504
+    },
+    "history/global-nochain/inputs/linux-kernel/tools/user-memory/qemu_publication_trace.py.gz": {
+      "sha256": "516da1a92a028be555c20fdfb5d37f10a4388c5295afc5e227c869f48ad17514",
+      "bytes": 629
+    },
+    "history/global-nochain/inputs/linux-kernel/tools/user-memory/test_translation_publication.py.gz": {
+      "sha256": "6186ada618223deaa5d8dfa104a4d57386af46331cbb3d25b78ae2b0a0bb4853",
+      "bytes": 1321
+    },
+    "history/global-nochain/inputs/linux-kernel/tools/user-memory/translation_publication.py.gz": {
+      "sha256": "de057c7f66275cc883bbb7cd746c0253801f606b7bb94d01a724cb4201f7c35d",
+      "bytes": 1432
+    },
+    "history/global-nochain/inputs.json": {
+      "sha256": "a0a4541004e87f22b7a0bab6c183c757a3910428c558970f5c2a345840fee0cd",
+      "bytes": 2634
+    },
+    "history/global-nochain/observation/cpu-2413961.log.gz": {
+      "sha256": "272b2fdb1dfc48b3e92ffb7f38af56de2ea425b65d4527badff22953fbcdae26",
+      "bytes": 1059
+    },
+    "history/global-nochain/observation/gdb.stderr.log.gz": {
+      "sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af",
+      "bytes": 182
+    },
+    "history/global-nochain/observation/gdb.stdout.log.gz": {
+      "sha256": "0a4d4acf4facf69f73820129be3732c846c16d1d49388fc996831aed7ee4c90f",
+      "bytes": 38
+    },
+    "history/global-nochain/observation/inspect.gdb.gz": {
+      "sha256": "ed2c1f44248961ac8881685f46b8dae2a5d84e21535f9719f51a144cc62bdf1b",
+      "bytes": 163889
+    },
+    "history/global-nochain/observation/observations.json.translation-progress.json.gz": {
+      "sha256": "c0dcf25cc532014fb090e997e79c471500b503b7fdb61e820089d859cb6af65a",
+      "bytes": 95096
+    },
+    "history/global-nochain/observation/qemu.command.json.gz": {
+      "sha256": "7a7be22a1c20ef676e0b62219db85a025c7a684bd2e03b32c047f35f02521e7f",
+      "bytes": 671
+    },
+    "history/global-nochain/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/global-nochain/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/global-nochain/observation/serial.log.gz": {
+      "sha256": "5f414b1a160a9d6779d368110c387c9a79115ca5560c16395a059997576f4d17",
+      "bytes": 705
+    },
+    "history/global-nochain/run.json": {
+      "sha256": "00854ed715d9963dd5b1bc552e4ff93732bee10b3a51c61e3a15f5fb8b9eecbc",
+      "bytes": 5053
+    },
+    "history/global-nochain/test.log.gz": {
+      "sha256": "809c3e79bcc9ea3fcf309f1266024b08d2c5b781f5461823ec389c45e97c322c",
+      "bytes": 490
+    },
+    "history/per-page-breakpoints/files.json": {
+      "sha256": "2a570101efa68b304271bca282ae00af2339ba0c7a829592b18d6bd086b5ce43",
+      "bytes": 2065
+    },
+    "history/per-page-breakpoints/inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz": {
+      "sha256": "022521929a454efcce0332f3c1cb5cfc5018dd0d4a1089676bb338af821c9a96",
+      "bytes": 7383
+    },
+    "history/per-page-breakpoints/inputs/linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py.gz": {
+      "sha256": "74d883be195bddda74296a1f3abdfed52da237d657a1b3312841ef87d8b07883",
+      "bytes": 2047
+    },
+    "history/per-page-breakpoints/inputs/linux-kernel/tools/user-memory/inspect_translation_publication.py.gz": {
+      "sha256": "8c5b220c204288b4e09edeeb344ed4b930738440ac4d30bf9ddc2e0255cbdf77",
+      "bytes": 1504
+    },
+    "history/per-page-breakpoints/inputs/linux-kernel/tools/user-memory/test_translation_publication.py.gz": {
+      "sha256": "6186ada618223deaa5d8dfa104a4d57386af46331cbb3d25b78ae2b0a0bb4853",
+      "bytes": 1321
+    },
+    "history/per-page-breakpoints/inputs/linux-kernel/tools/user-memory/translation_publication.py.gz": {
+      "sha256": "de057c7f66275cc883bbb7cd746c0253801f606b7bb94d01a724cb4201f7c35d",
+      "bytes": 1432
+    },
+    "history/per-page-breakpoints/inputs.json": {
+      "sha256": "1ae7269c3d0656c77596876098a15d9e5a4b5d5390df7fa44eb5a10fe5cc803b",
+      "bytes": 1935
+    },
+    "history/per-page-breakpoints/observation/gdb.stderr.log.gz": {
+      "sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af",
+      "bytes": 182
+    },
+    "history/per-page-breakpoints/observation/gdb.stdout.log.gz": {
+      "sha256": "6c2ab38514c5c9c6f4f889ae6e4e8066fed4dc3e3eb0ae3730b79cbff78c03bd",
+      "bytes": 70
+    },
+    "history/per-page-breakpoints/observation/inspect.gdb.gz": {
+      "sha256": "a7dbe40569091c70c31b5f8abe13c2bfd9a0990484c00d3853528c6d0a7f0c78",
+      "bytes": 162540
+    },
+    "history/per-page-breakpoints/observation/qemu.command.json.gz": {
+      "sha256": "f11293cdd932d347d48c8fa50a23e28b7ca03db67d9f0b14053ca35abf2182ae",
+      "bytes": 608
+    },
+    "history/per-page-breakpoints/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/per-page-breakpoints/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "history/per-page-breakpoints/observation/serial.log.gz": {
+      "sha256": "5f414b1a160a9d6779d368110c387c9a79115ca5560c16395a059997576f4d17",
+      "bytes": 705
+    },
+    "history/per-page-breakpoints/run.json": {
+      "sha256": "c7160b7738254549bb4016ab3404b77779ed3aedfb90e5608896769c5881f83d",
+      "bytes": 4535
+    },
+    "history/per-page-breakpoints/test.log.gz": {
+      "sha256": "cbaab89f4c4280db30083e4715610f343a1294d11b0f487f48da387f2db294c4",
+      "bytes": 481
+    },
+    "inherited-readers.json": {
+      "sha256": "3b5ff9a7a578bd101a5f9be890ed0abe7cd1b09b9adf03a2eb055d5303dd5266",
+      "bytes": 338
+    },
+    "inputs/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz": {
+      "sha256": "618dad96e56ae0e646bd715b447b4902ff5c935b9f0bc7fe1cbf494c4fd9f931",
+      "bytes": 5312
+    },
+    "inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz": {
+      "sha256": "d3d5e32efe70ec4598874ca200baa17d16a33d1ae9c36423fe75a87eb2b4c361",
+      "bytes": 7495
+    },
+    "inputs/linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py.gz": {
+      "sha256": "e81b5eb9ee3c59bc45943d9c1f72d7ef80c2621cc8dd8a670b8f37ab59644037",
+      "bytes": 2831
+    },
+    "inputs/linux-kernel/tools/user-memory/control_translation_publication.py.gz": {
+      "sha256": "a6ed365ff0bd4c9680722bea8027347d3766b3e8b426a2ac3bcb097607d96790",
+      "bytes": 1514
+    },
+    "inputs/linux-kernel/tools/user-memory/inspect_translation_publication.py.gz": {
+      "sha256": "41a69ac5c763bd23d5e2c0aae63665a1e6e080f85f4bc850ff5439c30b897e93",
+      "bytes": 1644
+    },
+    "inputs/linux-kernel/tools/user-memory/qemu_publication_trace.py.gz": {
+      "sha256": "4ab6e2733c260ab780f8943b11dd4afdf99df8dc3ae2885b89f6208157c7083c",
+      "bytes": 1258
+    },
+    "inputs/linux-kernel/tools/user-memory/readback_translation_publication.py.gz": {
+      "sha256": "aac5d6a88f701f8b7f0f682458a95cd56371c2550d4e5e78385ef229236c5602",
+      "bytes": 2867
+    },
+    "inputs/linux-kernel/tools/user-memory/test_qemu_publication_trace.py.gz": {
+      "sha256": "eadd87e82f9e87302688a640fdd8f7e6ed7e651752d636067cbfba000623dc4e",
+      "bytes": 1102
+    },
+    "inputs/linux-kernel/tools/user-memory/test_translation_publication.py.gz": {
+      "sha256": "5b635e848f975dae25e06f66c1d06ff6f3fce0a62817545ca698e7383510b33f",
+      "bytes": 1562
+    },
+    "inputs/linux-kernel/tools/user-memory/translation_publication.py.gz": {
+      "sha256": "5e97c54653fde873088aecf53f50a8bc43f78cafc8727c4f9fd30ae6700ee994",
+      "bytes": 1920
+    },
+    "inputs/src/topal-compiler/src/runtime/kernel_frame_memory.ll.gz": {
+      "sha256": "40b16d2600a09ddb95fcbf5ba7233cda4a07cde41e6be5d87e0c6fec10f85a7e",
+      "bytes": 3136
+    },
+    "inputs.json": {
+      "sha256": "7c42967c6e574a4fbab706c1b09328dd0155a0d9be213a89a735def4c6a806cc",
+      "bytes": 5139
+    },
+    "native/files.json": {
+      "sha256": "f06314bb1ab2936321e17d820758d5d665dd73e45b2cc959e1b81ba2677be87f",
+      "bytes": 3085
+    },
+    "native/observation/cpu-2415265.log.gz": {
+      "sha256": "d2f4278ec1e122c0d23fa5885ba238651cd2efefe0d312ee8b44f1ae1ce0a02c",
+      "bytes": 342376
+    },
+    "native/observation/cpu-2415266.log.gz": {
+      "sha256": "b826cf27d8dd5e9e42d2339edce8c76f084f5c2c6b09d7e023447489572604dd",
+      "bytes": 100
+    },
+    "native/observation/gdb.stderr.log.gz": {
+      "sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af",
+      "bytes": 182
+    },
+    "native/observation/gdb.stdout.log.gz": {
+      "sha256": "ecaa6cbd2cfe67b04554fce34bb39f21b0b8baefcd74bad54ae7c6c877298ca2",
+      "bytes": 191
+    },
+    "native/observation/inspect.gdb.gz": {
+      "sha256": "6c84edaacd8366b77cc00cd4dafbe82d5f1ce17cd60be76ed3e08c4dccf5b092",
+      "bytes": 166633
+    },
+    "native/observation/observations.json.gz": {
+      "sha256": "27fa8afe781cf356639f69ac322c532214d529d4a7661ace955061f236acd22e",
+      "bytes": 1790144
+    },
+    "native/observation/observations.json.translation-progress.json.gz": {
+      "sha256": "ae3aa10a5e9091b7a576c0aa2c2158b51c1f6672e8c291da00a532eabf9f5103",
+      "bytes": 837095
+    },
+    "native/observation/qemu.command.json.gz": {
+      "sha256": "472ac64c09b5fdef796783d49cbfaaa950b55bd356156cb7870fb0d62f3bae7c",
+      "bytes": 665
+    },
+    "native/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "native/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "native/observation/serial.log.gz": {
+      "sha256": "6e124432abf990a1c8fcca955ef14875f427bd04592b09a7bc1744900466f66c",
+      "bytes": 1542
+    },
+    "native/publisher-gnu-disassembly.log.gz": {
+      "sha256": "054200b0fcb728d096ae4a7d20acc5181ee2605e2b39b10af8087d703489675a",
+      "bytes": 843
+    },
+    "native/run.json": {
+      "sha256": "8c498eea52569c717a274ee5e6b569bc77d2c71e7e1bb2668c3a1a6d4d52c056",
+      "bytes": 5053
+    },
+    "native/runner.py.gz": {
+      "sha256": "b10ed1db33b6835fda1d29430793472802a35641bd91d8436c11b6ca9ce6a936",
+      "bytes": 1461
+    },
+    "native/test.log.gz": {
+      "sha256": "5cc3593ab522ccfdb27482c7e7a7b0403597eff9ff505c884118cc50ac49fa45",
+      "bytes": 269
+    },
+    "pilots/default-chain/files.json": {
+      "sha256": "6499944735687203529591d25bcc52cdc8ef59dacd415a81308854f796a5e94b",
+      "bytes": 2881
+    },
+    "pilots/default-chain/initial-parser.py.gz": {
+      "sha256": "516da1a92a028be555c20fdfb5d37f10a4388c5295afc5e227c869f48ad17514",
+      "bytes": 629
+    },
+    "pilots/default-chain/observation/cpu-2414176.log.gz": {
+      "sha256": "bc9726a1181cea788a55f4d6a51bd3d39bf05e3486ab04291191296f56609e27",
+      "bytes": 197794
+    },
+    "pilots/default-chain/observation/cpu-2414177.log.gz": {
+      "sha256": "f158abe4a4adee091d8e4dc4b4d3d3d695bea1594f61391a725094c4a00d8fb5",
+      "bytes": 100
+    },
+    "pilots/default-chain/observation/gdb.stderr.log.gz": {
+      "sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af",
+      "bytes": 182
+    },
+    "pilots/default-chain/observation/gdb.stdout.log.gz": {
+      "sha256": "f20e5f826a70153c9d199237bcb253856544c2dfcd1e7327eb9eee93fe678719",
+      "bytes": 92
+    },
+    "pilots/default-chain/observation/inspect.gdb.gz": {
+      "sha256": "d4e04e0463f167abd4a8c04d1282b087f1ecc397581967854e515a6edb320d0c",
+      "bytes": 1454
+    },
+    "pilots/default-chain/observation/observations.json.gz": {
+      "sha256": "5ce59b3a87bf94096e38673204118ef4268a222b6574abd430508f63a14cafdc",
+      "bytes": 320
+    },
+    "pilots/default-chain/observation/qemu.command.json.gz": {
+      "sha256": "cbade1200fc585091f7c2d908d4ad572a43bed201f1bc9d1ed85ad3e422b7f14",
+      "bytes": 641
+    },
+    "pilots/default-chain/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "pilots/default-chain/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "pilots/default-chain/observation/serial.log.gz": {
+      "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297",
+      "bytes": 475
+    },
+    "pilots/default-chain/readback.json": {
+      "sha256": "7cd7e9b5c03d56edc90853a65f1323647254f8c1528baa1d421d198fc7a26e41",
+      "bytes": 888
+    },
+    "pilots/default-chain/runner.py.gz": {
+      "sha256": "57df8394f35e8a0c684b340d14ee69467e28b36a7e41daab533f90a94bda796d",
+      "bytes": 1702
+    },
+    "pilots/nochain/files.json": {
+      "sha256": "e88ceb3b23bc9107a2efe47b4774027a74a479d326d6924a588d1233de471afc",
+      "bytes": 2536
+    },
+    "pilots/nochain/observation/cpu-2413815.log.gz": {
+      "sha256": "54dcec0f841169b96c3ddf0dbd432e8b121af1aed0435e70c03b2277558eeb10",
+      "bytes": 1544
+    },
+    "pilots/nochain/observation/gdb.stderr.log.gz": {
+      "sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af",
+      "bytes": 182
+    },
+    "pilots/nochain/observation/gdb.stdout.log.gz": {
+      "sha256": "f20e5f826a70153c9d199237bcb253856544c2dfcd1e7327eb9eee93fe678719",
+      "bytes": 92
+    },
+    "pilots/nochain/observation/inspect.gdb.gz": {
+      "sha256": "16a9eb79c30dbe184e47ffdb3cab829abfb9dab7b2309a1ac8577b5f0151f2f2",
+      "bytes": 1343
+    },
+    "pilots/nochain/observation/observations.json.gz": {
+      "sha256": "847b8a296d87686b96f573c673f00051a6ac24e644d7bff507ba7f2554d4f3f7",
+      "bytes": 239
+    },
+    "pilots/nochain/observation/qemu.command.json.gz": {
+      "sha256": "de6b945c4564a6d6ce81fee1167dc80a4ccdeafa216da444d6bba7cd13b766ac",
+      "bytes": 642
+    },
+    "pilots/nochain/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "pilots/nochain/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "pilots/nochain/observation/serial.log.gz": {
+      "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297",
+      "bytes": 475
+    },
+    "pilots/nochain/runner.py.gz": {
+      "sha256": "ee8d82c10b4ab41a7a7f5988e20e2cc2f27b9a4eae4245ba2be9b22c572dd04a",
+      "bytes": 1242
+    },
+    "qualification-runner.py.gz": {
+      "sha256": "7d2d501781a0ed10d8b01dc3aefa30d2d10ffe95c0518a1eeb2d25115633b60c",
+      "bytes": 1183
+    },
+    "records.py": {
+      "sha256": "3b3afa08021a66c323dff108d7d7b8f5087abd879caad8f878d4dc9c993aca9a",
+      "bytes": 1628
+    },
+    "replay-checks/controls.log": {
+      "sha256": "bd39e1517709e78c386d4c35da23dee0dd565029c8c4b3cc28cc0120b52def34",
+      "bytes": 33
+    },
+    "replay-checks/layout.log": {
+      "sha256": "a55066866d9c24f03cbbd0e2278cf19ca6fce3e3e7adfb1dbb55a1ab1310d83d",
+      "bytes": 1304
+    },
+    "replay-checks/metadata.log": {
+      "sha256": "8e67edf9fd8f2f10e923f263bee1992dae3a8ab7df0c50c810160b2ba7c31283",
+      "bytes": 97
+    },
+    "replay-checks/models.log": {
+      "sha256": "fd1116a7565d73977eca02c797744113fbe6d02180669cb0cad11003bb0db5b1",
+      "bytes": 29875
+    },
+    "replay-checks/owners.log": {
+      "sha256": "bb2ac4fd7487cff5db943f5cd427c5ba6584ccfa79e0e811fad22e1915eee093",
+      "bytes": 698
+    },
+    "replay-checks/publication.log": {
+      "sha256": "0e34ca72c845a6fb9020fb0c56c98b78e7e5b177acbe5545672c864924e2cec8",
+      "bytes": 1335
+    },
+    "replay.json": {
+      "sha256": "993223da3c24f46e4ede191e495a1ceebf88053384a654644af0c028107000d8",
+      "bytes": 595
+    },
+    "replay.py": {
+      "sha256": "cde40fac0f31d81f5cb201b4e07d9f461602aab6e0a4d451c8eed4dd008cd1a7",
+      "bytes": 3297
+    },
+    "review.json": {
+      "sha256": "449b09fce3842b4f4fd50ec671cee654f20e49878f6d9fcb79428c154df841d8",
+      "bytes": 972
+    },
+    "validate-archive.py": {
+      "sha256": "f9284d32fdab1deaa71a36cefb25ba21603a1aad3cae7ee4f4ca9a6d34634c5b",
+      "bytes": 10019
+    }
+  },
+  "selected_source_count": 192,
+  "artifact_count": 94,
+  "selected_source_set_sha256": "4514fa796ab489de0ac0bc18e9d9bdbec0065acb57f417c8df1a494b75d41801",
+  "artifact_set_sha256": "c7f056cdddd754519c66c689b9608bb7222abe362c81328fab8ba4d55d70129d",
+  "local_links": [
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "../../../../labs/qemu/x86_64/user_extent_translation_observer.py"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "../../inspect_translation_publication.py"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "../../translation_publication.py"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "../../qemu_publication_trace.py"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "checks/publication.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "checks/controls/controls.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "inputs.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "../stage-3-mapping-aliases/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "replay.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "history/first-frozen-replay/status.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "validate-archive.py"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-translation-publication/README.md",
+      "target": "review.json"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-owned-user-extents.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "tools/user-memory/results/stage-3-stack-retirement/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "tools/user-memory/results/stage-3-source-metadata/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "tools/user-memory/results/stage-3-owner-boundaries/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "tools/user-memory/results/stage-3-owner-intervals/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "tools/user-memory/results/stage-3-mapping-aliases/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "tools/user-memory/results/stage-3-translation-publication/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-modular-systems-implementation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-shared-namespace-transactions.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-shared-inode-modes.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-instance-scoped-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-framed-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-policy-linked-inputs.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-region-immutable-data.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-persistent-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-positional-file-transfers.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-root-region-invocation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-source-region-functions.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-status.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-2-report.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-3-report.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-semantic-foundation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bootstrap-storage.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-x86-provider-plan.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-x86-provider-object.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-linked-artifact.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-x86-boot-adapter.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-toolchain-gate.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-compiler-publication.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/boot-memory-description.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-boot-memory.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/physical-frame-allocation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-frame-allocation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-multi-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-multi-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/kernel-mapping.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-kernel-mapping.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/translation-space.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-translation-space.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/active-translation-edit.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-active-translation-edit.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/local-interrupt-critical-scope.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-local-interrupt-critical-scope.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/atomic-word-location.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-atomic-word-location.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/local-notification-interrupt.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-local-notification-interrupt.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/monotonic-clock-observation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-monotonic-clock-observation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/deadline-event.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-deadline-event.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/kernel-context-transfer.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-kernel-context-transfer.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/cooperative-context-handoff.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-cooperative-context-handoff.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/affine-runnable-queue.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-affine-runnable-queue.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/deadline-preemptible-context-transfer.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-deadline-preemptible-context-transfer.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/one-shot-kernel-completion.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-one-shot-kernel-completion.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/user-syscall-roundtrip.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-syscall-roundtrip.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/user-copy-to-uname.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-copy-to-uname.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/user-copy-from-timespec.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-copy-from-timespec.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/allocator-backed-user-probe.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-allocator-backed-user-probe.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/opaque-user-address-space.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-opaque-user-address-space.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/user-mapping-executable-promotion.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-mapping-executable-promotion.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/disjoint-live-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-disjoint-live-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/sealed-user-mapping-round-trip.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-sealed-user-mapping-round-trip.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/affine-user-mapping-lifecycle.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-affine-user-mapping-lifecycle.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/sequential-user-mapping-generations.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-sequential-user-mapping-generations.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/user-mapping-permission-tightening.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-mapping-permission-tightening.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/user-mapping-image-roles.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-mapping-image-roles.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/resident-user-image-mappings.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-resident-user-image-mappings.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-constructed-image-data-observation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-data-observation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-constructed-image-syscall.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-syscall.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-constructed-image-uname.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-uname.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-constructed-image-nanosleep.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-nanosleep.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-initial-user-stack.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-user-stack.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-initial-auxv-pagesz.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-pagesz.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-initial-auxv-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-initial-auxv-execfn.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-execfn.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-initial-auxv-credentials.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-credentials.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-elf-identity.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-elf-identity.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-boot-resource.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-boot-resource.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-external-elf-load.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-external-elf-load.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/external-elf-payload-authority.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-external-elf-payload-authority.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-external-data-bss.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-external-data-bss.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/runtime-derived-executable-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-runtime-derived-executable-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/runtime-derived-data-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-runtime-derived-data-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/runtime-derived-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-runtime-derived-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/published-initial-user-image.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-published-initial-user-image.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/supplied-initial-user-image.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-supplied-initial-user-image.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/writable-user-data.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-writable-user-data.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-constructed-image-write.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-write.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-constructed-image-read.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-read.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-general-stdout-write.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-general-stdout-write.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-general-stdin-read.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-general-stdin-read.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-initial-brk.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-initial-brk.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-virtio-queue-activation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-queue-activation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-virtio-queue-notification.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-queue-notification.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/reusable-process-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-reusable-process-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/full-output-process-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-full-output-process-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-large-request-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-large-request-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-descriptor-close.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-close.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-descriptor-duplication.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-duplication.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-descriptor-fcntl.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-fcntl.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-descriptor-fstat.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-fstat.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-console-tcgets.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-console-tcgets.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-console-winsize.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-console-winsize.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/initial-console-lseek.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-console-lseek.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-multipage-initial-executable.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-multipage-initial-executable.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-load-plan.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-load-plan.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-page-realization.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-page-realization.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-mapping-resources.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-mapping-resources.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-process-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-process-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-brk-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-brk-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-brk-growth.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-brk-growth.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-x86-fs-base.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-x86-fs-base.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-clear-child-tid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-clear-child-tid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-empty-robust-list.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-empty-robust-list.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-rseq-fallback.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-rseq-fallback.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-stack-limit-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-stack-limit-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/bounded-static-elf-initial-readlinkat-fallback.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-readlinkat-fallback.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "baseline.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "baseline.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "knowledge/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "knowledge/catalog.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-1-report.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-2-report.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-3-report.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-source-elf64-header.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-source-linux-syscall-selection.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-semantic-foundation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bootstrap-storage.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-x86-provider-plan.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-x86-provider-object.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-linked-artifact.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-x86-boot-adapter.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-toolchain-gate.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-compiler-publication.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-boot-memory.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-frame-allocation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-multi-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-kernel-mapping.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-translation-space.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-active-translation-edit.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-local-interrupt-critical-scope.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-atomic-word-location.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-local-notification-interrupt.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-monotonic-clock-observation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-deadline-event.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-kernel-context-transfer.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-cooperative-context-handoff.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-affine-runnable-queue.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-deadline-preemptible-context-transfer.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-one-shot-kernel-completion.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-syscall-roundtrip.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-copy-to-uname.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-copy-from-timespec.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-allocator-backed-user-probe.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-opaque-user-address-space.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-disjoint-live-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-sealed-user-mapping-round-trip.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-affine-user-mapping-lifecycle.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-sequential-user-mapping-generations.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-mapping-permission-tightening.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-mapping-executable-promotion.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-mapping-image-roles.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-resident-user-image-mappings.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-resident-user-image-readiness.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-user-image-execution-residency.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-data-observation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-syscall.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-uname.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-constructed-image-nanosleep.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-user-stack.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-pagesz.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-execfn.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-credentials.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-secure.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-clktck.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-auxv-platform.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-scalar-identity-syscalls.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-x86-fs-base.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-clear-child-tid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-empty-robust-list.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-stack-rlimit-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-signal-mask.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-runtime-anonymous-page.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-runtime-anonymous-protection.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-runtime-anonymous-advice.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-monotonic-clock-gettime.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-monotonic-clock-getres.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-unsupported-syscall-enosys.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-sched-yield.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-pci-configuration-observation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-pci-capability-discovery.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-pci-feature-negotiation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-pci-queue-discovery.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-pci-bus-master-authorization.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-dma-buffers.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-split-ring.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-dma-device-preparation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-queue-address-publication.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-queue-activation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-queue-notification.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-completion-signal.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-used-ring-validation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-virtio-payload-completion.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-entropy-sample-capture.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-entropy-sample-quality.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-entropy-pool-creation.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-entropy-pool-mixing.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-entropy-credit-transfer.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-initial-crng-seeding.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-crng-extraction.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-initial-auxv-random.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-initial-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-reusable-process-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-full-output-process-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-small-request-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-large-request-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-close.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-duplication.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-fcntl.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-descriptor-fstat.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-console-tcgets.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-console-winsize.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-console-lseek.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-multipage-initial-executable.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-load-plan.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-page-realization.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-frame-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-mapping-resources.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-process-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-brk-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-brk-growth.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-x86-fs-base.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-clear-child-tid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-empty-robust-list.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-rseq-fallback.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-stack-limit-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-readlinkat-fallback.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-reusable-getrandom.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-post-random-brk-query.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-post-random-brk-growth.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-post-random-brk-page-alignment.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-relro-mprotect.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-process-name.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-getuid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-config-stat-miss.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-initial-credential-tail.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-applet-newline-write.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-pinned-static-busybox-echo.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-getpid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-sigchld-disposition.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-getppid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-empty-input.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-exit-command.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-echo-command.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-console-fstat.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-dev-tty-open-miss.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-standard-terminal-probes.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-terminal-warning.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-mailpath-stat-miss.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-banner.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-post-banner-terminal-probe.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-post-banner-getcwd.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-post-banner-geteuid.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-profile-open.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-profile-fstat.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-profile-read.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-profile-close.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-prompt.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-refill-input.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-pwd-command.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-cd-root-command.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-root-directory-test.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-root-directory-condition.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-missing-directory-condition.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-root-glob-enumeration.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-named-root-glob-match.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-named-root-directory-condition.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-empty-bin-glob-enumeration.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-bin-busybox-glob-match.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-bin-busybox-file-condition.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-bin-busybox-executable-condition.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-bin-busybox-nonempty-condition.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-leaf-publication.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-payload-zeroing.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-supplied-static-elf-artifact.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-static-elf-boot-resource.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-elf-identity.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-initial-boot-resource.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-external-elf-load.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-external-elf-payload-authority.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-external-data-bss.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-runtime-derived-executable-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-runtime-derived-data-extent.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-runtime-derived-entry.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-published-initial-user-image.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-supplied-initial-user-image.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-bounded-static-elf-shell-busybox-true-execve.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-reusable-static-process-execution.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-reusable-static-file-descriptions.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-reusable-readonly-namespace.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-runtime-environments.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-repeated-static-exec.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-deadline-entry-filter.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-reusable-process-observations.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-readonly-open-access.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-static-syscall-fallback.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-static-process-time.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-kernel-policy-library.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-owned-numeric-runtime.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-static-process-children.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-resumable-static-process-pair.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-static-process-pipes.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-freestanding-source-modules.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "step-4-freestanding-numeric-records.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "inventory/coverage.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/README.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "design/decision-register.md"
+    },
+    {
+      "document": "linux-kernel/README.md",
+      "target": "traceability.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-owned-user-extents.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/user-memory/results/stage-3-stack-retirement/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/user-memory/results/stage-3-source-metadata/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/user-memory/results/stage-3-owner-boundaries/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/user-memory/results/stage-3-owner-intervals/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/user-memory/results/stage-3-mapping-aliases/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/user-memory/results/stage-3-translation-publication/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-repeated-source-tail-traversal.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-shared-namespace-transactions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-frame-allocator-readiness.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-modular-systems-implementation.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-instance-scoped-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-framed-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-positional-file-transfers.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-named-volatile-files.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-source-file-open-plans.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-owned-volatile-files.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-shared-namespace-transactions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-source-ram-page-allocation.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/rust-qualification/results/tk278/final/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-unsigned-region-fields.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/rust-qualification/results/tk279/final/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-shared-inode-modes.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "tools/rust-qualification/results/tk280/final/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "labs/qemu/x86_64/results/tk280/final/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "design/borrowed-kernel-regions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-borrowed-region-model.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-source-region-functions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-root-region-invocation.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-persistent-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-framed-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-4-instance-scoped-region-actions.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "knowledge/common/allocator-readiness.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "knowledge/common/device-tree.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "design/topal-kernel-architecture.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "design/topal-gap-analysis.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "baseline.md"
+    },
+    {
+      "document": "linux-kernel/step-4-status.md",
+      "target": "step-3-report.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "design/owned-user-extents.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-call-census/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-pipes/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-storage/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-serial/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-transfer-guards/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-process-accesses/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-callback-bindings/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-process-origins/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-fixed-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-copy-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-staged-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-staged-refusals/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-additional-scalars/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "knowledge/x86_64/user-memory-research.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1/independent-readback.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1-harness-path-failure/failure.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/independent-readback.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/replay.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-application-checkpoint/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "../AGENTS.md#kernel-and-systems-validation"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-fixture/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-startup/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-files/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-shell/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-exec/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-signals/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/caller-routing.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-owned-poll/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-staging-copies/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-fixed-pipe-audit/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-fixed-pipe-native/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-stat-outputs/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-serial-prefix/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-pipe-loops/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-file-inputs/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-warning-inputs/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-random-outputs/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-stack-retirement/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-metadata/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-owner-boundaries/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-owner-intervals/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-mapping-aliases/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-translation-publication/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-signals/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_completion.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-startup/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_read_exec.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_file_descriptions.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_start.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_signals.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_read_exec.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-owned-poll/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-call-census/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-pipes/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-storage/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-serial/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-transfer-guards/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_output.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_completion.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_completion.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-process-accesses/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-callback-bindings/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-process-origins/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-process-origins/writer-index.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-fixed-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-copy-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staged-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staged-transfers/caller-access-index.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staged-refusals/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-additional-scalars/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staging-copies/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-fixed-pipe-audit/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-fixed-pipe-native/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-stat-outputs/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-serial-prefix/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-pipe-loops/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-file-inputs/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-warning-inputs/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-random-outputs/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-stack-retirement/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-metadata/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-owner-boundaries/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-owner-intervals/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-mapping-aliases/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-translation-publication/README.md"
+    }
+  ],
+  "scope": "Current evidence delta, merged packed input identities, actual local native observations, separate failed scopes, pilot records and exact Python replay; no complete compiler/VM producer, all-CPU stable lifetime or production qualification"
+}
