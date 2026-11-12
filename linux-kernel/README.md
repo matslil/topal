@@ -39,6 +39,11 @@ retains 847 selected control sites from two complete section listings, including
 ten control-register writes and 29 invalidation sites. Nine reader tests and
 exact frozen replay pass. One decoder disagreement, unknown/padding rows and an
 embedded opcode candidate remain explicit; this is not continuous-mode proof.
+The [image-publication record](tools/user-memory/results/stage-3-image-publication/README.md)
+adds four RELRO edits and three exec restorations with 86 actual invalidation
+states and 21 owner boundaries. The complete ordinary VM, 196 models, sixteen
+image controls and eighteen heap controls pass. General lifetime, other editors
+and production activation remain unqualified.
 Actual ownership/lifetime, complete caller qualification and canonical production
 activation remain required. This does not complete Step 4 or distribution,
 container or VM-host acceptance.

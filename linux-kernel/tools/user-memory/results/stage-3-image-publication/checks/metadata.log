@@ -1,0 +1,1 @@
+{"passed": true, "syscalls": 136, "modeled_calls": 124, "stat_outputs": 44, "clock_returns": 44}

@@ -24,6 +24,7 @@ from user_extent_metadata_observer import PROGRAM as METADATA_PROGRAM
 from user_extent_owner_observer import PROGRAM as OWNER_PROGRAM, MODEL as OWNER_MODEL
 from user_extent_interval_observer import PROGRAM as INTERVAL_PROGRAM, MODEL as INTERVAL_MODEL
 from user_extent_translation_observer import PROGRAM as TRANSLATION_PROGRAM, MODEL as TRANSLATION_MODEL, TRACE_MODEL as TRANSLATION_TRACE_MODEL
+from user_extent_image_observer import PROGRAM as IMAGE_PROGRAM, MODEL as IMAGE_MODEL
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -67,6 +68,8 @@ class Checked(gdb.Breakpoint):
                 observed['active_translation_publication']=translation_active
                 observed['active_translation_request']=translation_request
                 observed['pending_translation_root_switch']=translation_root_switch_pending
+            if image_publication_profile is not None:
+                observed['active_image_publication']=image_publication_active
             with open(observation_path, 'w') as handle:
                 json.dump(observed, handle, indent=2)
             return True
@@ -495,6 +498,7 @@ def file_returned(row):
 
 # INTERVAL_OBSERVER
 # TRANSLATION_OBSERVER
+# IMAGE_PUBLICATION_OBSERVER
 
 class Complete(Checked):
     def observe(self):
@@ -524,6 +528,7 @@ class Complete(Checked):
         owner_observation_complete()
         interval_observation_complete()
         translation_observation_complete()
+        image_publication_observation_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -546,6 +551,7 @@ try:
     install_owner_observation()
     install_interval_observation()
     install_translation_observation()
+    install_image_publication_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -588,12 +594,23 @@ assert PROGRAM.count('# INTERVAL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# INTERVAL_OBSERVER', INTERVAL_PROGRAM)
 assert PROGRAM.count('# TRANSLATION_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# TRANSLATION_OBSERVER', TRANSLATION_PROGRAM)
+assert PROGRAM.count('# IMAGE_PUBLICATION_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# IMAGE_PUBLICATION_OBSERVER', IMAGE_PROGRAM)
 
 
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
     owner_profile = None
+    image_publication_profile = None
+    image_setting = os.environ.get('TOPAL_TEST_IMAGE_PUBLICATION')
+    assert image_setting in [None,'metadata']
+    assert image_setting is None or os.environ.get('TOPAL_TEST_EXTENT_OWNERS')=='metadata'
+    if image_setting is not None:
+        assert component['mode'] == image_setting
+        sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'tools/user-memory'))
+        from inspect_image_publication import inspect as inspect_image
+        image_publication_profile = inspect_image(build)
     translation_profile = None
     translation_setting = os.environ.get('TOPAL_TEST_EXTENT_TRANSLATIONS')
     assert translation_setting in [None,'metadata']
@@ -642,6 +659,8 @@ if __name__ == '__main__':
         work_name='source-user-extents',
         program_prefix=(f'component={component!r}\n'
                         f'owner_profile={owner_profile!r}\n'
+                        f'image_publication_profile={image_publication_profile!r}\n'
+                        f'image_publication_model_source={IMAGE_MODEL!r}\n'
                         f'interval_profile={interval_profile!r}\n'
                         f'translation_profile={translation_profile!r}\n'
                         f'translation_model_source={TRANSLATION_MODEL!r}\n'
@@ -659,5 +678,7 @@ if __name__ == '__main__':
                                480 if component.get('mode')=='transfers' and extent_inventory is not None and
                                extent_inventory.get('stack_retirement_audit') is not None else 300),
         serial_dialogue=DIALOGUE*4 if component.get('mode')=='serial' else (),
-        cpu_trace_sites=((translation_profile['sites']['invalidated'],) if translation_profile is not None else ()),
+        cpu_trace_sites=tuple(sorted(set(
+            ([translation_profile['sites']['invalidated']] if translation_profile is not None else [])+
+            ([p['sites']['invalidated'] for p in image_publication_profile['profiles'].values()] if image_publication_profile is not None else [])))),
     )

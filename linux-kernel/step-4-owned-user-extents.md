@@ -1000,3 +1000,37 @@ The inventory identifies further review sites. It does not close all-entry,
 mapping-store, runtime-generated/boot/AP code, continuous mode/TLB, asynchronous
 or stable-lifetime requirements. Remaining caller/effect, production and full
 original kernel acceptance gates remain open.
+
+## Stage 3 RELRO and exec image publication
+
+The [image-publication checkpoint](tools/user-memory/results/stage-3-image-publication/README.md)
+binds complete 100-byte RELRO and 638-byte exec mapping-edit layouts to actual
+selected owners at 21 boundaries. Four RELRO publications remove write permission
+from eight NX image leaves each; three exec restorations restore eighteen
+writable NX leaves each. Physical image backing is preserved. Every word of
+all six selected tables is compared around publication; all 86 image
+post-INVLPG states are bound to their actual addresses, countdowns and CPU/mode.
+Every matching raw-log header belongs to exactly one recorded publication.
+
+First-image and later exec use their existing distinct generation/phase guards.
+The observer reads the actual process-generation flag; it does not grant buffer
+admission from that flag or from temporary restored image permissions. RELRO's
+final MFENCE and exec's direct transition from invalidation to image copying
+retain their actual different layouts. No extra exec barrier is claimed.
+
+The complete ordinary metadata VM and enclosing retirement pass in 362.6 seconds
+under the unchanged 600-second deadline, with peak memory 395517952 bytes, zero
+swap and zero memory events. The same run preserves 20 heap publications, 812
+heap invalidation states, sixteen erased releases, 52 selected owner helpers,
+136 metadata syscalls and the exact preceding 7606-byte console. All 196 models,
+sixteen image controls and eighteen heap controls pass. Frozen replay restores
+201 selected sources/94 inherited artifacts and reproduces exact reports.
+
+Two failed observer/model attempts retain their exact source versions and raw
+records. The separate wrapper-lock sandbox refusal used normal approved
+escalation with the resource wrapper retained; no model safeguard is inferred.
+Kernel/protection behavior, core-language meaning and canonical selection remain
+unchanged. Other editors, all-entry/callee effects, AP/DMA/asynchronous exclusion,
+continuous mode/lifetime, remaining callers/private loans, native gaps, fallback
+and clean production qualification remain required. Stage 3, initial Step 4 and
+the full Linux/distribution/container/VM-host goal remain unfinished.

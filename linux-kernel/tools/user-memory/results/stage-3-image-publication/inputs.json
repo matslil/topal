@@ -1,0 +1,82 @@
+{
+  "base_commit": "2c3ed77f4b89ced27ebf5a3b2c7983453b12cd83",
+  "base_inputs": {
+    "path": "../stage-3-translation-publication/inputs.json",
+    "sha256": "7c42967c6e574a4fbab706c1b09328dd0155a0d9be213a89a735def4c6a806cc",
+    "bytes": 5139
+  },
+  "base_reader": {
+    "path": "../stage-3-translation-publication/records.py",
+    "sha256": "3b3afa08021a66c323dff108d7d7b8f5087abd879caad8f878d4dc9c993aca9a",
+    "bytes": 1628
+  },
+  "base_manifest": {
+    "path": "../stage-3-translation-publication/manifest.json",
+    "sha256": "0ae34d96e985cc58a1ff8ead4ecb914892b4085fd986c05013de0660dde9c4d7",
+    "bytes": 94028
+  },
+  "sources": {
+    "linux-kernel/tools/user-memory/image_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/image_publication.py.gz",
+      "sha256": "83631cbd87c0c2fc785eb1f555f54a1b7c7f4b07429e105b12076c0d8da81035",
+      "bytes": 6062,
+      "snapshot_sha256": "ee2290c14e13607689687a1db3bb9bc675d85da4dc1fbf4f6a2a3a78210c1bc8"
+    },
+    "linux-kernel/tools/user-memory/test_image_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_image_publication.py.gz",
+      "sha256": "243b754b4e89d48033a01f1387443f0583923085f5664e45f0e317f3d7d7b416",
+      "bytes": 5363,
+      "snapshot_sha256": "10e62b8e3cee0d08d4110de02ccb5ffcba4d46e2b5a8402425ee1670a5d8376f"
+    },
+    "linux-kernel/tools/user-memory/inspect_image_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/inspect_image_publication.py.gz",
+      "sha256": "dfc13001f39119379d73b375aa2aad89197e2443d037c3c79f9fabcff2c4dbf6",
+      "bytes": 4226,
+      "snapshot_sha256": "c686397fa287c3d1ee67bad7b7aaca2f5280dc8e120a8d548b0c256e91f20186"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_image_observer.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_image_observer.py.gz",
+      "sha256": "d595cd346815489232d31eac28c2640a6759a6ea2e2c63de7b6ee241541ba536",
+      "bytes": 5153,
+      "snapshot_sha256": "d15b06d918d1f4995159bc21f287d54f5e6a404eda6c1c566b70a6d5bbb6acff"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz",
+      "sha256": "197eb798482994a743c6177ceebd9e83e55e16876a53599e802e11fc6c34026f",
+      "bytes": 36307,
+      "snapshot_sha256": "14a0f4f7675a95536b1a9b1a9097e9333a3c76dc9a170349d9ba599387840ac1"
+    },
+    "linux-kernel/tools/user-memory/readback_image_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/readback_image_publication.py.gz",
+      "sha256": "c663628c9e8d8af6b05a162b8ea9984081615c177303fc2057fef8cd87267eb2",
+      "bytes": 5932,
+      "snapshot_sha256": "29fc6a28f361c184ba15f4df859936b78207d3741cf154b88ffdde1f4788e613"
+    },
+    "linux-kernel/tools/user-memory/control_image_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/control_image_publication.py.gz",
+      "sha256": "5964ff842930467c0f29bfd2bb97fab108d5700f08518991f562c10bd96ed67e",
+      "bytes": 3222,
+      "snapshot_sha256": "cc22b309bff0681f0e106368f5f1de5fc8b5e4b6718c7bb2857811edc4305580"
+    },
+    "linux-kernel/tools/user-memory/test_image_observer.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_image_observer.py.gz",
+      "sha256": "2c4dbf263a74b6c36d31d7dc5cfee6f9d6582d3523168c752d567bd3856ab034",
+      "bytes": 3597,
+      "snapshot_sha256": "fc8d0a6d941bad7e5fd3a9622c39ade4a7a1e434fc53161767d388d60c6255ee"
+    },
+    "linux-kernel/tools/user-memory/inventory_paging_controls.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/inventory_paging_controls.py.gz",
+      "sha256": "87a49991d6b181867c3382f4419b891375469e4ac9d58b47fd7e25c38e2cb748",
+      "bytes": 12353,
+      "snapshot_sha256": "27a38a3a4b88ed4548cbcaefe7a767184393233bacce5f2073f8155e1fb5a620"
+    },
+    "linux-kernel/tools/user-memory/test_paging_controls.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_paging_controls.py.gz",
+      "sha256": "84d90a7e0ed50dba6fe87601f4d33be9b02d8bb276728986447e6b6ccc276da2",
+      "bytes": 4955,
+      "snapshot_sha256": "d9364e323774f7dc05e51de611e5d3ed694952b789a44320e0c73f257004ed55"
+    }
+  },
+  "artifacts": {},
+  "scope": "Current source delta over preceding selected packed inputs; no complete compiler/VM producer"
+}

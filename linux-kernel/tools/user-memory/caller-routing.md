@@ -390,3 +390,13 @@ unknown/overlapping rows and an embedded MSR opcode remain unresolved. Nine
 reader tests and exact frozen replay pass without guest execution. This is an
 inventory for further mapping/mode review, not a closure of continuous lifetime,
 all-entry/effect, AP/DMA/asynchronous or production requirements.
+
+The [image-publication checkpoint](results/stage-3-image-publication/README.md)
+observes four RELRO edits and three exec restorations with 86 actual invalidation
+states and 21 selected owner boundaries. The linked process graph's two reached
+invalidation sites bind to these exact layouts; this does not prove all other
+entries or callees excluded. Existing first/later-generation checks remain
+distinct. The complete ordinary VM, 196 models, sixteen image and eighteen heap
+controls and exact frozen replay pass, retaining prior heap/owner/metadata
+evidence. Kernel/protection behavior and all broader lifetime, caller/effect,
+AP/DMA/asynchronous and canonical production gates remain unchanged.

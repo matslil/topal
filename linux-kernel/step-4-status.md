@@ -39,6 +39,11 @@ retains 847 selected sites, ten control-register writes and 29 invalidation site
 across two full executable-section listings. Nine targeted tests and exact
 frozen replay pass. Unknown/overlapping rows, one decoder disagreement and an
 embedded opcode candidate remain unresolved; no new guest or mode proof runs.
+The subsequent [image-publication checkpoint](tools/user-memory/results/stage-3-image-publication/README.md)
+observes four RELRO edits, three exec restorations and all 86 image invalidation
+states, retaining the previous heap/owner/metadata checks. The complete ordinary
+VM, 196 models, sixteen image controls and eighteen heap controls pass. Remaining
+editors, continuous mode/lifetime and production gates remain required.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 
