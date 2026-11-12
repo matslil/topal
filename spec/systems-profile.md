@@ -10818,6 +10818,11 @@ Preparation failure before publication SHALL leave existing processes' bytes,
 breaks, mappings, handles and child relationship unchanged and consume no PID.
 Already issued allocator identities SHALL NOT be rolled back; prepared backing
 SHALL be retired under its actual owner.
+In the x86-64 frame-backed binding, physical backing unavailability before
+fork-like publication SHALL return native `-ENOMEM` (`-12`). A refused raw
+`brk` request SHALL return the retained current byte break. These ordinary
+results SHALL NOT replace invariant failure for invalid entry, ownership or
+protocol state.
 
 A handoff SHALL finish or abandon every current user-memory observation and
 transfer, retain no live kernel continuation, and bind the selected process's

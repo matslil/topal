@@ -116,7 +116,7 @@ def main():
     require(set(validation)=={'workspace-check','user-memory-models','process-memory-models','default-ABI-fixture','format','Rust-file-ceiling'}
             and all(r['exit_code']==0 for r in validation.values()), 'regression validation incomplete')
     require('Ran 196 tests' in (build/'user-memory-models.stderr.log').read_text()
-            and 'Ran 17 tests' in (build/'process-memory-models.stderr.log').read_text(), 'model-suite coverage differs')
+            and 'Ran 27 tests' in (build/'process-memory-models.stderr.log').read_text(), 'model-suite coverage differs')
     require('test result: ok. 1 passed' in (build/'default-ABI-fixture.stdout.log').read_text(), 'default fixture test did not run')
     report.update(schema='topal-process-mm-native-child-exec-v1' if child_exec else 'topal-process-mm-native-integration-v1', observation=digest(raw),
         selected_inputs={name:digest((ROOT/name).read_bytes()) for name in SELECTED},

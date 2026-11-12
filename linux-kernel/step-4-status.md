@@ -92,6 +92,14 @@ endpoint ownership and whole-store erasure using the byte-identical kernel from
 the preceding cancellation stage. Four new VM cases and 64 saved-data controls
 pass. This extends experimental cancellation evidence; allocation-miss, other
 relationship, continuous lifetime/fatal and production gates remain open.
+The subsequent [physical-refusal cohort](step-4-process-memory-ownership.md#physical-allocation-refusal-and-ordinary-retry)
+passes real capacity and fragmentation failures in a 52-MiB guest using the
+same kernel. Complete firmware/catalog/registry readback binds both failures;
+ordinary ENOMEM return preserves descriptor/PID-policy state, followed by
+successful one-page and empty-heap forks using PIDs 2 and 3. The native test,
+27 process-memory tests, 21 new controls and retained-regression readback pass.
+Other resource/identity/fatal, continuous lifetime and public-kernel gates
+remain required.
 
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.

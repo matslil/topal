@@ -229,6 +229,10 @@ pub(crate) fn build_process_memory_exec(work: &Path, tools: &crate::LlvmTools) -
     build_selected(work, tools, "process-mm-exec")
 }
 
+pub(crate) fn build_process_memory_allocation(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, "process-mm-allocation")
+}
+
 pub(crate) fn build_process_memory_cancel(
     work: &Path,
     tools: &crate::LlvmTools,
@@ -262,7 +266,10 @@ fn build_configured(
     mode: &str,
     cancellation: Option<(bool, bool, bool)>,
 ) -> Vec<u8> {
-    let image_entry_selected = matches!(mode, "process-mm-exec" | "process-mm-cancel");
+    let image_entry_selected = matches!(
+        mode,
+        "process-mm-exec" | "process-mm-cancel" | "process-mm-allocation"
+    );
     let cancellation_config = cancellation.map(|(early, group, writer)| {
         let status = match (early, group) {
             (false, false) => 0x13a,
@@ -273,6 +280,10 @@ fn build_configured(
         (early, if group { 231 } else { 60 }, status, writer)
     });
     let (entry_name, extra) = match mode {
+        "process-mm-allocation" => (
+            "topal_process_memory_allocation_cases",
+            Some(("process_mm_allocation", "process-mm-allocation-cases")),
+        ),
         "process-mm-cancel" => (
             "topal_process_memory_cancel_cases",
             Some(("process_mm_cancel", "process-mm-cancel-cases")),
@@ -509,6 +520,12 @@ fn build_configured(
         "syscall4": syscall4.address(),
         "mode": mode,
         "image_entry": image_entry,
+        "allocation_profile": if mode == "process-mm-allocation" { Some(serde_json::json!({
+            "guest_ram_mib": 52,
+            "process_storage_bytes": crate::systems_provider_object::PROCESS_MM_TABLE_BYTES,
+            "identity_storage_bytes": crate::systems_provider_object::PROCESS_MM_IDENTITY_STORE_BYTES,
+        })) } else { None },
+        "process_mm_allocation_source_sha256": if mode == "process-mm-allocation" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_process_mm_allocation_cases.c")).unwrap()))) } else { None },
         "cancellation": cancellation_config.map(|(early, syscall, status, writer)| serde_json::json!({
             "early": early, "syscall": syscall, "status": status,
             "writer": writer,

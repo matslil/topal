@@ -28,6 +28,14 @@ Linux return convention: the resulting break on success, current break on
 failure. These are interface facts, not a replacement for the pinned baseline
 or the complete mapping inheritance rules required by the original objective.
 
+For the existing x86-64 binding, physical backing unavailability before fork
+publication follows [fork's ENOMEM contract](https://man7.org/linux/man-pages/man2/fork.2.html#ERRORS)
+and returns native `-12`. A refused raw break request follows the
+[kernel return convention](https://man7.org/linux/man-pages/man2/brk.2.html#NOTES),
+retaining its current byte break. Invalid ownership/entry/protocol state remains
+an invariant failure. This formalizes the existing implementation under the
+approved Linux-interface target; it introduces no core-language meaning.
+
 ## Portable owners and transitions
 
 The logical process owns an MM identity, image generation, program break and

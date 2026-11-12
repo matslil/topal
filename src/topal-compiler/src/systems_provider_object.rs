@@ -7,6 +7,8 @@ pub(crate) mod file_region;
 #[path = "systems_process_frame_memory.rs"]
 mod frame_memory;
 pub(crate) const PROCESS_MM_TABLE_BYTES: u64 = process_runtime::children::STORAGE_BYTES;
+#[cfg(test)]
+pub(crate) const PROCESS_MM_IDENTITY_STORE_BYTES: u64 = process_runtime::retained::STORE_BYTES;
 #[path = "systems_inode_region.rs"]
 pub(crate) mod inode_region;
 #[path = "systems_namespace_region_oracle.rs"]

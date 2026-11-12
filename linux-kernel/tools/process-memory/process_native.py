@@ -109,6 +109,96 @@ def same_bank(a, b, name):
     require(a[name] == b[name] and a[name + '_state'] == b[name + '_state'], 'changed retained ' + name)
 
 
+def firmware_frames(evidence):
+    """All complete RAM pages, excluding every reservation/non-RAM overlap."""
+    ram=[];forbidden=list(evidence['reservations'])
+    for base,length,kind in evidence['e820']:
+        require(0<=base<base+length<=1<<64 and length>0 and kind>0, 'firmware interval')
+        if kind==1:
+            require(base+length<=1<<30, 'firmware supported RAM domain')
+            ram.append((base,base+length))
+        else:forbidden.append((base,base+length))
+    require(len(evidence['reservations'])==2 and all(0<=a<b<=1<<30 for a,b in evidence['reservations']), 'firmware reservations')
+    frames=set()
+    for a,b in ram:
+        for frame in range((a+PAGE-1)//PAGE,b//PAGE):
+            if all((frame+1)*PAGE<=x or y<=frame*PAGE for x,y in forbidden):frames.add(frame)
+    return sorted(frames)
+
+
+def physical_catalog(value):
+    """Independent whole-catalog/registry readback for the small-RAM cohort."""
+    allocator=value['allocator'];n=allocator[3]
+    require('catalog' in value and 'registry' in value, 'missing complete physical catalog')
+    cells,registry=value['catalog'],value['registry']
+    require(len(cells)==3*n and len(registry)==8*n, 'complete physical catalog/registry')
+    physical=cells[2::3]
+    require(physical==sorted(set(physical)) and all(0<=p<1<<18 for p in physical), 'catalog physical identity')
+    require(all(p>0 for p in cells[1::3]), 'catalog provenance')
+    records={};free_records=0
+    for index in range(n):
+        r=registry[index*8:(index+1)*8]
+        if r==[0]*8:
+            free_records+=1;continue
+        require(r[0]==allocator[1]==1 and 0<r[1]<allocator[2] and r[7]==1, 'catalog live record')
+        require(r[1] not in records and 0<=r[2]<r[2]+r[3]<=n and r[3]>0
+                and r[4]>0 and r[4]&(r[4]-1)==0 and r[5]>0, 'catalog record geometry')
+        part=cells[r[2]*3:(r[2]+r[3])*3]
+        require(part[0::3]==[r[1]]*r[3] and part[1::3]==[r[5]]*r[3], 'catalog owned span')
+        require(part[2]%r[4]==0 and part[2::3]==list(range(part[2],part[2]+r[3])), 'catalog contiguous record')
+        records[r[1]]=(index,r)
+    for index in range(n):
+        identity=cells[index*3]
+        if identity:
+            require(identity in records, 'catalog cell lacks record')
+            r=records[identity][1]
+            require(r[2]<=index<r[2]+r[3], 'catalog cell outside record')
+    for owner in [value[k] for k in ['active','inactive','prepared','candidate']]+value['root_owners']:
+        if owner['token']!=[0]*3:
+            _,identity,index=owner['token'];r=owner['record']
+            require(records.get(identity)==(index,r) and owner['cells']==cells[r[2]*3:(r[2]+r[3])*3], 'catalog owner binding')
+    free=largest=run=0;previous=None
+    for i in range(n):
+        identity,provenance,frame=cells[i*3:i*3+3]
+        if identity==0:
+            free+=1
+            run=run+1 if previous is not None and previous==(provenance,frame-1) else 1
+            largest=max(largest,run);previous=(provenance,frame)
+        else:
+            run=0;previous=None
+    return dict(frames=n,free=free,largest_run=largest,free_records=free_records)
+
+
+def preparation_refusal(row):
+    before,after=row['before'],row['after']
+    require(row['operation']==9 and row['result']==0 and row['request']==0, 'physical refusal result')
+    require(before['ids'][0]==before['context']['pid']==1 and before['ids'][3:6]==[0]*3
+            and before['context']['relationship']==0, 'physical refusal source')
+    require(before['state'][2]>0, 'physical refusal nonempty request')
+    for value in [before,after]:
+        require(value['prepared_state']==[0]*7 and value['prepared_owner']==[0]*3
+                and value['prepared']['token']==[0]*3, 'refusal retained preparation')
+    for key in ['allocator','ids','state','active','inactive','inactive_state','catalog','registry','tables','identity_store']:
+        require(before[key]==after[key], 'refusal changed '+key)
+    catalog=physical_catalog(before);physical_catalog(after)
+    require(catalog['free_records']>0 and before['allocator'][2]<(1<<64)-1, 'refusal is not registry/identity exhaustion')
+    require(catalog['largest_run']<before['state'][2], 'physical refusal has an eligible run')
+    return catalog
+
+
+def resize_refusal(row):
+    before,after=row['before'],row['after'];request=row['request']
+    require(START<request<=START+519*PAGE and row['result']==before['state'][1], 'raw resize refusal')
+    count=(request-START+PAGE-1)//PAGE
+    require(count!=before['state'][2], 'resize refusal geometry')
+    for key in ['allocator','ids','state','active','inactive','inactive_state','catalog','registry','tables','identity_store']:
+        require(before[key]==after[key], 'resize refusal changed '+key)
+    catalog=physical_catalog(before);physical_catalog(after)
+    require(catalog['free_records']>0 and before['allocator'][2]<(1<<64)-1, 'resize refusal metadata exhaustion')
+    require(catalog['largest_run']<count, 'resize refusal has eligible run')
+    return catalog
+
+
 def event(row):
     before, after = row['before'], row['after']
     first, last = snapshot(before), snapshot(after)
@@ -130,14 +220,17 @@ def event(row):
     require(before['tokens'][3:] == after['tokens'][3:] == [0] * 3, 'resize candidate retained')
     require(before['root_owners'] == after['root_owners'], 'root owners changed')
     if op == 9:
-        require(row['result'] == 1 and request == 0 and before['ids'][0] == 1, 'creation preparation')
+        require(row['result'] in [0,1] and request == 0 and before['ids'][0] == 1, 'creation preparation')
         require(before['state'] == after['state'] and before['active'] == after['active'] and before['ids'] == after['ids'], 'changed source during preparation')
-        require(after['prepared_state'][:3] == before['state'][:3], 'prepared byte geometry')
-        require(after['prepared_state'][4:] == [before['context']['root'], before['context']['address'], before['epoch'][0]], 'prepared entry receipt')
-        require(after['prepared_owner'] == before['ids'][:3], 'prepared source owner')
-        if first['active']:
-            require(last['prepared']['data'] == first['active']['data'], 'incomplete fork copy')
-        require(after['allocator'][2] == before['allocator'][2] + int(before['state'][2] > 0), 'preparation issuance')
+        if row['result']==0:
+            preparation_refusal(row)
+        else:
+            require(after['prepared_state'][:3] == before['state'][:3], 'prepared byte geometry')
+            require(after['prepared_state'][4:] == [before['context']['root'], before['context']['address'], before['epoch'][0]], 'prepared entry receipt')
+            require(after['prepared_owner'] == before['ids'][:3], 'prepared source owner')
+            if first['active']:
+                require(last['prepared']['data'] == first['active']['data'], 'incomplete fork copy')
+            require(after['allocator'][2] == before['allocator'][2] + int(before['state'][2] > 0), 'preparation issuance')
     elif op == 10:
         require(row['result'] == 1 and request >= 2 and before['prepared_owner'] == before['ids'][:3], 'creation commit')
         require(after['active'] == before['prepared'] and after['state'] == before['prepared_state'][:4], 'child adoption')
@@ -162,6 +255,8 @@ def event(row):
         wanted = (request - START + PAGE - 1) // PAGE if START <= request <= START + 519 * PAGE else count
         if request == 0 or wanted == count:
             require(after['allocator'][2] == before['allocator'][2] and after['active'] == before['active'], 'query/within-page allocation')
+        elif START<request<=START+519*PAGE and row['result']==before['state'][1]:
+            resize_refusal(row)
     elif op == 7:
         same_bank(before, after, 'inactive')
         require(after['state'] == [0] * 4 and after['tokens'] == [0] * 6, 'exec heap retirement')

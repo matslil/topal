@@ -111,7 +111,7 @@ def main():
     require(set(validation)=={'workspace-check','user-memory-models','process-memory-models','default-ABI-fixture','format','Rust-file-ceiling'}
             and all(v['exit_code']==0 for v in validation.values()),'regression validation')
     require('Ran 196 tests' in (validation_build/'user-memory-models.stderr.log').read_text()
-            and 'Ran 17 tests' in (validation_build/'process-memory-models.stderr.log').read_text(),'model coverage')
+            and 'Ran 27 tests' in (validation_build/'process-memory-models.stderr.log').read_text(),'model coverage')
     require('test result: ok. 1 passed' in (validation_build/'default-ABI-fixture.stdout.log').read_text(),'default fixture coverage')
     report['validation']=validation
     for p in sorted(regression.iterdir()):

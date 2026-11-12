@@ -400,16 +400,87 @@ proof. Ready/zombie relationship variants, native allocation misses, identity
 exhaustion, fatal partial effects, the full application corpus and cold public
 activation remain required.
 
+## Physical allocation refusal and ordinary retry
+
+The next source-built program qualifies the existing prepublication refusal
+law through actual physical shortage. The linked kernel remains byte-identical
+to the preceding native cohorts. The guest uses **52 MiB RAM**, two CPUs and
+the original firmware map; host protections and the bounded wrapper remain
+unchanged. Read-only observation retains the original E820 bytes and kernel/
+boot-resource reservations. Independent normalization reconstructs all **1,480
+eligible frames** and matches every physical catalog entry, with complete
+registry, live-owner and free-span checks. This is a constrained guest, not a
+host memory-limit change or an injected allocator failure.
+
+The [ordinary C program](labs/qemu/x86_64/user_extent_process_mm_allocation_cases.c)
+execs a fresh first-party image, then grows its initially empty heap to a
+partial 519-page break and the exact mapped limit. It fills and checks every
+mapped byte. Fork cannot obtain another 519-page extent: **445 frames** remain
+free, in a largest run of 445, while registry slots and issuance remain
+available. The gateway returns ordinary unavailability without a prepared
+owner, changed mapping, modified bytes or consumed identity. A separate actual
+userspace return observation verifies `ENOMEM`, stack/callee preservation,
+unchanged complete descriptor storage and the unchanged **4,096-byte retained
+PID-policy store** after the fork frontend has cleared transient fields.
+
+Shrinking the parent to a partial one-page break permits successful creation
+of **PID 2**, confirming that the failed attempt did not consume it. The child
+retains its copied page independently. Its 519-page resize encounters a second
+real refusal: **962 frames** are free, but the largest eligible run has only
+**518**. The raw syscall preserves its old break and backing. A 518-page retry
+succeeds, preserving the old page and zeroing the complete new tail. The child
+marks its first/last bytes and exits; the parent retains its original page and
+wait-output retry behavior. A later empty-heap fork creates **PID 3** without
+issuing backing. Parent exit completes descriptor, PID-policy and MM retirement.
+
+The final native test passes in **62.85 seconds**, including its guest build.
+The [saved reader](tools/process-memory/readback_allocation.py) checks **27 MM
+boundaries**, both physical refusal reasons, the ordinary userspace return,
+one/zero-page creation, full heap contents and **six retired extents /
+4,399,104 erased bytes**. All **21 saved-data controls** reject altered evidence.
+Ten independent catalog/firmware cases extend the existing seventeen portable
+tests to **27 process-memory tests**. These tests do not substitute for native
+ownership or construct allocation authority.
+
+The [archive](tools/process-memory/results/stage-3-allocation-refusal/report.json)
+binds the actual guest command, application, firmware observations, debugger
+program and selected sources. The earlier two successful runs retain their own
+records with narrower observation scopes; they are not evidence for the final
+firmware/identity/return observations. Existing child-exec and reader/writer
+cancellation native records are retained on the byte-identical kernel and
+rechecked with the current readers, including all **142 existing controls**.
+Those VM runs are not newly executed here. Frozen replay repeats the new and
+retained record checks from the archived inputs.
+
+All seven LLVM modules verify. Fresh workspace/all-target checking, 196
+user-memory tests, 27 process-memory tests, the default ABI-fixture hash,
+formatting and the Rust file ceiling pass. Thirteen predecessor contributions
+remain byte-identical. The kernel SHA-256 remains
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`,
+with complete stack/physical bounds **2,280 / 4,096** and **4,088 / 4,096 bytes**.
+The final swap-free cgroup sample peaks at **508,801,024 / 3,062,714,368 bytes**
+with all sampled event counters zero. Its last live sample plus retirement does
+not measure an unseen final instant. Guest allocator refusal and host resource
+limits are distinct; neither explains any model/provider safeguard decision.
+
+Risk is high for false absence proofs, refusal side effects, identity history
+and comparison completeness. Review uses the authority chain, source/diff
+review, actual ordinary requests, independent complete-catalog reconstruction,
+predecessor comparisons and saved-data controls. No independent human security
+review is claimed. This qualifies the selected fork/resize physical misses and
+retries, not every resource failure, successful maximal-heap fork copy, identity
+exhaustion, fatal partial effects, continuous exclusion or public activation.
+
 ## Remaining stages and blockers
 
-2. Complete all caller/loan exclusion, identity-width and actual allocation-miss
+2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss
    behavior, and native fatal partial-effect retirement. The first integrated
    cohort does not complete native owner qualification. Queries and within-page
    changes in its real process path retain allocation-free behavior.
 3. Broaden native cancellation to every remaining wait/relationship shape,
    broader child exec/image cases, every remaining switch/exit and
-   overlapping leaf-table writer. Qualify native empty/one/maximum heaps,
-   prepublication resource failure and full invalidation/pre-release ordering.
+   overlapping leaf-table writer. Qualify remaining maximal-copy and resource
+   failure shapes and full invalidation/pre-release ordering.
    Existing child cases pass in this component; full pipe and 51-workload
    application regressions remain required.
 4. Complete affected production qualification and immutable source/native/load/

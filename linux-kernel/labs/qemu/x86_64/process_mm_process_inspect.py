@@ -17,11 +17,14 @@ def memory(p,n):return bytes(gdb.selected_inferior().read_memory(p,n)) if n else
 def words(p,n):return list(struct.unpack('<'+'Q'*n,memory(p,n*8)))
 def word(p):return words(p,1)[0]
 context=address('topal_bootstrap_storage')+512
-observed=dict(passed=False,cases=[],events=[],child_exec_entries=[],replacement_entries=[],terminal=[])
+observed=dict(passed=False,cases=[],events=[],child_exec_entries=[],replacement_entries=[],terminal=[],refusals=[])
 child_exec=component['mode']=='process-mm-exec'
 cancel_config=component.get('cancellation')
+allocation_config=component.get('allocation_profile')
 observed['cancellation']=cancel_config
+observed['allocation_profile']=allocation_config
 pending=case=None
+refusal_attempt=None
 returns={}
 callee=['rbx','rbp','r12','r13','r14','r15']
 
@@ -41,7 +44,8 @@ def capture():
     root,low,table=word(context+24),word(context+112),word(context+928)
     tokens=address('topal_x86_frame_mm_tokens_v1')
     root_tokens=address('topal_x86_frame_root_tokens_v1')
-    return dict(allocator=words(address('topal_x86_frame_context_v1'),16),
+    allocator=words(address('topal_x86_frame_context_v1'),16)
+    result=dict(allocator=allocator,
         ids=words(address('topal_x86_process_mm_ids_v1'),7),
         state=words(address('topal_x86_frame_mm_state_v1'),4),tokens=words(tokens,6),
         inactive_state=words(address('topal_x86_process_mm_inactive_state_v1'),4),
@@ -58,15 +62,24 @@ def capture():
             self=word(context+256),bootstrap=word(context+16),user_arg=word(context+312),phase=word(context+104),
             tls=word(context+128),registered_tid=word(context+152),robust=word(context+160),
             table=table,pid=word(table+56),child=word(table+0x2010),relationship=word(table+0x2000),
+            policy_store=word(context+1000),
             saved_pid=word(table+0x3038),saved_heap=word(table+0x2178)),
         inactive_wait=[word(table+0x2060),word(table+0x2078)],
         tables={str(a):words(a,512) for a in [root,root+4096,root+8192,root+12288,root+16384,low]},
         kernel_spans=kernel_spans,cr3=reg('cr3'),cr0=reg('cr0'),cr4=reg('cr4'),cs=reg('cs'),flags=reg('eflags'),gs_base=reg('gs_base'),fs_base=reg('fs_base'),
         thread=list(gdb.selected_thread().ptid))
+    if allocation_config is not None:
+        assert 0<allocator[3]<=4096, 'observer catalog bound for the small-RAM cohort'
+        result.update(catalog=words(allocator[4]+128,allocator[3]*3),
+                      registry=words(allocator[6],allocator[3]*8))
+        policy=result['context']['policy_store']
+        result['identity_store']=memory(policy,allocation_config['identity_storage_bytes']).hex() if policy else ''
+    return result
 
 def save():
     observed['pending']=pending
     observed['active_case']=case
+    observed['refusal_pending']=refusal_attempt
     with open(observation_path,'w') as f:json.dump(observed,f)
 
 class Checked(gdb.Breakpoint):
@@ -86,6 +99,17 @@ class Gateway(Checked):
         global pending
         if self.enter:
             op=reg('rdi')
+            if allocation_config is not None and op==0:
+                assert 'firmware' not in observed and reg('cs')&3==0
+                boot=reg('rsi');assert 0<boot<=0xfff000
+                n=memory(boot+488,1)[0];assert 0<n<=128
+                resource=int.from_bytes(memory(boot+536,4),'little')
+                size=int.from_bytes(memory(boot+540,4),'little')
+                observed['firmware']=dict(boot=boot,
+                    e820=[words(boot+720+20*i,2)+[int.from_bytes(memory(boot+736+20*i,4),'little')] for i in range(n)],
+                    raw_map=memory(boot+720,n*20).hex(),
+                    reservations=[[0,address('topal_x86_kernel_reservation_end_v1')],[resource,resource+size]])
+                save()
             if op not in [5,6,7,9,10,11,12,13]:return False
             assert pending is None
             pending=dict(operation=op,request=reg('rsi'),before=capture(),sp=reg('rsp'),
@@ -116,7 +140,7 @@ class CaseReturned(Checked):
         global case
         self.enabled=False
         assert case is not None and pending is None and reg('cs')&3==3
-        assert cancel_config is None, ('cancellation case unexpectedly returned',reg('rax'))
+        assert cancel_config is allocation_config is None, ('terminal case unexpectedly returned',reg('rax'))
         if reg('rax')!=0:
             value=capture()
             raise AssertionError(('source case failed',reg('rax'),value['context'],value['ids']))
@@ -138,6 +162,10 @@ class CaseEntered(Checked):
         global case
         assert case is None and pending is None and reg('cs')&3==3
         before=capture();model['snapshot'](before)
+        if allocation_config is not None:
+            firmware=observed['firmware']
+            assert memory(firmware['boot']+720,len(firmware['e820'])*20).hex()==firmware['raw_map']
+            assert before['catalog'][2::3]==model['firmware_frames'](firmware)
         assert before['ids'][0]==1 and before['state'][1:3]==[0x619000,34]
         case=dict(before=before,sp=reg('rsp'),callee={r:reg(r) for r in callee},
             prefix=hashlib.sha256(bytes.fromhex(before['active']['bytes'])).hexdigest())
@@ -150,7 +178,7 @@ class ImageEntered(Checked):
     def observe(self):
         assert reg('cs')&3==3 and pending is None
         value=capture()
-        if cancel_config is not None and cancel_config['early'] and value['ids'][0]==1:
+        if ((cancel_config is not None and cancel_config['early']) or allocation_config is not None) and value['ids'][0]==1:
             assert value['ids'][2]==1 and value['context']['phase']==0 and value['state']==[0]*4
             assert value['fs_base']==value['context']['tls']==0
             observed['replacement_entries'].append(dict(snapshot=value,initial_sp=reg('rsp')))
@@ -170,6 +198,61 @@ class ImageEntered(Checked):
         assert last['before']['inactive']==last['after']['inactive']==value['inactive']
         assert word(reg('rsp'))==2
         observed['child_exec_entries'].append(dict(snapshot=value,initial_sp=reg('rsp')))
+        save()
+        return False
+
+class RefusalReturned(Checked):
+    def observe(self):
+        global refusal_attempt
+        self.enabled=False
+        assert refusal_attempt is not None and pending is None and reg('cs')&3==3
+        assert reg('rax')==(1<<64)-12
+        assert reg('rsp')==refusal_attempt['sp']+8
+        assert {r:reg(r) for r in callee}==refusal_attempt['callee']
+        assert reg('rip')==refusal_attempt['return_pc']
+        after=capture();model['snapshot'](after)
+        raw=memory(after['context']['table'],allocation_config['process_storage_bytes']).hex()
+        before=refusal_attempt['before']
+        for key in ['allocator','ids','state','active','inactive','inactive_state','tables','catalog','registry','identity_store']:
+            assert after[key]==before[key], ('fork refusal changed',key)
+        assert raw==refusal_attempt['storage']
+        assert after['epoch']==[before['epoch'][0]+1,57]
+        refusal_attempt.update(after=after,after_storage=raw,result=reg('rax'),returned_sp=reg('rsp'),
+            returned_pc=reg('rip'),returned_callee={r:reg(r) for r in callee})
+        observed['refusals'].append(refusal_attempt);refusal_attempt=None
+        save()
+        return False
+
+class UserFork(Checked):
+    def observe(self):
+        global refusal_attempt
+        if reg('rdi')!=57:return False
+        before=capture()
+        if before['state'][2]!=519:return False
+        assert allocation_config is not None and refusal_attempt is None and observed['refusals']==[]
+        assert reg('cs')&3==3 and before['ids'][0]==1
+        model['snapshot'](before)
+        refusal_attempt=dict(before=before,sp=reg('rsp'),callee={r:reg(r) for r in callee},return_pc=word(reg('rsp')),
+            storage=memory(before['context']['table'],allocation_config['process_storage_bytes']).hex())
+        RefusalReturned('*'+hex(word(reg('rsp'))),internal=True)
+        save()
+        return False
+
+class AllocationTerminal(Checked):
+    def __init__(self,symbol,retired):
+        self.retired=retired
+        super().__init__("*'"+symbol+"'",internal=True)
+    def observe(self):
+        assert allocation_config is not None and pending is refusal_attempt is None
+        value=capture();model['snapshot'](value)
+        assert reg('cs')&3==0 and value['ids']==[1,2,1,0,0,0,5]
+        assert value['epoch'][1]==231 and value['context']['user_arg']==0
+        assert value['state']==[1,0x5f7000,0,0] and value['active']['token']==[0]*3
+        raw=memory(value['context']['table'],allocation_config['process_storage_bytes'])
+        assert len(observed['terminal'])==int(self.retired)
+        if self.retired:assert raw==bytes(len(raw))
+        else:assert value['context']['pid']==1 and value['context']['relationship']==0
+        observed['terminal'].append(dict(retired=self.retired,snapshot=value,storage=raw.hex()))
         save()
         return False
 
@@ -215,7 +298,17 @@ class Complete(Checked):
         ops=[r['operation'] for r in observed['events']]
         # Four new large-heap cases plus the unchanged four child/clone cases
         # in the surrounding full ABI witness all use actual MM owners.
-        if cancel_config is not None:
+        if allocation_config is not None:
+            assert case is not None and observed['cases']==[] and len(observed['terminal'])==2
+            assert [ops.count(n) for n in [6,7,9,10,11,12,13]]==[1,1,3,2,0,2,1]
+            prep=[r for r in observed['events'] if r['operation']==9]
+            assert [(r['before']['state'][2],r['result']) for r in prep]==[(519,0),(1,1),(0,1)]
+            assert len(observed['replacement_entries'])==len(observed['refusals'])==1
+            assert refusal_attempt is None
+            identity=memory(case['before']['context']['policy_store'],allocation_config['identity_storage_bytes'])
+            assert identity==bytes(len(identity))
+            observed['final_identity_store']=identity.hex()
+        elif cancel_config is not None:
             assert case is not None and observed['cases']==[] and len(observed['terminal'])==2
             assert [ops.count(n) for n in [6,9,10,11,12,13]]==[1,1,1,1,0,1]
             assert ops.count(7)==int(cancel_config['early'])
@@ -244,11 +337,15 @@ try:
     Gateway('topal_x86_frame_gateway_v1',True)
     Gateway('topal_x86_frame_gateway_return_reclaimed_v1',False)
     CaseEntered('*'+hex(component['entry']),internal=True)
-    if child_exec or (cancel_config is not None and cancel_config['early']):
+    if child_exec or allocation_config is not None or (cancel_config is not None and cancel_config['early']):
         ImageEntered('*'+hex(component['image_entry']),internal=True)
     if cancel_config is not None:
         Terminal('topal_x86_process_mm_parent_exit_v1',False)
         Terminal('topal_x86_process_mm_parent_resources_retired_v1',True)
+    if allocation_config is not None:
+        UserFork('*'+hex(component['syscall']),internal=True)
+        AllocationTerminal('topal_x86_process_mm_parent_exit_v1',False)
+        AllocationTerminal('topal_x86_process_mm_parent_resources_retired_v1',True)
     Halt('*'+hex(native_halt),internal=True)
     Complete('*topal_x86_systems_fatal',internal=True)
     gdb.execute('continue')
@@ -265,8 +362,8 @@ except Exception:
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
-    assert component['mode'] in ['process-mm','process-mm-exec','process-mm-cancel']
-    suffix={'process-mm':'','process-mm-exec':'_exec','process-mm-cancel':'_cancel'}[component['mode']]
+    assert component['mode'] in ['process-mm','process-mm-exec','process-mm-cancel','process-mm-allocation']
+    suffix={'process-mm':'','process-mm-exec':'_exec','process-mm-cancel':'_cancel','process-mm-allocation':'_allocation'}[component['mode']]
     source = Path(__file__).with_name('user_extent_process_mm'+suffix+'_cases.c').read_bytes()
     assert hashlib.sha256(source).hexdigest() == component['process_mm'+suffix+'_source_sha256']
     kernel = (build / 'kernel.elf').read_bytes()
@@ -287,4 +384,5 @@ if __name__ == '__main__':
     harness.main(work_name=work_name,
         program_prefix=f'component={component!r}\nkernel_spans={spans!r}\nnative_halt={invariant_halt(build / "kernel.elf")["halt"]!r}\n',
         input_scope='source-built ordinary fork/yield/resize/wait and real MM owners',
-        guest_timeout_seconds=600)
+        guest_timeout_seconds=600,
+        ram_mib=component['allocation_profile']['guest_ram_mib'] if component.get('allocation_profile') is not None else None)

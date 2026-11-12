@@ -168,3 +168,25 @@ original frozen reader. No historical evidence is rewritten.
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_parent_exit_cancels_blocked_writer_and_dirty_fifo -- --ignored --nocapture
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_cancel.py linux-kernel/tools/process-memory/results/stage-3-writer-cancellation linux-kernel/.cache/x86_64/process-memory-writer-replay-new
 ```
+
+## Actual physical refusal
+
+The [allocation archive](results/stage-3-allocation-refusal/report.json) uses
+ordinary fork and break requests in a 52-MiB guest with the unchanged kernel.
+The complete original firmware map/reservations independently reconstruct all
+allocator frames. A capacity miss and a fragmented-span miss preserve actual
+owners, bytes, mappings and issuance; a separate userspace return binds the
+fork's ENOMEM result and complete descriptor/PID-policy storage. One-page and
+empty-heap retries then succeed. Native observations remain distinct from the
+21 altered saved-data controls and the ten small catalog/firmware tests.
+
+[archive_allocation.py](archive_allocation.py) binds exact inputs and identifies
+retained child-exec/reader/writer native evidence on the byte-identical kernel.
+[replay_allocation.py](replay_allocation.py) repeats all record checks from the
+frozen selected inputs. It neither executes the kernel nor supplies a continuous
+exclusion, all-caller, every-failure, fatal-retirement or public-activation proof.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_allocation_refusal_preserves_owner_and_pid_history -- --ignored --nocapture
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_allocation.py linux-kernel/tools/process-memory/results/stage-3-allocation-refusal linux-kernel/.cache/x86_64/process-memory-allocation-replay-new
+```

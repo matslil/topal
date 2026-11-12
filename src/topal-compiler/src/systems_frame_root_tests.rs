@@ -107,6 +107,14 @@ fn process_mm_child_exec_preserves_inactive_parent_and_fresh_child_heap() {
 }
 
 #[test]
+#[ignore = "requires the bounded QEMU/GDB physical allocation-refusal cohort"]
+fn process_mm_allocation_refusal_preserves_owner_and_pid_history() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001: real physical shortage through ordinary
+    // fork, then successful one-page and empty-heap creation on the same owner.
+    execute_selected(true, true, true, Some(CallerFocus::SourceProcessAllocation));
+}
+
+#[test]
 #[ignore = "requires the bounded QEMU/GDB live-child cancellation cohort"]
 fn process_mm_parent_exit_cancels_blocked_child_and_all_resources() {
     // TOPAL-SYSTEMS-PROCESS-MM-001: actual pipe wait, both exit operations,
@@ -199,6 +207,7 @@ enum CallerFocus {
     SourceProcessMemory,
     SourceProcessOwners,
     SourceProcessExec,
+    SourceProcessAllocation,
     SourceProcessCancel(bool, bool, bool),
     SourceSerial,
     SourceStat,
@@ -215,6 +224,7 @@ fn process_memory_focus(focus: Option<CallerFocus>) -> bool {
         Some(
             CallerFocus::SourceProcessOwners
                 | CallerFocus::SourceProcessExec
+                | CallerFocus::SourceProcessAllocation
                 | CallerFocus::SourceProcessCancel(..)
         )
     )
@@ -269,7 +279,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if matches!(focus, Some(CallerFocus::SourceProcessCancel(_, _, true))) {
+    let prefix = if focus == Some(CallerFocus::SourceProcessAllocation) {
+        "process-mm-allocation"
+    } else if matches!(focus, Some(CallerFocus::SourceProcessCancel(_, _, true))) {
         "process-mm-writer-cancel"
     } else if matches!(focus, Some(CallerFocus::SourceProcessCancel(..))) {
         "process-mm-parent-cancel"
@@ -332,6 +344,7 @@ fn execute_selected(
                 | CallerFocus::SourceProcessMemory
                 | CallerFocus::SourceProcessOwners
                 | CallerFocus::SourceProcessExec
+                | CallerFocus::SourceProcessAllocation
                 | CallerFocus::SourceProcessCancel(..)
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
@@ -429,8 +442,9 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if let Some(CallerFocus::SourceProcessCancel(early, group, writer)) = focus
-    {
+    let fixture_bytes = if focus == Some(CallerFocus::SourceProcessAllocation) {
+        crate::systems_user_extent::source_fixture::build_process_memory_allocation(work, tools)
+    } else if let Some(CallerFocus::SourceProcessCancel(early, group, writer)) = focus {
         crate::systems_user_extent::source_fixture::build_process_memory_cancel(
             work, tools, early, group, writer,
         )
