@@ -1,0 +1,42 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_metadata_lifetimes",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "selected_tests": 1,
+  "exit_code": 0,
+  "elapsed_seconds": 549.3645951980725,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794470643606302824/temporary",
+  "resources": {
+    "memory.max": "3234549760",
+    "memory.swap.max": "0",
+    "memory.peak": "594006016",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_owner_observer.py": "1dcbc78602079357a305a8cf15b28dca211e8096c31b6dcfce915edac26a6ab5",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "aadadb3281790351e41e91539c9794c9200e9f3f958802b628b215afc2677efa",
+    "linux-kernel/labs/qemu/x86_64/user_extent_interval_observer.py": "2ac2f8f86916eb7a72301bcaabacec0471c8d8da84ceb3a3bbfd7fe1fecaba17",
+    "linux-kernel/tools/user-memory/owner_interval.py": "19cb7e8f13e08588c7b5290ab7f07928baed7e885fd0ad30be56c5a6853600f3",
+    "linux-kernel/tools/user-memory/test_owner_interval.py": "d944929baabb35632d020b41820e25c2ead4f47328aa2e216d0ae6c0276f39b0"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_owner_observer.py": "1dcbc78602079357a305a8cf15b28dca211e8096c31b6dcfce915edac26a6ab5",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "aadadb3281790351e41e91539c9794c9200e9f3f958802b628b215afc2677efa",
+    "linux-kernel/labs/qemu/x86_64/user_extent_interval_observer.py": "2ac2f8f86916eb7a72301bcaabacec0471c8d8da84ceb3a3bbfd7fe1fecaba17",
+    "linux-kernel/tools/user-memory/owner_interval.py": "19cb7e8f13e08588c7b5290ab7f07928baed7e885fd0ad30be56c5a6853600f3",
+    "linux-kernel/tools/user-memory/test_owner_interval.py": "d944929baabb35632d020b41820e25c2ead4f47328aa2e216d0ae6c0276f39b0"
+  },
+  "source_changes_during_run": false
+}

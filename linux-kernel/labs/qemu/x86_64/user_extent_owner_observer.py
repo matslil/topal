@@ -64,6 +64,7 @@ class OwnerBoundary(Checked):
             owner_pending=dict(start=start,length=length,direction=self.direction,sp=reg('rsp'),
                 site=word(reg('rsp')),snapshot=captured,evidence=evidence,
                 number=pending['number'],args=list(pending['args']))
+            interval_begin(owner_pending)
         else:
             assert owner_pending is not None and owner_pending['direction']==self.direction
             before=owner_pending

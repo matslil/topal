@@ -22,6 +22,7 @@ from user_extent_serial_observer import PROGRAM as SERIAL_PROGRAM, DIALOGUE, nat
 from user_extent_stat_observer import PROGRAM as STAT_PROGRAM
 from user_extent_metadata_observer import PROGRAM as METADATA_PROGRAM
 from user_extent_owner_observer import PROGRAM as OWNER_PROGRAM, MODEL as OWNER_MODEL
+from user_extent_interval_observer import PROGRAM as INTERVAL_PROGRAM, MODEL as INTERVAL_MODEL
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -87,6 +88,7 @@ class SourceReturned(Checked):
         if component.get('mode') == 'storage':
             return storage_returned(current,after)
         if component.get('mode') == 'metadata':
+            interval_case_completed()
             return metadata_returned(current,after)
         if component.get('mode') == 'serial':
             return serial_returned(current,after)
@@ -171,6 +173,7 @@ class SyscallReturned(Checked):
         staged_source_syscall_returned(pending)
         pipe_fixed_syscall_returned(pending)
         pipe_loop_syscall_returned(pending)
+        interval_syscall_returned(pending)
         if current and component.get('mode') == 'transfers' and pending['number'] == 79:
             expected = bytes.fromhex(current['cwd_expected'])
             assert pending['result'] == len(expected), pending
@@ -223,6 +226,7 @@ class SyscallEntered(Checked):
         staged_source_syscall_entered(pending)
         pipe_fixed_syscall_entered(pending)
         pipe_loop_syscall_entered(pending)
+        interval_syscall_entered(pending)
         if current and component.get('mode') == 'exec' and pending['number'] == 59:
             observe_exec_request(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
@@ -484,6 +488,8 @@ def file_returned(row):
 
 # OWNER_OBSERVER
 
+# INTERVAL_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
@@ -510,6 +516,7 @@ class Complete(Checked):
             assert memory(snapshot+0x9e00,512) == bytes(512)
         extent_coverage_complete()
         owner_observation_complete()
+        interval_observation_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -530,6 +537,7 @@ try:
     install_storage_input_observation()
     install_metadata_observation()
     install_owner_observation()
+    install_interval_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -568,12 +576,17 @@ assert PROGRAM.count('# METADATA_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# METADATA_OBSERVER', METADATA_PROGRAM)
 assert PROGRAM.count('# OWNER_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# OWNER_OBSERVER', OWNER_PROGRAM)
+assert PROGRAM.count('# INTERVAL_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# INTERVAL_OBSERVER', INTERVAL_PROGRAM)
 
 
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
     owner_profile = None
+    interval_profile = os.environ.get('TOPAL_TEST_EXTENT_INTERVALS')
+    assert interval_profile in [None,'metadata']
+    assert interval_profile is None or os.environ.get('TOPAL_TEST_EXTENT_OWNERS')=='metadata'
     if os.environ.get('TOPAL_TEST_EXTENT_OWNERS'):
         assert os.environ['TOPAL_TEST_EXTENT_OWNERS'] == component['mode'] == 'metadata'
         kernel = (build / 'kernel.elf').read_bytes()
@@ -611,6 +624,8 @@ if __name__ == '__main__':
         work_name='source-user-extents',
         program_prefix=(f'component={component!r}\n'
                         f'owner_profile={owner_profile!r}\n'
+                        f'interval_profile={interval_profile!r}\n'
+                        f'interval_model_sha256={hashlib.sha256(INTERVAL_MODEL.encode()).hexdigest()!r}\n'
                         f'immutable_head={image[:256].hex()!r}\n'
                         f'serial_sites={serial_sites!r}\n'
                         f'serial_patterns={[(m.hex(),p.hex()) for m,p in DIALOGUE]!r}\n'

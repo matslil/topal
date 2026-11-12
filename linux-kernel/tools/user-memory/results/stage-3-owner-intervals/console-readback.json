@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "bytes": 7606,
+  "sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+  "preceding_record": "../stage-3-owner-boundaries/native/observation/serial.log.gz",
+  "preceding_snapshot_sha256": "6e124432abf990a1c8fcca955ef14875f427bd04592b09a7bc1744900466f66c",
+  "scope": "Exact complete console equality between the two selected same-kernel ordinary cohorts; not full Linux application acceptance"
+}

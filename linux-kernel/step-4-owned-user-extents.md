@@ -865,3 +865,39 @@ return/fatal/exception and whole-syscall effects. Other native lengths/refusals,
 all fallback gates, canonical clean production reconstruction and full original
 Linux/container/VM-host acceptance remain required. Production selection and
 core language meaning are unchanged; Stage 3 and initial Step 4 remain open.
+
+## Stage 3 selected owner records guarded through copying
+
+The [interval checkpoint](tools/user-memory/results/stage-3-owner-intervals/README.md)
+extends 52 successful stat/pwrite admissions through their actual final copy
+instructions. Each interval keeps 26 complete selected token, registry, cell,
+translation and entry/MM ranges under hardware write watches. Twelve ordinary
+`brk` edits verify page/state/registry detection. Separate ordinary pilots detect
+both a 4096-byte page edit and a write in the last eight bytes of a 12072-byte
+range, matching the largest selected cell span.
+
+Readback joins every admission, copy endpoint and source syscall, recomputes the
+protected ranges and verifies all 104 observations stored as 64 distinct interval
+snapshots. Twenty-seven hardware watchpoints are reused; all remain enabled for
+their selected intervals and are deleted only after all copies and controls.
+Eight monotonic A/D sets on covered writable leaves are recorded separately;
+permission, backing, owner, provenance, pin and unrelated changes remain rejected.
+All 155 models/readers and fourteen saved-record controls pass, as do exact
+frozen source/thirteen-report/interval/owner/metadata replay and complete console
+comparison. All seventeen core objects/images remain byte-identical.
+
+The first full run timed out at its 600-second debugger deadline after four
+source iterations; its exact versions and failed state remain. Deleting inactive
+debugger watches after all selected cases preserves every observation and the
+same deadline. The subsequent full run passes in about 549 seconds, with zero
+swap and memory events. Its earlier incomplete progress record stays explicitly
+incomplete. The same two-CPU VM and host protections are retained.
+
+These watches concern value-changing CPU stores at selected identity virtual
+addresses. Physical aliases, DMA, control-register changes/restoration, complete
+asynchronous-entry behavior and general stable lifetime remain unqualified.
+Other caller/private-counterpart loans, complete exception/fatal/whole-syscall
+effects, unrun native paths, all fallback gates and canonical clean production
+reconstruction remain required. Core language, kernel behavior and production
+selection are unchanged; Stage 3, Step 4 and full Linux/container/VM-host
+acceptance remain unfinished.

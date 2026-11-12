@@ -1,0 +1,92 @@
+{
+  "passed": true,
+  "controls": [
+    {
+      "name": "missing-range",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "c6034eedca49a987197f95d6d868535c79d274c62c9ecd7a729134cb2ff9cbfd"
+    },
+    {
+      "name": "wrong-watch-count",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "c6034eedca49a987197f95d6d868535c79d274c62c9ecd7a729134cb2ff9cbfd"
+    },
+    {
+      "name": "software-watchpoint",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "b9e638bf0ee349f93579157a8c3d5a9d3365d7390ea3c2d8161573195c3319a4"
+    },
+    {
+      "name": "incomplete-disarm",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "b9e638bf0ee349f93579157a8c3d5a9d3365d7390ea3c2d8161573195c3319a4"
+    },
+    {
+      "name": "changed-protected-record",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "5651c2a095852328372cf895da5bab73084c748a7a5b6de716c004a22c84c259"
+    },
+    {
+      "name": "wrong-copy-endpoint",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "b3115e4f4b185fe9e095ef6531f3d74ebd1eba5a68057efaf6943615c16f15b9"
+    },
+    {
+      "name": "missing-copy",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "5651c2a095852328372cf895da5bab73084c748a7a5b6de716c004a22c84c259"
+    },
+    {
+      "name": "unrun-positive-control",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "c1328650f99269eb83096f54305ef32d0ef7fe8257f9dc95017d75e0be7def0a"
+    },
+    {
+      "name": "wrong-control-syscall",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "891c16517a3fac7dafc81eb8d5610062f30821c05a57baea404c68845224b5c8"
+    },
+    {
+      "name": "missing-interval",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "9a503ed5a290d456cc3b42df99ad1e6a7fa378add4953d80ff7cea4ecf5aa659"
+    },
+    {
+      "name": "permission-change",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "9ea114881c248794131cef2aaeb80af45c4940fb359b1bc2399526366cd8f945"
+    },
+    {
+      "name": "physical-address-change",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "26d09b4b03cec55262f6b76629e96be1abb73be432f6d68ad3a2fe1226c179ff"
+    },
+    {
+      "name": "unrelated-status-set",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "e2ec7fa5f0c7204f32e0ce729cbfa661bba57d95895884d6c6c371532ba0afdb"
+    },
+    {
+      "name": "entry-change",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "bd6c249a7d3d9566ec4a1c8d43538079018d57cf9ba8c5da6b179e8e89a51e7b"
+    }
+  ],
+  "reader_sha256": "36b27ef895472021e2f108c5fb34a4d44867edcd74170e4231194412b91334bf",
+  "original_observation_sha256": "6c55c06f17a105063f16c8fd7a76b2316837bb2db5bcfe2b1808f327b23915d9",
+  "scope": "Fourteen saved JSON controls; endpoint semantic controls rebind snapshot hashes. No ELF, GDB or VM execution, register edit or guest-memory mutation"
+}

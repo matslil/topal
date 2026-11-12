@@ -20,6 +20,10 @@ selected cleanup blocks in the same kernel.
 The subsequent [owner-boundary cohort](tools/user-memory/results/stage-3-owner-boundaries/README.md)
 retains actual token/registry/cell and translation evidence for 52 successful
 stat/write helper calls, including physical separation of selected allocations.
+The [subsequent interval observation](tools/user-memory/results/stage-3-owner-intervals/README.md)
+watches selected owner/translation records through all 52 actual copies, with
+ordinary heap edits verifying the hardware watches. General lifetime and
+physical-alias/DMA/asynchronous exclusion remain separate requirements.
 Actual ownership/lifetime, complete caller qualification and canonical production
 activation remain required. This does not complete Step 4 or distribution,
 container or VM-host acceptance.

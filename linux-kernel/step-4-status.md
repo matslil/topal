@@ -17,6 +17,10 @@ clock callers, giving all thirteen selected cleanup blocks in same-kernel union.
 The subsequent [owner-boundary cohort](tools/user-memory/results/stage-3-owner-boundaries/README.md)
 checks 104 actual allocation/translation snapshots around 52 stat/write helper
 calls. Boundary equality does not establish a continuous mapping lifetime.
+The [subsequent interval observation](tools/user-memory/results/stage-3-owner-intervals/README.md)
+guards 26 selected identity-address ranges through each of those 52 copies.
+It records twelve ordinary write controls and preserves the two-CPU VM; this
+does not qualify physical aliases, DMA or all asynchronous behavior.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 

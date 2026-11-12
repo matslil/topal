@@ -345,3 +345,15 @@ linked symbols and role bindings; 149 models/readers and twelve offline saved
 record controls pass. The unchanged kernel retains its prior reach/index counts.
 Continuous lifetime, other caller/private-counterpart owners, full callee and
 exception effects, fallback and canonical production obligations remain open.
+
+The [interval observation](results/stage-3-owner-intervals/README.md) now keeps
+26 selected identity-address ranges under hardware write watches from helper
+entry through each of the same 52 copies. Twelve ordinary heap-edit controls
+and separate whole-page/large-range-tail pilots verify actual watch behavior.
+All 155 models/readers, fourteen offline record controls and exact frozen replay
+pass. A failed 600-second run remains separate from the full passing retry;
+inactive watches are deleted only after all selected copies and controls, with
+the same deadline and observations. Physical aliases, DMA, continuous mode and
+all asynchronous-entry exclusion, other callers/private counterparts, complete
+exception/fatal/whole-syscall effects and canonical production still need their
+own qualification.
