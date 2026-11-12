@@ -5,7 +5,9 @@ It never assigns guest registers, mappings, ownership records or user data.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
+import struct
 import sys
 
 import frame_root_inspect as harness
@@ -19,6 +21,7 @@ from user_extent_storage_observer import PROGRAM as STORAGE_PROGRAM
 from user_extent_serial_observer import PROGRAM as SERIAL_PROGRAM, DIALOGUE, native_sites as serial_native_sites
 from user_extent_stat_observer import PROGRAM as STAT_PROGRAM
 from user_extent_metadata_observer import PROGRAM as METADATA_PROGRAM
+from user_extent_owner_observer import PROGRAM as OWNER_PROGRAM, MODEL as OWNER_MODEL
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -479,6 +482,8 @@ def file_returned(row):
 
 # METADATA_OBSERVER
 
+# OWNER_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
@@ -504,6 +509,7 @@ class Complete(Checked):
         for snapshot in {row['snapshot'] for row in observed['executions']}:
             assert memory(snapshot+0x9e00,512) == bytes(512)
         extent_coverage_complete()
+        owner_observation_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -523,6 +529,7 @@ try:
     install_serial_observation()
     install_storage_input_observation()
     install_metadata_observation()
+    install_owner_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -559,11 +566,29 @@ assert PROGRAM.count('# STAT_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# STAT_OBSERVER', STAT_PROGRAM)
 assert PROGRAM.count('# METADATA_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# METADATA_OBSERVER', METADATA_PROGRAM)
+assert PROGRAM.count('# OWNER_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# OWNER_OBSERVER', OWNER_PROGRAM)
 
 
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
+    owner_profile = None
+    if os.environ.get('TOPAL_TEST_EXTENT_OWNERS'):
+        assert os.environ['TOPAL_TEST_EXTENT_OWNERS'] == component['mode'] == 'metadata'
+        kernel = (build / 'kernel.elf').read_bytes()
+        phoff = struct.unpack_from('<Q', kernel, 32)[0]
+        phsize, phcount = struct.unpack_from('<HH', kernel, 54)
+        assert kernel[:6] == b'\x7fELF\x02\x01' and phsize == 56
+        spans = []
+        for i in range(phcount):
+            kind, flags, offset, virtual, physical, size, memsize, align = struct.unpack_from('<II6Q',kernel,phoff+i*phsize)
+            if kind == 1:
+                assert virtual == physical and memsize and physical+memsize <= 1<<30
+                spans.append([physical,physical+memsize])
+        assert spans
+        owner_profile = dict(bindings=json.loads((build / 'user-owners.json').read_text()),
+            kernel_spans=spans,model=OWNER_MODEL,kernel_sha256=hashlib.sha256(kernel).hexdigest())
     image = (build / 'static-elf-abi-fixture.elf').read_bytes()
     assert hashlib.sha256(image).hexdigest() == component['image_sha256']
     archive = members((build / 'initramfs.cpio').read_bytes())
@@ -585,6 +610,7 @@ if __name__ == '__main__':
     harness.main(
         work_name='source-user-extents',
         program_prefix=(f'component={component!r}\n'
+                        f'owner_profile={owner_profile!r}\n'
                         f'immutable_head={image[:256].hex()!r}\n'
                         f'serial_sites={serial_sites!r}\n'
                         f'serial_patterns={[(m.hex(),p.hex()) for m,p in DIALOGUE]!r}\n'

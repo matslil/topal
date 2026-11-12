@@ -1,0 +1,80 @@
+{
+  "passed": true,
+  "controls": [
+    {
+      "name": "missing-pin",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "b2f9a6339a36bdf8a8ad2dec29323f0417b0d0da6c81b0a167d76e3ec647dc1e"
+    },
+    {
+      "name": "stale-cell",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "78b1050027f39e554faa0d188b8f6b0b3e2e3d5ca18559df794c63ab112b6f03"
+    },
+    {
+      "name": "heap-alias",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "4cc1b63dc8d6db5b20b539149d8fff257b8d0f84faaca4cf86a5709e4c2f056c"
+    },
+    {
+      "name": "foreign-table",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "057c25b504bcf0ac5f54b750bc3cd9c0e1f51a35cae70129cf2b5d854f12ad20"
+    },
+    {
+      "name": "stale-entry",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "d27e053a1b27f6164902ce4e16e073e17ef20f2bac4e77cc9358760f43e19ca4"
+    },
+    {
+      "name": "write-protection-disabled",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "9db2a764f43d470c72191d7b34a03c1ebfde91287097a96a3972f5328a11afe9"
+    },
+    {
+      "name": "foreign-leaf",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "be3931d7c1046fdcc12d6ead081e7a0c6c5e11c8fbf9c3d3b20d559eafc4193c"
+    },
+    {
+      "name": "missing-helper",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "3a36b090448e900f197523d5acbd6d27ede741adaccf56c2116302ab6ae166e7"
+    },
+    {
+      "name": "false-page-evidence",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "b3f4f3eb3d83e7cfcb70123ee9cc09ad3c90a3493637990498d88d42b915e1ff"
+    },
+    {
+      "name": "wrong-direction",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "a4580368dffb81b4319ff78e025a89d2ecd865da2bd053aa5d767d14400c7db0"
+    },
+    {
+      "name": "wrong-model-hash",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "7219317ea0016cbacc29dcaa443b21b57a1f5275f402bef70c0086a20bfb8209"
+    },
+    {
+      "name": "wrong-syscall-order",
+      "rejected": true,
+      "exit_code": 1,
+      "log_sha256": "9ca2ea26bce2cec054a035780adcb4e67306611f9cac36091777be133149b45d"
+    }
+  ],
+  "reader_sha256": "c75603b20ff103c1bfa666c586587e5afc918494e33ae66c3e1e5be8af0c6b8b",
+  "original_observation_sha256": "3ce00caf9821e427b9286c0db09c9f591aa3c757f23da8fe654f4db61a052e63",
+  "scope": "Twelve saved JSON observation controls, with coherent snapshot-digest rebinding for semantic controls. No ELF, GDB or VM execution, register edit or guest memory mutation"
+}

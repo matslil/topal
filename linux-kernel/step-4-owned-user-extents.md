@@ -838,3 +838,30 @@ unchanged. Actual owners/nonaliasing, continuous lifetime, complete helper/
 entry/callee/fatal/exception and whole-syscall effects, remaining user-access and
 fallback obligations, canonical clean production reconstruction and full original
 kernel acceptance remain required. Stage 3 and initial Step 4 remain unfinished.
+
+## Stage 3 actual owner observations at helper boundaries
+
+The [owner-boundary checkpoint](tools/user-memory/results/stage-3-owner-boundaries/README.md)
+adds read-only token, live registry, complete consecutive allocation-cell and
+translation snapshots around all 44 successful stat and eight positional-write
+admissions in the ordinary metadata cohort. The 104 snapshots cover 96 translated
+page instances. Selected spans are mutually disjoint and outside actual linked
+kernel load-memory spans; heap identities remain distinct from every root token.
+GS/context, CR3, epoch, privilege and selected mode/interrupt/direction controls
+are checked at both boundaries, alongside every covered page's owner and rights.
+
+Separate saved-record readback binds actual ELF symbols, source target role
+offsets and every ordinary source syscall. All selected owner/table/entry/control
+data agree across each helper. The full 136-syscall metadata workload, enclosing
+process retirement, 149 models/readers and twelve coherently rebound saved-record
+controls pass. Exact frozen source/report/model/owner/metadata replay passes from
+175 selected sources and 89 artifacts. All seventeen core objects/images and
+thirteen preceding audits remain byte-identical. The initial archive replay's
+optional historical-field error is retained separately; no guest code ran in it.
+
+These observations do not establish continuous ownership/mapping stability,
+actual private-counterpart loans, every helper/caller or complete entry/callee/
+return/fatal/exception and whole-syscall effects. Other native lengths/refusals,
+all fallback gates, canonical clean production reconstruction and full original
+Linux/container/VM-host acceptance remain required. Production selection and
+core language meaning are unchanged; Stage 3 and initial Step 4 remain open.

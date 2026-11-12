@@ -335,3 +335,13 @@ All 141 models/readers, fourteen offline record controls and two fixture tests
 pass. Actual owners/nonaliasing, continuous lifetime, complete entry/helper/
 callee/fatal/exception/whole-syscall effects, fallback and canonical clean
 production obligations retain their separate acceptance gates.
+
+The [owner-boundary checkpoint](results/stage-3-owner-boundaries/README.md) adds
+actual allocation/translation evidence for 52 successful ordinary stat/write
+helper calls. Its 104 snapshots bind live token/registry/cell identities, exact
+pins, physical disjointness, six owned translation pages and every covered user
+page to actual entry/return observations. Saved readback joins the source calls,
+linked symbols and role bindings; 149 models/readers and twelve offline saved
+record controls pass. The unchanged kernel retains its prior reach/index counts.
+Continuous lifetime, other caller/private-counterpart owners, full callee and
+exception effects, fallback and canonical production obligations remain open.

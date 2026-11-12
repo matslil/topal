@@ -14,6 +14,9 @@ stack bounds, with fresh native regressions and exact emission comparison.
 The subsequent [ordinary metadata cohort](tools/user-memory/results/stage-3-source-metadata/README.md)
 checks complete filesystem/descriptor transitions and observes the remaining
 clock callers, giving all thirteen selected cleanup blocks in same-kernel union.
+The subsequent [owner-boundary cohort](tools/user-memory/results/stage-3-owner-boundaries/README.md)
+checks 104 actual allocation/translation snapshots around 52 stat/write helper
+calls. Boundary equality does not establish a continuous mapping lifetime.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 

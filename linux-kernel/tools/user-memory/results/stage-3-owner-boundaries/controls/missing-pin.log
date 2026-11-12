@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/x86_64/readback-owner-boundaries.py", line 61, in <module>
+    evidence=check(snapshot,profile['bindings'],spans,row['start'],row['length'],row['direction'])
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/owner_snapshot.py", line 56, in check
+    owner(row,tokens[at:at+3],role['count'],role['pins'])
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/owner_snapshot.py", line 40, in owner
+    assert record[3:5]==[count,1] and record[5]>0 and record[6:]==[pins,1]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
