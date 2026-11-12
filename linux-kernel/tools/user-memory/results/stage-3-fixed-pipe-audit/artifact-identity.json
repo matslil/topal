@@ -1,0 +1,32 @@
+{
+  "provider.o": {
+    "bytes": 1061624,
+    "sha256": "363b01c4f75056b0eca0e76628e480ff6dcbc1aad0db885ac8dd205e79f729c6",
+    "snapshot": "../stage-3-staging-copies/artifacts/provider.o.gz",
+    "snapshot_sha256": "3f315406a0315765a1ee0f89624bfd5df82464aec48131b4451fd749fa62c609"
+  },
+  "kernel.elf": {
+    "bytes": 1665328,
+    "sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+    "snapshot": "../stage-3-staging-copies/artifacts/kernel.elf.gz",
+    "snapshot_sha256": "2b23ad957cd48c752ccc6a185e9b086707e81c38c9c1c56fb34564b730fd4116"
+  },
+  "extent-call-inventory.json": {
+    "bytes": 27066,
+    "sha256": "7e27b70623f25ae6fd463463d05c8a8fbe937f0be3b4345c20df3a2c83dfadc9",
+    "snapshot": "../stage-3-staging-copies/artifacts/extent-call-inventory.json.gz",
+    "snapshot_sha256": "aee758d4cf5a6176eb0ad9ff7201670e86d8f984581c013f61645cd7c3164d3e"
+  },
+  "process-access-inventory.json": {
+    "bytes": 10310563,
+    "sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa",
+    "snapshot": "../stage-3-staging-copies/artifacts/process-access-inventory.json.gz",
+    "snapshot_sha256": "422757def0e1b4d047726bb9dd115dd52721c5a598cd7858a6cf8db48353c468"
+  },
+  "process-access-origins.json": {
+    "bytes": 9881057,
+    "sha256": "b5c1ecd7dd3afe0131f2a4da303a80d882960aabb2a86f7de5f68ef07364ed41",
+    "snapshot": "../stage-3-staging-copies/artifacts/process-access-origins.json.gz",
+    "snapshot_sha256": "dd2e7bce882260cccc1a876c869a1622a663cda9f3cbeb97a128583d61b73eb6"
+  }
+}

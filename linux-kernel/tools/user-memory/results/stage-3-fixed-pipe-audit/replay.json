@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "selected_inputs": 137,
+  "inherited_artifacts": 5,
+  "exact_report_equal": true,
+  "focused_models": 8,
+  "scope": "Frozen selected source and artifact replay only. ELF files are inspected as data; no compiler, GNU, GDB or VM execution, no complete producer/owner/lifetime/native qualification"
+}

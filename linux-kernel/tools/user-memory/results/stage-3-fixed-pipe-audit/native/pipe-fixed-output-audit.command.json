@@ -1,0 +1,8 @@
+{
+  "argv": [
+    "python3",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2367848-1794444753502668964"
+  ],
+  "exit_code": 0
+}

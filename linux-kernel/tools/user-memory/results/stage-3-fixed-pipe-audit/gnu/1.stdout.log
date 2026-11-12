@@ -1,0 +1,52 @@
+
+linux-kernel/.cache/x86_64/user-extent-source-poll-2340765-1794433349203271869/kernel.elf:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000002bc0c43 <topal_x86_frame_mm_cleanup_return_v1+0x17e7f>:
+ 2bc0c43:	4d 8b 9e 20 00 00 00                            	mov    r11,QWORD PTR [r14+0x20]
+ 2bc0c4a:	49 81 fb 00 00 00 00                            	cmp    r11,0x0
+ 2bc0c51:	0f 84 5f bb fe ff                               	je     2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc0c57:	4d 89 e2                                        	mov    r10,r12
+ 2bc0c5a:	49 81 c2 00 e0 03 00                            	add    r10,0x3e000
+ 2bc0c61:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc0c6b:	49 8b 82 00 00 00 00                            	mov    rax,QWORD PTR [r10+0x0]
+ 2bc0c72:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc0c79:	0f 85 10 00 00 00                               	jne    2bc0c8f <topal_x86_frame_mm_cleanup_return_v1+0x17ecb>
+ 2bc0c7f:	49 8b 82 08 00 00 00                            	mov    rax,QWORD PTR [r10+0x8]
+ 2bc0c86:	4c 39 d8                                        	cmp    rax,r11
+ 2bc0c89:	0f 84 20 00 00 00                               	je     2bc0caf <topal_x86_frame_mm_cleanup_return_v1+0x17eeb>
+ 2bc0c8f:	49 81 c2 80 00 00 00                            	add    r10,0x80
+ 2bc0c96:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc0c9d:	48 81 f9 00 00 00 00                            	cmp    rcx,0x0
+ 2bc0ca4:	0f 85 c1 ff ff ff                               	jne    2bc0c6b <topal_x86_frame_mm_cleanup_return_v1+0x17ea7>
+ 2bc0caa:	e9 07 bb fe ff                                  	jmp    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc0caf:	49 8b 82 20 00 00 00                            	mov    rax,QWORD PTR [r10+0x20]
+ 2bc0cb6:	48 81 f8 00 10 00 00                            	cmp    rax,0x1000
+ 2bc0cbd:	0f 83 f3 ba fe ff                               	jae    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc0cc3:	49 8b 82 28 00 00 00                            	mov    rax,QWORD PTR [r10+0x28]
+ 2bc0cca:	48 81 f8 00 10 00 00                            	cmp    rax,0x1000
+ 2bc0cd1:	0f 87 df ba fe ff                               	ja     2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc0cd7:	4c 89 f0                                        	mov    rax,r14
+ 2bc0cda:	4c 29 e0                                        	sub    rax,r12
+ 2bc0cdd:	48 81 f8 00 d0 03 00                            	cmp    rax,0x3d000
+ 2bc0ce4:	0f 82 17 00 00 00                               	jb     2bc0d01 <topal_x86_frame_mm_cleanup_return_v1+0x17f3d>
+ 2bc0cea:	48 81 c0 00 30 fc ff                            	add    rax,0xfffffffffffc3000
+ 2bc0cf1:	48 c1 e8 06                                     	shr    rax,0x6
+ 2bc0cf5:	48 81 c0 11 00 00 00                            	add    rax,0x11
+ 2bc0cfc:	e9 12 00 00 00                                  	jmp    2bc0d13 <topal_x86_frame_mm_cleanup_return_v1+0x17f4f>
+ 2bc0d01:	48 81 c0 c0 fe ff ff                            	add    rax,0xfffffffffffffec0
+ 2bc0d08:	48 c1 e8 06                                     	shr    rax,0x6
+ 2bc0d0c:	48 81 c0 01 00 00 00                            	add    rax,0x1
+ 2bc0d13:	4d 8b 9e 00 00 00 00                            	mov    r11,QWORD PTR [r14+0x0]
+ 2bc0d1a:	49 81 fb 05 00 00 00                            	cmp    r11,0x5
+ 2bc0d21:	0f 84 19 00 00 00                               	je     2bc0d40 <topal_x86_frame_mm_cleanup_return_v1+0x17f7c>
+ 2bc0d27:	49 81 fb 06 00 00 00                            	cmp    r11,0x6
+ 2bc0d2e:	0f 85 82 ba fe ff                               	jne    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc0d34:	49 8b 8a 18 00 00 00                            	mov    rcx,QWORD PTR [r10+0x18]
+ 2bc0d3b:	e9 07 00 00 00                                  	jmp    2bc0d47 <topal_x86_frame_mm_cleanup_return_v1+0x17f83>
+ 2bc0d40:	49 8b 8a 10 00 00 00                            	mov    rcx,QWORD PTR [r10+0x10]
+ 2bc0d47:	48 39 c8                                        	cmp    rax,rcx
+ 2bc0d4a:	0f 85 66 ba fe ff                               	jne    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc0d50:	c3                                              	ret

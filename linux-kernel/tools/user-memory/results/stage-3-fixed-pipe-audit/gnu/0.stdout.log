@@ -1,0 +1,89 @@
+
+linux-kernel/.cache/x86_64/user-extent-source-poll-2340765-1794433349203271869/kernel.elf:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000002bbfdb2 <topal_x86_frame_mm_cleanup_return_v1+0x16fee>:
+ 2bbfdb2:	65 4c 8b 04 25 38 01 00 00                      	mov    r8,QWORD PTR gs:0x138
+ 2bbfdbb:	49 b9 08 00 00 00 00 00 00 00                   	movabs r9,0x8
+ 2bbfdc5:	e8 34 ee fe ff                                  	call   2baebfe <topal_x86_frame_mm_cleanup_return_v1+0x5e3a>
+ 2bbfdca:	48 c7 44 24 f8 00 00 00 00                      	mov    QWORD PTR [rsp-0x8],0x0
+ 2bbfdd3:	0f 82 21 18 00 00                               	jb     2bc15fa <topal_x86_frame_mm_cleanup_return_v1+0x18836>
+ 2bbfdd9:	4d 8b ac 24 80 05 00 00                         	mov    r13,QWORD PTR [r12+0x580]
+ 2bbfde1:	4d 89 bd 08 00 00 00                            	mov    QWORD PTR [r13+0x8],r15
+ 2bbfde8:	4d 8b 9c 24 98 05 00 00                         	mov    r11,QWORD PTR [r12+0x598]
+ 2bbfdf0:	4d 89 9d 10 00 00 00                            	mov    QWORD PTR [r13+0x10],r11
+ 2bbfdf7:	4d 89 e6                                        	mov    r14,r12
+ 2bbfdfa:	49 81 c6 40 01 00 00                            	add    r14,0x140
+ 2bbfe01:	49 81 fb 10 00 00 00                            	cmp    r11,0x10
+ 2bbfe08:	0f 86 07 00 00 00                               	jbe    2bbfe15 <topal_x86_frame_mm_cleanup_return_v1+0x17051>
+ 2bbfe0e:	49 81 c6 c0 ca 03 00                            	add    r14,0x3cac0
+ 2bbfe15:	4c 89 d8                                        	mov    rax,r11
+ 2bbfe18:	48 81 c0 ff ff ff ff                            	add    rax,0xffffffffffffffff
+ 2bbfe1f:	48 c1 e0 06                                     	shl    rax,0x6
+ 2bbfe23:	49 01 c6                                        	add    r14,rax
+ 2bbfe26:	48 b8 05 00 00 00 00 00 00 00                   	movabs rax,0x5
+ 2bbfe30:	49 89 86 00 00 00 00                            	mov    QWORD PTR [r14+0x0],rax
+ 2bbfe37:	48 b8 01 00 00 00 00 00 00 00                   	movabs rax,0x1
+ 2bbfe41:	49 89 86 08 00 00 00                            	mov    QWORD PTR [r14+0x8],rax
+ 2bbfe48:	48 89 d8                                        	mov    rax,rbx
+ 2bbfe4b:	48 81 e0 00 08 00 00                            	and    rax,0x800
+ 2bbfe52:	48 81 c8 00 00 00 00                            	or     rax,0x0
+ 2bbfe59:	49 89 86 10 00 00 00                            	mov    QWORD PTR [r14+0x10],rax
+ 2bbfe60:	4d 89 be 20 00 00 00                            	mov    QWORD PTR [r14+0x20],r15
+ 2bbfe67:	49 8b 84 24 88 05 00 00                         	mov    rax,QWORD PTR [r12+0x588]
+ 2bbfe6f:	48 c1 e0 04                                     	shl    rax,0x4
+ 2bbfe73:	4c 01 e0                                        	add    rax,r12
+ 2bbfe76:	48 81 c0 40 00 00 00                            	add    rax,0x40
+ 2bbfe7d:	4c 89 98 00 00 00 00                            	mov    QWORD PTR [rax+0x0],r11
+ 2bbfe84:	48 89 d9                                        	mov    rcx,rbx
+ 2bbfe87:	48 c1 e9 13                                     	shr    rcx,0x13
+ 2bbfe8b:	48 81 e1 01 00 00 00                            	and    rcx,0x1
+ 2bbfe92:	48 89 88 08 00 00 00                            	mov    QWORD PTR [rax+0x8],rcx
+ 2bbfe99:	4d 8b 9c 24 a0 05 00 00                         	mov    r11,QWORD PTR [r12+0x5a0]
+ 2bbfea1:	4d 89 9d 18 00 00 00                            	mov    QWORD PTR [r13+0x18],r11
+ 2bbfea8:	4d 89 e6                                        	mov    r14,r12
+ 2bbfeab:	49 81 c6 40 01 00 00                            	add    r14,0x140
+ 2bbfeb2:	49 81 fb 10 00 00 00                            	cmp    r11,0x10
+ 2bbfeb9:	0f 86 07 00 00 00                               	jbe    2bbfec6 <topal_x86_frame_mm_cleanup_return_v1+0x17102>
+ 2bbfebf:	49 81 c6 c0 ca 03 00                            	add    r14,0x3cac0
+ 2bbfec6:	4c 89 d8                                        	mov    rax,r11
+ 2bbfec9:	48 81 c0 ff ff ff ff                            	add    rax,0xffffffffffffffff
+ 2bbfed0:	48 c1 e0 06                                     	shl    rax,0x6
+ 2bbfed4:	49 01 c6                                        	add    r14,rax
+ 2bbfed7:	48 b8 06 00 00 00 00 00 00 00                   	movabs rax,0x6
+ 2bbfee1:	49 89 86 00 00 00 00                            	mov    QWORD PTR [r14+0x0],rax
+ 2bbfee8:	48 b8 01 00 00 00 00 00 00 00                   	movabs rax,0x1
+ 2bbfef2:	49 89 86 08 00 00 00                            	mov    QWORD PTR [r14+0x8],rax
+ 2bbfef9:	48 89 d8                                        	mov    rax,rbx
+ 2bbfefc:	48 81 e0 00 08 00 00                            	and    rax,0x800
+ 2bbff03:	48 81 c8 01 00 00 00                            	or     rax,0x1
+ 2bbff0a:	49 89 86 10 00 00 00                            	mov    QWORD PTR [r14+0x10],rax
+ 2bbff11:	4d 89 be 20 00 00 00                            	mov    QWORD PTR [r14+0x20],r15
+ 2bbff18:	49 8b 84 24 90 05 00 00                         	mov    rax,QWORD PTR [r12+0x590]
+ 2bbff20:	48 c1 e0 04                                     	shl    rax,0x4
+ 2bbff24:	4c 01 e0                                        	add    rax,r12
+ 2bbff27:	48 81 c0 40 00 00 00                            	add    rax,0x40
+ 2bbff2e:	4c 89 98 00 00 00 00                            	mov    QWORD PTR [rax+0x0],r11
+ 2bbff35:	48 89 d9                                        	mov    rcx,rbx
+ 2bbff38:	48 c1 e9 13                                     	shr    rcx,0x13
+ 2bbff3c:	48 81 e1 01 00 00 00                            	and    rcx,0x1
+ 2bbff43:	48 89 88 08 00 00 00                            	mov    QWORD PTR [rax+0x8],rcx
+ 2bbff4a:	49 89 ad 48 00 00 00                            	mov    QWORD PTR [r13+0x48],rbp
+ 2bbff51:	49 89 ad 50 00 00 00                            	mov    QWORD PTR [r13+0x50],rbp
+ 2bbff58:	49 89 ad 58 00 00 00                            	mov    QWORD PTR [r13+0x58],rbp
+ 2bbff5f:	49 89 ad 60 00 00 00                            	mov    QWORD PTR [r13+0x60],rbp
+ 2bbff66:	48 b8 80 11 00 00 00 00 00 00                   	movabs rax,0x1180
+ 2bbff70:	49 89 85 40 00 00 00                            	mov    QWORD PTR [r13+0x40],rax
+ 2bbff77:	48 b8 01 00 00 00 00 00 00 00                   	movabs rax,0x1
+ 2bbff81:	49 89 85 00 00 00 00                            	mov    QWORD PTR [r13+0x0],rax
+ 2bbff88:	4d 89 bc 24 00 e2 03 00                         	mov    QWORD PTR [r12+0x3e200],r15
+ 2bbff90:	49 8b 84 24 88 05 00 00                         	mov    rax,QWORD PTR [r12+0x588]
+ 2bbff98:	49 8b 8c 24 90 05 00 00                         	mov    rcx,QWORD PTR [r12+0x590]
+ 2bbffa0:	48 c1 e1 20                                     	shl    rcx,0x20
+ 2bbffa4:	48 09 c8                                        	or     rax,rcx
+ 2bbffa7:	49 89 80 00 00 00 00                            	mov    QWORD PTR [r8+0x0],rax
+ 2bbffae:	4d 8b 98 00 00 00 00                            	mov    r11,QWORD PTR [r8+0x0]
+ 2bbffb5:	4c 39 d8                                        	cmp    rax,r11
+ 2bbffb8:	0f 85 f8 c7 fe ff                               	jne    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>

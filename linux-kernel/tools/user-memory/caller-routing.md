@@ -199,3 +199,13 @@ remain conditional on complete owners/lifetime and helper/entry/callee contracts
 Serial pointer emission is improved, but its partial-count interval remains open.
 The new kernel has its own actual native coverage union; older observations are
 not relabeled. Whole-caller, fallback and canonical-production obligations remain.
+
+The [fixed-pipe audit](results/stage-3-fixed-pipe-audit/README.md) checks the
+pair output/readback and readable-count output through exact preparation and
+normal-return lookup contracts. These two conditional regions add three access
+checks in a separate report. GNU readback, twelve offline artifact controls,
+eight new models, exact frozen replay and the ordinary pipe VM regression pass.
+No executable kernel bytes change. Fresh per-access observation, actual private/
+output/stack owners, nonaliasing, continuous lifetime and complete entry/callee/
+exception effects remain required. The published 79-site/306-instruction index
+and all twelve sites without published intervals remain unchanged.

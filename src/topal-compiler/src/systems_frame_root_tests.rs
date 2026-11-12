@@ -808,6 +808,16 @@ fn build_guest(
                 )
                 .arg(work),
         );
+        run(
+            work,
+            "pipe-fixed-output-audit",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py"),
+                )
+                .arg(work),
+        );
     }
     fs::write(
         work.join("bzImage"),

@@ -541,3 +541,21 @@ exception reasoning, remaining accesses/fallbacks, canonical production binding
 and cold reconstruction remain required. The canonical profile and predecessor
 emission are unchanged. Stage 3, initial Step 4 and the full original goal remain
 unfinished.
+
+## Stage 3 conditional fixed pipe outputs
+
+The [fixed-pipe audit](tools/user-memory/results/stage-3-fixed-pipe-audit/README.md)
+adds exact instruction/control checks for the descriptor-pair output/readback
+and readable-count output, including the intervening bounded lookup's normal
+register effects. Separate GNU readback checks 135 instructions and three
+reverse admission cuts. Twelve positive-backed offline ELF counterexamples,
+eight new models within the 60-test suite, exact frozen replay and the fresh
+ordinary source-pipe VM regression pass. The five compared kernel/metadata
+artifacts match the preceding checkpoint exactly.
+
+This adds a conditional reader and builder integration. It does not add a new
+native per-access observer or qualify actual table/output/stack owners,
+nonaliasing, continuous lifetime or complete helper/entry/return/fatal/exception
+effects. The published index remains 79/91 sites and 306 user instructions,
+with all twelve sites without published intervals still listed. All fallback,
+canonical production and complete Stage-3/Step-4 obligations remain open.

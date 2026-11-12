@@ -1,0 +1,37 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_pipe_transfer_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 237.65787076950073,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794444745930453399/temporary",
+  "resources": {
+    "memory.max": "3288424448",
+    "memory.swap.max": "0",
+    "memory.peak": "1965445120",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "8e1fca3b1050d945f3dc0366b7e4f5fc163bad4a3ff8a085616680e1fad29ffd",
+    "linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py": "dcf30af63cdad04f1ad1fd6a26058351c7fd07d9e706d38465427604ae67cafd",
+    "linux-kernel/tools/user-memory/test_pipe_fixed_outputs.py": "2ca5dc460edfaeae34dd1cff40dba801cb2d6a424a3d541135e1b7c5f5fab2c8"
+  },
+  "modified_source_hashes_after": {
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "8e1fca3b1050d945f3dc0366b7e4f5fc163bad4a3ff8a085616680e1fad29ffd",
+    "linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py": "dcf30af63cdad04f1ad1fd6a26058351c7fd07d9e706d38465427604ae67cafd",
+    "linux-kernel/tools/user-memory/test_pipe_fixed_outputs.py": "2ca5dc460edfaeae34dd1cff40dba801cb2d6a424a3d541135e1b7c5f5fab2c8"
+  },
+  "source_changes_during_run": false
+}
