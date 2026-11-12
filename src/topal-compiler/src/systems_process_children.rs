@@ -115,13 +115,10 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
         e.0.jump_if(0x85, "child-dispatch-done");
         e.0.bind("process-mm-exit-selected")?;
         e.gs(0x8b, R11, TABLE_CONTEXT);
-        e.load(R11, R11, HEADER);
-        e.cmp(R11, 1);
-        e.0.jump_if(0x85, "child-dispatch-done");
-        e.gs(0x8b, R11, TABLE_CONTEXT);
         e.load(R11, R11, 56);
         e.cmp(R11, 1);
         e.0.jump_if(0x85, "child-exit");
+        e.0.jump("process-mm-parent-exit");
     }
     e.0.bind("child-dispatch-done")?;
     Ok(())
@@ -545,6 +542,9 @@ pub(in super::super) fn emit_services(
     );
     e.0.bytes(&[0xc3]);
     pair::emit_services(e.0)?;
+    if e.0.process_memory {
+        super::terminal::emit(e.0)?;
+    }
     Ok(())
 }
 
@@ -562,11 +562,7 @@ pub(in super::super) fn emit_exit_dispatch(
     e.0.jump_if(0x85, "child-exit");
     e.0.bind("pair-exit-parent")?;
     if e.0.process_memory {
-        e.imm(Si, 0);
-        super::super::frame_memory::call(e.0, 13, "process-mm-cancel-return")?;
-        e.cmp(A, 1);
-        e.0.jump_if(0x85, "fatal");
-        e.gs(0x8b, Di, 312); // preserve the outer process's captured exit argument
+        e.0.jump("process-mm-parent-exit");
     }
     Ok(())
 }

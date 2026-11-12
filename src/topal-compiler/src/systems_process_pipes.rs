@@ -48,9 +48,11 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
     e.load(R11, R11, 0);
     e.cmp(R11, 1);
     e.0.jump_if(0x85, "pipe-dispatch-done");
-    e.gs(0x8b, R11, 104);
-    e.cmp(R11, 11);
-    e.0.jump_if(0x82, "pipe-dispatch-done");
+    if !e.0.process_memory {
+        e.gs(0x8b, R11, 104);
+        e.cmp(R11, 11);
+        e.0.jump_if(0x82, "pipe-dispatch-done");
+    }
     for (number, label) in [(22, "pipe-create"), (293, "pipe-create2")] {
         e.cmp(A, number);
         e.0.jump_if(0x84, label);

@@ -1973,7 +1973,10 @@ public source/boot reconstruction shall remain separate acceptance gates.
 Imported descriptor/process ownership shall remain usable for PID/TID queries,
 registration and handoff while a replacement image restarts its own startup
 observations. Those observations shall not decide request legality or substitute
-PID one for a child's identity. See
+PID one for a child's identity. Parent exit and exit-group shall cancel live
+inactive-child waits before endpoint release, consume both heaps exactly once,
+and retain complete descriptor/shared-service cleanup independently of startup
+observations. See
 [TK-DEC-284](../linux-kernel/design/process-memory-ownership.md).
 
 ## TOPAL-REQ-SYSTEMS-USER-EXTENT-001 — Owned user-memory admission

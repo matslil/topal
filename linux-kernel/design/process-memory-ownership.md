@@ -109,6 +109,20 @@ authority. Legacy startup observations may advance when their matching ordinary
 requests occur, but cannot decide whether a request is legal or which PID/TID it
 returns. Predecessor selections retain their original admission and error order.
 
+Both imported-parent exit operations share one terminal path at the captured
+syscall boundary, including initial and replacement startup. It verifies the
+live parent and relationship, clears and reads back the inactive child's wait
+condition/object generation, then retires inactive backing before releasing its
+description references. A parked wait first resolves the saved native FD to its
+live endpoint description and exact FIFO generation; inconsistent waits fail
+before erasure. Existing active-description, pipe, file, input, entropy,
+registration, detached-MM and whole-private-storage cleanup remains mandatory.
+The old terminal image-stage range was a transcript check; actual entry/MM
+binding and completed destructor/readback obligations replace it in this
+experimental selection. No stage value is forged to enter cleanup. This is the
+existing bounded outer-owner cancellation contract, not general Linux orphan
+reparenting or system-init termination semantics.
+
 AArch64 implementations need their own translation granule, ASID/TTBR context,
 TLBI/barrier and extended-state rules. RISC-V needs its own page geometry,
 satp/ASID/SFENCE and extension-state rules. Neither backend should expose x86

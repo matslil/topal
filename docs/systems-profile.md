@@ -2192,6 +2192,11 @@ failure preserves the existing processes and consumes no child PID. Actual
 allocator issuance already performed during preparation is never rolled back.
 
 Exec replaces an image while retaining its initialized descriptor/process owner.
+In the process-MM profile, parent `exit` and `exit_group` use that retained
+owner during initial or replacement startup. Termination cancels an inactive
+child's wait before releasing its endpoint references, retires its backing,
+and completes the existing parent and shared-service teardown. Image-stage
+observations do not authorize termination or replace ownership checks.
 Process/thread identity and registration services bind that owner during replacement
 startup too. Restarting an image's startup observations cannot revoke the
 process's eligibility or change the PID/TID returned by an ordinary query.

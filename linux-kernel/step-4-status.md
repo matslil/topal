@@ -75,6 +75,15 @@ thirty saved-data controls. Imported process ownership now stays usable during
 replacement startup independently of the image-stage counter. This remains a
 test-only component; live-child cancellation, broader exec/mapping/lifetime/fatal
 cases and production qualification remain required.
+The subsequent [parent cancellation cohort](step-4-process-memory-ownership.md#parent-termination-with-a-live-inactive-child)
+passes both parent exit operations at shell and early replacement startup with
+a child parked on a real pipe read. It retains independent parent/child heaps,
+writer aliases and a child-only dirty anonymous file, then observes complete
+inactive retirement, descriptor/shared-service destruction and detached active
+cleanup. Four native cases pass with the existing stack/physical bounds. This
+remains an experimental selection; other wait/relationship shapes, complete
+native lifetime/fatal proofs, application regressions and public activation
+remain required.
 
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.

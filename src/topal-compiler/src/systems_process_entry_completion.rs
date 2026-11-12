@@ -1544,10 +1544,12 @@ fn emit_static_process_completion(
     }
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 11]);
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 32]);
-    code.jump_if(0x87, "fatal");
+    if !code.process_memory {
+        code.bytes(&[0x41, 0x80, 0x7a, 0x68, 11]);
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x41, 0x80, 0x7a, 0x68, 32]);
+        code.jump_if(0x87, "fatal");
+    }
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());

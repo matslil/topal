@@ -10836,6 +10836,16 @@ decide whether an ordinary request is legal in the process-MM selection.
 Child exit SHALL restore and invalidate the retained parent mappings before
 releasing child backing, retaining the original child-status/wait lifetime.
 Outer-owner cancellation SHALL also consume inactive child backing exactly once.
+Both parent exit and exit-group SHALL bind the live imported parent, actual
+entry/context and relationship independently of image-stage observations.
+Cancellation SHALL clear and verify the inactive wait condition and object
+generation before retiring its backing or releasing its endpoint references.
+A parked pipe wait SHALL first resolve its retained native FD to a live owned
+endpoint description and the same actual FIFO generation; cancellation SHALL
+NOT erase an inconsistent wait as a substitute for validating that ownership.
+It SHALL release inactive descriptions before active descriptions and complete
+shared-service destruction, private-byte readback and detached active-MM cleanup.
+Diagnostic-stage erasure SHALL NOT substitute for any of these obligations.
 Revocation/invalidation SHALL precede unpinning, complete erasure and release.
 Failure during publication or another incomplete trusted mutation SHALL retain
 performed effects and all held identities for nonreturning poisoned-owner

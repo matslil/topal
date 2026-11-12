@@ -229,6 +229,15 @@ pub(crate) fn build_process_memory_exec(work: &Path, tools: &crate::LlvmTools) -
     build_selected(work, tools, "process-mm-exec")
 }
 
+pub(crate) fn build_process_memory_cancel(
+    work: &Path,
+    tools: &crate::LlvmTools,
+    early: bool,
+    group: bool,
+) -> Vec<u8> {
+    build_configured(work, tools, "process-mm-cancel", Some((early, group)))
+}
+
 pub(crate) fn build_serial(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     build_selected(work, tools, "serial")
 }
@@ -238,7 +247,30 @@ pub(crate) fn build_stat(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
 }
 
 fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> {
+    build_configured(work, tools, mode, None)
+}
+
+fn build_configured(
+    work: &Path,
+    tools: &crate::LlvmTools,
+    mode: &str,
+    cancellation: Option<(bool, bool)>,
+) -> Vec<u8> {
+    let image_entry_selected = matches!(mode, "process-mm-exec" | "process-mm-cancel");
+    let cancellation_config = cancellation.map(|(early, group)| {
+        let status = match (early, group) {
+            (false, false) => 0x13a,
+            (false, true) => 0x200,
+            (true, false) => 0x2c5,
+            (true, true) => 0x301,
+        };
+        (early, if group { 231 } else { 60 }, status)
+    });
     let (entry_name, extra) = match mode {
+        "process-mm-cancel" => (
+            "topal_process_memory_cancel_cases",
+            Some(("process_mm_cancel", "process-mm-cancel-cases")),
+        ),
         "process-mm-exec" => (
             "topal_process_memory_exec_cases",
             Some(("process_mm_exec", "process-mm-exec-cases")),
@@ -293,6 +325,16 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     }
     for (input, stem) in &inputs {
         fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
+        let defines = if *stem == "process-mm-cancel-cases" {
+            let (early, syscall, status) = cancellation_config.unwrap();
+            vec![
+                format!("-DTOPAL_CANCEL_EARLY={}", u8::from(early)),
+                format!("-DTOPAL_CANCEL_EXIT_SYSCALL={syscall}"),
+                format!("-DTOPAL_CANCEL_STATUS={status}"),
+            ]
+        } else {
+            vec![]
+        };
         run(
             work,
             &format!("{stem}-compile"),
@@ -315,6 +357,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
                     "-Werror",
                     "-c",
                 ])
+                .args(&defines)
                 .arg(if mode == "transfers" && *stem == "source-cases" {
                     "-DTOPAL_PROBE_CONSOLE=1"
                 } else {
@@ -332,7 +375,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     };
     fs::write(
         work.join("source-syscall.o"),
-        syscall_adapter(startup_name.as_bytes(), mode == "process-mm-exec"),
+        syscall_adapter(startup_name.as_bytes(), image_entry_selected),
     )
     .unwrap();
     let script = "SECTIONS { . = 0x570000; .text : { *(.text .text.*) *(.rodata .rodata.*) } \
@@ -416,7 +459,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     };
     // The alternate image-entry adapter saves all fifteen non-SP registers,
     // alignment and its return word, before calling the C entry selector.
-    let adapter_stack = if mode == "process-mm-exec" { 144 } else { 128 };
+    let adapter_stack = if image_entry_selected { 144 } else { 128 };
     let user_stack = 1024 + adapter_stack + source_stack;
     assert!(
         user_stack <= 2048,
@@ -428,7 +471,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     let image_entry = elf
         .symbol_by_name("topal_test_image_entry")
         .map(|s| s.address());
-    let image = if mode == "process-mm-exec" {
+    let image = if image_entry_selected {
         crate::systems_artifact::source_built_static_user_image_with_entry_fixture(
             u32::try_from(elf.entry()).unwrap(),
             u32::try_from(image_entry.unwrap()).unwrap(),
@@ -459,6 +502,11 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
         "syscall4": syscall4.address(),
         "mode": mode,
         "image_entry": image_entry,
+        "cancellation": cancellation_config.map(|(early, syscall, status)| serde_json::json!({
+            "early": early, "syscall": syscall, "status": status,
+            "process_storage_bytes": crate::systems_provider_object::PROCESS_MM_TABLE_BYTES,
+        })),
+        "process_mm_cancel_source_sha256": if mode == "process-mm-cancel" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_process_mm_cancel_cases.c")).unwrap()))) } else { None },
         "process_mm_exec_source_sha256": if mode == "process-mm-exec" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_process_mm_exec_cases.c")).unwrap()))) } else { None },
         "exec_source_sha256": if mode == "exec" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_exec_cases.c")).unwrap()))) } else { None },
         "signal_source_sha256": if mode == "signals" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_signal_cases.c")).unwrap()))) } else { None },

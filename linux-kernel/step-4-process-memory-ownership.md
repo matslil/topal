@@ -273,13 +273,91 @@ rechecks both cohorts from their selected saved inputs. These checks preserve
 the earlier archives as historical evidence and do not newly run the complete
 51-workload production corpus.
 
+## Parent termination with a live inactive child
+
+The process-MM selection now routes imported-parent `exit` and `exit_group`
+through one terminal owner path, independently of the image-stage counter.
+Actual syscall entry, parent identity, live table and relationship remain
+mandatory. A parked pipe wait resolves its saved native FD through the retained
+description bank and the existing actual FIFO-generation validator before its
+condition/object record is cleared and read back. Inactive heap retirement
+precedes inactive-slot destruction; active descriptions, pipes, RAM files and
+input follow their existing destructors. Entropy/registration cleanup,
+detachment, active-MM retirement and whole private-byte readback remain intact.
+The terminal path retires diagnostic transcript bytes after destructors instead
+of forging a stage value. Predecessor selections retain their original paths.
+
+The [ordinary C program](labs/qemu/x86_64/user_extent_process_mm_cancel_cases.c)
+has four separately built userspace cases: syscall 60 and 231, each at initial
+shell stage 32 and at early replacement stage 1. The latter enters at stage zero;
+its ordinary break query advances the diagnostic stage to one. Early creation
+starts with an empty parent heap; late creation copies 67 pages. Each child
+grows to 101 pages, retains dirty bytes beyond the former 34-page limit, creates
+an unlinked anonymous file, writes 256 nontrivial bytes into its resident page,
+and blocks on an empty pipe read. The parent keeps two writer aliases, closes
+its reader, selects its independent 35-page heap and exits. The child's reader
+and anonymous file then have their final references in inactive slots. Actual
+low-eight-bit exit statuses are `3a`, `00`, `c5` and `01`; userspace compile
+choices never select kernel dispatch behavior.
+
+All four final native cases pass in **161.80 seconds**, including their builds,
+under the unchanged two-CPU VM and bounded wrapper. The complete selected stack
+bound remains **2,280 / 4,096 bytes**, and physical retirement remains
+**4,088 / 4,096**. The swap-free group sample peaks at **1,867,710,464 bytes**
+under **2,951,454,720 bytes**, including compiler activity, with every sampled
+event counter zero. The last live sample and subsequent retirement do not
+measure an unseen final instant.
+
+The [saved cancellation reader](tools/process-memory/readback_cancel.py) binds
+the actual wait and FIFO generation, endpoint references and aliases, child-only
+anonymous description/object/page and dirty bytes to complete destructor storage
+readback. It separately binds inactive retirement to detached active cleanup.
+Its controls mutate saved data only. The
+[archive](tools/process-memory/results/stage-3-parent-cancellation/report.json)
+retains the kernel/image identities, exact compile choices and debugger
+programs, selected sources, regression evidence and earlier failed attempts.
+Frozen replay supplies no independent native load or continuous lifetime proof.
+
+The four records cover **60 MM boundaries**, **20 retired extents** and
+**3,899,392 erased/released bytes**. All **48 saved-data controls** reject their
+altered records. The complete child-exec/ABI regression also passes in
+**189.76 seconds**, retaining its 101 boundaries, four child execs, eight
+creations/exits/handoffs, 36 consumed extents and thirty controls. Thirteen
+predecessor object contributions remain byte-identical; the selected provider,
+gateway, target and dispatch objects match across all five VM runs. The five
+linked kernels are also byte-identical, with SHA-256
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+All seven LLVM modules verify in each build. Locked workspace/all-target checking,
+196 user-memory tests, 17 process-memory tests, the default ABI fixture hash,
+formatting and the Rust file ceiling pass. Frozen replay repeats both cohorts
+from sixty selected inputs; it does not newly execute the full 51-workload corpus.
+
+The earlier failures remain separate history. First, inactive endpoint
+destruction received the user's preserved R12 rather than the trusted table;
+the terminal caller now initializes that destructor argument. Next, the existing
+final zero readback caught an unretired fstat/startup transcript; its diagnostic
+counter is now retired after owners, while transfer staging still must already
+be empty. A later observer expected stage zero at exit despite the ordinary
+query advancing it; it now observes replacement entry separately and checks the
+actual exit stage. The expanded wait-owner validation then received a fresh
+four-case run. These are guest/observer failures and do not explain an earlier
+model/provider safeguard decision.
+
+Risk remains high for trusted ownership, wait cancellation, descriptor aliases
+and teardown ordering. Review uses the authority chain, full source/diff review,
+actual VM requests, saved-data controls and predecessor comparisons. No
+independent human security review is claimed. Blocked-reader cancellation here
+does not qualify every wait kind, inconsistent internal-state fatal retirement,
+every invalidation/pre-release instruction, continuous exclusion, general Linux
+orphan/init semantics or public activation.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and actual allocation-miss
    behavior, and native fatal partial-effect retirement. The first integrated
    cohort does not complete native owner qualification. Queries and within-page
    changes in its real process path retain allocation-free behavior.
-3. Complete live inactive-child cancellation on every parent terminal path,
+3. Broaden native cancellation to every remaining wait/relationship shape,
    broader child exec/image cases, every remaining switch/exit and
    overlapping leaf-table writer. Qualify native empty/one/maximum heaps,
    prepublication resource failure and full invalidation/pre-release ordering.

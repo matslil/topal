@@ -128,3 +128,28 @@ mapping lifetime, general executable-loader or production authority. The
 [stage report](../../step-4-process-memory-ownership.md#child-exec-and-replacement-startup)
 retains those blockers, the initial userspace scratch-placement failure and the
 separate scope of earlier successful observations.
+
+## Parent termination with a blocked child
+
+The subsequent cancellation component exercises both exit operations at late
+shell startup and immediately after replacement entry. Each ordinary userspace
+program leaves a child blocked reading an empty pipe, retaining a 101-page heap
+and an unlinked anonymous file with a dirty resident page. The parent retains
+two writer aliases and its independent 35-page heap when it exits.
+
+[readback_cancel.py](readback_cancel.py) binds the actual wait/FIFO/descriptor,
+dirty heap and file bytes to complete destructor readback and detached active
+MM cleanup. Its twelve controls per case alter saved records only.
+[archive_cancel.py](archive_cancel.py) retains all four cases, exact build and
+debugger inputs, unchanged predecessor comparisons, bounds and a fresh complete
+child-exec regression. [replay_cancel.py](replay_cancel.py) repeats these checks
+from frozen selected inputs without executing a VM.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_parent_exit_cancels_blocked_child_and_all_resources -- --ignored --nocapture
+```
+
+Native boundary snapshots and whole-storage readback do not prove continuous
+exclusion, each release/invalidation instruction, invalid internal-state fatal
+retirement, every wait kind or general Linux orphan/init semantics. The complete
+application corpus and public kernel activation remain separate gates.

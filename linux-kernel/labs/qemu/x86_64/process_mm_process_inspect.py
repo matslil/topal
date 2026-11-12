@@ -17,8 +17,10 @@ def memory(p,n):return bytes(gdb.selected_inferior().read_memory(p,n)) if n else
 def words(p,n):return list(struct.unpack('<'+'Q'*n,memory(p,n*8)))
 def word(p):return words(p,1)[0]
 context=address('topal_bootstrap_storage')+512
-observed=dict(passed=False,cases=[],events=[],child_exec_entries=[])
+observed=dict(passed=False,cases=[],events=[],child_exec_entries=[],replacement_entries=[],terminal=[])
 child_exec=component['mode']=='process-mm-exec'
+cancel_config=component.get('cancellation')
+observed['cancellation']=cancel_config
 pending=case=None
 returns={}
 callee=['rbx','rbp','r12','r13','r14','r15']
@@ -57,6 +59,7 @@ def capture():
             tls=word(context+128),registered_tid=word(context+152),robust=word(context+160),
             table=table,pid=word(table+56),child=word(table+0x2010),relationship=word(table+0x2000),
             saved_pid=word(table+0x3038),saved_heap=word(table+0x2178)),
+        inactive_wait=[word(table+0x2060),word(table+0x2078)],
         tables={str(a):words(a,512) for a in [root,root+4096,root+8192,root+12288,root+16384,low]},
         kernel_spans=kernel_spans,cr3=reg('cr3'),cr0=reg('cr0'),cr4=reg('cr4'),cs=reg('cs'),flags=reg('eflags'),gs_base=reg('gs_base'),fs_base=reg('fs_base'),
         thread=list(gdb.selected_thread().ptid))
@@ -113,6 +116,7 @@ class CaseReturned(Checked):
         global case
         self.enabled=False
         assert case is not None and pending is None and reg('cs')&3==3
+        assert cancel_config is None, ('cancellation case unexpectedly returned',reg('rax'))
         if reg('rax')!=0:
             value=capture()
             raise AssertionError(('source case failed',reg('rax'),value['context'],value['ids']))
@@ -146,6 +150,11 @@ class ImageEntered(Checked):
     def observe(self):
         assert reg('cs')&3==3 and pending is None
         value=capture()
+        if cancel_config is not None and cancel_config['early'] and value['ids'][0]==1:
+            assert value['ids'][2]==1 and value['context']['phase']==0 and value['state']==[0]*4
+            assert value['fs_base']==value['context']['tls']==0
+            observed['replacement_entries'].append(dict(snapshot=value,initial_sp=reg('rsp')))
+            save()
         if value['ids'][0]<2:return False
         assert child_exec and case is not None
         model['snapshot'](value)
@@ -164,26 +173,61 @@ class ImageEntered(Checked):
         save()
         return False
 
+class Terminal(Checked):
+    def __init__(self,symbol,retired):
+        self.retired=retired
+        super().__init__("*'"+symbol+"'",internal=True)
+    def observe(self):
+        assert cancel_config is not None and pending is None and case is not None
+        value=capture();model['snapshot'](value)
+        assert reg('cs')&3==0 and value['ids'][0]==1
+        assert value['epoch'][1]==cancel_config['syscall']
+        assert value['context']['user_arg']==cancel_config['status']
+        assert value['state'][2]==35
+        raw=memory(value['context']['table'],cancel_config['process_storage_bytes'])
+        if self.retired:
+            assert value['ids'][3:6]==[0]*3 and value['inactive_state']==[0]*4
+            assert raw==bytes(len(raw)) and value['inactive_wait']==[0,0]
+            assert len(observed['terminal'])==1
+            assert value['active']==observed['terminal'][0]['snapshot']['active']
+        else:
+            assert observed['terminal']==[]
+            assert value['ids'][3]>=2 and value['inactive_state'][2]==101
+            assert value['inactive_wait'][0]==2 and value['inactive_wait'][1]>0
+            assert value['context']['phase']==(1 if cancel_config['early'] else 32)
+            child=bytes.fromhex(value['inactive']['bytes'])
+            assert [child[i] for i in [34*4096+128,66*4096+64,101*4096-1]]==[0xc1,0xc2,0xc7]
+        observed['terminal'].append(dict(retired=self.retired,snapshot=value,storage=raw.hex()))
+        save()
+        return False
+
 class Halt(Checked):
     def observe(self):
         value=capture()
         observed['halt']=dict(snapshot=value,registers={r:reg(r) for r in
             ['rax','rcx','rdx','rsi','rdi','r8','r9','r10','r11','r12','r13','r14','r15','rsp','rip']},
-            stack=words(reg('rsp'),16))
+            stack=words(reg('rsp'),16),context_words=words(context,120))
         raise AssertionError(('provider invariant halt',value['context'],value['ids']))
 
 class Complete(Checked):
     def observe(self):
-        assert case is pending is None and len(observed['cases'])==4
-        assert [r['before']['ids'][2] for r in observed['cases']]==[0,1,2,3]
+        assert pending is None
         ops=[r['operation'] for r in observed['events']]
         # Four new large-heap cases plus the unchanged four child/clone cases
         # in the surrounding full ABI witness all use actual MM owners.
-        assert [ops.count(n) for n in [9,10,11,12]]==[8,8,8,8]
-        preparations=[r['before']['state'][2] for r in observed['events'] if r['operation']==9]
-        assert sorted(preparations)==[34]*4+[67]*4
-        assert ops.count(7)==(7 if child_exec else 3)
-        assert len(observed['child_exec_entries'])==(4 if child_exec else 0)
+        if cancel_config is not None:
+            assert case is not None and observed['cases']==[] and len(observed['terminal'])==2
+            assert [ops.count(n) for n in [6,9,10,11,12,13]]==[1,1,1,1,0,1]
+            assert ops.count(7)==int(cancel_config['early'])
+            assert len(observed['replacement_entries'])==int(cancel_config['early'])
+        else:
+            assert case is None and len(observed['cases'])==4
+            assert [r['before']['ids'][2] for r in observed['cases']]==[0,1,2,3]
+            assert [ops.count(n) for n in [9,10,11,12]]==[8,8,8,8]
+            preparations=[r['before']['state'][2] for r in observed['events'] if r['operation']==9]
+            assert sorted(preparations)==[34]*4+[67]*4
+            assert ops.count(7)==(7 if child_exec else 3)
+            assert len(observed['child_exec_entries'])==(4 if child_exec else 0)
         assert words(address('topal_x86_frame_mm_tokens_v1'),6)==[0]*6
         assert words(address('topal_x86_frame_mm_state_v1'),4)==[0]*4
         observed['final']={}
@@ -200,7 +244,11 @@ try:
     Gateway('topal_x86_frame_gateway_v1',True)
     Gateway('topal_x86_frame_gateway_return_reclaimed_v1',False)
     CaseEntered('*'+hex(component['entry']),internal=True)
-    if child_exec:ImageEntered('*'+hex(component['image_entry']),internal=True)
+    if child_exec or (cancel_config is not None and cancel_config['early']):
+        ImageEntered('*'+hex(component['image_entry']),internal=True)
+    if cancel_config is not None:
+        Terminal('topal_x86_process_mm_parent_exit_v1',False)
+        Terminal('topal_x86_process_mm_parent_resources_retired_v1',True)
     Halt('*'+hex(native_halt),internal=True)
     Complete('*topal_x86_systems_fatal',internal=True)
     gdb.execute('continue')
@@ -217,8 +265,8 @@ except Exception:
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
-    assert component['mode'] in ['process-mm','process-mm-exec']
-    suffix='_exec' if component['mode']=='process-mm-exec' else ''
+    assert component['mode'] in ['process-mm','process-mm-exec','process-mm-cancel']
+    suffix={'process-mm':'','process-mm-exec':'_exec','process-mm-cancel':'_cancel'}[component['mode']]
     source = Path(__file__).with_name('user_extent_process_mm'+suffix+'_cases.c').read_bytes()
     assert hashlib.sha256(source).hexdigest() == component['process_mm'+suffix+'_source_sha256']
     kernel = (build / 'kernel.elf').read_bytes()

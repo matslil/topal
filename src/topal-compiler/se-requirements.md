@@ -12603,6 +12603,10 @@ artifact/boot reconstruction before activating the replacement. Retain imported
 descriptor/process ownership across exec; bind actual PID/TID, registration and
 handoff during replacement startup independently of its image-stage counter.
 Startup observations must not decide ordinary request legality or PID/TID values.
+Route both imported-parent exit operations through the same ownership-checked
+cancellation and destructor path, including replacement startup. Cancel and
+read back an inactive child's wait before its backing and endpoints retire;
+retain the existing detached-context, zeroed-storage and shared-service checks.
 Model results alone cannot authorize activation. Trace:
 [design](../../linux-kernel/design/process-memory-ownership.md),
 [rule](../../spec/systems-profile.md#topal-systems-process-mm-001--process-address-space-ownership).

@@ -313,6 +313,8 @@ fn static_image_process_enter_selected(
             ("topal_x86_process_mm_switch_return_v1", "process-mm-switch-return"),
             ("topal_x86_process_mm_child_exit_return_v1", "process-mm-child-exit-return"),
             ("topal_x86_process_mm_cancel_return_v1", "process-mm-cancel-return"),
+            ("topal_x86_process_mm_parent_exit_v1", "process-mm-parent-exit"),
+            ("topal_x86_process_mm_parent_resources_retired_v1", "process-mm-parent-resources-retired"),
         ] {
             markers.push((symbol, code.labels[label] as u64));
         }

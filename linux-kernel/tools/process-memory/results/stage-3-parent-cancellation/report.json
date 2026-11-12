@@ -1,0 +1,2713 @@
+{
+  "cohorts": [
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "bzImage": {
+          "bytes": 45243376,
+          "sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b"
+        },
+        "command-cases.o": {
+          "bytes": 7856,
+          "sha256": "c6b9f2320cb03269d142527972486a69450873bcf8cc104b74344cd0857f0f19"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16064,
+          "sha256": "32a4cb2e581d8f7a147ed5f0a6834454f3b4ca8cbc388063a057c2128ee7246a"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "006f0e5a27fa78172844ad571553db62e695d1ab9cb2fdb6a5cd9d1945473350"
+        },
+        "kernel.elf": {
+          "bytes": 1678416,
+          "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-cancel-cases.o": {
+          "bytes": 13336,
+          "sha256": "eeca3d036c91ab02262a852b5889e6a82b0b5893e59e0348584a85b4fcf9f4df"
+        },
+        "provider.o": {
+          "bytes": 1066288,
+          "sha256": "89e18a47f27d0625eef47ac36c711e4bad3ddd2aae19daa4fc0d600a775c9240"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13584,
+          "sha256": "a99deaadf47e39382f9119adee7f890af876c2a939b4b0a74912cee6004eaa64"
+        },
+        "source-cases.o": {
+          "bytes": 8800,
+          "sha256": "0ec34e0f5a5d1eba494b51671bf5efc5524f95f91b9225580cebd44dc322a3c7"
+        },
+        "source-syscall.o": {
+          "bytes": 1496,
+          "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+        },
+        "source-user.elf": {
+          "bytes": 44280,
+          "sha256": "73940cb7f34eeac45994da0626dd76a0d2e154627d05ef8f20722cfb848e2892"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13928,
+          "sha256": "cc415563586425592720de55cd08a8a40ba90e467ccf37bbdf8a19242e697da3"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "5e569e824ed4de0a97457b5a8491a6ca44296d2bb80f40e6c1ec901c4a7d654d"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "boundaries": 15,
+      "case": {
+        "early": false,
+        "process_storage_bytes": 311296,
+        "status": 314,
+        "syscall": 60
+      },
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 314,
+          "syscall": 60
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1272,
+        "entry": 5709632,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709824,
+        "image_sha256": "5e569e824ed4de0a97457b5a8491a6ca44296d2bb80f40e6c1ec901c4a7d654d",
+        "linked_sha256": "73940cb7f34eeac45994da0626dd76a0d2e154627d05ef8f20722cfb848e2892",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 104,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709760,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709712,
+        "syscall4": 5709728,
+        "text_bytes": 8371
+      },
+      "controls": [
+        {
+          "name": "missing-cancelled-child",
+          "reason": "empty inactive owner",
+          "rejected": true
+        },
+        {
+          "name": "no-real-wait",
+          "reason": "actual blocked pipe read",
+          "rejected": true
+        },
+        {
+          "name": "wrong-wait-generation",
+          "reason": "wait storage binding",
+          "rejected": true
+        },
+        {
+          "name": "wrong-exit-status",
+          "reason": "captured terminal syscall/status",
+          "rejected": true
+        },
+        {
+          "name": "wrong-startup-stage",
+          "reason": "actual early/late stage",
+          "rejected": true
+        },
+        {
+          "name": "truncated-destructor-readback",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "dirty-destructor-storage",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "wrong-child-retirement",
+          "reason": "whole allocation bytes",
+          "rejected": true
+        },
+        {
+          "name": "missing-child-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "truncated-child-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "child-record-still-live",
+          "reason": "retired backing not consumed/zero",
+          "rejected": true
+        },
+        {
+          "name": "wait-survives-to-retirement",
+          "reason": "wait not cancelled before MM retirement",
+          "rejected": true
+        }
+      ],
+      "erased_released_bytes": 1249280,
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-parent-cancel-2442531-1794493837793866634"
+        ],
+        "exit_code": 0
+      },
+      "native_bounds": {
+        "complete_physical_bytes": 4088,
+        "complete_stack_bytes": 2280,
+        "inner_retirement_bytes": 3952,
+        "outer_bytes": 88,
+        "reserve_bytes": 4096
+      },
+      "observation": {
+        "bytes": 24622668,
+        "sha256": "8af6858f9c76c2affe9a78cfee8d504325ecd7c905ddd2afae089c34bbe9e78d"
+      },
+      "operations": {
+        "5": 10,
+        "6": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "13": 1
+      },
+      "passed": true,
+      "preserved": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        }
+      },
+      "retired_extents": 6,
+      "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+    },
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "bzImage": {
+          "bytes": 45243376,
+          "sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b"
+        },
+        "command-cases.o": {
+          "bytes": 7856,
+          "sha256": "ed60002121322ca3cda6fdd89ebc92aa0dd057ed60bfbd3585118ebfc6f676ff"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16064,
+          "sha256": "3af6fa08dc8aa73d7390240def3d30b5de286bef8e6ff6a1b9efd162b17914ba"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "e637b89363c5a660666f9e76e2a8e5fe266f69b95cded1ce451bb7eeca34e44b"
+        },
+        "kernel.elf": {
+          "bytes": 1678416,
+          "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-cancel-cases.o": {
+          "bytes": 13336,
+          "sha256": "98e83cebd32a384951b8c3acb7243ec558d2cdfd463bb9d5d81509894ee39f1c"
+        },
+        "provider.o": {
+          "bytes": 1066288,
+          "sha256": "89e18a47f27d0625eef47ac36c711e4bad3ddd2aae19daa4fc0d600a775c9240"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13584,
+          "sha256": "ee3cc3c899338351868aa715acf562a4149568771639c166679f33959e62be7c"
+        },
+        "source-cases.o": {
+          "bytes": 8800,
+          "sha256": "76c50df4d0731c4071174c0657420949b19cf4195f5bfaec5c69dbda8f506e30"
+        },
+        "source-syscall.o": {
+          "bytes": 1496,
+          "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+        },
+        "source-user.elf": {
+          "bytes": 44280,
+          "sha256": "37b2db26f8a66aab6a2d0a8fc66d6c1ee32c09ace0c9dc6ed803fe53c0be0d7c"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13928,
+          "sha256": "6d6c4b8c83fbd9c2ef3c2529d7237f2eda0e0e7e72c719c235b9853c0cafe10b"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "96d622b67a3d8776c76490d360de4cfd8a4f177cc7e6e57c34be00ec0b0539da"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "boundaries": 15,
+      "case": {
+        "early": false,
+        "process_storage_bytes": 311296,
+        "status": 512,
+        "syscall": 231
+      },
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 512,
+          "syscall": 231
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1272,
+        "entry": 5709632,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709824,
+        "image_sha256": "96d622b67a3d8776c76490d360de4cfd8a4f177cc7e6e57c34be00ec0b0539da",
+        "linked_sha256": "37b2db26f8a66aab6a2d0a8fc66d6c1ee32c09ace0c9dc6ed803fe53c0be0d7c",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 104,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709760,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709712,
+        "syscall4": 5709728,
+        "text_bytes": 8371
+      },
+      "controls": [
+        {
+          "name": "missing-cancelled-child",
+          "reason": "empty inactive owner",
+          "rejected": true
+        },
+        {
+          "name": "no-real-wait",
+          "reason": "actual blocked pipe read",
+          "rejected": true
+        },
+        {
+          "name": "wrong-wait-generation",
+          "reason": "wait storage binding",
+          "rejected": true
+        },
+        {
+          "name": "wrong-exit-status",
+          "reason": "captured terminal syscall/status",
+          "rejected": true
+        },
+        {
+          "name": "wrong-startup-stage",
+          "reason": "actual early/late stage",
+          "rejected": true
+        },
+        {
+          "name": "truncated-destructor-readback",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "dirty-destructor-storage",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "wrong-child-retirement",
+          "reason": "whole allocation bytes",
+          "rejected": true
+        },
+        {
+          "name": "missing-child-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "truncated-child-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "child-record-still-live",
+          "reason": "retired backing not consumed/zero",
+          "rejected": true
+        },
+        {
+          "name": "wait-survives-to-retirement",
+          "reason": "wait not cancelled before MM retirement",
+          "rejected": true
+        }
+      ],
+      "erased_released_bytes": 1249280,
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-parent-cancel-2442531-1794493879981162205"
+        ],
+        "exit_code": 0
+      },
+      "native_bounds": {
+        "complete_physical_bytes": 4088,
+        "complete_stack_bytes": 2280,
+        "inner_retirement_bytes": 3952,
+        "outer_bytes": 88,
+        "reserve_bytes": 4096
+      },
+      "observation": {
+        "bytes": 24622675,
+        "sha256": "5103fb0f2379e6a8732b88d5544ef1cb1392e6ca19b14a644aec1df10bc7505a"
+      },
+      "operations": {
+        "5": 10,
+        "6": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "13": 1
+      },
+      "passed": true,
+      "preserved": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        }
+      },
+      "retired_extents": 6,
+      "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+    },
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "bzImage": {
+          "bytes": 45243376,
+          "sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b"
+        },
+        "command-cases.o": {
+          "bytes": 7856,
+          "sha256": "08b0b2b9d6bb4767bf3c0fe51d971523bee0eefb6c219eb678ca34eb18081b3c"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16064,
+          "sha256": "ff2cd745ebd896b5c735ff3f9c292240e6aec549cba5605344791a573e07c4c9"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "7c7d21522f33d81b549c3d2922fec583655457c5f4b72c31c2e6b6dc1179bb81"
+        },
+        "kernel.elf": {
+          "bytes": 1678416,
+          "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-cancel-cases.o": {
+          "bytes": 12168,
+          "sha256": "a2d35d8cffbe74e4b877adfd1cdc70ebb80174513d7dd95f4eb568260dd8b0c9"
+        },
+        "provider.o": {
+          "bytes": 1066288,
+          "sha256": "89e18a47f27d0625eef47ac36c711e4bad3ddd2aae19daa4fc0d600a775c9240"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13584,
+          "sha256": "a60adf2a0c2cea02aea6dd48ffce88c881b1c1c6f3ccdb7b2e99360091ea9f9f"
+        },
+        "source-cases.o": {
+          "bytes": 8800,
+          "sha256": "096993632a19849ffae12c9d4ea895c2190f651d0c77ea1829e18b40ad473746"
+        },
+        "source-syscall.o": {
+          "bytes": 1496,
+          "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+        },
+        "source-user.elf": {
+          "bytes": 43480,
+          "sha256": "83d721a35e3e4654dc4d6a81effb121cba2b504d596f5069e803e53ac062fd39"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13928,
+          "sha256": "538bfb465b19d47b3905a89431a4412930278c3acb3e508ce3c0820463cbe793"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "2f5337e304532571606f3d3a17463fadec1d1a518b12cf2bdf5fc3afe6e1f678"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "boundaries": 15,
+      "case": {
+        "early": true,
+        "process_storage_bytes": 311296,
+        "status": 709,
+        "syscall": 60
+      },
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 709,
+          "syscall": 60
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1264,
+        "entry": 5709488,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709664,
+        "image_sha256": "2f5337e304532571606f3d3a17463fadec1d1a518b12cf2bdf5fc3afe6e1f678",
+        "linked_sha256": "83d721a35e3e4654dc4d6a81effb121cba2b504d596f5069e803e53ac062fd39",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 96,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709600,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709552,
+        "syscall4": 5709568,
+        "text_bytes": 8236
+      },
+      "controls": [
+        {
+          "name": "missing-cancelled-child",
+          "reason": "empty inactive owner",
+          "rejected": true
+        },
+        {
+          "name": "no-real-wait",
+          "reason": "actual blocked pipe read",
+          "rejected": true
+        },
+        {
+          "name": "wrong-wait-generation",
+          "reason": "wait storage binding",
+          "rejected": true
+        },
+        {
+          "name": "wrong-exit-status",
+          "reason": "captured terminal syscall/status",
+          "rejected": true
+        },
+        {
+          "name": "wrong-startup-stage",
+          "reason": "actual early/late stage",
+          "rejected": true
+        },
+        {
+          "name": "truncated-destructor-readback",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "dirty-destructor-storage",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "wrong-child-retirement",
+          "reason": "whole allocation bytes",
+          "rejected": true
+        },
+        {
+          "name": "missing-child-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "truncated-child-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "child-record-still-live",
+          "reason": "retired backing not consumed/zero",
+          "rejected": true
+        },
+        {
+          "name": "wait-survives-to-retirement",
+          "reason": "wait not cancelled before MM retirement",
+          "rejected": true
+        }
+      ],
+      "erased_released_bytes": 700416,
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-parent-cancel-2442531-1794493921672137157"
+        ],
+        "exit_code": 0
+      },
+      "native_bounds": {
+        "complete_physical_bytes": 4088,
+        "complete_stack_bytes": 2280,
+        "inner_retirement_bytes": 3952,
+        "outer_bytes": 88,
+        "reserve_bytes": 4096
+      },
+      "observation": {
+        "bytes": 14180072,
+        "sha256": "be9e33474fe3c52e4ff9165afcb067afa9af68ac7cf396b25021b05349e9c5f5"
+      },
+      "operations": {
+        "5": 9,
+        "6": 1,
+        "7": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "13": 1
+      },
+      "passed": true,
+      "preserved": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        }
+      },
+      "retired_extents": 4,
+      "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+    },
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "bzImage": {
+          "bytes": 45243376,
+          "sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b"
+        },
+        "command-cases.o": {
+          "bytes": 7856,
+          "sha256": "9ecae7068d8d775c1c3170e70876ad2a21a3b8e22b249250dab6620c26f22311"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16064,
+          "sha256": "7dae218fa067e844bf90db5af1a9606793f719abcd7a6a4ee5a1c7a5f9531ad6"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "78d8f0c5a0303426c57ecfebc2f119bd0bdf711554daf18c7c17426977213f20"
+        },
+        "kernel.elf": {
+          "bytes": 1678416,
+          "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-cancel-cases.o": {
+          "bytes": 12168,
+          "sha256": "1f719df297b359eb902f510554dbf8de346f6fe6c8e9433c124db949f6238c04"
+        },
+        "provider.o": {
+          "bytes": 1066288,
+          "sha256": "89e18a47f27d0625eef47ac36c711e4bad3ddd2aae19daa4fc0d600a775c9240"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13584,
+          "sha256": "9f2a359f60cf35f16701de8038c6ee27a46d2428d77683966c9c3feaff97cb09"
+        },
+        "source-cases.o": {
+          "bytes": 8800,
+          "sha256": "285a9de1872fb07d71f231e11d224a4377b2d644bc5602eee605580ac6560848"
+        },
+        "source-syscall.o": {
+          "bytes": 1496,
+          "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+        },
+        "source-user.elf": {
+          "bytes": 43480,
+          "sha256": "7bc724f7aa63625e39263f46154ef37fc8346743efabff4ce2f17ddd67722074"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13928,
+          "sha256": "b79d5727486de204d3ab31087965dc17b88e75f254b4c4d03014703048517456"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "737023628e47c18ea265b46f6d9c0b6851907b2ccf82a191b6393ab4d1f7aa9e"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "boundaries": 15,
+      "case": {
+        "early": true,
+        "process_storage_bytes": 311296,
+        "status": 769,
+        "syscall": 231
+      },
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 769,
+          "syscall": 231
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1264,
+        "entry": 5709488,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709664,
+        "image_sha256": "737023628e47c18ea265b46f6d9c0b6851907b2ccf82a191b6393ab4d1f7aa9e",
+        "linked_sha256": "7bc724f7aa63625e39263f46154ef37fc8346743efabff4ce2f17ddd67722074",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 96,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709600,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709552,
+        "syscall4": 5709568,
+        "text_bytes": 8236
+      },
+      "controls": [
+        {
+          "name": "missing-cancelled-child",
+          "reason": "empty inactive owner",
+          "rejected": true
+        },
+        {
+          "name": "no-real-wait",
+          "reason": "actual blocked pipe read",
+          "rejected": true
+        },
+        {
+          "name": "wrong-wait-generation",
+          "reason": "wait storage binding",
+          "rejected": true
+        },
+        {
+          "name": "wrong-exit-status",
+          "reason": "captured terminal syscall/status",
+          "rejected": true
+        },
+        {
+          "name": "wrong-startup-stage",
+          "reason": "actual early/late stage",
+          "rejected": true
+        },
+        {
+          "name": "truncated-destructor-readback",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "dirty-destructor-storage",
+          "reason": "whole destructor storage not zero",
+          "rejected": true
+        },
+        {
+          "name": "wrong-child-retirement",
+          "reason": "whole allocation bytes",
+          "rejected": true
+        },
+        {
+          "name": "missing-child-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "truncated-child-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "child-record-still-live",
+          "reason": "retired backing not consumed/zero",
+          "rejected": true
+        },
+        {
+          "name": "wait-survives-to-retirement",
+          "reason": "wait not cancelled before MM retirement",
+          "rejected": true
+        }
+      ],
+      "erased_released_bytes": 700416,
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-parent-cancel-2442531-1794493960278267671"
+        ],
+        "exit_code": 0
+      },
+      "native_bounds": {
+        "complete_physical_bytes": 4088,
+        "complete_stack_bytes": 2280,
+        "inner_retirement_bytes": 3952,
+        "outer_bytes": 88,
+        "reserve_bytes": 4096
+      },
+      "observation": {
+        "bytes": 14180079,
+        "sha256": "76599d03100a48e807e61e0660ea1e906a5bd94825c479d16cd0de34f84e74b7"
+      },
+      "operations": {
+        "5": 9,
+        "6": 1,
+        "7": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "13": 1
+      },
+      "passed": true,
+      "preserved": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        }
+      },
+      "retired_extents": 4,
+      "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+    }
+  ],
+  "history": [
+    {
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-parent-cancel-2439012-1794493236518416369"
+        ],
+        "exit_code": 1
+      },
+      "kernel": {
+        "bytes": 1678096,
+        "sha256": "274f0d6a0883a8468b8857e4c95634a6e1897b1cf43ed487802dddc2db22c287"
+      },
+      "scope": "Earlier failure: retained source/LLVM, commands and debugger records; not current qualification or a complete historical rebuild"
+    },
+    {
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-parent-cancel-2439740-1794493312592438872"
+        ],
+        "exit_code": 1
+      },
+      "kernel": {
+        "bytes": 1678112,
+        "sha256": "9483a124c99b4b9fae51245fdaa88e8f8d51f8c9166753cfeff607c2f56eb25b"
+      },
+      "scope": "Earlier failure: retained source/LLVM, commands and debugger records; not current qualification or a complete historical rebuild"
+    },
+    {
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-parent-cancel-2440433-1794493489696690360"
+        ],
+        "exit_code": 1
+      },
+      "kernel": {
+        "bytes": 1678128,
+        "sha256": "9843bcff33b56546598145f3cd201c6386e9bcb27c7d688cef8885c18c3991d6"
+      },
+      "scope": "Earlier failure: retained source/LLVM, commands and debugger records; not current qualification or a complete historical rebuild"
+    }
+  ],
+  "last_resource_sample": {
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "group": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-2442218-aeb78d87.scope",
+    "group_retired": true,
+    "memory_max_bytes": 2951454720,
+    "observed_peak_bytes": 1867710464,
+    "retirement_observed_at": 1794493999.653253,
+    "sampled_at": 1794493998.6526964,
+    "swap_max_bytes": 0
+  },
+  "passed": true,
+  "regression": {
+    "observation": {
+      "bytes": 152954277,
+      "sha256": "d3348354549f3fa6216cc49fc7c696cd5aff1fc0f1a4872a3b9c30625e01305c"
+    },
+    "summary": {
+      "allocation_free_queries": 28,
+      "allocation_free_within_page_changes": 4,
+      "cases": 4,
+      "child_exec_controls": [
+        {
+          "name": "child-exec-changes-parent-byte",
+          "reason": "changed retained inactive",
+          "rejected": true
+        },
+        {
+          "name": "child-exec-restores-old-MM",
+          "reason": "exec MM generation",
+          "rejected": true
+        },
+        {
+          "name": "child-exec-restores-old-generation",
+          "reason": "exec MM generation",
+          "rejected": true
+        },
+        {
+          "name": "child-exec-retires-parent",
+          "reason": "MM state",
+          "rejected": true
+        },
+        {
+          "name": "child-entry-old-stack",
+          "reason": "child exec initial stack",
+          "rejected": true
+        },
+        {
+          "name": "child-entry-lost-parent",
+          "reason": "empty inactive owner",
+          "rejected": true
+        },
+        {
+          "name": "child-entry-retained-old-heap",
+          "reason": "fresh child heap",
+          "rejected": true
+        },
+        {
+          "name": "child-entry-retained-FS",
+          "reason": "child exec FS reset",
+          "rejected": true
+        },
+        {
+          "name": "child-entry-retained-TID",
+          "reason": "child exec registration reset",
+          "rejected": true
+        },
+        {
+          "name": "child-entry-retained-robust-list",
+          "reason": "child exec registration reset",
+          "rejected": true
+        }
+      ],
+      "child_exec_entries": [
+        {
+          "generation": 1,
+          "mm": 3,
+          "parent_mm": 1,
+          "parent_pages": 67,
+          "pid": 2
+        },
+        {
+          "generation": 2,
+          "mm": 6,
+          "parent_mm": 4,
+          "parent_pages": 67,
+          "pid": 3
+        },
+        {
+          "generation": 3,
+          "mm": 9,
+          "parent_mm": 7,
+          "parent_pages": 67,
+          "pid": 4
+        },
+        {
+          "generation": 4,
+          "mm": 12,
+          "parent_mm": 10,
+          "parent_pages": 67,
+          "pid": 5
+        }
+      ],
+      "comparisons": [
+        {
+          "active_pages": 0,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 2,
+          "inactive_pages": 67,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 2,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 2,
+          "inactive_pages": 67,
+          "operation": 7,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 2,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 2,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 2,
+          "inactive_pages": 35,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 2,
+          "inactive_pages": 35,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 7,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 3,
+          "inactive_pages": 67,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 3,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 3,
+          "inactive_pages": 67,
+          "operation": 7,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 3,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 3,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 3,
+          "inactive_pages": 35,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 3,
+          "inactive_pages": 35,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 7,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 4,
+          "inactive_pages": 67,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 4,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 4,
+          "inactive_pages": 67,
+          "operation": 7,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 4,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 4,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 4,
+          "inactive_pages": 35,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 4,
+          "inactive_pages": 35,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 7,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 1,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 5,
+          "inactive_pages": 67,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 5,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 5,
+          "inactive_pages": 67,
+          "operation": 7,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 5,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 5,
+          "inactive_pages": 67,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 67,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 101,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 5,
+          "inactive_pages": 35,
+          "operation": 11,
+          "passed": true
+        },
+        {
+          "active_pages": 101,
+          "active_pid": 5,
+          "inactive_pages": 35,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 35,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 5,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 6,
+          "inactive_pages": 34,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 7,
+          "inactive_pages": 34,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 8,
+          "inactive_pages": 34,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 9,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 9,
+          "inactive_pages": 34,
+          "operation": 10,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 12,
+          "passed": true
+        },
+        {
+          "active_pages": 34,
+          "active_pid": 1,
+          "inactive_pages": 0,
+          "operation": 13,
+          "passed": true
+        },
+        {
+          "active_pages": 0,
+          "active_pid": 0,
+          "inactive_pages": 0,
+          "operation": 6,
+          "passed": true
+        }
+      ],
+      "controls": [
+        {
+          "name": "prepared-pin-missing",
+          "reason": "heap backing/pin",
+          "rejected": true
+        },
+        {
+          "name": "prepared-wrong-epoch",
+          "reason": "prepared entry receipt",
+          "rejected": true
+        },
+        {
+          "name": "prepared-wrong-source-generation",
+          "reason": "prepared source owner",
+          "rejected": true
+        },
+        {
+          "name": "prepared-truncated-to-old-34-pages",
+          "reason": "whole allocation bytes",
+          "rejected": true
+        },
+        {
+          "name": "child-adopts-parent-MM",
+          "reason": "inactive MM identity",
+          "rejected": true
+        },
+        {
+          "name": "child-identity-counter-restored",
+          "reason": "active MM identity",
+          "rejected": true
+        },
+        {
+          "name": "handoff-loses-parent",
+          "reason": "MM state",
+          "rejected": true
+        },
+        {
+          "name": "handoff-reuses-heap-PTE",
+          "reason": "selected heap translations",
+          "rejected": true
+        },
+        {
+          "name": "exit-missing-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "exit-truncated-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "exit-retains-child-MM",
+          "reason": "inactive MM identity",
+          "rejected": true
+        },
+        {
+          "name": "hardware-root-changed",
+          "reason": "actual live root/context",
+          "rejected": true
+        },
+        {
+          "name": "write-protection-disabled",
+          "reason": "paging/write protection",
+          "rejected": true
+        },
+        {
+          "name": "retained-resize-candidate",
+          "reason": "token binding",
+          "rejected": true
+        },
+        {
+          "name": "query-consumes-frame-identity",
+          "reason": "query/within-page allocation",
+          "rejected": true
+        },
+        {
+          "name": "wrong-syscall",
+          "reason": "syscall identity",
+          "rejected": true
+        },
+        {
+          "name": "wrong-child-copy-beyond-page-34",
+          "reason": "incomplete fork copy",
+          "rejected": true
+        },
+        {
+          "name": "exit-nonzero-erasure",
+          "reason": "retired backing not consumed/zero",
+          "rejected": true
+        },
+        {
+          "name": "resize-loses-retained-byte",
+          "reason": "resize retained prefix",
+          "rejected": true
+        },
+        {
+          "name": "resize-new-page-nonzero",
+          "reason": "new heap pages not zero",
+          "rejected": true
+        }
+      ],
+      "copied_heap_bytes": 1654784,
+      "erased_released_bytes": 7766016,
+      "operations": {
+        "5": 60,
+        "6": 1,
+        "7": 7,
+        "9": 8,
+        "10": 8,
+        "11": 8,
+        "12": 8,
+        "13": 1
+      },
+      "passed": true,
+      "retired_extents": 36,
+      "scope": "Experimental child exec, retained parent and early ordinary services; not public ELF-loader, continuous lifetime, cancellation or fatal-path qualification"
+    }
+  },
+  "remaining": [
+    "every native invalidation/pre-release and continuous loan/exclusion obligation",
+    "identity exhaustion, allocation misses, partial-effect fatal cleanup, all mapping writers",
+    "general orphan/init semantics, full 51-workload regressions and public reconstruction",
+    "original full Linux/distribution/container/VM-host objectives"
+  ],
+  "schema": "topal-process-mm-native-cancellation-v1",
+  "selected_inputs": {
+    "AGENTS.md": {
+      "bytes": 8036,
+      "sha256": "3e0c41d8e027840b647762cf9899ea07b1dbc674137bae47c1b11f9542385371"
+    },
+    "docs/systems-profile.md": {
+      "bytes": 134869,
+      "sha256": "cb38a25f3849799eb689c9e74408efc57912321979bab44b078ce3a514dc7847"
+    },
+    "linux-kernel/design/decision-register.md": {
+      "bytes": 179174,
+      "sha256": "2c107fb5d30cd402209098a056d0736ef7fa7f66281611a20155549ef0184f39"
+    },
+    "linux-kernel/design/process-memory-ownership.md": {
+      "bytes": 11500,
+      "sha256": "228df4271f9124336228dd11c990a434cd574f0f8b4c03acaeab5c8f9f2f0440"
+    },
+    "linux-kernel/kernel/memory/frame-metadata.t": {
+      "bytes": 8572,
+      "sha256": "b63fa2aca690d3e2c102b645f17fc872e3c4aabcf61710b73993192476076b32"
+    },
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": {
+      "bytes": 17623,
+      "sha256": "a95f8b8f332d06910b457cf1259bb4bad4a35ce7350e4a51faf33267a8c56099"
+    },
+    "linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py": {
+      "bytes": 15118,
+      "sha256": "2a9071fbe3432877dbe54878e2a56b937ecf94a20285ea529b278ccff60d57ee"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_cancel_cases.c": {
+      "bytes": 3256,
+      "sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_cases.c": {
+      "bytes": 3276,
+      "sha256": "135d000a5ba6ce5d0f2a28b01a23a955e30f88796a8bfa5d9fda0ce8e6116acf"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_exec_cases.c": {
+      "bytes": 5028,
+      "sha256": "e129112ff5bbc268a8ff10f3bfe9f49deb23e6961b71802a5b7903bc239cb91b"
+    },
+    "linux-kernel/step-4-process-memory-ownership.md": {
+      "bytes": 24396,
+      "sha256": "b58d3a024ee57563d23cb7f71883141c49cc4f502c09e57de84c99990628f934"
+    },
+    "linux-kernel/step-4-status.md": {
+      "bytes": 25344,
+      "sha256": "d989f5647811a951417d893d3464316e34833e7b533bc269678cc24f15c5d8e5"
+    },
+    "linux-kernel/tools/process-memory/README.md": {
+      "bytes": 9738,
+      "sha256": "715af9ef605f48c793c1102a11791aa207b93099f4535f5b238bbcc2d277e51f"
+    },
+    "linux-kernel/tools/process-memory/archive_cancel.py": {
+      "bytes": 10029,
+      "sha256": "7d4ee78804731c79fc2d3bbdff81022d117aa75049c8050162ca88c7e5ed4087"
+    },
+    "linux-kernel/tools/process-memory/archive_process.py": {
+      "bytes": 12265,
+      "sha256": "37f9add4cb1bb8ab66e4bd9a1cacd3254970ba478e9fd34f80ad86a6337e9ac7"
+    },
+    "linux-kernel/tools/process-memory/process_native.py": {
+      "bytes": 12225,
+      "sha256": "aa24d60cccf9fb13e8a55e5ddcc5de2d541e2c0adccf977bd78ce7955e2c3c0b"
+    },
+    "linux-kernel/tools/process-memory/readback_cancel.py": {
+      "bytes": 8540,
+      "sha256": "c0570b32b0b812771b5e2831cf3169816e6fea3371b0ee7890621cfb7782a218"
+    },
+    "linux-kernel/tools/process-memory/readback_exec.py": {
+      "bytes": 5026,
+      "sha256": "702f094e97fa8b5b4c73083a8195cc42369586661569e07689cf1f2d9ba4d135"
+    },
+    "linux-kernel/tools/process-memory/readback_process.py": {
+      "bytes": 9401,
+      "sha256": "aaab11926bf2600e2a873e18291657197df6548cb0b3b03654ef213b79cdb73b"
+    },
+    "linux-kernel/tools/process-memory/replay_cancel.py": {
+      "bytes": 2968,
+      "sha256": "473166f8b53d183f586544b3602eaad4554d55da4c1bd8afa78ecea6f03d8bb1"
+    },
+    "linux-kernel/tools/process-memory/replay_process.py": {
+      "bytes": 3510,
+      "sha256": "5342d5361aa0e9a148559b719080bedb45a864a443ab4a27a63ce91184a2ac1c"
+    },
+    "se/requirements.md": {
+      "bytes": 127941,
+      "sha256": "e37c4faaa2841cd85f7be9a4819a0cb432e73631b34c59d81dcb896fe0467179"
+    },
+    "spec/systems-profile.md": {
+      "bytes": 686564,
+      "sha256": "a2e440704bf2e868e2688fb724b393592981f06fb0f91dd443bea7b93613ff74"
+    },
+    "src/topal-compiler/se-requirements.md": {
+      "bytes": 814318,
+      "sha256": "bfb0d4c1b410aa83bd820dcac770aefb6cc9871fa313cf658f6698d3a998a5cb"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_controller.ll": {
+      "bytes": 21451,
+      "sha256": "c9445f96bac7a5b1d2c3e1b0e5463d098909326c2263970787781d0ca2e987f5"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_gateway_lease.ll": {
+      "bytes": 972,
+      "sha256": "8d3b31d9deb5167c1caa4958157eb8287fdc3d90536a10693eccfff0bb629b4b"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": {
+      "bytes": 14321,
+      "sha256": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory_lease.ll": {
+      "bytes": 3828,
+      "sha256": "fb3d0af5155c40ee507ccbf4bf1ae8d301c84ae08ed1e5a4022b42a207b9604a"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_target.ll": {
+      "bytes": 23887,
+      "sha256": "c0c640202dfd9788acb34b82e3ffd76e7aea3a09cbc93a0109525bbbe369f172"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm.ll": {
+      "bytes": 9723,
+      "sha256": "dedf6ea9583ffb0b2d2e6e271bae85967e07718ff7235c413e137049306d51c9"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm_context.ll": {
+      "bytes": 1998,
+      "sha256": "8867223f998abe47a8bf03c28a967fb7cd0148531d2e9ea7290924d4c551efbc"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm_owners.ll": {
+      "bytes": 23488,
+      "sha256": "08599c6f930c91135ee9ec57a642ed6ef3728728f845d49fb9111b054494c7fb"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_clean.ll": {
+      "bytes": 1107,
+      "sha256": "383acf13bef9959641de5f52bbe0bf16b0f18f11872972c363184ca64bba66b5"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_target.ll": {
+      "bytes": 14834,
+      "sha256": "ac21900da006203802acb6ec6bfb58fc14ef968579bb710d35cdf044f4ac84c5"
+    },
+    "src/topal-compiler/src/systems_artifact_static_image.rs": {
+      "bytes": 78277,
+      "sha256": "725fdae49ab7b5995f489b7ce7d1dcc3bd335795c0100a2d442bc76d44340e1e"
+    },
+    "src/topal-compiler/src/systems_file_descriptions.rs": {
+      "bytes": 22917,
+      "sha256": "c256c6462108f66cf89c33308cd2ee55a21833cf5dda79f22dcc6ba18f950c60"
+    },
+    "src/topal-compiler/src/systems_frame_gateway.rs": {
+      "bytes": 14896,
+      "sha256": "662ec81c617d3936affd22e4e44709516d0fe3ac9fca24ab1b6bcdc4f1988926"
+    },
+    "src/topal-compiler/src/systems_frame_gateway_memory.rs": {
+      "bytes": 8323,
+      "sha256": "227214524e116e914ba5f595dcae3b67c4f3c7d00f6e050dadadd329ad4c250b"
+    },
+    "src/topal-compiler/src/systems_frame_gateway_process_memory.rs": {
+      "bytes": 1771,
+      "sha256": "9eb691d729fb121cfbaf0aa16b87c93c1bd9e07d0292e93c185200ead66e8351"
+    },
+    "src/topal-compiler/src/systems_frame_inspection.rs": {
+      "bytes": 7316,
+      "sha256": "cef1141c03c083e234037036b249b1fb91f21c1ecb8273bdafbb48db06991877"
+    },
+    "src/topal-compiler/src/systems_frame_root_tests.rs": {
+      "bytes": 41881,
+      "sha256": "7d6346ce07cb391d63d71e62636b9f8559e0f3dc4b58ed0a242f2632c486696f"
+    },
+    "src/topal-compiler/src/systems_frame_target.rs": {
+      "bytes": 5896,
+      "sha256": "739b8b778a382a6d67e4bc44c773a314470104e0eb902993e810afe6178f71d9"
+    },
+    "src/topal-compiler/src/systems_pipe_wait.rs": {
+      "bytes": 4691,
+      "sha256": "2617235f98e3d95c19f77c338f136c81995ce14beef22472d716423a477c9862"
+    },
+    "src/topal-compiler/src/systems_process_children.rs": {
+      "bytes": 18414,
+      "sha256": "a6ae4db456346c6768fb98520e63e3c0d4936417469f94eb40858ff936734bd4"
+    },
+    "src/topal-compiler/src/systems_process_entry_completion.rs": {
+      "bytes": 71446,
+      "sha256": "bb0b0e8b7f9ee1e607c9c236a6ea8e476808b03878871086123afd6c2b4d2ad3"
+    },
+    "src/topal-compiler/src/systems_process_entry_start.rs": {
+      "bytes": 56861,
+      "sha256": "f807dd8b9f44bd9b0f947e81098c5921a933f7d6c7519d6ec43249d55b87a500"
+    },
+    "src/topal-compiler/src/systems_process_mm.rs": {
+      "bytes": 6124,
+      "sha256": "812e710f0ff44b6e95a03f464808aef390c376d5895183ec6a1c513cb34f8f2f"
+    },
+    "src/topal-compiler/src/systems_process_observations.rs": {
+      "bytes": 2523,
+      "sha256": "b46572bc80fd44259c6ee6904a6c5091433cd580c7caa3c47d874f4f6b130817"
+    },
+    "src/topal-compiler/src/systems_process_pair.rs": {
+      "bytes": 8815,
+      "sha256": "342f57ac03e0b849b535b35dd45570b74aca7930778ea2feec1660178ab9ce1f"
+    },
+    "src/topal-compiler/src/systems_process_pipes.rs": {
+      "bytes": 6778,
+      "sha256": "c776fdb5fa4f23b9383392ae67b44fc51b407930902c29d5b5b12fde7faf3bc0"
+    },
+    "src/topal-compiler/src/systems_process_runtime.rs": {
+      "bytes": 17670,
+      "sha256": "556ad1d6f39a06f5e30191cccf40aa966a31907f29094455f603bb312f02184a"
+    },
+    "src/topal-compiler/src/systems_process_terminal.rs": {
+      "bytes": 4747,
+      "sha256": "dd8e8bded0d1b1d0459dcacc0b23d51063ff258be0b321576664cb2a83d6444a"
+    },
+    "src/topal-compiler/src/systems_provider_emit_process_entry.rs": {
+      "bytes": 14742,
+      "sha256": "1ea1a9a006e2f1eae566481d23f3096b5cad3248d4c98c9bd420ca258c644faf"
+    },
+    "src/topal-compiler/src/systems_provider_emit_publication.rs": {
+      "bytes": 35909,
+      "sha256": "4239b656d7288921728b497a9236d54e73176b388eee7993eff0b709fb992b10"
+    },
+    "src/topal-compiler/src/systems_provider_emit_translation.rs": {
+      "bytes": 23934,
+      "sha256": "58c705379703d7b2f2e0e317f5e17829b25bd3ef7e3e5c6ecb9e9214b3262992"
+    },
+    "src/topal-compiler/src/systems_provider_object.rs": {
+      "bytes": 28046,
+      "sha256": "fa45d24b2440596b989ca97176f9cac73a0c5c4a49d6b7634b8b735e89205d0d"
+    },
+    "src/topal-compiler/src/systems_user_extent.rs": {
+      "bytes": 7956,
+      "sha256": "ea9c09eccfd8e243158f0ed22eba78f0163a295a5b06e31e2fd35c68a9f45771"
+    },
+    "src/topal-compiler/src/systems_user_extent_clean.rs": {
+      "bytes": 2146,
+      "sha256": "a8784718accfb2a64b565d7d99554c99f3ce26e61498d07bd35bd311d806b67f"
+    },
+    "src/topal-compiler/src/systems_user_source_fixture.rs": {
+      "bytes": 23039,
+      "sha256": "3911e3bb36cc25d62b96ec81cbcf89a4b48ba6b3d7ce1cc6d5e70447e3718618"
+    },
+    "src/topal-compiler/src/systems_volatile_files.rs": {
+      "bytes": 16970,
+      "sha256": "94ba8898afd3115ede9aa2a13d71df7c2743c6d232e3d69ce32d9ff732c87158"
+    }
+  },
+  "validation": {
+    "Rust-file-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "elapsed_seconds": 0.34522370994091034,
+      "exit_code": 0
+    },
+    "default-ABI-fixture": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "elapsed_seconds": 0.2174401730298996,
+      "exit_code": 0
+    },
+    "format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "elapsed_seconds": 1.1515690283849835,
+      "exit_code": 0
+    },
+    "process-memory-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "elapsed_seconds": 0.6916201496496797,
+      "exit_code": 0
+    },
+    "user-memory-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "elapsed_seconds": 1.9171160981059074,
+      "exit_code": 0
+    },
+    "workspace-check": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "elapsed_seconds": 9.220807369798422,
+      "exit_code": 0
+    }
+  }
+}
