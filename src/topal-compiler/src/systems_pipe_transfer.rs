@@ -20,6 +20,20 @@ fn range(e: &mut E<'_>) {
     e.0.jump_if(0x82, "pipe-efault");
 }
 
+fn transfer_count(e: &mut E<'_>) {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: the byte loops execute before testing
+    // their remaining count. Re-establish the trusted nonempty ring quantum
+    // after clock/description lookup and clipping, immediately before lending
+    // application memory. Broken internal state is not an ordinary EFAULT.
+    if !e.0.owned_user_extents {
+        return;
+    }
+    e.cmp(R9, 0);
+    e.0.jump_if(0x84, "fatal");
+    e.cmp(R9, 4096);
+    e.0.jump_if(0x87, "fatal");
+}
+
 pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     let mut e = E(code);
     e.0.bind("pipe-read")?;
@@ -53,6 +67,7 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.0.jump_if(0x86, "pipe-read-count-ready");
     e.mov(R9, A);
     e.0.bind("pipe-read-count-ready")?;
+    transfer_count(&mut e);
     e.0.call("runtime-writable-extent");
     e.0.jump_if(0x82, "pipe-efault");
     buffer(&mut e, R13);
@@ -128,6 +143,7 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.0.jump_if(0x86, "pipe-write-count-ready");
     e.mov(R9, A);
     e.0.bind("pipe-write-count-ready")?;
+    transfer_count(&mut e);
     e.0.call("runtime-readable-extent");
     e.0.jump_if(0x82, "pipe-efault");
     buffer(&mut e, R13);

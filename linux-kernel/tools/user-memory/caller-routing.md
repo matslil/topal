@@ -246,3 +246,16 @@ Kernel bytes are unchanged. The joined conditional index reaches 84/91 sites
 and 311 user instructions, leaving seven sites without intervals. Actual owners/
 nonaliasing, continuous lifetime, full helper/entry/callee/return/fatal/exception,
 all three fallback and canonical production obligations remain required.
+
+The [guarded FIFO loops](results/stage-3-pipe-loops/README.md) explicitly check a
+positive count no greater than 4096 immediately before each owned admission.
+Exact scalar-loop progress and guard/success dominance cover two sites and three
+user instructions. Four source executions observe forty transfers, twenty-eight
+refusals and sixteen wraps, including full ring quanta and unused zero requests.
+Whole-body reconstruction, complete GNU graph readback, selected operands/cuts,
+seventeen offline controls, 94 model/reader tests and ordinary/pinned regressions
+pass. The nine-report conditional index on this new kernel has 86/91 sites and
+314 instructions, with five sites without intervals. Its fresh native union is
+81/91, separate from earlier-kernel evidence. Actual owners/nonaliasing,
+continuous lifetime, complete helper/entry/callee/return/fatal/exception, fallback
+and canonical production obligations remain open.

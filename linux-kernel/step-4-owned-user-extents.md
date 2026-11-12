@@ -626,3 +626,31 @@ sites without intervals. Actual owners/nonaliasing, continuous lifetime,
 complete helper/entry/callee/return/fatal/exception contracts, all fallbacks and
 canonical production qualification remain open. Stage 3, initial Step 4 and the
 original objective remain unfinished.
+
+## Stage 3 guarded FIFO byte loops
+
+The [pipe-loop checkpoint](tools/user-memory/results/stage-3-pipe-loops/README.md)
+adds explicit positive/4096-byte count checks immediately before both owned
+FIFO admissions. Invalid trusted counts cannot enter the do-before-test loops;
+ordinary zero/empty/EOF/wait behavior and predecessor bytes are preserved.
+The conditional reader checks exact guard/admission dominance, byte/count/cursor
+progress and three user accesses. Whole-body comparison accounts for 52 added
+bytes and 219 derived relative-displacement changes; fourteen component objects
+including predecessor provider/gateway remain byte-identical.
+
+Four source executions pass 176 syscalls, forty transfers totaling 65,808 bytes,
+twenty-eight refusals, sixteen wrapped transfers and eight zero-length calls.
+Loop-boundary observations check complete user/ring bytes and erasure; separate
+saved-record FIFO modeling verifies byte order and counts. The complete source
+stack bound remains 1368 of 2048 bytes. GNU agrees on the entire listed graph's
+31,024 instructions/36,950 edges and 58 selected loop/guard operands; seventeen
+offline controls, 94 models/readers, ordinary/pinned regressions, three provider
+tests and both fixture build tests pass.
+
+The new-kernel conditional index has 86/91 sites and 314 user instructions, with
+five sites lacking intervals. Its three fresh native cohorts reach 81/91 sites;
+earlier-kernel coverage is not relabeled. Actual owners/nonaliasing, continuous
+lifetime, complete helper/entry/callee/return/fatal/exception effects, all three
+fallbacks, further current-kernel profiles and canonical clean production
+qualification remain required. Stage 3, initial Step 4 and the original goal
+remain unfinished.

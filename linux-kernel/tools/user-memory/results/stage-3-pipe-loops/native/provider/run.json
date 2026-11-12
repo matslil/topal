@@ -1,0 +1,48 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_provider::tests::",
+    "--",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "selected_tests": 3,
+  "exit_code": 0,
+  "elapsed_seconds": 0.8736945912241936,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794453197818739514/temporary",
+  "resources": {
+    "memory.max": "3217768448",
+    "memory.swap.max": "0",
+    "memory.peak": "33177600",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "9defb584bdfc5141b12b9afddde1a30f1866988609135fc159611ed142360d3b",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_cases.c": "04554e2a8931e45d9d044bf289ebcc26b0d9e8858c641297393bbf4e6fea22ae",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_observer.py": "9da92899e48aee5caae79ab826e528d806c20417682536c5267ea0e46a347340",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "90bb495cd372f5215e7ed4b36919aae305aa7825787ed4d43fa2ad77aefce3d2",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "b39f402869895c4f7e80fee6695b7b5f0ec6609f9853c2e19c97bfc3feb7cccb",
+    "src/topal-compiler/src/systems_pipe_transfer.rs": "21ac5b4b4c817a7b36c73327e29edb19261f75208cd3f210f135e1e8aac60c0f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_loop_observer.py": "464faf79d5f2a41f4b231ab70da88a7f4238435c2c5dad31f6577245be574cc8",
+    "linux-kernel/tools/user-memory/audit_pipe_loops.py": "db9785c04c22e84016c339060000574521e083845b619cd161a65252b51e3f75",
+    "linux-kernel/tools/user-memory/test_pipe_loops.py": "f4d8fa58d151d46829d38b9f7069e69410e51cc8bc724e042f31ae1dca46d0db"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "9defb584bdfc5141b12b9afddde1a30f1866988609135fc159611ed142360d3b",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_cases.c": "04554e2a8931e45d9d044bf289ebcc26b0d9e8858c641297393bbf4e6fea22ae",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_observer.py": "9da92899e48aee5caae79ab826e528d806c20417682536c5267ea0e46a347340",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "90bb495cd372f5215e7ed4b36919aae305aa7825787ed4d43fa2ad77aefce3d2",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "b39f402869895c4f7e80fee6695b7b5f0ec6609f9853c2e19c97bfc3feb7cccb",
+    "src/topal-compiler/src/systems_pipe_transfer.rs": "21ac5b4b4c817a7b36c73327e29edb19261f75208cd3f210f135e1e8aac60c0f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_loop_observer.py": "464faf79d5f2a41f4b231ab70da88a7f4238435c2c5dad31f6577245be574cc8",
+    "linux-kernel/tools/user-memory/audit_pipe_loops.py": "db9785c04c22e84016c339060000574521e083845b619cd161a65252b51e3f75",
+    "linux-kernel/tools/user-memory/test_pipe_loops.py": "f4d8fa58d151d46829d38b9f7069e69410e51cc8bc724e042f31ae1dca46d0db"
+  },
+  "source_changes_during_run": false
+}

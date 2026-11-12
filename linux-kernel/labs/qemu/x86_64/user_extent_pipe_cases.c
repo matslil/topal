@@ -31,6 +31,7 @@ long topal_user_extent_pipe_cases(void) {
     if (reader<3 || reader>=16 || writer<3 || writer>=16 || reader==writer) return 606;
     if (call(16,reader,0x541b,0x5ffffe,0)) return 607;
     if (*(volatile unsigned *)0x5ffffe != 0) return 608;
+    if (call(0,reader,0x63a000,0,0) || call(1,writer,0x63a000,0,0)) return 631;
     const word bad_input[] = {0x63a000,~(word)0,0x800000,0x639ff8};
     for (unsigned i=0; i<4; ++i)
         if (call(1,writer,bad_input[i],16,-14)) return 609;
@@ -60,6 +61,23 @@ long topal_user_extent_pipe_cases(void) {
     if (!equal(0x639ff8,payload,8)) return 624;
     if (call(16,reader,0x541b,0x5ffffe,0)) return 625;
     if (*(volatile unsigned *)0x5ffffe != 0) return 626;
+    /* Exercise both ring-wrap directions and a complete ring quantum. */
+    for (unsigned i=0;i<4096;++i)
+        ((volatile unsigned char *)0x635000)[i]=(unsigned char)(i*37+11);
+    if (call(1,writer,0x635000,4090,4090)) return 632;
+    if (call(0,reader,0x637000,4088,4088)) return 633;
+    for (unsigned i=0;i<4088;++i)
+        if (((volatile unsigned char *)0x637000)[i]!=(unsigned char)(i*37+11)) return 634;
+    if (call(1,writer,0x635000,16,16)) return 635;
+    if (call(0,reader,0x638ff8,18,18)) return 636;
+    for (unsigned i=0;i<18;++i) {
+        unsigned index=i<2 ? 4088+i : i-2;
+        if (((volatile unsigned char *)0x638ff8)[i]!=(unsigned char)(index*37+11)) return 637;
+    }
+    if (call(1,writer,0x635000,4096,4096)) return 638;
+    if (call(0,reader,0x637000,4096,4096)) return 639;
+    for (unsigned i=0;i<4096;++i)
+        if (((volatile unsigned char *)0x637000)[i]!=(unsigned char)(i*37+11)) return 640;
     if (call(3,writer,0,0,0)) return 627;
     if (call(0,reader,0x63a000,16,0)) return 628;
     if (call(3,reader,0,0,0)) return 629;

@@ -25,7 +25,7 @@ def pipe_request(call):
     args=call['args']
     if n in [22,293]: pointer,size=args[0],8
     elif n==16: pointer,size=args[2],4
-    else: pointer,size=args[1],min(args[2],16)
+    else: pointer,size=args[1],min(args[2],4096)
     if n!=3:
         call['buffer_before']=pipe_visible(pointer,size).hex()
         call['buffer_pointer']=pointer
@@ -115,7 +115,7 @@ def pipe_result(call):
                 expected[at:at+128]=bytes(128)
                 expected[ring:ring+4096]=bytes(4096)
         else:
-            assert n==0 and result==0 and count==0
+            assert result==0 and ((n in [0,1] and args[2]==0) or (n==0 and count==0))
     assert after==bytes(expected), (n,result,'FIFO bytes changed outside permitted transition')
     assert memory(table,8192)==bytes(expected_table), (n,result,'descriptor/staging change')
     assert pipe_context()==call['context_before']
@@ -133,9 +133,9 @@ def pipe_result(call):
 def pipe_returned(row,after):
     global current
     calls=row['calls']
-    assert len(calls)==36
+    assert len(calls)==44
     assert {n:sum(c['number']==n for c in calls) for n in [12,293,16,1,0,3]}=={
-        12:3,293:6,16:10,1:6,0:9,3:2}
+        12:3,293:6,16:10,1:10,0:13,3:2}
     actions=[c for c in calls if c['number']!=12]
     assert sum(c['result']==-14 for c in actions)==19
     assert sum(c['result']==-11 for c in actions)==1

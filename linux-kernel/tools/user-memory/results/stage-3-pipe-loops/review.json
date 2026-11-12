@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-TRANSFER-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High: protects the positive count required by do-before-test byte loops; no core or authoritative meaning changes, no predecessor-byte changes, no owned production activation",
+  "review": "Single-agent higher-authority/source/full-diff review, complete body and shifted-relocation reconstruction, GNU whole-graph and selected operands/cuts, seventeen offline ELF controls, 94 models/readers, three native regressions and targeted provider/fixture tests",
+  "selected_inputs": 152,
+  "changed_inputs_stable_in_all_five_commands": 9,
+  "model_reader_tests": 94,
+  "body_bytes_added": 52,
+  "adjusted_relative_displacements": 219,
+  "unchanged_component_objects": 14,
+  "source_syscalls": 176,
+  "loop_transfers": 40,
+  "loop_bytes": 65808,
+  "loop_refusals": 28,
+  "wrapping_transfers": 16,
+  "zero_length_calls": 8,
+  "user_stack_bound_bytes": 1368,
+  "user_stack_limit_bytes": 2048,
+  "conditional_sites": 86,
+  "user_access_instructions": 314,
+  "remaining_sites": 5,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "failures": [
+    "Initial frozen replay stopped while restoring a historical identity row without its optional compressed hash; the failed reader and failure metadata are retained. Uncompressed source hashes and the inherited identity record remain mandatory."
+  ],
+  "safeguard_notices": [],
+  "core_language_or_authority_meaning_changed": false,
+  "remaining": [
+    "Actual owners/nonaliasing and continuous lifetime",
+    "Five sites, all helper/entry/callee/return/fatal/exception and fallback obligations",
+    "Further native profiles on this changed kernel and canonical clean production reconstruction",
+    "Complete original Linux-compatible kernel acceptance"
+  ],
+  "provider_functions_compared": 163,
+  "unchanged_provider_functions": 162
+}

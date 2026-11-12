@@ -11,6 +11,7 @@ from user_extent_callback_observer import PROGRAM as CALLBACK_PROGRAM
 from user_extent_copy_observer import PROGRAM as COPY_PROGRAM
 from user_extent_staged_observer import PROGRAM as STAGED_PROGRAM
 from user_extent_pipe_fixed_observer import PROGRAM as PIPE_FIXED_PROGRAM
+from user_extent_pipe_loop_observer import PROGRAM as PIPE_LOOP_PROGRAM
 
 
 def linked_inventory(build):
@@ -69,6 +70,13 @@ def linked_inventory(build):
         assert serial['passed'] and not serial['complete']
         assert serial['kernel_sha256'] == reader.digest(elf.data)
         assert serial['graph_sha256'] == bindings['process_graph_sha256']
+    loop_path = build / 'pipe-loop-audit.json'
+    loop_bytes = loop_path.read_bytes() if loop_path.exists() else None
+    loops = json.loads(loop_bytes) if loop_bytes is not None else None
+    if loops is not None:
+        assert loops['passed'] and not loops['complete']
+        assert loops['kernel_sha256'] == reader.digest(elf.data)
+        assert loops['graph_sha256'] == bindings['process_graph_sha256']
     return dict(function=inventory['function'], address=symbol['value'], calls=inventory['calls'],
                 callback_bindings=native_bindings,
                 copy_transfer_audit=copies, copy_transfer_audit_sha256=reader.digest(copy_bytes),
@@ -81,6 +89,8 @@ def linked_inventory(build):
                 stat_output_audit_sha256=reader.digest(stat_bytes) if stat_bytes is not None else None,
                 serial_prefix_audit=serial,
                 serial_prefix_audit_sha256=reader.digest(serial_bytes) if serial_bytes is not None else None,
+                pipe_loop_audit=loops,
+                pipe_loop_audit_sha256=reader.digest(loop_bytes) if loop_bytes is not None else None,
                 callback_header_hex=(build / 'static-elf-abi-fixture.elf').read_bytes()[:64].hex(),
                 kernel_sha256=reader.digest(elf.data), inventory_sha256=inspection['inventory_sha256'])
 
@@ -113,7 +123,8 @@ def extent_coverage_complete():
     for name, complete in [('callbacks',callback_coverage_complete),
                            ('copies',copy_observation_complete),
                            ('staged',staged_observation_complete),
-                           ('pipe-fixed',pipe_fixed_observation_complete)]:
+                           ('pipe-fixed',pipe_fixed_observation_complete),
+                           ('pipe-loops',pipe_loop_observation_complete)]:
         if name in selected_extent_observers():
             complete()
     calls = extent_inventory['calls']
@@ -129,7 +140,7 @@ def extent_coverage_complete():
 def selected_extent_observers():
     groups = extent_inventory.get('native_observers',['callbacks','copies','staged'])
     assert groups and len(groups) == len(set(groups))
-    assert set(groups) <= {'callbacks','copies','staged','pipe-fixed'}
+    assert set(groups) <= {'callbacks','copies','staged','pipe-fixed','pipe-loops'}
     return groups
 
 def install_extent_coverage():
@@ -137,7 +148,8 @@ def install_extent_coverage():
         for name, install in [('callbacks',install_callback_observation),
                               ('copies',install_copy_observation),
                               ('staged',install_staged_observation),
-                              ('pipe-fixed',install_pipe_fixed_observation)]:
+                              ('pipe-fixed',install_pipe_fixed_observation),
+                              ('pipe-loops',install_pipe_loop_observation)]:
             if name in selected_extent_observers():
                 install()
         assert address(extent_inventory['function']) == extent_inventory['address']
@@ -150,3 +162,4 @@ PROGRAM += CALLBACK_PROGRAM
 PROGRAM += COPY_PROGRAM
 PROGRAM += STAGED_PROGRAM
 PROGRAM += PIPE_FIXED_PROGRAM
+PROGRAM += PIPE_LOOP_PROGRAM

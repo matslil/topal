@@ -1,0 +1,6 @@
+{
+  "exit_code": 1,
+  "exception": "KeyError: snapshot_sha256",
+  "stage": "Source restoration before origin/report/model/native-record replay",
+  "reason": "Some inherited identity rows record only uncompressed SHA; compression SHA is optional in that historical schema"
+}
