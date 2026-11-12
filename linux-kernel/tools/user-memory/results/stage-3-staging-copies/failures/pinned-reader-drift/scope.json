@@ -1,0 +1,8 @@
+{
+  "native_test_passed": true,
+  "source_freeze_acceptance": false,
+  "changed_sources": [
+    "linux-kernel/tools/user-memory/audit_staging_copies.py"
+  ],
+  "scope": "The test passed with the same executable kernel, but the validation runner rejected changing reader input. It is not final source-freeze acceptance."
+}

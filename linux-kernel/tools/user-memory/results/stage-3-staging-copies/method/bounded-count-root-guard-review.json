@@ -1,0 +1,25 @@
+{
+  "kind": "Synthetic graph model only, not native kernel execution",
+  "current_reader_accepts_count_graph_with_extra_entry_and_predecessors": true,
+  "baseline_definitions": [
+    {
+      "offset": 0,
+      "value": 2
+    },
+    {
+      "offset": 23,
+      "value": 5
+    }
+  ],
+  "candidate_rejections": [
+    [
+      33
+    ],
+    [
+      42
+    ]
+  ],
+  "constant_definition_roots_remain_accepted": true,
+  "actual_current_kernel_backward_slice_has_roots": false,
+  "activation": "Not applied: preserve current native source freeze"
+}

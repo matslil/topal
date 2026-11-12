@@ -41,10 +41,18 @@ def linked_inventory(build):
     staged = json.loads(staged_bytes)
     assert staged['passed'] and staged['kernel_sha256'] == reader.digest(elf.data)
     assert staged['graph_sha256'] == bindings['process_graph_sha256']
+    staging_path = build / 'staging-copy-audit.json'
+    staging_bytes = staging_path.read_bytes() if staging_path.exists() else None
+    staging = json.loads(staging_bytes) if staging_bytes is not None else None
+    if staging is not None:
+        assert staging['passed'] and staging['kernel_sha256'] == reader.digest(elf.data)
+        assert staging['graph_sha256'] == bindings['process_graph_sha256']
     return dict(function=inventory['function'], address=symbol['value'], calls=inventory['calls'],
                 callback_bindings=native_bindings,
                 copy_transfer_audit=copies, copy_transfer_audit_sha256=reader.digest(copy_bytes),
                 staged_transfer_audit=staged, staged_transfer_audit_sha256=reader.digest(staged_bytes),
+                staging_copy_audit=staging,
+                staging_copy_audit_sha256=reader.digest(staging_bytes) if staging_bytes is not None else None,
                 callback_header_hex=(build / 'static-elf-abi-fixture.elf').read_bytes()[:64].hex(),
                 kernel_sha256=reader.digest(elf.data), inventory_sha256=inspection['inventory_sha256'])
 

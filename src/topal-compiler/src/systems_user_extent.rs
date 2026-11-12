@@ -2,6 +2,9 @@
 //! from the actual root/entry owners; this module grants no publication route.
 use crate::CompileError;
 
+#[path = "systems_user_extent_clean.rs"]
+mod private_clean;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Owner {
     pub slot: u64,
@@ -85,7 +88,7 @@ pub(crate) fn target_llvm(
         ));
     }
     text.push_str(&target);
-    Ok(text)
+    private_clean::adapt(text)
 }
 
 pub(crate) fn dispatch_llvm() -> Result<String, CompileError> {

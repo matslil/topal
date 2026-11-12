@@ -1,0 +1,9 @@
+{
+  "name": "cwd-count-definition",
+  "rejected": true,
+  "offset": 156725,
+  "expected_bytes": "02",
+  "changed_bytes": "06",
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+}

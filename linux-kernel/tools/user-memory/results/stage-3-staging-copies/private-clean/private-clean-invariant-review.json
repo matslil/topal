@@ -1,0 +1,40 @@
+{
+  "kind": "High-risk single-agent security-invariant review before experimental kernel validation; no independent reviewer claimed",
+  "stable_id": "TOPAL-SYSTEMS-USER-EXTENT-001",
+  "authority_sha256": {
+    "docs/systems-profile.md": "c2549736eac0f7e7c09ed1c0a669f6e2d140ea758728cf63b3c11674257b205f",
+    "se/requirements.md": "0e1ad7bfd9a01b014e9455a2d938e64715fee92db61358d7b09020f5d5a4ca8b",
+    "src/topal-compiler/se-requirements.md": "a44bb5abe02f2d5b23117bd9e71dc7f5155ed061ccc52b55213e36e8755c0213",
+    "spec/systems-profile.md": "c528834ee0401b1352cb7b2fd28029fbc4487f1cc7cfb582c99e4a38124e63fe",
+    "linux-kernel/design/owned-user-extents.md": "d746ee4732c8ffa48e69e62156b134cc5a8a08da713c49a0cff443f893c5f693",
+    "AGENTS.md": "a0744879fcd5de2a5befbd9cdcc3346c86afd7233c7c0a8eb0bc7e8d6b92659d"
+  },
+  "source_sha256": {
+    "src/topal-compiler/src/systems_user_extent.rs": "ea9c09eccfd8e243158f0ed22eba78f0163a295a5b06e31e2fd35c68a9f45771",
+    "src/topal-compiler/src/systems_user_extent_clean.rs": "a8784718accfb2a64b565d7d99554c99f3ce26e61498d07bd35bd311d806b67f",
+    "src/topal-compiler/src/systems_user_extent_clean_tests.rs": "a69519a7f4746e319ca2b15a942f38cc987810e940a5acd5063a11007176fa3c",
+    "src/topal-compiler/src/runtime/kernel_user_extent_clean.ll": "383acf13bef9959641de5f52bbe0bf16b0f18f11872972c363184ca64bba66b5",
+    "linux-kernel/labs/qemu/x86_64/private_clean_cases.c": "0d45828cc594a093684335b1034aa3da1581893e6c05e669fa3c6fe3ef0dd357"
+  },
+  "purpose": "Reduce repeated private zero-scan cost without removing any predicate or admitting any additional input state",
+  "proof": [
+    "For complete stable ordinary-RAM input p,n: word-loop invariant0<=i<=n; i is a multiple of8. remaining=n-i>=8 implies i+8<=n with no unsigned overflow. Tail starts at i, advances only if j<n, and j+1<=n. No architectural load crosses the input span; n=0 performs no loads.",
+    "A 64-bit load is zero exactly when all eight constituent bytes are zero. Byte tail covers every remaining byte. Thus the returned predicate is identical to the original byte scan for every stable complete buffer; no write, cached content/result, relaxed permission or ownership grant is introduced.",
+    "Wider volatile reads can observe additional bytes within the same owned span before rejecting a nonzero chunk. This is permitted only for existing complete stable private ordinary-RAM objects, not MMIO/racing aliases. Exact original function text, all four call counts/sizes and all four static BSS declarations are checked before substitution. Unsupported future geometry/check changes fail closed.",
+    "Only systems_user_extent::target_llvm applies substitution. Predecessor kernel_frame_target.ll remains byte-for-byte unchanged. All admission call sites, bootstrap/lease/state/pin/epoch/provenance/table/backing checks, fences and CR0.WP protection remain. No core-language design or source capability changes.",
+    "The new leaf retains nounwind/noinline/noredzone/noimplicitfloat/disable-tail-calls attributes. LLVM verify, native component stack bounds/import-free object and complete current VM target/retirement regressions remain required.",
+    "Native component compiles exact old/new LLVM predicate bodies with only linkage/symbol names changed and uses its own ordinary host buffers. It covers all bits/unaligned lengths0..65 and actual private sizes, all byte positions for large aligned buffers, guard bytes, unchanged contents and zero-length null input. This is component evidence, not deliberate private-kernel corruption or complete ownership/lifetime evidence.",
+    "Actual kernel function bytes must be compared against the tested component body after rebuilding the target. Current-kernel native full shared/poll/source/pinned/other regressions remain unpassed for this new target until executed. All historical timeout records stay failed; no deadlines or host resource limits are raised."
+  ],
+  "activation": "Experimental component implementation only; canonical owned-profile publication and complete ownership/lifetime qualification remain blocked by existing open gates.",
+  "native_component_validation": {
+    "run": "linux-kernel/.cache/x86_64/tk283-staging-focused-1794433225074865974",
+    "tests_passed": 3,
+    "probes": 210947,
+    "old_and_new_stack_bytes": 8,
+    "wide_function_bytes": 67,
+    "wide_function_sha256": "3dda5093ac2638f293593cab61031ce6d1f6e55abcc950027bec1a48404dc12a",
+    "scope": "Ordinary component execution, no native kernel qualification"
+  },
+  "binding_guard_history": "Positive binding test correctly rejected initial Rust continuation-whitespace pattern. Exact raw original text preserves indentation; all3 tests then passed. Separate initial exact prefix selected0tests and is not acceptance."
+}

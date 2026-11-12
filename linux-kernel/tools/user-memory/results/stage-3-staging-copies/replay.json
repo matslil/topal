@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "selected_inputs": 135,
+  "exact_source_join_equal": true,
+  "exact_five_reports_equal": true,
+  "selected_intervals": 79,
+  "distinct_user_access_instructions": 306,
+  "exact_provider_difference_equal": true,
+  "exact_private_predicate_binding_equal": true,
+  "exact_composed_kernel_difference_equal": true,
+  "scope": "Frozen selected first-party source/artifact and three-version machine-byte replay; no compiler rebuild, GNU/LLVM/GDB/VM execution, complete owners/lifetime or production qualification"
+}

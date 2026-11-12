@@ -519,3 +519,25 @@ The targeted poll-buffer gap is covered. Complete caller/user-access inventory,
 native ownership/mode/stability evidence, canonical production binding and cold
 reconstruction remain required. General polling and the full original kernel
 objective remain unfinished; Stage 3 and initial Step 4 are still incomplete.
+
+## Stage 3 preserved admission values through staging
+
+The [staging-copy checkpoint](tools/user-memory/results/stage-3-staging-copies/README.md)
+retains admitted candidate/count registers through console and descriptor
+staging in the experimental owned selection. Exact-byte checks add six local
+copy paths, bringing the current index to 79/91 helper sites and 306 user-access
+instructions, with twelve sites still listed without intervals. Serial pointer
+retention is included in emission; its partial-count proof remains separate.
+
+The new process body is 36 bytes shorter. Separate complete-body comparison,
+GNU graph/operand readback, positive-backed malformed-artifact controls,
+source/application regressions and full compiler tests retain their own scopes.
+Ordinary source requests include console crossings and cross-page cwd output
+checked against actual directory state. Current-kernel coverage is derived from
+fresh matching executions, with exact earlier/current reader inputs retained.
+
+Private counterpart ownership, continuous lifetime, complete helper/entry/callee/
+exception reasoning, remaining accesses/fallbacks, canonical production binding
+and cold reconstruction remain required. The canonical profile and predecessor
+emission are unchanged. Stage 3, initial Step 4 and the full original goal remain
+unfinished.

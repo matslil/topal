@@ -7,8 +7,45 @@ copy_counts = {}
 copy_samples = {}
 copy_start_breakpoints = {}
 copy_finish_breakpoints = {}
+copy_call_breakpoints = {}
+copy_result_breakpoints = {}
+copy_source_scope = None
+copy_source_refusals = []
 copy_register_names = ['rax','rcx','rdx','rbx','rsp','rbp','rsi','rdi','r8','r9','r10','r11','r12','r13','r14','r15']
 copy_preserved = [2,3,5,6,7,8,9,12,13,14,15]
+
+def copy_source_enabled():
+    return extent_inventory is not None and extent_inventory.get('source_scoped_copies',False)
+
+def copy_source_syscall_entered(call):
+    global copy_source_scope
+    if not copy_source_enabled():
+        return
+    assert copy_source_scope is None and copy_pending is copy_active is None
+    copy_source_scope = dict(number=call['number'],args=list(call['args']),
+        phase_before=call['phase_before'],refusals=[])
+    for points in [copy_call_breakpoints,copy_result_breakpoints,copy_start_breakpoints]:
+        for point in points.values():
+            assert not point.enabled
+            point.enabled = call['number'] != 12
+    assert not any(point.enabled for point in copy_finish_breakpoints.values())
+
+def copy_source_syscall_returned(call):
+    global copy_source_scope
+    if not copy_source_enabled():
+        return
+    assert copy_source_scope is not None and copy_pending is copy_active is None
+    scope = copy_source_scope
+    assert (scope['number'],scope['args']) == (call['number'],call['args'])
+    for event in scope['refusals']:
+        assert call['result'] == -14 and call['phase_after'] == scope['phase_before']
+        assert event['candidate'] in call['args']
+        copy_source_refusals.append(dict(**event,number=call['number'],args=call['args'],
+            result=call['result'],phase_before=scope['phase_before'],phase_after=call['phase_after']))
+    for points in [copy_call_breakpoints,copy_result_breakpoints,copy_start_breakpoints]:
+        for point in points.values(): point.enabled = False
+    assert not any(point.enabled for point in copy_finish_breakpoints.values())
+    copy_source_scope = None
 
 def copy_mode(before=None):
     result = [reg('cr0'),reg('cr3'),reg('cr4')]
@@ -64,6 +101,12 @@ class CopyAdmissionCalled(Checked):
         copy_pending = dict(name=row['name'],candidate=reg('r8'),size=reg('r9'),
             registers=[reg(r) for r in copy_register_names],mode=copy_mode(),rsp=reg('rsp'),
             captured=memory(context+296,64),accepted=False)
+        if copy_source_enabled():
+            assert copy_source_scope is not None
+            if row['call_offset'] not in extent_first_reach:
+                extent_first_reach[row['call_offset']] = dict(offset=row['call_offset'],
+                    target=next(r['target'] for r in extent_inventory['calls'] if r['offset']==row['call_offset']),
+                    candidate=reg('r8'),length=reg('r9'),phase=memory(context+104,1)[0])
         return False
 
 class CopyAdmissionResult(Checked):
@@ -81,6 +124,10 @@ class CopyAdmissionResult(Checked):
         assert memory(context+296,64) == before['captured']
         if reg('eflags')&1:
             copy_counts[self.row['name']]['refused'] += 1
+            if copy_source_enabled():
+                copy_source_scope['refusals'].append(dict(name=before['name'],
+                    call_offset=self.row['call_offset'],candidate=before['candidate'],size=before['size'],
+                    helper_registers_preserved=True,captured_arguments_preserved=True))
             copy_pending = None
         else:
             copy_counts[self.row['name']]['admitted'] += 1
@@ -161,21 +208,33 @@ class CopyFinished(Checked):
 
 def install_copy_observation():
     global copy_rows
-    audit = extent_inventory['copy_transfer_audit']
-    assert audit['passed'] and audit['kernel_sha256'] == extent_inventory['kernel_sha256']
-    copy_rows = {r['name']:r for r in audit['cases']}
-    for row in audit['cases']:
+    audits = [extent_inventory['copy_transfer_audit']]
+    if extent_inventory.get('staging_copy_audit') is not None:
+        audits.append(extent_inventory['staging_copy_audit'])
+    if copy_source_enabled():
+        assert extent_inventory.get('staging_copy_audit') is not None
+        audits = [extent_inventory['staging_copy_audit']]
+    assert all(a['passed'] and a['kernel_sha256'] == extent_inventory['kernel_sha256'] for a in audits)
+    rows = [r for a in audits for r in a['cases']]
+    groups = [g for a in audits for g in a['copy_groups']]
+    copy_rows = {r['name']:r for r in rows}
+    assert len(copy_rows) == len(rows) and len({g['copy_offset'] for g in groups}) == len(groups)
+    for row in rows:
         copy_counts[row['name']] = dict(attempts=0,admitted=0,refused=0,completed=0,bytes=0)
-        CopyAdmissionCalled(row)
-        CopyAdmissionResult(row)
-    for group in audit['copy_groups']:
+        copy_call_breakpoints[row['name']] = CopyAdmissionCalled(row)
+        copy_result_breakpoints[row['name']] = CopyAdmissionResult(row)
+    for group in groups:
         sizes = {copy_rows[name]['copy_size'] for name in group['cases']}
         assert len(sizes) == 1
         copy_start_breakpoints[group['copy_offset']] = CopyStarted(group)
         copy_finish_breakpoints[group['copy_offset']] = CopyFinished(group,next(iter(sizes)))
+    if copy_source_enabled():
+        for points in [copy_call_breakpoints,copy_result_breakpoints,copy_start_breakpoints]:
+            for point in points.values(): point.enabled = False
 
 def copy_observation_complete():
     assert copy_pending is None and copy_active is None
+    assert copy_source_scope is None
     assert sum(row['completed'] for row in copy_counts.values()) > 0
     assert all(row['attempts'] == row['admitted']+row['refused'] and row['admitted'] == row['completed']
                for row in copy_counts.values())
@@ -183,6 +242,13 @@ def copy_observation_complete():
         samples=[copy_samples[name] for name in sorted(copy_samples)],
         unreached=[name for name,row in copy_counts.items() if not row['attempts']],
         kernel_sha256=extent_inventory['kernel_sha256'],
-        audit_sha256=extent_inventory['copy_transfer_audit_sha256'],
+        audit_sha256=extent_inventory['staging_copy_audit_sha256'] if copy_source_enabled() else extent_inventory['copy_transfer_audit_sha256'],
+        audit_kind='staging' if copy_source_enabled() else ('legacy-and-staging' if extent_inventory.get('staging_copy_audit') is not None else 'legacy'),
         scope='Every selected observed admission result and REP start/completion: preserved helper registers/captured arguments, actual candidate/count/DF, equal copied bytes, user/supervisor permissions, no observed physical overlap with counterparty/translation storage and unchanged boundary translation/control observations. Read-only GDB observation, not continuous check-to-copy stability, complete table/backing ownership, every possible path or production qualification')
+    if extent_inventory.get('staging_copy_audit') is not None:
+        observed['copy_transfer_observation']['staging_audit_sha256'] = extent_inventory['staging_copy_audit_sha256']
+    if copy_source_enabled():
+        assert len(copy_source_refusals) == sum(row['refused'] for row in copy_counts.values())
+        observed['copy_transfer_observation']['source_syscall_refusals'] = copy_source_refusals
+        observed['copy_transfer_observation']['source_syscall_scoped'] = True
 '''

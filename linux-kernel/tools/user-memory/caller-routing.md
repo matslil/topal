@@ -188,3 +188,14 @@ additional read is explicitly unqualified. Fresh pinned exit preserves all
 preceding native observations and reaches fourteen selected calls, without
 claiming new native scalar-transfer coverage. Complete owners/lifetime,
 helper/root/callee/exception, all fallback and production obligations remain.
+
+The [staging-copy checkpoint](results/stage-3-staging-copies/README.md) retains
+the admitted candidate/count through selected console and descriptor preparation
+and adds six exact-byte staging paths, including cwd and sparse read/pread.
+The changed kernel's fresh index contains 79/91 helper sites and 306 selected
+user-access instructions, with twelve sites lacking local intervals. Explicit
+caps, closed preparation/lookup effects, DF, incoming edges and success cuts
+remain conditional on complete owners/lifetime and helper/entry/callee contracts.
+Serial pointer emission is improved, but its partial-count interval remains open.
+The new kernel has its own actual native coverage union; older observations are
+not relabeled. Whole-caller, fallback and canonical-production obligations remain.

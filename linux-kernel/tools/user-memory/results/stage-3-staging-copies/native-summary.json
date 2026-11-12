@@ -1,0 +1,1120 @@
+{
+  "cohorts": {
+    "poll": {
+      "identity": {
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "381f3dfe7cac3719ae02ee40206a39edb1ec4961e91f9f03e5be33ce513324dd"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "e692bbea4bf9b1e68468d2cf2647f8d1f2ee9a4d17dd79ad5d55db2f3009d8b2"
+        },
+        "source-component.json": {
+          "bytes": 1438,
+          "sha256": "92cda75e37ccbae3d2aadb1db262147ce2e462f1129431e6ab67e3eaecd9f654"
+        }
+      },
+      "reached_sites": 77,
+      "calls": 120,
+      "efaults": 64,
+      "copy_observation": {
+        "passed": true,
+        "counts": {
+          "header-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 11
+          },
+          "refill-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 5
+          },
+          "root-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 294
+          },
+          "pwd-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 24
+          },
+          "serial-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 23
+          },
+          "signal-action-input": {
+            "attempts": 12,
+            "admitted": 10,
+            "refused": 2,
+            "completed": 10,
+            "bytes": 320
+          },
+          "signal-action-output": {
+            "attempts": 16,
+            "admitted": 15,
+            "refused": 1,
+            "completed": 15,
+            "bytes": 480
+          },
+          "signal-mask-input": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 56
+          },
+          "signal-mask-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 80
+          },
+          "directory-output": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 200
+          },
+          "named-directory-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "uname-output": {
+            "attempts": 68,
+            "admitted": 24,
+            "refused": 44,
+            "completed": 24,
+            "bytes": 9360
+          },
+          "clock-time-output": {
+            "attempts": 56,
+            "admitted": 36,
+            "refused": 20,
+            "completed": 36,
+            "bytes": 576
+          },
+          "clock-resolution-output": {
+            "attempts": 24,
+            "admitted": 8,
+            "refused": 16,
+            "completed": 8,
+            "bytes": 128
+          },
+          "sleep-interval-input": {
+            "attempts": 80,
+            "admitted": 48,
+            "refused": 32,
+            "completed": 48,
+            "bytes": 768
+          },
+          "console-input": {
+            "attempts": 9,
+            "admitted": 3,
+            "refused": 6,
+            "completed": 3,
+            "bytes": 284
+          },
+          "descriptor-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "descriptor-read-output": {
+            "attempts": 9,
+            "admitted": 8,
+            "refused": 1,
+            "completed": 8,
+            "bytes": 16
+          },
+          "cwd-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 47
+          },
+          "sparse-read-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "sparse-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          }
+        },
+        "unreached": [
+          "named-directory-output",
+          "descriptor-pread-output",
+          "sparse-read-output",
+          "sparse-pread-output"
+        ],
+        "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+        "audit_sha256": "572ea9aa5675844e723c6e71e3da0cba89aa43a4de29ddb8b9f805b835a61077",
+        "audit_kind": "legacy-and-staging",
+        "scope": "Every selected observed admission result and REP start/completion: preserved helper registers/captured arguments, actual candidate/count/DF, equal copied bytes, user/supervisor permissions, no observed physical overlap with counterparty/translation storage and unchanged boundary translation/control observations. Read-only GDB observation, not continuous check-to-copy stability, complete table/backing ownership, every possible path or production qualification",
+        "staging_audit_sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6"
+      }
+    },
+    "source": {
+      "identity": {
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "5ca28f128861c3cffb3b6bd7b2696e0fc292d04d2263d867df13c6f086b33fd7"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "802f7a9bea52ed056ba13c48c082dc8294ad66b6a65727c71249806c54f19b3b"
+        },
+        "source-component.json": {
+          "bytes": 1358,
+          "sha256": "fc6b37043bacfdf33f9a499da71ddcf0e91ff20655b2ff0e2f7fabd69097553a"
+        }
+      },
+      "reached_sites": 18,
+      "calls": 812,
+      "efaults": 397,
+      "copy_observation": {
+        "passed": true,
+        "counts": {
+          "console-input": {
+            "attempts": 16,
+            "admitted": 8,
+            "refused": 8,
+            "completed": 8,
+            "bytes": 192
+          },
+          "descriptor-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "descriptor-read-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "cwd-output": {
+            "attempts": 4,
+            "admitted": 4,
+            "refused": 0,
+            "completed": 4,
+            "bytes": 20
+          },
+          "sparse-read-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "sparse-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          }
+        },
+        "unreached": [
+          "descriptor-pread-output",
+          "descriptor-read-output",
+          "sparse-read-output",
+          "sparse-pread-output"
+        ],
+        "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+        "audit_sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6",
+        "audit_kind": "staging",
+        "scope": "Every selected observed admission result and REP start/completion: preserved helper registers/captured arguments, actual candidate/count/DF, equal copied bytes, user/supervisor permissions, no observed physical overlap with counterparty/translation storage and unchanged boundary translation/control observations. Read-only GDB observation, not continuous check-to-copy stability, complete table/backing ownership, every possible path or production qualification",
+        "staging_audit_sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6",
+        "source_syscall_scoped": true
+      }
+    },
+    "storage": {
+      "identity": {
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "d821b3a56eb090602e8e48a9e1b04a127c11625d7ef726381e4aa5d0a4f54199"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "e7cbf3267b007b5bdf55cd18ea8498f368dcfbca9a98bb9fa3064ebba04db6a2"
+        },
+        "source-component.json": {
+          "bytes": 1445,
+          "sha256": "7167055aed72a5d503651106161628f4cbb10f696e56f6fc7fcba27176b277af"
+        }
+      },
+      "reached_sites": 81,
+      "calls": 208,
+      "efaults": 112,
+      "copy_observation": {
+        "passed": true,
+        "counts": {
+          "header-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 11
+          },
+          "refill-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 5
+          },
+          "root-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 294
+          },
+          "pwd-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 24
+          },
+          "serial-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 23
+          },
+          "signal-action-input": {
+            "attempts": 12,
+            "admitted": 10,
+            "refused": 2,
+            "completed": 10,
+            "bytes": 320
+          },
+          "signal-action-output": {
+            "attempts": 16,
+            "admitted": 15,
+            "refused": 1,
+            "completed": 15,
+            "bytes": 480
+          },
+          "signal-mask-input": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 56
+          },
+          "signal-mask-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 80
+          },
+          "directory-output": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 200
+          },
+          "named-directory-output": {
+            "attempts": 24,
+            "admitted": 4,
+            "refused": 20,
+            "completed": 4,
+            "bytes": 192
+          },
+          "uname-output": {
+            "attempts": 40,
+            "admitted": 16,
+            "refused": 24,
+            "completed": 16,
+            "bytes": 6240
+          },
+          "clock-time-output": {
+            "attempts": 56,
+            "admitted": 36,
+            "refused": 20,
+            "completed": 36,
+            "bytes": 576
+          },
+          "clock-resolution-output": {
+            "attempts": 24,
+            "admitted": 8,
+            "refused": 16,
+            "completed": 8,
+            "bytes": 128
+          },
+          "sleep-interval-input": {
+            "attempts": 80,
+            "admitted": 48,
+            "refused": 32,
+            "completed": 48,
+            "bytes": 768
+          },
+          "console-input": {
+            "attempts": 5,
+            "admitted": 3,
+            "refused": 2,
+            "completed": 3,
+            "bytes": 284
+          },
+          "descriptor-pread-output": {
+            "attempts": 20,
+            "admitted": 4,
+            "refused": 16,
+            "completed": 4,
+            "bytes": 64
+          },
+          "descriptor-read-output": {
+            "attempts": 9,
+            "admitted": 8,
+            "refused": 1,
+            "completed": 8,
+            "bytes": 16
+          },
+          "cwd-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 47
+          },
+          "sparse-read-output": {
+            "attempts": 20,
+            "admitted": 4,
+            "refused": 16,
+            "completed": 4,
+            "bytes": 64
+          },
+          "sparse-pread-output": {
+            "attempts": 24,
+            "admitted": 8,
+            "refused": 16,
+            "completed": 8,
+            "bytes": 128
+          }
+        },
+        "unreached": [],
+        "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+        "audit_sha256": "572ea9aa5675844e723c6e71e3da0cba89aa43a4de29ddb8b9f805b835a61077",
+        "audit_kind": "legacy-and-staging",
+        "scope": "Every selected observed admission result and REP start/completion: preserved helper registers/captured arguments, actual candidate/count/DF, equal copied bytes, user/supervisor permissions, no observed physical overlap with counterparty/translation storage and unchanged boundary translation/control observations. Read-only GDB observation, not continuous check-to-copy stability, complete table/backing ownership, every possible path or production qualification",
+        "staging_audit_sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6"
+      }
+    },
+    "serial": {
+      "identity": {
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "af1f287ae82d112da723c3d21599a0bc650caa314bcb0587c078c90787c973f3"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "681aabeb36dbc053f9a7ecd616a629500033f58765f9538a8b47e0e98f673b0c"
+        },
+        "source-component.json": {
+          "bytes": 1442,
+          "sha256": "12e63fafaa680ff3ce03e181dbde079bc8c8fd62f00942ae94aff1e35263ffca"
+        }
+      },
+      "reached_sites": 76,
+      "calls": 64,
+      "efaults": 20,
+      "copy_observation": {
+        "passed": true,
+        "counts": {
+          "header-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 11
+          },
+          "refill-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 5
+          },
+          "root-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 294
+          },
+          "pwd-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 24
+          },
+          "serial-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 23
+          },
+          "signal-action-input": {
+            "attempts": 12,
+            "admitted": 10,
+            "refused": 2,
+            "completed": 10,
+            "bytes": 320
+          },
+          "signal-action-output": {
+            "attempts": 16,
+            "admitted": 15,
+            "refused": 1,
+            "completed": 15,
+            "bytes": 480
+          },
+          "signal-mask-input": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 56
+          },
+          "signal-mask-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 80
+          },
+          "directory-output": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 200
+          },
+          "named-directory-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "uname-output": {
+            "attempts": 40,
+            "admitted": 16,
+            "refused": 24,
+            "completed": 16,
+            "bytes": 6240
+          },
+          "clock-time-output": {
+            "attempts": 56,
+            "admitted": 36,
+            "refused": 20,
+            "completed": 36,
+            "bytes": 576
+          },
+          "clock-resolution-output": {
+            "attempts": 24,
+            "admitted": 8,
+            "refused": 16,
+            "completed": 8,
+            "bytes": 128
+          },
+          "sleep-interval-input": {
+            "attempts": 80,
+            "admitted": 48,
+            "refused": 32,
+            "completed": 48,
+            "bytes": 768
+          },
+          "console-input": {
+            "attempts": 13,
+            "admitted": 11,
+            "refused": 2,
+            "completed": 11,
+            "bytes": 460
+          },
+          "descriptor-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "descriptor-read-output": {
+            "attempts": 9,
+            "admitted": 8,
+            "refused": 1,
+            "completed": 8,
+            "bytes": 16
+          },
+          "cwd-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 47
+          },
+          "sparse-read-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "sparse-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          }
+        },
+        "unreached": [
+          "named-directory-output",
+          "descriptor-pread-output",
+          "sparse-read-output",
+          "sparse-pread-output"
+        ],
+        "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+        "audit_sha256": "572ea9aa5675844e723c6e71e3da0cba89aa43a4de29ddb8b9f805b835a61077",
+        "audit_kind": "legacy-and-staging",
+        "scope": "Every selected observed admission result and REP start/completion: preserved helper registers/captured arguments, actual candidate/count/DF, equal copied bytes, user/supervisor permissions, no observed physical overlap with counterparty/translation storage and unchanged boundary translation/control observations. Read-only GDB observation, not continuous check-to-copy stability, complete table/backing ownership, every possible path or production qualification",
+        "staging_audit_sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6"
+      }
+    },
+    "pinned": {
+      "identity": {
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "a279fb8053f540b6c11576a4cbeaea6207f4d92ff9a030b8a6cae6160ab625b1"
+        }
+      },
+      "reached_sites": 38,
+      "calls": 0,
+      "efaults": 0,
+      "copy_observation": {
+        "passed": true,
+        "counts": {
+          "header-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 11
+          },
+          "refill-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 5
+          },
+          "root-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 294
+          },
+          "pwd-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 24
+          },
+          "serial-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 5
+          },
+          "signal-action-input": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "signal-action-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "signal-mask-input": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "signal-mask-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "directory-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "named-directory-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "uname-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "clock-time-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "clock-resolution-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "sleep-interval-input": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "console-input": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "descriptor-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "descriptor-read-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "cwd-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "sparse-read-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "sparse-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          }
+        },
+        "unreached": [
+          "signal-action-input",
+          "signal-action-output",
+          "signal-mask-input",
+          "signal-mask-output",
+          "directory-output",
+          "named-directory-output",
+          "uname-output",
+          "clock-time-output",
+          "clock-resolution-output",
+          "sleep-interval-input",
+          "console-input",
+          "descriptor-pread-output",
+          "descriptor-read-output",
+          "cwd-output",
+          "sparse-read-output",
+          "sparse-pread-output"
+        ],
+        "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+        "audit_sha256": "572ea9aa5675844e723c6e71e3da0cba89aa43a4de29ddb8b9f805b835a61077",
+        "audit_kind": "legacy-and-staging",
+        "scope": "Every selected observed admission result and REP start/completion: preserved helper registers/captured arguments, actual candidate/count/DF, equal copied bytes, user/supervisor permissions, no observed physical overlap with counterparty/translation storage and unchanged boundary translation/control observations. Read-only GDB observation, not continuous check-to-copy stability, complete table/backing ownership, every possible path or production qualification",
+        "staging_audit_sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6"
+      }
+    },
+    "pipes": {
+      "identity": {
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "1fe291d3850131cea0d374be8ec9c0225cf953e5f4923b502b65453492338b12"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "169b88b8958f94f334b193664e45b9c7af297fa99e459b86d8992c75f2815c9d"
+        },
+        "source-component.json": {
+          "bytes": 1439,
+          "sha256": "23a97c9dd1626e0f91adacac7a0b9253e87cef1e6ef2a81f7431dda5e8466bf3"
+        }
+      },
+      "reached_sites": 79,
+      "calls": 144,
+      "efaults": 76,
+      "copy_observation": {
+        "passed": true,
+        "counts": {
+          "header-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 11
+          },
+          "refill-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 5
+          },
+          "root-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 294
+          },
+          "pwd-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 24
+          },
+          "serial-command": {
+            "attempts": 1,
+            "admitted": 1,
+            "refused": 0,
+            "completed": 1,
+            "bytes": 23
+          },
+          "signal-action-input": {
+            "attempts": 12,
+            "admitted": 10,
+            "refused": 2,
+            "completed": 10,
+            "bytes": 320
+          },
+          "signal-action-output": {
+            "attempts": 16,
+            "admitted": 15,
+            "refused": 1,
+            "completed": 15,
+            "bytes": 480
+          },
+          "signal-mask-input": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 56
+          },
+          "signal-mask-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 80
+          },
+          "directory-output": {
+            "attempts": 8,
+            "admitted": 7,
+            "refused": 1,
+            "completed": 7,
+            "bytes": 200
+          },
+          "named-directory-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "uname-output": {
+            "attempts": 40,
+            "admitted": 16,
+            "refused": 24,
+            "completed": 16,
+            "bytes": 6240
+          },
+          "clock-time-output": {
+            "attempts": 56,
+            "admitted": 36,
+            "refused": 20,
+            "completed": 36,
+            "bytes": 576
+          },
+          "clock-resolution-output": {
+            "attempts": 24,
+            "admitted": 8,
+            "refused": 16,
+            "completed": 8,
+            "bytes": 128
+          },
+          "sleep-interval-input": {
+            "attempts": 80,
+            "admitted": 48,
+            "refused": 32,
+            "completed": 48,
+            "bytes": 768
+          },
+          "console-input": {
+            "attempts": 5,
+            "admitted": 3,
+            "refused": 2,
+            "completed": 3,
+            "bytes": 284
+          },
+          "descriptor-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "descriptor-read-output": {
+            "attempts": 9,
+            "admitted": 8,
+            "refused": 1,
+            "completed": 8,
+            "bytes": 16
+          },
+          "cwd-output": {
+            "attempts": 11,
+            "admitted": 10,
+            "refused": 1,
+            "completed": 10,
+            "bytes": 47
+          },
+          "sparse-read-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          },
+          "sparse-pread-output": {
+            "attempts": 0,
+            "admitted": 0,
+            "refused": 0,
+            "completed": 0,
+            "bytes": 0
+          }
+        },
+        "unreached": [
+          "named-directory-output",
+          "descriptor-pread-output",
+          "sparse-read-output",
+          "sparse-pread-output"
+        ],
+        "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+        "audit_sha256": "572ea9aa5675844e723c6e71e3da0cba89aa43a4de29ddb8b9f805b835a61077",
+        "audit_kind": "legacy-and-staging",
+        "scope": "Every selected observed admission result and REP start/completion: preserved helper registers/captured arguments, actual candidate/count/DF, equal copied bytes, user/supervisor permissions, no observed physical overlap with counterparty/translation storage and unchanged boundary translation/control observations. Read-only GDB observation, not continuous check-to-copy stability, complete table/backing ownership, every possible path or production qualification",
+        "staging_audit_sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6"
+      }
+    }
+  },
+  "current_kernel_reached_sites": 88,
+  "reached": [
+    27139,
+    27861,
+    28626,
+    29345,
+    29969,
+    33496,
+    33583,
+    36023,
+    36684,
+    38450,
+    39534,
+    40444,
+    41322,
+    42436,
+    43425,
+    44431,
+    44792,
+    44888,
+    52962,
+    55270,
+    56053,
+    56936,
+    57843,
+    58659,
+    59435,
+    60174,
+    62337,
+    64531,
+    68177,
+    70022,
+    75142,
+    76007,
+    76915,
+    80006,
+    81477,
+    82375,
+    83237,
+    84283,
+    85284,
+    86299,
+    87305,
+    89191,
+    90027,
+    91024,
+    92125,
+    93521,
+    95395,
+    95961,
+    98915,
+    99039,
+    99332,
+    102873,
+    103476,
+    107362,
+    108204,
+    131616,
+    140524,
+    141378,
+    142304,
+    143438,
+    144249,
+    145178,
+    145548,
+    145747,
+    145932,
+    151717,
+    155234,
+    156794,
+    158540,
+    161398,
+    177543,
+    185939,
+    186774,
+    186963,
+    187177,
+    190208,
+    194595,
+    196521,
+    203301,
+    204456,
+    205286,
+    207796,
+    221371,
+    222153,
+    222949,
+    224020,
+    231426,
+    231522
+  ],
+  "unreached": [
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-condition-write-clean",
+        "static-process-shell-named-root-condition-write-profile-ready"
+      ],
+      "offset": 88236,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-execve-signal-number-ready"
+      ],
+      "offset": 94708,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-root-directory-stat-profile-ready"
+      ],
+      "offset": 101802,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    }
+  ],
+  "scope": "Only actual matching changed-kernel observations; historical old-kernel 88/91 union is not reused"
+}

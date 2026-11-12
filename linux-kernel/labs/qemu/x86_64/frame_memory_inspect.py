@@ -3,7 +3,7 @@ import frame_root_inspect as harness
 
 
 harness.GDB_PROGRAM = r'''
-import gdb,json,traceback,hashlib
+import gdb,json,traceback,hashlib,struct
 
 observed=dict(passed=False,calls=[],memory=[],source_trace=None)
 pending=None
@@ -13,7 +13,7 @@ def address(s):return value('(unsigned long long)&'+s)
 def memory(p,n):return bytes(gdb.selected_inferior().read_memory(p,n))
 def words(p,n):
     b=memory(p,n*8)
-    return [int.from_bytes(b[i:i+8],'little') for i in range(0,len(b),8)]
+    return list(struct.unpack('<%dQ'%n,b))
 def word(p):return words(p,1)[0]
 def zeros(p,n):assert memory(p,n)==bytes(n),(hex(p),n)
 def context():return address('topal_bootstrap_storage')+512

@@ -1,0 +1,9 @@
+test_invalid_inactivity_limits_fail_closed (test_frame_progress.OutputActivityTests.test_invalid_inactivity_limits_fail_closed) ... ok
+test_new_debugger_output_resets_only_the_inactivity_clock (test_frame_progress.OutputActivityTests.test_new_debugger_output_resets_only_the_inactivity_clock) ... ok
+test_quiet_output_fails_at_the_inactivity_limit (test_frame_progress.OutputActivityTests.test_quiet_output_fails_at_the_inactivity_limit) ... ok
+test_repeated_polls_cannot_keep_quiet_output_alive (test_frame_progress.OutputActivityTests.test_repeated_polls_cannot_keep_quiet_output_alive) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK

@@ -223,10 +223,25 @@ except Exception:fail()
 '''
 
 
+class OutputActivity:
+    """Bound quiet diagnostic output separately from total workload time."""
+    def __init__(self, seconds, now):
+        assert isinstance(seconds, int) and seconds > 0
+        self.seconds, self.changed, self.stamp = seconds, now, None
+
+    def check(self, stamp, now):
+        if stamp != self.stamp:
+            self.stamp, self.changed = stamp, now
+        assert now-self.changed < self.seconds, (
+            f'full-root guest output inactive ({self.seconds}s)')
+
+
 def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=None,
          process_command=None, input_scope='ABI fixture', guest_timeout_seconds=300,
-         serial_dialogue=()):
+         serial_dialogue=(), output_activity_seconds=None):
     assert isinstance(guest_timeout_seconds, int) and 0 < guest_timeout_seconds <= 3600
+    if output_activity_seconds is not None:
+        assert isinstance(output_activity_seconds, int) and 0 < output_activity_seconds <= guest_timeout_seconds
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('work', type=Path)
     args = parser.parse_args()
@@ -276,6 +291,8 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
                 debugger = subprocess.Popen(['gdb', '-nx', '-batch', '-x', str(script)],
                                             stdout=gout, stderr=gerr)
                 deadline = time.monotonic() + guest_timeout_seconds
+                activity = (OutputActivity(output_activity_seconds, time.monotonic())
+                            if output_activity_seconds is not None else None)
                 sent_read = sent_command = False
                 while True:
                     try:
@@ -300,6 +317,8 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
                     (work / 'serial.log').write_bytes(received)
                     if debugger.poll() is not None:
                         break
+                    if activity is not None:
+                        activity.check((len(received), (work/'gdb.stdout.log').stat().st_size), time.monotonic())
                     assert time.monotonic() < deadline, f'full-root guest timed out ({guest_timeout_seconds}s)'
                     time.sleep(.03)
             stdout = (work / 'gdb.stdout.log').read_bytes()

@@ -84,9 +84,18 @@ class SourceReturned(Checked):
         if component.get('mode') == 'serial':
             return serial_returned(current,after)
         calls = current['calls']
-        assert [row['number'] for row in calls] == [12,12,63,63,63,63,63,63,63,1,1,1,1,12], calls
+        expected_numbers = [12,12,63,63,63,63,63,63,63,1,1,1,1]
         original = current['before'][1]
-        expected_results = [original,0x63a000,0,0]+[-14]*5+[0,-9,-22,-14,original]
+        expected_results = [original,0x63a000,0,0]+[-14]*5+[0,-9,-22,-14]
+        if component.get('mode') == 'transfers':
+            expected_numbers += [1,1,1,79]
+            expected_results += [-14,24,24,len(current['cwd_expected'])//2]
+            assert [row['args'] for row in calls[13:17]] == [
+                [1,0x639fff,2],[1,0x5ffff8,24],[1,0x638ff8,24],[0x638fff,5,0]]
+            assert word(word(context+928)+40) == current['cwd_before']
+            assert calls[16]['output_hex'] == current['cwd_expected']
+        assert [row['number'] for row in calls] == expected_numbers+[12], calls
+        expected_results += [original]
         assert [row['result'] for row in calls] == expected_results, calls
         assert [row['args'][0] for row in calls[2:9]] == [
             0x5ffff8,0x638ff8,0x639fff,0x63a000,(1<<64)-1,0x400000,0x800000]
@@ -118,6 +127,9 @@ class SourceEntered(Checked):
                        callee={name:reg(name) for name in callee}, calls=[],
                        snapshot=snapshot,
                        command_before=hashlib.sha256(memory(snapshot+0x9e00,512)).hexdigest())
+        if component.get('mode') == 'transfers':
+            current['cwd_before'] = word(word(context+928)+40)
+            current['cwd_expected'] = {3:b'/\0',4:b'/bin\0',6:b'/tmp\0'}[current['cwd_before']].hex()
         if component.get('mode') == 'signals':
             current['table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
         if component.get('mode') == 'pipes':
@@ -142,7 +154,13 @@ class SyscallReturned(Checked):
         assert (current or startup_current) and pending and reg('cs') & 3 == 3
         pending['result'] = signed(reg('rax'))
         pending['phase_after'] = memory(context+104,1)[0]
+        copy_source_syscall_returned(pending)
         staged_source_syscall_returned(pending)
+        if current and component.get('mode') == 'transfers' and pending['number'] == 79:
+            expected = bytes.fromhex(current['cwd_expected'])
+            assert pending['result'] == len(expected), pending
+            pending['output_hex'] = memory(pending['args'][0],len(expected)).hex()
+            assert pending['output_hex'] == current['cwd_expected'], pending
         if current and component.get('mode') == 'exec' and pending['number'] == 59:
             observe_exec_result(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
@@ -182,6 +200,7 @@ class SyscallEntered(Checked):
         pending = dict(number=reg('rdi'),
                        args=[reg(name) for name in ['rsi','rdx','rcx','r8'][:self.count]],
                        phase_before=memory(context+104,1)[0])
+        copy_source_syscall_entered(pending)
         staged_source_syscall_entered(pending)
         if current and component.get('mode') == 'exec' and pending['number'] == 59:
             observe_exec_request(pending)
@@ -519,8 +538,9 @@ if __name__ == '__main__':
     assert archive['static-user.elf'] == image
     extent_inventory = linked_inventory(build) if component.get('mode') in ['transfers','poll','pipes','storage','serial'] else None
     if component.get('mode') == 'transfers':
-        extent_inventory['native_observers'] = ['staged']
+        extent_inventory['native_observers'] = ['staged','copies']
         extent_inventory['source_scoped_staged'] = True
+        extent_inventory['source_scoped_copies'] = True
     serial_sites=serial_native_sites(build) if component.get('mode')=='serial' else None
     harness.GDB_PROGRAM = PROGRAM
     harness.main(

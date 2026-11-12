@@ -204,6 +204,11 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
                     "-Werror",
                     "-c",
                 ])
+                .arg(if mode == "transfers" && *stem == "source-cases" {
+                    "-DTOPAL_PROBE_CONSOLE=1"
+                } else {
+                    "-DTOPAL_PROBE_CONSOLE=0"
+                })
                 .arg(work.join(format!("{stem}.c")))
                 .arg("-o")
                 .arg(work.join(format!("{stem}.o"))),

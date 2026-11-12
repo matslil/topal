@@ -1,0 +1,1 @@
+{"passed": true, "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f", "provider_rewrites": 6, "internal_fixups": 923, "linked_fixups": 19, "other_provider_functions": 162, "other_target_functions": 32, "complete_linked_body_reconstructed": true}

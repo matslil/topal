@@ -1,0 +1,528 @@
+{
+  "complete": false,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "emitted_helper_calls": 91,
+  "calls_with_selected_local_intervals": 79,
+  "distinct_user_access_instructions": 306,
+  "selected_intervals": [
+    {
+      "name": "uname-loop",
+      "call_offset": 27139,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "cwd",
+      "call_offset": 27861,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "chdir",
+      "call_offset": 28626,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "pwd-cwd",
+      "call_offset": 29345,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "initial-cwd",
+      "call_offset": 29969,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "poll-input",
+      "call_offset": 33496,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "poll-result",
+      "call_offset": 33583,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "default-signal",
+      "call_offset": 36023,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "quit-signal",
+      "call_offset": 36684,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "header-command",
+      "call_offset": 38450,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "refill-command",
+      "call_offset": 39534,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "root-command",
+      "call_offset": 40444,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "header-byte",
+      "call_offset": 41322,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "pwd-command",
+      "call_offset": 42436,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "serial-command",
+      "call_offset": 43425,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "exec-path-byte",
+      "call_offset": 44431,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "exec-vector-word",
+      "call_offset": 44792,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "exec-argument-byte",
+      "call_offset": 44888,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "console-stat",
+      "call_offset": 52962,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "tty-path",
+      "call_offset": 55270,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "profile-path",
+      "call_offset": 56053,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "open-path",
+      "call_offset": 56936,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "reopen-path",
+      "call_offset": 57843,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "root-path",
+      "call_offset": 58659,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "bin-path",
+      "call_offset": 59435,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "root-stat",
+      "call_offset": 60174,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "empty-bin-stat",
+      "call_offset": 62337,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "profile-stat",
+      "call_offset": 64531,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "root-directory",
+      "call_offset": 68177,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "empty-bin-directory",
+      "call_offset": 70022,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "newline",
+      "call_offset": 75142,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "close-message",
+      "call_offset": 76007,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "prompt",
+      "call_offset": 80006,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "refill-prompt",
+      "call_offset": 81477,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "root-condition",
+      "call_offset": 82375,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "empty-bin-message",
+      "call_offset": 83237,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "executable-message",
+      "call_offset": 84283,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "nonempty-message",
+      "call_offset": 85284,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "open-message",
+      "call_offset": 86299,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "header-message",
+      "call_offset": 87305,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "pwd-output",
+      "call_offset": 89191,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "third-prompt",
+      "call_offset": 90027,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "fourth-prompt",
+      "call_offset": 91024,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "banner",
+      "call_offset": 92125,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "echo",
+      "call_offset": 93521,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "exec-signal-reset",
+      "call_offset": 94708,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "sigchld-install",
+      "call_offset": 95395,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "process-name",
+      "call_offset": 95961,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "stat-executable-path",
+      "call_offset": 98915,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "stat-directory-path",
+      "call_offset": 99039,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "named-stat",
+      "call_offset": 99332,
+      "audit": "artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "missing-path",
+      "call_offset": 101802,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "mail-path",
+      "call_offset": 102873,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "config-path",
+      "call_offset": 103476,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "stack-limit",
+      "call_offset": 107362,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "console-input",
+      "call_offset": 131616,
+      "audit": "artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "descriptor-pread-output",
+      "call_offset": 140524,
+      "audit": "artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "descriptor-read-output",
+      "call_offset": 141378,
+      "audit": "artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "descriptor-limit",
+      "call_offset": 144249,
+      "audit": "artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-action-input",
+      "call_offset": 145178,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-action-output",
+      "call_offset": 145548,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-mask-input",
+      "call_offset": 145747,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-mask-output",
+      "call_offset": 145932,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "namespace-byte",
+      "call_offset": 151717,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "cwd-output",
+      "call_offset": 156794,
+      "audit": "artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "directory-output",
+      "call_offset": 158540,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "named-directory-output",
+      "call_offset": 161398,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "seconds",
+      "call_offset": 177543,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "uname-output",
+      "call_offset": 185939,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "clock-time-output",
+      "call_offset": 186774,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "clock-resolution-output",
+      "call_offset": 186963,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "sleep-interval-input",
+      "call_offset": 187177,
+      "audit": "artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "thread-local-base",
+      "call_offset": 190208,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "clear-registration",
+      "call_offset": 194595,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "wait-status",
+      "call_offset": 196521,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "sparse-read-output",
+      "call_offset": 221371,
+      "audit": "artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "sparse-pread-output",
+      "call_offset": 222153,
+      "audit": "artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "environment-word",
+      "call_offset": 231426,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "environment-byte",
+      "call_offset": 231522,
+      "audit": "artifacts/additional-scalar-audit.json.gz"
+    }
+  ],
+  "calls_without_selected_local_intervals": [
+    {
+      "nearest_labels": [
+        "static-process-shell-warning-candidate"
+      ],
+      "offset": 76915,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-condition-write-clean",
+        "static-process-shell-named-root-condition-write-profile-ready"
+      ],
+      "offset": 88236,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-getrandom"
+      ],
+      "offset": 108204,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-serial-count-ready"
+      ],
+      "offset": 142304,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "source_line": 518,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-stat"
+      ],
+      "offset": 143438,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "source_line": 594,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "namespace-stat-object"
+      ],
+      "offset": 155234,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_namespace.rs",
+      "source_line": 327,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-descriptions-ready"
+      ],
+      "offset": 203301,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_create.rs",
+      "source_line": 109,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-read-count-ready"
+      ],
+      "offset": 204456,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_transfer.rs",
+      "source_line": 56,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-write-count-ready"
+      ],
+      "offset": 205286,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_transfer.rs",
+      "source_line": 131,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-ioctl"
+      ],
+      "offset": 207796,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_pipes.rs",
+      "source_line": 152,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-write-end"
+      ],
+      "offset": 222949,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-pwrite-end"
+      ],
+      "offset": 224020,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    }
+  ],
+  "scope": "Fresh reports for the changed kernel; conditional selected local intervals, not whole callers, complete owners/lifetime or production qualification"
+}

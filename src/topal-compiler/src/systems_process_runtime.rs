@@ -427,12 +427,21 @@ pub(super) fn emit_console_write(code: &mut X86FunctionEncoder) -> Result<(), Co
     e.0.call("runtime-readable-extent");
     e.0.jump_if(0x82, "runtime-write-efault");
     e.wipe();
-    e.gs(0x8b, Si, 320);
-    e.gs(0x8b, C, 328);
+    if e.0.owned_user_extents {
+        e.mov(Si, R8);
+        e.mov(C, R9);
+    } else {
+        e.gs(0x8b, Si, 320);
+        e.gs(0x8b, C, 328);
+    }
     e.mov(Di, R12);
     e.0.bytes(&[0xfc, 0xf3, 0xa4]);
     e.mov(Si, R12);
-    e.gs(0x8b, R14, 328);
+    if e.0.owned_user_extents {
+        e.mov(R14, R9);
+    } else {
+        e.gs(0x8b, R14, 328);
+    }
     e.0.bind("runtime-write-byte")?;
     e.0.bytes(&[0xac]);
     e.0.call("runtime-uart-byte");

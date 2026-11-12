@@ -20,6 +20,43 @@ static int split_uname(word address) {
     return failed;
 }
 
+#if TOPAL_PROBE_CONSOLE
+static int copied_console(word address) {
+    static const unsigned char marker[] = "TOPAL_USER_EXTENT_WRITE\n";
+    volatile unsigned char *input = (volatile unsigned char *)address;
+    unsigned char saved[sizeof(marker)+1];
+    for (unsigned i = 0; i < sizeof(saved); ++i) saved[i] = input[(long)i-1];
+    for (unsigned i = 0; i < sizeof(marker)-1; ++i) input[i] = marker[i];
+    input[-1] = 0xa7;
+    input[sizeof(marker)-1] = 0xb6;
+    long result = topal_test_syscall3(1,1,address,sizeof(marker)-1);
+    int failed = result != (long)(sizeof(marker)-1) || input[-1] != 0xa7 || input[sizeof(marker)-1] != 0xb6;
+    for (unsigned i = 0; i < sizeof(marker)-1; ++i) failed |= input[i] != marker[i];
+    for (unsigned i = 0; i < sizeof(saved); ++i) input[(long)i-1] = saved[i];
+    return failed;
+}
+static int copied_cwd(void) {
+    volatile unsigned char *out = (volatile unsigned char *)0x638fff;
+    unsigned char saved[8];
+    for (unsigned i = 0; i < sizeof(saved); ++i) saved[i] = out[(long)i-1];
+    for (unsigned i = 0; i < 5; ++i) out[i] = 0xcc;
+    out[-1] = 0xa7;
+    out[5] = 0xb6;
+    long result = topal_test_syscall3(79,0x638fff,5,0);
+    int failed = out[0] != '/' || out[-1] != 0xa7 || out[5] != 0xb6;
+    if (result == 2) {
+        failed |= out[1] != 0;
+        for (unsigned i = 2; i < 5; ++i) failed |= out[i] != 0xcc;
+    } else if (result == 5) {
+        int bin = out[1] == 'b' && out[2] == 'i' && out[3] == 'n';
+        int tmp = out[1] == 't' && out[2] == 'm' && out[3] == 'p';
+        failed |= !(bin || tmp) || out[4] != 0;
+    } else failed = 1;
+    for (unsigned i = 0; i < sizeof(saved); ++i) out[(long)i-1] = saved[i];
+    return failed;
+}
+#endif
+
 long topal_user_extent_source_cases(void) {
     long original = topal_test_syscall3(12, 0, 0, 0);
     if (original < 0x5f7000 || original > 0x619000) return 1;
@@ -50,6 +87,13 @@ long topal_user_extent_source_cases(void) {
     if (topal_test_syscall3(1, 0, ~(word)0, 0) != -9) return 13;
     if (topal_test_syscall3(1, 1, ~(word)0, 257) != -22) return 14;
     if (topal_test_syscall3(1, 1, ~(word)0, 1) != -14) return 15;
+
+#if TOPAL_PROBE_CONSOLE
+    if (topal_test_syscall3(1,1,0x639fff,2) != -14 || edge[-1] != 0xc9 || edge[0] != 0xda) return 17;
+    if (copied_console(0x5ffff8)) return 18;
+    if (copied_console(0x638ff8)) return 19;
+    if (copied_cwd()) return 20;
+#endif
 
     /* Preserve the surrounding witness's original heap and existing bytes. */
     if (topal_test_syscall3(12, (word)original, 0, 0) != original) return 16;

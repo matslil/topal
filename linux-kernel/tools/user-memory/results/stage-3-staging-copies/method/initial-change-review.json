@@ -1,0 +1,50 @@
+{
+  "kind": "single-agent authority and implementation self-review",
+  "risk": "High: kernel user-memory boundary; no independent human or agent security review claimed",
+  "stable_ids": [
+    "TK-DEC-283",
+    "TK-ELEMENT-USER-ACCESS-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-SYSTEMS-USER-EXTENT-001"
+  ],
+  "source_sha256": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "34bce63f6106fd11340968c10b29219bc6317b2c6b5a73a1c5d9550ac9b4938c",
+    "linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py": "869f7c7abc7bd4e2827ef044a207b1a0d4cb1ccd7f40e6f1f3bc6b7764dda583",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "4298835a9a1f32d80feb878f7b289b857a6285a96f13c0b5633b0ec298d1dc8b",
+    "linux-kernel/tools/user-memory/audit_copy_transfers.py": "f0c91de04e0afe0f4ecaa7861d81bebb9b537ac18bfc928789fecd25fe4e4105",
+    "src/topal-compiler/src/systems_file_descriptions.rs": "c256c6462108f66cf89c33308cd2ee55a21833cf5dda79f22dcc6ba18f950c60",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "2ee891d0fc77268c4b29abbe71b538033e6212be36760d9cca7dd50a154f64f4",
+    "src/topal-compiler/src/systems_positional_transfer.rs": "7879a014a4a7868268af73eed6880534217be948d72210bb42456519b0666470",
+    "src/topal-compiler/src/systems_process_runtime.rs": "a8bf5b5fbb1f2a58a389380b5058120447bfa9bae2e3d16817b7c4e204cfb02d",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "7d50a5241b0afdc418103e32edbca6c26dd91b3c9097be37db2d10bc1c177b10",
+    "linux-kernel/tools/user-memory/audit_staging_copies.py": "40a1391d3c106455093cb4d90640f35de1d9cdb8186d385d94af070ea829569a",
+    "linux-kernel/tools/user-memory/test_staging_copies.py": "27723183b6cfe5b48c5e0ba40092dcdc4d4b3b7cb89f7bed425bee375ad9574a"
+  },
+  "authority_sha256": {
+    "docs/systems-profile.md": "c2549736eac0f7e7c09ed1c0a669f6e2d140ea758728cf63b3c11674257b205f",
+    "se/requirements.md": "0e1ad7bfd9a01b014e9455a2d938e64715fee92db61358d7b09020f5d5a4ca8b",
+    "src/topal-compiler/se-requirements.md": "a44bb5abe02f2d5b23117bd9e71dc7f5155ed061ccc52b55213e36e8755c0213",
+    "spec/systems-profile.md": "c528834ee0401b1352cb7b2fd28029fbc4487f1cc7cfb582c99e4a38124e63fe",
+    "linux-kernel/design/owned-user-extents.md": "d746ee4732c8ffa48e69e62156b134cc5a8a08da713c49a0cff443f893c5f693",
+    "AGENTS.md": "a0744879fcd5de2a5befbd9cdcc3346c86afd7233c7c0a8eb0bc7e8d6b92659d"
+  },
+  "assessment": [
+    "No core-language or protected design meaning changes. Retain admitted values using the existing x86 helper preservation contract only in the experimental owned profile; preserve predecessor emission separately.",
+    "Check exact byte counts, candidate aliases, direction, DF, closed local incoming edges, conditional success dominance and the bounded page-lookup leaf. Console cap/empty exits must not reach the selected helper call.",
+    "Expose staging wipes, image/resident-page reads and private metadata effects as additional owner/alias obligations. Numeric addresses and distinct expressions grant no authority.",
+    "Native observers retain complete helper register/captured-argument checks and full copy payload/translation/control comparisons. Boundary equality is not continuous stability.",
+    "Ordinary source programs exercise application syscall arguments. Restore source buffers/guards/heap; verify current-directory bytes against actual private directory state. The unchanged pinned BusyBox image is not patched.",
+    "Partial serial count reasoning is still outside the six new selected intervals, despite preserving its admitted pointer in emission.",
+    "Review actual source versions separately: earlier native sources retain the prior pure reader; current static replay/controls and fresh pinned/native records must prove their actual versions.",
+    "Retain clock-reader, cwd-fixture, disk-quota and source-drift failures separately. None establishes or reports an AI safeguard reason."
+  ],
+  "remaining": [
+    "Complete helper, root, caller, callee and exception contracts; other memory accesses and whole-syscall effects.",
+    "Actual translation/backing/counterpart owners and stable entry-to-last-access lifetime; native mode and stale-state coverage.",
+    "Twelve helper sites without selected local intervals; three fallback obligations; current-kernel native coverage must be computed without relabeling historical execution.",
+    "Canonical owned-profile binding and exact committed production/cold reconstruction; general MM, processes, VFS/devices, containers and VM hosting."
+  ],
+  "validation_status": "Review assessment only. Required pending automated and native results are separate; this record does not certify full memory safety or production readiness."
+}

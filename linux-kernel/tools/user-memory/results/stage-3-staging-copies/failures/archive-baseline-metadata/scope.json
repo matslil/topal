@@ -1,0 +1,6 @@
+{
+  "kind": "archive packaging failure",
+  "native_validation_failed": false,
+  "reason": "An earlier equal-kernel build directory did not yet contain graph metadata. The corrected complete baseline matches the prior frozen kernel/provider/graph/census artifacts.",
+  "partial_archive_preserved_in_cache": true
+}

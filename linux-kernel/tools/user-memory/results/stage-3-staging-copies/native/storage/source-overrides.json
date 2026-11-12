@@ -1,0 +1,15 @@
+{
+  "inputs": {},
+  "baseline_context": {
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": {
+      "sha256": "af28c3d4bac29144048778efacdc53fe05ae623bf4d9f49808319d4124060bc5",
+      "snapshot": "../../earlier-inputs/before-full-workload-budget/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py": {
+      "sha256": "eb6ec2775f97488739e5ee4350d57281b3b8c4379e40609fbaa22d1276488cd0",
+      "snapshot": "../../earlier-inputs/before-full-workload-budget/linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py.gz"
+    }
+  },
+  "recorded_modified_inputs": 19,
+  "scope": "Actual recorded 19-input freeze. Two additional baseline harness files were saved before the later full-workload budget change and equal the base commit; they were not part of the per-run modified-input hash capture. New host-only test_frame_progress.py did not yet exist. Not a full checkout reconstruction."
+}

@@ -1,0 +1,13 @@
+test_invalid_inactivity_limits_fail_closed (test_frame_progress.OutputActivityTests.test_invalid_inactivity_limits_fail_closed) ... ok
+test_new_debugger_output_resets_only_the_inactivity_clock (test_frame_progress.OutputActivityTests.test_new_debugger_output_resets_only_the_inactivity_clock) ... ok
+test_quiet_output_fails_at_the_inactivity_limit (test_frame_progress.OutputActivityTests.test_quiet_output_fails_at_the_inactivity_limit) ... ok
+test_repeated_polls_cannot_keep_quiet_output_alive (test_frame_progress.OutputActivityTests.test_repeated_polls_cannot_keep_quiet_output_alive) ... ok
+test_all_bit_positions_and_unaligned_address (test_frame_word_decoding.FrameWordDecodingTests.test_all_bit_positions_and_unaligned_address) ... ok
+test_matches_predecessor_for_large_unsigned_little_endian_records (test_frame_word_decoding.FrameWordDecodingTests.test_matches_predecessor_for_large_unsigned_little_endian_records) ... ok
+test_repeated_observations_read_every_byte_again (test_frame_word_decoding.FrameWordDecodingTests.test_repeated_observations_read_every_byte_again) ... ok
+test_truncated_observation_cannot_silently_supply_fewer_words (test_frame_word_decoding.FrameWordDecodingTests.test_truncated_observation_cannot_silently_supply_fewer_words) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.440s
+
+OK

@@ -1,0 +1,9 @@
+{
+  "name": "staging-wipe-size",
+  "rejected": true,
+  "offset": 131667,
+  "expected_bytes": "c0",
+  "changed_bytes": "c1",
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+}

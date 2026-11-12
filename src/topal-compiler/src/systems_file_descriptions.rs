@@ -488,7 +488,11 @@ pub(in super::super) fn emit_transfer_services(
     e.0.bytes(&[0xf3, 0xa4]);
     e.mov(Si, R12);
     e.add(Si, STAGING);
-    e.gs(0x8b, Di, 320);
+    if e.0.owned_user_extents {
+        e.mov(Di, R8);
+    } else {
+        e.gs(0x8b, Di, 320);
+    }
     e.mov(C, R9);
     e.0.bytes(&[0xf3, 0xa4]);
     if source_position {
@@ -531,7 +535,11 @@ pub(in super::super) fn emit_transfer_services(
     e.0.bind("fd-serial-publish")?;
     e.mov(Si, R12);
     e.add(Si, STAGING);
-    e.gs(0x8b, Di, 320);
+    if e.0.owned_user_extents {
+        e.mov(Di, R8);
+    } else {
+        e.gs(0x8b, Di, 320);
+    }
     e.mov(C, R15);
     e.0.bytes(&[0xf3, 0xa4]);
     wipe_staging(&mut e);

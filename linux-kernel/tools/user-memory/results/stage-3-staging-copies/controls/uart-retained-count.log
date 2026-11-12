@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_staging_copies.py", line 247, in <module>
+    audit(Path(sys.argv[1]).resolve())
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_staging_copies.py", line 221, in audit
+    assert body[s.at:s.at+6] == bytes.fromhex('4c 89 e6 4d 89 ce'), 'UART count must retain admitted R9'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: UART count must retain admitted R9

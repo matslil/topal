@@ -1,0 +1,6 @@
+{
+  "bytes": 12936,
+  "sha256": "5d5df33d4da579a6393b5b59bf9a94819a43fa7b437ce10886fad034f9445d9e",
+  "archived": false,
+  "scope": "Host test executable identity only; source, predicate object, commands and actual output are retained. System startup/runtime binary redistribution is not introduced."
+}

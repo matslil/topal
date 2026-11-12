@@ -1,0 +1,36 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 1 test
+test systems_user_extent::tests::user_extent_shared_callers_use_real_large_heap_buffers ... actual frame source root: /home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794430527863296152/temporary/user-extent-callers-2337116-1794430528903344864
+
+thread 'systems_user_extent::tests::user_extent_shared_callers_use_real_large_heap_buffers' (2337117) panicked at src/topal-compiler/src/systems_tail_nat_owner_tests.rs:20:5:
+guest: /home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794430527863296152/temporary/user-extent-callers-2337116-1794430528903344864
+Traceback (most recent call last):
+  File "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py", line 732, in <module>
+    harness.main(work_name='user-extent-callers',program_prefix=prefix,
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 input_scope='ordinary split-page and cross-table syscall buffers',
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 expect_backing=not focused,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 # The full fixture repeats startup over four process images.
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 guest_timeout_seconds=1200 if selection['shell_io_only'] else 900 if focused else 1800)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py", line 303, in main
+    assert time.monotonic() < deadline, f'full-root guest timed out ({guest_timeout_seconds}s)'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: full-root guest timed out (1800s)
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    systems_user_extent::tests::user_extent_shared_callers_use_real_large_heap_buffers
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 387 filtered out; finished in 1819.92s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

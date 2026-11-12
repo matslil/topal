@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "gnu_decoder_nodes": 31016,
+  "gnu_graph_edges": 36938,
+  "external_transfers": 18,
+  "indirect_transfers": 6,
+  "terminals": 267,
+  "exact_lengths_and_direct_edges_equal": true,
+  "root_closure_equal": true,
+  "graph_sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa",
+  "decoder_transcript_sha256": "7717c2cc1ffcb7348e026ef3e5d286c705b69837699bd4c2f468512fd4c75214",
+  "decoder_transcript_bytes": 2446183,
+  "scope": "GNU host-file instruction-length/branch/closure re-decode of every selected LLVM graph node; no VM, complete callee/exception graph, pointer classification or security-dominance proof"
+}

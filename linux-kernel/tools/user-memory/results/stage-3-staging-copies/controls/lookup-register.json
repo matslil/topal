@@ -1,0 +1,9 @@
+{
+  "name": "lookup-register",
+  "rejected": true,
+  "offset": 219986,
+  "expected_bytes": "e3",
+  "changed_bytes": "eb",
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+}

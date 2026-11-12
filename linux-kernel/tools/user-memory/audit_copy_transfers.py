@@ -109,7 +109,9 @@ def sampler_contract(body, nodes, successors, entry):
     # writes. Both branches to the common CLI/HLT remain nonreturning exits.
     assert body[entry:entry+10] == bytes.fromhex('65 48 8b 3c 25 b0 03 00 00 e8')
     nested = entry+14+struct.unpack_from('<i', body, entry+10)[0]
-    assert body[entry+14:entry+27] == bytes.fromhex('48 81 f9 01 00 00 00 0f 85 b3 00 ff ff')
+    assert body[entry+14:entry+23] == bytes.fromhex('48 81 f9 01 00 00 00 0f 85')
+    failure = entry+27+struct.unpack_from('<i',body,entry+23)[0]
+    assert body[failure:failure+2] == bytes.fromhex('fa f4')
     assert body[entry+27:entry+28] == b'\xc3' and nested == entry+28
     seen, pending, effects = set(), [entry], []
     while pending:

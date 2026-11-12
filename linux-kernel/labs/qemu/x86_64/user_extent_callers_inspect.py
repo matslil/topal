@@ -732,5 +732,8 @@ if __name__ == '__main__':
     harness.main(work_name='user-extent-callers',program_prefix=prefix,
                  input_scope='ordinary split-page and cross-table syscall buffers',
                  expect_backing=not focused,
-                 # The full fixture repeats startup over four process images.
-                 guest_timeout_seconds=1200 if selection['shell_io_only'] else 900 if focused else 1800)
+                 # Four images retain the focused per-image correctness budget.
+                 # A separate output-inactivity guard detects a quiet guest;
+                 # final native/model assertions still decide correctness.
+                 guest_timeout_seconds=1200 if selection['shell_io_only'] else 900 if focused else 4*900,
+                 output_activity_seconds=None if focused else 300)

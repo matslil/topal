@@ -1,0 +1,105 @@
+{
+  "passed": true,
+  "unchanged_positive_report_equal": true,
+  "rejections": [
+    {
+      "name": "console-cap",
+      "rejected": true,
+      "offset": 131587,
+      "expected_bytes": "00",
+      "changed_bytes": "01",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "console-candidate",
+      "rejected": true,
+      "offset": 131612,
+      "expected_bytes": "f0",
+      "changed_bytes": "f8",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "uart-retained-count",
+      "rejected": true,
+      "offset": 131718,
+      "expected_bytes": "ce",
+      "changed_bytes": "c6",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "descriptor-retained-candidate",
+      "rejected": true,
+      "offset": 141499,
+      "expected_bytes": "c7",
+      "changed_bytes": "cf",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "cwd-count-definition",
+      "rejected": true,
+      "offset": 156725,
+      "expected_bytes": "02",
+      "changed_bytes": "06",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "sparse-count-cap",
+      "rejected": true,
+      "offset": 221301,
+      "expected_bytes": "00",
+      "changed_bytes": "01",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "lookup-register",
+      "rejected": true,
+      "offset": 219986,
+      "expected_bytes": "e3",
+      "changed_bytes": "eb",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "staging-wipe-size",
+      "rejected": true,
+      "offset": 131667,
+      "expected_bytes": "c0",
+      "changed_bytes": "c1",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "carry-polarity",
+      "rejected": true,
+      "offset": 131631,
+      "expected_bytes": "82",
+      "changed_bytes": "83",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "console-cap-exit",
+      "rejected": true,
+      "offset": 131593,
+      "expected_bytes": "81030000",
+      "changed_bytes": "13000000",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    },
+    {
+      "name": "console-zero-exit",
+      "rejected": true,
+      "offset": 131606,
+      "expected_bytes": "c1000000",
+      "changed_bytes": "06000000",
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+    }
+  ]
+}
