@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "previous": {
+    "bytes": 48112,
+    "sha256": "1ddae843df0cce25d0cce1b4ccefdfb419e175abc5c70730c4fc11a1a7c5e893"
+  },
+  "current": {
+    "bytes": 48112,
+    "sha256": "666e8d84c405460e1b6614882ef60fe2ec3573cad50d6976fd4b809a3cd99d25"
+  },
+  "allocated_sections_equal": true,
+  "allocated_sections": {
+    ".text": {
+      "type": 1,
+      "flags": 6,
+      "address": 5701632,
+      "bytes": 9009,
+      "sha256": "870d0570ec0d93935387e75b6076d2d2a57081f84edee3243ed21f6d511c4aa2"
+    },
+    ".data": {
+      "type": 1,
+      "flags": 3,
+      "address": 5710641,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".bss": {
+      "type": 8,
+      "flags": 3,
+      "address": 5710641,
+      "bytes": 0,
+      "sha256": null
+    }
+  },
+  "different_nonallocated_sections": [
+    ".debug_info",
+    ".debug_line",
+    ".debug_line_str"
+  ],
+  "scope": "Raw source-user ELF section equality: allocated section layout/bytes agree, differences are confined to these nonallocated debug sections. Not a complete producer or second native execution"
+}

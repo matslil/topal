@@ -209,3 +209,14 @@ No executable kernel bytes change. Fresh per-access observation, actual private/
 output/stack owners, nonaliasing, continuous lifetime and complete entry/callee/
 exception effects remain required. The published 79-site/306-instruction index
 and all twelve sites without published intervals remain unchanged.
+
+The [native fixed-pipe checkpoint](results/stage-3-fixed-pipe-native/README.md)
+then observes 24 completed fixed outputs, 40 refused admissions and 28 scalar
+accesses through 144 ordinary source syscalls. Separate saved-record readback
+checks source order, queue-derived count payloads, pair values and translation/
+exclusion observations. Kernel/application/boot bytes remain unchanged. The
+recomputed six-report conditional index has 81 helper sites and 309 user-access
+instructions, leaving ten sites without intervals. Complete owners/nonaliasing,
+continuous lifetime, helper/entry/callee/exception/fallback and canonical
+production obligations remain open; neither boundary equality nor observed
+disjoint ranges grants that authority.

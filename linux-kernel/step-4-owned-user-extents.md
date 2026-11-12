@@ -559,3 +559,19 @@ nonaliasing, continuous lifetime or complete helper/entry/return/fatal/exception
 effects. The published index remains 79/91 sites and 306 user instructions,
 with all twelve sites without published intervals still listed. All fallback,
 canonical production and complete Stage-3/Step-4 obligations remain open.
+
+The subsequent [native fixed-pipe checkpoint](tools/user-memory/results/stage-3-fixed-pipe-native/README.md)
+observes both paths through unchanged ordinary source requests: 24 completed
+transfers, 40 refused admissions and 28 stores/readbacks in 144 syscalls.
+Helper/candidate/count/captured-argument preservation, exact payloads and
+access-boundary translation/control observations pass, with independent
+source-order and queue-count readback. Eight compared kernel/metadata/application/
+boot artifacts are unchanged. Raw source-link differences are confined to
+nonallocated debug sections. All 69 models/readers and exact frozen replay pass.
+
+The new six-report conditional index has 81/91 sites and 309 user instructions,
+with ten sites still without selected intervals. The matching-kernel first-reach
+union remains 88/91. Boundary observations and selected physical exclusions do
+not qualify complete actual owners/nonaliasing, continuous lifetime, complete
+helper/entry/callee/return/fatal/exception effects, fallbacks or canonical
+production. Stage 3, initial Step 4 and the original objective remain unfinished.

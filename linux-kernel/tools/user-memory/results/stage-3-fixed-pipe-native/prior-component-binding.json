@@ -1,0 +1,9 @@
+{
+  "record": "../stage-3-fixed-pipe-audit/native/source-component.json.gz",
+  "record_sha256": "918994b1e2bd546bd1a2ca2fb74037d68d84d54ab4b524c62b79adae5d2ab483",
+  "image_sha256": "1fe291d3850131cea0d374be8ec9c0225cf953e5f4923b502b65453492338b12",
+  "linked_sha256": "1ddae843df0cce25d0cce1b4ccefdfb419e175abc5c70730c4fc11a1a7c5e893",
+  "current_linked_sha256": "666e8d84c405460e1b6614882ef60fe2ec3573cad50d6976fd4b809a3cd99d25",
+  "raw_linked_images_equal": false,
+  "scope": "Installed first-party application image is identical; raw source-user link ELF equality is not claimed"
+}

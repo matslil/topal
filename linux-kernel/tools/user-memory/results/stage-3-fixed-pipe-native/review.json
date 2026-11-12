@@ -1,0 +1,38 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High if boundary observations are mistaken for continuous lifetime or complete ownership; observer/test/record changes only, no kernel or authority-design change",
+  "review": "Single-agent authority/source review; actual observer model counterexamples, source-issued invalid/valid syscalls, independent payload/queue/translation and source-order readback, preserved byte identities and frozen replay",
+  "model_reader_tests": 69,
+  "new_observer_controls": 8,
+  "source_syscalls": 144,
+  "completed_transfers": 24,
+  "refused_admissions": 40,
+  "scalar_access_observations": 28,
+  "changed_sources_stable_during_run": 5,
+  "selected_inputs": 141,
+  "byte_identical_artifacts": 8,
+  "conditional_index_sites": 81,
+  "conditional_index_access_instructions": 309,
+  "sites_without_intervals": 10,
+  "native_helper_union_unchanged": "88/91",
+  "core_language_or_authority_meaning_changed": false,
+  "native_failures": [],
+  "safeguard_notices": [],
+  "packaging_failures": [
+    "Initial archive incorrectly required raw source-user link ELF equality in addition to the independently verified identical installed application image; retained as a failed packaging check, not a native or AI failure",
+    "Initial selected replay ran 52 tests because unchanged model tests were not inherited; the second found their missing model module. Final selected snapshots include both unchanged files and require all 69 tests"
+  ],
+  "remaining": [
+    "Complete actual table/backing/output/stack ownership and nonaliasing",
+    "Continuous entry-bound mapping lifetime; boundary equality is insufficient",
+    "Complete helper/entry/callee/return/fatal/exception effects",
+    "Ten sites without selected intervals and all three fallback obligations",
+    "Canonical production qualification and full original Step-4 acceptance"
+  ]
+}

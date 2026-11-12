@@ -22,12 +22,13 @@ class ObserverSelection(unittest.TestCase):
                          kernel_sha256='model', inventory_sha256='model'),
                          extent_first_reach={0: dict(offset=0)}, address=lambda name: 100,
                          observed={})
-        for name in ['callback', 'copy', 'staged']:
+        for name in ['callback', 'copy', 'staged', 'pipe_fixed']:
             namespace[name + '_events'] = []
         for name, install, complete in [
             ('callback', 'install_callback_observation', 'callback_coverage_complete'),
             ('copy', 'install_copy_observation', 'copy_observation_complete'),
-            ('staged', 'install_staged_observation', 'staged_observation_complete')]:
+            ('staged', 'install_staged_observation', 'staged_observation_complete'),
+            ('pipe_fixed', 'install_pipe_fixed_observation', 'pipe_fixed_observation_complete')]:
             namespace[install] = lambda name=name: namespace[name + '_events'].append('install')
             namespace[complete] = lambda name=name: namespace[name + '_events'].append('complete')
         return namespace
@@ -46,6 +47,15 @@ class ObserverSelection(unittest.TestCase):
         ns['extent_coverage_complete']()
         self.assertEqual(ns['staged_events'], ['install', 'complete'])
         self.assertEqual(ns['callback_events'] + ns['copy_events'], [])
+
+    def test_pipe_observation_runs_only_when_explicitly_selected(self):
+        for selected in [False,True]:
+            ns = self.namespace()
+            if selected:
+                ns['extent_inventory']['native_observers'] = ['callbacks','copies','staged','pipe-fixed']
+            ns['install_extent_coverage']()
+            ns['extent_coverage_complete']()
+            self.assertEqual(ns['pipe_fixed_events'],['install','complete'] if selected else [])
 
     def test_unknown_empty_and_duplicate_selections_fail_closed(self):
         for groups in [[], ['unknown'], ['staged', 'staged']]:

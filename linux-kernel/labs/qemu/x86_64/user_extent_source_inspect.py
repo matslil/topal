@@ -156,6 +156,7 @@ class SyscallReturned(Checked):
         pending['phase_after'] = memory(context+104,1)[0]
         copy_source_syscall_returned(pending)
         staged_source_syscall_returned(pending)
+        pipe_fixed_syscall_returned(pending)
         if current and component.get('mode') == 'transfers' and pending['number'] == 79:
             expected = bytes.fromhex(current['cwd_expected'])
             assert pending['result'] == len(expected), pending
@@ -202,6 +203,7 @@ class SyscallEntered(Checked):
                        phase_before=memory(context+104,1)[0])
         copy_source_syscall_entered(pending)
         staged_source_syscall_entered(pending)
+        pipe_fixed_syscall_entered(pending)
         if current and component.get('mode') == 'exec' and pending['number'] == 59:
             observe_exec_request(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
@@ -541,6 +543,8 @@ if __name__ == '__main__':
         extent_inventory['native_observers'] = ['staged','copies']
         extent_inventory['source_scoped_staged'] = True
         extent_inventory['source_scoped_copies'] = True
+    if component.get('mode') == 'pipes' and extent_inventory.get('pipe_fixed_output_audit') is not None:
+        extent_inventory['native_observers'] = ['callbacks','copies','staged','pipe-fixed']
     serial_sites=serial_native_sites(build) if component.get('mode')=='serial' else None
     harness.GDB_PROGRAM = PROGRAM
     harness.main(

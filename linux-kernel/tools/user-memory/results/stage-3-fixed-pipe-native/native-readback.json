@@ -1,0 +1,488 @@
+{
+  "passed": true,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "observation_sha256": "c73df6a4ac1ba19ac1a71a96244fb9043504a45e2ccecc5cd1dea2e0515b953d",
+  "audit_sha256": "16b71dd3fbc06c1c5e990343fbc992696fdedaadaa67c4b676561696b7eba370",
+  "source_syscalls": 144,
+  "completed_transfers": [
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6524924,
+      "bytes": 8,
+      "payload_hex": "0500000006000000",
+      "accesses": 2
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6524924,
+      "bytes": 8,
+      "payload_hex": "0500000006000000",
+      "accesses": 2
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6524924,
+      "bytes": 8,
+      "payload_hex": "0500000006000000",
+      "accesses": 2
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6524924,
+      "bytes": 8,
+      "payload_hex": "0500000006000000",
+      "accesses": 2
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "10000000",
+      "accesses": 1
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6291454,
+      "bytes": 4,
+      "payload_hex": "00000000",
+      "accesses": 1
+    }
+  ],
+  "refused_transfers": [
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529024,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 18446744073709551615,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 4194304,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 8388608,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529020,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529024,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 18446744073709551615,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 4194304,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 8388608,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529022,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529024,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 18446744073709551615,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 4194304,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 8388608,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529020,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529024,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 18446744073709551615,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 4194304,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 8388608,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529022,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529024,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 18446744073709551615,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 4194304,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 8388608,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529020,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529024,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 18446744073709551615,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 4194304,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 8388608,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529022,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529024,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 18446744073709551615,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 4194304,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 8388608,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-pair-output",
+      "number": 293,
+      "pointer": 6529020,
+      "bytes": 8
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529024,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 18446744073709551615,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 4194304,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 8388608,
+      "bytes": 4
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "number": 16,
+      "pointer": 6529022,
+      "bytes": 4
+    }
+  ],
+  "user_access_observations": 28,
+  "byte_identical_artifacts": [
+    {
+      "path": "kernel.elf",
+      "bytes": 1665328,
+      "sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f"
+    },
+    {
+      "path": "provider.o",
+      "bytes": 1061624,
+      "sha256": "363b01c4f75056b0eca0e76628e480ff6dcbc1aad0db885ac8dd205e79f729c6"
+    },
+    {
+      "path": "extent-call-inventory.json",
+      "bytes": 27066,
+      "sha256": "7e27b70623f25ae6fd463463d05c8a8fbe937f0be3b4345c20df3a2c83dfadc9"
+    },
+    {
+      "path": "process-access-inventory.json",
+      "bytes": 10310563,
+      "sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa"
+    },
+    {
+      "path": "process-access-origins.json",
+      "bytes": 9881057,
+      "sha256": "b5c1ecd7dd3afe0131f2a4da303a80d882960aabb2a86f7de5f68ef07364ed41"
+    },
+    {
+      "path": "pipe-fixed-output-audit.json",
+      "bytes": 35502,
+      "sha256": "16b71dd3fbc06c1c5e990343fbc992696fdedaadaa67c4b676561696b7eba370"
+    },
+    {
+      "path": "static-elf-abi-fixture.elf",
+      "bytes": 2024544,
+      "sha256": "1fe291d3850131cea0d374be8ec9c0225cf953e5f4923b502b65453492338b12"
+    },
+    {
+      "path": "initramfs.cpio",
+      "bytes": 2037200,
+      "sha256": "169b88b8958f94f334b193664e45b9c7af297fa99e459b86d8992c75f2815c9d"
+    }
+  ],
+  "observer_program_present_in_saved_gdb": true,
+  "scope": "Independent saved-native/source-syscall correspondence and queue-count/payload/translation/exclusion readback. These are the same native run, not a second execution or complete owner/nonalias/continuous-lifetime/entry/callee/exception/production proof"
+}
