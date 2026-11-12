@@ -717,6 +717,92 @@ proofs, continuous lifetime/invalidation, unchanged 51-workload application
 corpus and public activation remain open. This stage does not complete initial
 Step 4 or the original full Linux/distribution/container/VM-host objective.
 
+## Unchanged application corpus on the process-MM kernel
+
+All **51 unchanged pinned BusyBox workloads** pass on the experimental
+process-MM kernel. The ignored `process_mm_preserves_pinned_busybox_workloads`
+test selects their existing command/output/status contracts. Each workload uses
+a separate normal **640-MiB, two-CPU TCG VM**, with the existing finite
+600-second deadline. An explicit diagnostic subset cannot qualify the whole
+corpus. This adds no public kernel selection or core-language meaning.
+
+The [application observer](labs/qemu/x86_64/process_mm_application_inspect.py)
+retains the predecessor's checks for operations 0..7. Separate namespaces retain
+the existing owned-extent callback/copy/staging observations and process-MM
+boundary checks. MM returns also check the original complete caller, private,
+stack, facts, output and gateway-recovery retirement windows. Final read-only
+observation captures whole frame-catalog and registry digests, the remaining
+root-token bank and actual CR3. The shared console checker preserves the
+existing prelude, output, exit-status, newline and successful-exec contracts.
+
+The [saved-record reader](tools/process-memory/readback_applications.py) joins
+legacy and process-MM observations, rechecks the selected MM transitions and
+binds return-retirement addresses, sizes and zero digests. Kernel load spans
+and reservations bind to the linked ELF and actual boot-resource length.
+Complete final catalog and registry reconstruction uses the original firmware
+frames and remaining pinned bootstrap allocation. These checks complement the
+native observers; they do not independently replay every observer assertion or
+prove continuous exclusion and every invalidation/release instruction.
+
+The complete corpus records **1,054 MM boundaries**, including **102 successful
+execs**, **27 child creations/commits/exits**, **four cooperative handoffs**,
+and terminal cleanup in all 51 VMs. It observes **333 retired extents /
+25,694,208 erased backing bytes**. The reader rejects **859 altered-record
+controls**, which modify saved data only. Complete final catalog/registry
+reconstruction binds all **152,008 firmware frames** per VM and the remaining
+pinned five-page bootstrap hierarchy. The union of first-reach samples covers
+**66 of 91 extent-helper sites** and matches the linked process graph; it does
+not qualify every site, path or caller lifetime.
+
+The [archive](tools/process-memory/results/stage-3-application-corpus/report.json)
+binds the actual native command, source hashes before/after execution, exact
+observer programs, pinned image and boot resource, generated artifacts and fresh
+validation. Its kernel remains byte-identical to the preceding process-MM
+cohorts: `b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+All seven LLVM modules verify, and thirteen predecessor contributions remain
+unchanged. Complete stack/physical bounds remain **2,280/4,096** and
+**4,088/4,096 bytes**. Locked workspace/all-target checking, **203 user-memory
+tests**, **37 process-memory tests**, the default ABI-fixture hash, formatting
+and Rust file-size ceiling pass. Six new host-only console tests use the 51
+retained real consoles and clean ABI console plus altered-output/status/exec/
+prelude controls; these tests supply no fresh VM evidence.
+
+The collector verifies the preceding interface archive and rechecks its
+**nine interface and twenty process histories / 522 retained controls** on the
+same kernel. Those are identified previous native executions, not new VMs or
+complete historical rebuilds. The
+[frozen replay](tools/process-memory/replay_applications.py) repeats the new and
+retained saved-record comparisons and the frozen 203/37 Python suites without
+executing a VM or rebuilding a kernel. Its overall success report is written
+only after both model suites pass; an intermediate record-comparison result
+cannot establish complete replay success.
+
+The full native batch completes in **7,955.87 seconds**, with unchanged watched
+source hashes and a last sampled cgroup peak of
+**1,164,021,760 / 3,395,215,360 bytes**, zero swap and zero memory events. This
+last live sample does not measure an unseen final instant. Host protections,
+filesystem/network boundaries and the resource wrapper remain unchanged.
+
+An earlier invocation failed before starting a VM because a relative pinned
+image path resolved from Cargo's crate directory. Supplying the absolute path
+fixed that invocation error. A preliminary native selection of `true`,
+`child-echo` and `pipe-substitution-large` then passed in **481.30 seconds**,
+with unchanged source hashes, a last sampled cgroup peak of
+**695,607,296 / 3,384,328,192 bytes**, zero swap and zero memory events.
+That preliminary run preceded final catalog/registry digest capture; it cannot
+qualify the current complete corpus. These results provide no explanation of
+an AI model or provider safeguard decision.
+
+Risk remains high for accepting incorrect application behavior or memory
+retirement. Review combines the authority chain, source/diff review, retained
+native assertions, artifact bindings, complete final reconstruction and separate
+saved-data controls; no independent human security review is claimed. The
+earlier metadata observer assertion remains unexplained. Remaining caller/loan/
+mapping, identity-width/resource/fatal, continuous lifetime and public activation
+obligations still apply. This qualifies the unchanged application-corpus
+component, not initial Step 4 or the full Linux/distribution/container/VM-host
+objective.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss
@@ -727,8 +813,9 @@ Step 4 or the original full Linux/distribution/container/VM-host objective.
    broader child exec/image cases, every remaining switch/exit and
    overlapping leaf-table writer. Qualify remaining creation/resize/resource
    failure shapes and full invalidation/pre-release ordering.
-   Existing child cases pass in this component; full pipe and 51-workload
-   application regressions remain required.
+   The existing child/pipe and unchanged 51-workload application regressions
+   pass on this experimental kernel; they do not discharge these remaining
+   native ownership/lifetime obligations.
 4. Complete affected production qualification and immutable source/native/load/
    boot reconstruction before activation. Preserve mode, concurrent-access and
    fault gaps as acceptance blockers, not successful model evidence.

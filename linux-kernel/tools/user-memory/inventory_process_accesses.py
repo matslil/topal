@@ -200,7 +200,7 @@ def inventory(build, tool):
 
 def verify_coverage(build):
     graph = json.loads((build/'process-access-inventory.json').read_text())
-    paths = [build/name/'observations.json' for name in ['first-image-exit', 'source-user-extents']]
+    paths = [build/name/'observations.json' for name in ['first-image-exit', 'source-user-extents', 'process-mm-applications']]
     paths = [path for path in paths if path.is_file()]
     assert len(paths) == 1
     observed = json.loads(paths[0].read_text())

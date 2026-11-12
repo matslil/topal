@@ -136,6 +136,18 @@ metadata observer assertion remains unexplained despite two later successful
 runs. Broader caller/loan/fatal, continuous lifetime, unchanged application-corpus
 and public-activation gates remain required; initial Step 4 is incomplete.
 
+The subsequent [unchanged application corpus](step-4-process-memory-ownership.md#unchanged-application-corpus-on-the-process-mm-kernel)
+passes all **51 pinned BusyBox workloads** on the same experimental kernel.
+It records **1,054 MM boundaries**, **333 retired extents / 25,694,208 erased
+backing bytes**, and **859 saved-data controls**. Complete final catalog/registry
+reconstruction binds all 152,008 firmware frames per VM. First-reach samples
+cover 66 of 91 extent-helper sites, without every-path or lifetime qualification.
+Fresh 203 user-memory and 37 process-memory tests pass. Nine interface and
+twenty process histories remain identified as previous native executions on
+the byte-identical kernel. Remaining caller/loan/mapping, identity-width/fatal,
+continuous lifetime and public activation work still blocks initial Step 4 and
+the original full Linux/distribution/container/VM-host objective.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

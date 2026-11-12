@@ -1782,6 +1782,44 @@ def evidence_record(
     }
 
 
+def verify_process_serial(
+    serial: bytes,
+    *,
+    external: bool,
+    process_workload: str,
+    clean_environment_mode: str = "maximum",
+) -> None:
+    """Check the existing serial contract independently of kernel construction."""
+    _, process_output, process_status = PROCESS_WORKLOADS[process_workload]
+    if not external:
+        process_output, process_status = b"runtime-alias\nruntime-clean\n" + b"z" * 256, 0x23
+    expected_newline_count = (12 if external else 19) + process_output.count(b"\n")
+    if serial.replace(EXEC_COMMIT_MARKER, b"").count(b"\n") != expected_newline_count:
+        raise GateError("static applet newline count did not match the selected qualification input")
+    if b"busybox-open\nbusybox-read\nbusybox-close\n" not in serial:
+        raise GateError("static applet did not publish the exact BusyBox read and close output")
+    status_witness = f"\nTOPAL_KERNEL_PROCESS_EXIT_STATUS={process_status:02x}\n".encode()
+    final_prompt = b"/\n" if external else b"/ # "
+    if final_prompt + process_output + status_witness not in serial.replace(EXEC_COMMIT_MARKER, b""):
+        raise GateError("runtime process output or observed exit status differed")
+    expected_commits = 3 if not external and clean_environment_mode == "maximum" else 1
+    if external:
+        expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3,
+                            "replacement-shell-pid": 2, "replacement-shell-cwd": 2,
+                            "child-echo": 2, "child-status": 2, "child-repeated": 3,
+                            "child-cwd": 2, "child-offset": 3,
+                            "pipe-substitution":2,"pipe-substitution-changed":2,
+                            "pipe-substitution-large":2,
+                            "named-redirection":2,"named-append":2,"named-truncate":2,
+                            "named-reopen":3,"named-remove":3,"named-list":2}.get(process_workload, 1)
+        if process_workload.startswith('mode-'):
+            expected_commits = 3
+        if process_workload.startswith('namespace-'):
+            expected_commits = 3 if process_workload in ('namespace-move','namespace-link') else 4
+    if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
+        raise GateError("unexpected successful image-replacement count")
+
+
 def verify(
     timeout: float,
     write_evidence: bool,
@@ -1832,39 +1870,9 @@ def verify(
             raise GateError(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
-        expected_newline_count = (
-            12
-            if static_user_input == "pinned-external-static-busybox"
-            else 19
-        ) + process_output.count(b"\n")
-        if serial.replace(EXEC_COMMIT_MARKER, b"").count(b"\n") != expected_newline_count:
-            raise GateError(
-                "static applet newline count did not match the selected qualification input"
-            )
-        if b"busybox-open\nbusybox-read\nbusybox-close\n" not in serial:
-            raise GateError(
-                "static applet did not publish the exact BusyBox read and close output"
-            )
-        status_witness = f"\nTOPAL_KERNEL_PROCESS_EXIT_STATUS={process_status:02x}\n".encode()
-        final_prompt = b"/\n" if external_static_user_image is not None else b"/ # "
-        if final_prompt + process_output + status_witness not in serial.replace(EXEC_COMMIT_MARKER, b""):
-            raise GateError("runtime process output or observed exit status differed")
-        expected_commits = 3 if external_static_user_image is None and clean_environment_mode == "maximum" else 1
-        if external_static_user_image is not None:
-            expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3,
-                                "replacement-shell-pid": 2, "replacement-shell-cwd": 2,
-                                "child-echo": 2, "child-status": 2, "child-repeated": 3,
-                                "child-cwd": 2, "child-offset": 3,
-                                "pipe-substitution":2,"pipe-substitution-changed":2,
-                                "pipe-substitution-large":2,
-                                "named-redirection":2,"named-append":2,"named-truncate":2,
-                                "named-reopen":3,"named-remove":3,"named-list":2}.get(process_workload, 1)
-            if process_workload.startswith('mode-'):
-                expected_commits = 3
-            if process_workload.startswith('namespace-'):
-                expected_commits = 3 if process_workload in ('namespace-move','namespace-link') else 4
-        if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
-            raise GateError("unexpected successful image-replacement count")
+        verify_process_serial(serial, external=external_static_user_image is not None,
+                              process_workload=process_workload,
+                              clean_environment_mode=clean_environment_mode)
         record = evidence_record(
             qemu_version,
             image,

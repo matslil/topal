@@ -282,3 +282,60 @@ frozen selected inputs without a VM or full historical rebuild. These checks
 do not independently replay every native observer assertion or complete the
 remaining caller/loan/fatal, continuous lifetime, application-corpus and public
 activation gates.
+
+## Unchanged application corpus on the process-MM selection
+
+The ignored `process_mm_preserves_pinned_busybox_workloads` test selects the
+existing pinned BusyBox application on the experimental process-MM kernel.
+The image must retain SHA-256
+`7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd`.
+Provide an absolute path because Cargo executes the test from its crate directory.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 TOPAL_PINNED_STATIC_USER_IMAGE=/absolute/path/to/pinned/busybox scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_preserves_pinned_busybox_workloads -- --ignored --nocapture
+```
+
+The default runs all 51 existing command/output/status contracts in separate
+normal two-CPU/640-MiB TCG guests. `TOPAL_TEST_PROCESS_MM_WORKLOADS` permits an
+explicit comma-separated diagnostic selection; unknown, empty or repeated
+names fail. A diagnostic subset is not complete corpus qualification.
+
+[The application observer](../../labs/qemu/x86_64/process_mm_application_inspect.py)
+retains the predecessor application checks for their original operations 0..7.
+Separate namespaces retain the existing owned-extent callback/copy/staging
+observers and the process-MM boundary model. Selected MM returns additionally
+check the original complete caller/private/stack/facts/output/recovery retirement
+windows. Final observation records whole frame-catalog and registry digests,
+the remaining root tokens and actual CR3. No guest state is supplied or changed
+by those read-only observations. The shared console checker preserves the
+existing prelude, output, exit-status, newline and successful-exec contracts.
+Saved-console tests use all 51 retained application consoles and the clean ABI
+console, plus altered output/status/exec/prelude controls; those are host tests.
+
+[readback_applications.py](readback_applications.py) joins the legacy and MM
+records, rechecks every MM transition and binds each retired window's address,
+size and zero digest. Recorded load spans and reservations bind to the linked
+ELF and actual boot-resource length. It reconstructs the complete final frame catalog and
+registry from the original firmware frames and the remaining pinned bootstrap
+allocation, then compares their native digests. Console and altered-record
+checks remain distinct from native execution and from continuous lifetime or
+invalidation/release-order proofs.
+
+[archive_applications.py](archive_applications.py) requires all 51 successful
+workloads, exact pinned bytes and boot resource, the bound observer programs,
+unchanged predecessor contributions, LLVM/bounds checks, fresh validation and
+the actual bounded-run/source-stability record. It verifies the preceding
+interface archive before rechecking its nine interface and twenty process
+histories on the byte-identical kernel. Those histories are previous native
+executions; they are not newly run. Earlier invocation and preliminary records
+can be retained with their separate scope.
+[replay_applications.py](replay_applications.py) extracts frozen selected inputs,
+repeats the new and retained record comparisons, and runs the frozen Python
+model suites without executing a VM or rebuilding the kernel. Retained record
+identities also match the stored preceding report and its kernel identity.
+The intermediate `records.json` covers saved-record comparisons only; the final
+`replayed.json` is written after both frozen model suites also pass. A failed
+suite leaves no overall replay success report.
+Public activation
+and the original complete Linux/distribution/container/VM-host objective remain
+separate acceptance work.

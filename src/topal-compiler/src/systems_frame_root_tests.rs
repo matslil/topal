@@ -38,6 +38,22 @@ fn owned_first_image_exit_retires_transferred_signal_state() {
 }
 
 #[test]
+#[ignore = "requires pinned BusyBox, QEMU and GDB for the process-MM application corpus"]
+fn process_mm_preserves_pinned_busybox_workloads() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001: unchanged third-party application and
+    // existing command/output contracts on the experimental MM selection.
+    execute_profiled(
+        KernelProfile {
+            memory: true,
+            user_extents: true,
+            owned_callers: true,
+            process_memory: true,
+        },
+        Some(CallerFocus::Application),
+    );
+}
+
+#[test]
 #[ignore = "requires a C compiler, QEMU and GDB"]
 fn owned_source_fixture_checks_native_user_buffer_boundaries() {
     // TOPAL-SYSTEMS-USER-EXTENT-001: ordinary source-compiled user requests.
@@ -389,7 +405,9 @@ fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if process_memory && !process_memory_focus(focus) {
+    let prefix = if process_memory && focus == Some(CallerFocus::Application) {
+        "process-mm-applications"
+    } else if process_memory && !process_memory_focus(focus) {
         "process-mm-interface-regression"
     } else if matches!(
         focus,
@@ -646,7 +664,17 @@ fn build_guest(
         crate::qualified_x86_64_static_user_image_fixture()
     };
     fs::write(&fixture, fixture_bytes).unwrap();
-    if process_memory && !process_memory_focus(focus) {
+    if process_memory && focus == Some(CallerFocus::Application) {
+        fs::write(
+            work.join("process-mm-application.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "process_memory": true,
+                "scope": "Unchanged pinned BusyBox corpus on the experimental process-MM kernel; no public activation",
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    } else if process_memory && !process_memory_focus(focus) {
         assert!(matches!(
             focus,
             Some(
@@ -1230,7 +1258,9 @@ fn build_guest(
         "guest",
         Command::new("python3")
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-                if process_memory_focus(focus) {
+                if process_memory && focus == Some(CallerFocus::Application) {
+                    "../../linux-kernel/labs/qemu/x86_64/process_mm_application_inspect.py"
+                } else if process_memory_focus(focus) {
                     "../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py"
                 } else if matches!(
                     focus,
