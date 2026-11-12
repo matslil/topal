@@ -55,6 +55,13 @@ def linked_inventory(build):
         assert pipes['passed'] and not pipes['complete']
         assert pipes['kernel_sha256'] == reader.digest(elf.data)
         assert pipes['graph_sha256'] == bindings['process_graph_sha256']
+    stat_path = build / 'stat-output-audit.json'
+    stat_bytes = stat_path.read_bytes() if stat_path.exists() else None
+    stats = json.loads(stat_bytes) if stat_bytes is not None else None
+    if stats is not None:
+        assert stats['passed'] and not stats['complete']
+        assert stats['kernel_sha256'] == reader.digest(elf.data)
+        assert stats['graph_sha256'] == bindings['process_graph_sha256']
     return dict(function=inventory['function'], address=symbol['value'], calls=inventory['calls'],
                 callback_bindings=native_bindings,
                 copy_transfer_audit=copies, copy_transfer_audit_sha256=reader.digest(copy_bytes),
@@ -63,6 +70,8 @@ def linked_inventory(build):
                 staging_copy_audit_sha256=reader.digest(staging_bytes) if staging_bytes is not None else None,
                 pipe_fixed_output_audit=pipes,
                 pipe_fixed_output_audit_sha256=reader.digest(pipe_bytes) if pipe_bytes is not None else None,
+                stat_output_audit=stats,
+                stat_output_audit_sha256=reader.digest(stat_bytes) if stat_bytes is not None else None,
                 callback_header_hex=(build / 'static-elf-abi-fixture.elf').read_bytes()[:64].hex(),
                 kernel_sha256=reader.digest(elf.data), inventory_sha256=inspection['inventory_sha256'])
 
@@ -79,9 +88,14 @@ class ExtentFirstReach(Checked):
         self.enabled = False
         assert reg('cs') & 3 == 0 and reg('cr0') & (1<<16)
         offset = self.row['offset']
-        assert offset not in extent_first_reach
-        extent_first_reach[offset] = dict(offset=offset, target=self.row['target'],
+        record = dict(offset=offset, target=self.row['target'],
             candidate=reg('r8'), length=reg('r9'), phase=memory(context+104,1)[0])
+        if offset in extent_first_reach:
+            # A source-scoped admission observer can record this same stopped
+            # instruction first. Both read-only observations must agree.
+            assert extent_first_reach[offset] == record
+        else:
+            extent_first_reach[offset] = record
         return False
 
 def extent_coverage_complete():

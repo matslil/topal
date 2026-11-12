@@ -139,8 +139,13 @@ pub(crate) fn build_serial(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     build_selected(work, tools, "serial")
 }
 
+pub(crate) fn build_stat(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, "stat")
+}
+
 fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> {
     let (entry_name, extra) = match mode {
+        "stat" => ("topal_user_extent_stat_cases", Some(("stat", "stat-cases"))),
         "serial" => (
             "topal_user_extent_serial_cases",
             Some(("serial", "serial-cases")),
@@ -339,6 +344,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
         "pipe_source_sha256": if mode == "pipes" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_pipe_cases.c")).unwrap()))) } else { None },
         "storage_source_sha256": if mode == "storage" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_storage_cases.c")).unwrap()))) } else { None },
         "serial_source_sha256": if mode == "serial" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_serial_cases.c")).unwrap()))) } else { None },
+        "stat_source_sha256": if mode == "stat" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_stat_cases.c")).unwrap()))) } else { None },
         "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
         "file_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_file_cases.c")).unwrap())),
         "shell_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_shell_cases.c")).unwrap())),

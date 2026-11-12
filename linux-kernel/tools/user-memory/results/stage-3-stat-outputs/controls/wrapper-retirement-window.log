@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 269, in <module>
+    audit(Path(sys.argv[1]).resolve())
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 203, in audit
+    for target in prep['callees']: qualify(target)
+                                   ~~~~~~~^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 175, in qualify
+    nested = [qualify(target) for target in summary['callees']]
+              ~~~~~~~^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 180, in qualify
+    contract = wrapper_contract(summary,nested[0],body,nodes,roots,predecessors)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 120, in wrapper_contract
+    for offset in [-16,-8]: s.take('48c78424'+struct.pack('<i',offset).hex()+'00000000')
+                            ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py", line 24, in take
+    assert row['size'] == len(raw) and row['bytes'] == raw.hex(), (
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('pipe instruction contract', 211969, '48c78424f0ffffff00000000')

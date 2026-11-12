@@ -1,0 +1,98 @@
+{
+  "provider.o": {
+    "bytes": 1061624,
+    "sha256": "363b01c4f75056b0eca0e76628e480ff6dcbc1aad0db885ac8dd205e79f729c6",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/provider.o.gz",
+    "snapshot_sha256": "3f315406a0315765a1ee0f89624bfd5df82464aec48131b4451fd749fa62c609"
+  },
+  "kernel.elf": {
+    "bytes": 1665328,
+    "sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/kernel.elf.gz",
+    "snapshot_sha256": "2b23ad957cd48c752ccc6a185e9b086707e81c38c9c1c56fb34564b730fd4116"
+  },
+  "extent-call-inventory.json": {
+    "bytes": 27066,
+    "sha256": "7e27b70623f25ae6fd463463d05c8a8fbe937f0be3b4345c20df3a2c83dfadc9",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/extent-call-inventory.json.gz",
+    "snapshot_sha256": "aee758d4cf5a6176eb0ad9ff7201670e86d8f984581c013f61645cd7c3164d3e"
+  },
+  "process-access-inventory.json": {
+    "bytes": 10310563,
+    "sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/process-access-inventory.json.gz",
+    "snapshot_sha256": "422757def0e1b4d047726bb9dd115dd52721c5a598cd7858a6cf8db48353c468"
+  },
+  "process-access-origins.json": {
+    "bytes": 9881057,
+    "sha256": "b5c1ecd7dd3afe0131f2a4da303a80d882960aabb2a86f7de5f68ef07364ed41",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/process-access-origins.json.gz",
+    "snapshot_sha256": "dd2e7bce882260cccc1a876c869a1622a663cda9f3cbeb97a128583d61b73eb6"
+  },
+  "fixed-transfer-audit.json": {
+    "bytes": 34255,
+    "sha256": "b4a6f0f0f66f0c782613e180aa24e4a735888f24ec14e178f790110db24b6479",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz",
+    "snapshot_sha256": "e3992216bbf32c5c0245ef2812fc71fa5f3b81f06d96dd5c7fa516ac9917ec4b"
+  },
+  "copy-transfer-audit.json": {
+    "bytes": 68698,
+    "sha256": "572ea9aa5675844e723c6e71e3da0cba89aa43a4de29ddb8b9f805b835a61077",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz",
+    "snapshot_sha256": "ae12fe34b62a42bdfb41ecc74663169be440c110ff3abe5c9b13d314dcbb47e6"
+  },
+  "staged-transfer-audit.json": {
+    "bytes": 398795,
+    "sha256": "64d256f7b4f3f052341f48eab6dfd0925dedcb9da5afee1d3e8d0848d282dfe8",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz",
+    "snapshot_sha256": "6f8d4923baefbdf775f2f2166599269089b46d0e9819faf3a4f08a5bcb64a9a3"
+  },
+  "additional-scalar-audit.json": {
+    "bytes": 130631,
+    "sha256": "e7983ab9f8c468c61fc98c7fbbfc1931e6afd9a02d069cf8aa4d9e6f3db4e435",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz",
+    "snapshot_sha256": "b50b56193b9d94d78e626b8ccd13bdb1e6dbd77de0a33e048e3f7d84db958b18"
+  },
+  "staging-copy-audit.json": {
+    "bytes": 59565,
+    "sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6",
+    "snapshot": "../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz",
+    "snapshot_sha256": "403e57da3236f70d24b5459658e46daa8b35eacaa5c2a9472fcf8ebec1af510f"
+  },
+  "pipe-fixed-output-audit.json": {
+    "snapshot": "../stage-3-fixed-pipe-native/artifacts/pipe-fixed-output-audit.json.gz",
+    "sha256": "16b71dd3fbc06c1c5e990343fbc992696fdedaadaa67c4b676561696b7eba370",
+    "bytes": 35502,
+    "snapshot_sha256": "69913f460d737831e15735e4311bfa9f38b0ac11e7849236e25e624478550a89"
+  },
+  "stat-output-audit.json": {
+    "snapshot": "artifacts/stat-output-audit.json.gz",
+    "sha256": "e7e83feb07e4be249561927e4b2da9d3fc880404320c658a30007e961120d30d",
+    "bytes": 559622,
+    "snapshot_sha256": "dc83f1c91a1db4297750aaa98ffbacaadc7c281d6de99f1594196df93b09fc3a"
+  },
+  "static-elf-abi-fixture.elf": {
+    "snapshot": "artifacts/static-elf-abi-fixture.elf.gz",
+    "sha256": "fb5318cebcaa5243dbebeb3ad7810f9dc8d4e4aeb94a082b793c065ef23b55c9",
+    "bytes": 2024544,
+    "snapshot_sha256": "bdfc92635594bd5b26fb29fb2f1172c7de4a493a1d87c7b66697763f407042b8"
+  },
+  "initramfs.cpio": {
+    "snapshot": "artifacts/initramfs.cpio.gz",
+    "sha256": "cc3affd5d0f9c325785f05a25da6b87655f02f6e7e68031febaeed9b1914c43f",
+    "bytes": 2037200,
+    "snapshot_sha256": "e291520d1781d204e69c90a787939cb30172890375ac4b46f26a33ebb889b4bf"
+  },
+  "source-user.elf": {
+    "snapshot": "artifacts/source-user.elf.gz",
+    "sha256": "d218441114596265de4457a9c31baf67a6211a85f7b28ae36fb238b8448cdd5f",
+    "bytes": 53488,
+    "snapshot_sha256": "616a1e8775945a8c0991c128dad3a94b929e94fb732b60e4292c7dfba734ec06"
+  },
+  "process-byte-origins.json": {
+    "bytes": 3450371,
+    "sha256": "2d5cfd693bea6a51bad5808a721befda8ec13f42e5fe4438b198a337874b447e",
+    "snapshot": "../stage-3-staging-copies/artifacts/process-byte-origins.json.gz",
+    "snapshot_sha256": "fd190390c1dd02981b93ad658e6100c758ca23dae1626e2c27f011ead078fba0"
+  }
+}

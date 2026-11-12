@@ -86,6 +86,13 @@ fn owned_source_fixture_checks_serial_transfer_boundaries() {
     execute_selected(true, true, true, Some(CallerFocus::SourceSerial));
 }
 
+#[test]
+#[ignore = "requires a C compiler, QEMU and GDB"]
+fn owned_source_fixture_checks_stat_transfer_boundaries() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: all selected metadata preparation variants.
+    execute_selected(true, true, true, Some(CallerFocus::SourceStat));
+}
+
 pub(super) fn execute(memory: bool) -> std::path::PathBuf {
     execute_selected(memory, false, false, None)
 }
@@ -128,6 +135,7 @@ enum CallerFocus {
     SourcePipes,
     SourceStorage,
     SourceSerial,
+    SourceStat,
     Startup,
     Shell,
     Stat,
@@ -184,7 +192,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::SourceSerial) {
+    let prefix = if focus == Some(CallerFocus::SourceStat) {
+        "user-extent-source-stat"
+    } else if focus == Some(CallerFocus::SourceSerial) {
         "user-extent-source-serial"
     } else if focus == Some(CallerFocus::SourceStorage) {
         "user-extent-source-storage"
@@ -230,6 +240,7 @@ fn execute_selected(
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
                 | CallerFocus::SourceSerial
+                | CallerFocus::SourceStat
         )
     ) {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -320,7 +331,9 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if focus == Some(CallerFocus::SourceSerial) {
+    let fixture_bytes = if focus == Some(CallerFocus::SourceStat) {
+        crate::systems_user_extent::source_fixture::build_stat(work, tools)
+    } else if focus == Some(CallerFocus::SourceSerial) {
         crate::systems_user_extent::source_fixture::build_serial(work, tools)
     } else if focus == Some(CallerFocus::SourceStorage) {
         crate::systems_user_extent::source_fixture::build_storage(work, tools)
@@ -586,6 +599,7 @@ fn build_guest(
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
                 | CallerFocus::SourceSerial
+                | CallerFocus::SourceStat
         )
     );
     if access_audit_selected {
@@ -818,6 +832,16 @@ fn build_guest(
                 )
                 .arg(work),
         );
+        run(
+            work,
+            "stat-output-audit",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/audit_stat_outputs.py"),
+                )
+                .arg(work),
+        );
     }
     fs::write(
         work.join("bzImage"),
@@ -845,6 +869,7 @@ fn build_guest(
                             | CallerFocus::SourcePipes
                             | CallerFocus::SourceStorage
                             | CallerFocus::SourceSerial
+                            | CallerFocus::SourceStat
                     )
                 ) {
                     "../../linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py"

@@ -65,6 +65,20 @@ class ObserverSelection(unittest.TestCase):
                 ns['install_extent_coverage']()
             self.assertEqual(ns['callback_events'] + ns['copy_events'] + ns['staged_events'], [])
 
+    def test_coincident_first_reach_observers_must_agree_on_all_fields(self):
+        for candidate,accepted in [(0x2000,True),(0x2001,False)]:
+            ns = self.namespace()
+            row = dict(offset=0,target='runtime-writable-extent')
+            ns.update(context=0,reg=lambda name:dict(cs=0,cr0=1<<16,r8=0x2000,r9=144)[name],
+                memory=lambda pointer,size:bytes([8]))
+            ns['extent_first_reach'] = {0:dict(offset=0,target=row['target'],candidate=candidate,length=144,phase=8)}
+            point = ns['ExtentFirstReach'](row)
+            if accepted:
+                self.assertFalse(point.observe())
+                self.assertFalse(point.enabled)
+            else:
+                with self.subTest(candidate=candidate),self.assertRaises(AssertionError): point.observe()
+
     def source_namespace(self):
         ns = self.namespace()
         # Actual observer scheduling, with no guest translation/memory evidence.

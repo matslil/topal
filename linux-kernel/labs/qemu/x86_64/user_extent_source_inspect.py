@@ -17,6 +17,7 @@ from user_extent_call_coverage import PROGRAM as COVERAGE_PROGRAM, linked_invent
 from user_extent_pipe_observer import PROGRAM as PIPE_PROGRAM
 from user_extent_storage_observer import PROGRAM as STORAGE_PROGRAM
 from user_extent_serial_observer import PROGRAM as SERIAL_PROGRAM, DIALOGUE, native_sites as serial_native_sites
+from user_extent_stat_observer import PROGRAM as STAT_PROGRAM
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -83,6 +84,8 @@ class SourceReturned(Checked):
             return storage_returned(current,after)
         if component.get('mode') == 'serial':
             return serial_returned(current,after)
+        if component.get('mode') == 'stat':
+            return stat_returned(current,after)
         calls = current['calls']
         expected_numbers = [12,12,63,63,63,63,63,63,63,1,1,1,1]
         original = current['before'][1]
@@ -142,6 +145,8 @@ class SourceEntered(Checked):
             current['serial_table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
             current['serial_received']=[]
             current['serial_markers']=0
+        if component.get('mode') == 'stat':
+            current['stat_table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
         if return_site not in component_returns:
             component_returns[return_site] = SourceReturned('*'+hex(return_site), internal=True)
         component_returns[return_site].enabled = True
@@ -172,6 +177,8 @@ class SyscallReturned(Checked):
             storage_result(pending)
         if current and component.get('mode') == 'serial' and pending['number'] != 12:
             serial_result(pending)
+        if current and component.get('mode') == 'stat' and pending['number'] in [5,262]:
+            stat_result(pending)
         if startup_current and startup_current.get('kind') == 'poll':
             observe_poll_result(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
@@ -214,6 +221,8 @@ class SyscallEntered(Checked):
             storage_request(pending)
         if current and component.get('mode') == 'serial' and pending['number'] != 12:
             serial_request(pending)
+        if current and component.get('mode') == 'stat' and pending['number'] in [5,262]:
+            stat_request(pending)
         if startup_current and startup_current.get('kind') == 'poll':
             observe_poll_request(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
@@ -455,22 +464,24 @@ def file_returned(row):
 
 # SERIAL_OBSERVER
 
+# STAT_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
         numbers = [row['number'] for row in observed['startup_executions']]
-        if component.get('mode') in ['exec','signals','poll','pipes','storage','serial']:
+        if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat']:
             assert len(observed['executions']) == 4
             assert all(not observed[key] for key in [
                 'startup_executions','file_executions','shell_executions','command_executions'])
         else:
             assert numbers and len(numbers) % 5 == 0
         assert numbers == [302,318,318,157,262]*(len(numbers)//5)
-        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals','poll','pipes','storage','serial'] else [
+        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat'] else [
             5,257,262,257,5,0,257,5,217,217,262,257,5,217,217,262,262,262,257,257]
         )
-        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial'] else 5)
-        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial'] else 38)
+        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat'] else 5)
+        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes','storage','serial','stat'] else 38)
         assert len(observed['poll_executions']) == (4 if component.get('mode') == 'poll' else 0)
         assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])+len(observed['shell_executions'])+len(observed['command_executions'])+len(observed['poll_executions'])
         assert state() == [0,0,0,0]
@@ -529,6 +540,8 @@ assert PROGRAM.count('# STORAGE_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# STORAGE_OBSERVER', STORAGE_PROGRAM)
 assert PROGRAM.count('# SERIAL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# SERIAL_OBSERVER', SERIAL_PROGRAM)
+assert PROGRAM.count('# STAT_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# STAT_OBSERVER', STAT_PROGRAM)
 
 
 if __name__ == '__main__':
@@ -538,10 +551,13 @@ if __name__ == '__main__':
     assert hashlib.sha256(image).hexdigest() == component['image_sha256']
     archive = members((build / 'initramfs.cpio').read_bytes())
     assert archive['static-user.elf'] == image
-    extent_inventory = linked_inventory(build) if component.get('mode') in ['transfers','poll','pipes','storage','serial'] else None
+    extent_inventory = linked_inventory(build) if component.get('mode') in ['transfers','poll','pipes','storage','serial','stat'] else None
     if component.get('mode') == 'transfers':
         extent_inventory['native_observers'] = ['staged','copies']
         extent_inventory['source_scoped_staged'] = True
+        extent_inventory['source_scoped_copies'] = True
+    if component.get('mode') == 'stat':
+        assert extent_inventory.get('stat_output_audit') is not None
         extent_inventory['source_scoped_copies'] = True
     if component.get('mode') == 'pipes' and extent_inventory.get('pipe_fixed_output_audit') is not None:
         extent_inventory['native_observers'] = ['callbacks','copies','staged','pipe-fixed']

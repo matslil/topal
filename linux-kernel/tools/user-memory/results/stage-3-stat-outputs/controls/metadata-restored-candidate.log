@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 269, in <module>
+    audit(Path(sys.argv[1]).resolve())
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 203, in audit
+    for target in prep['callees']: qualify(target)
+                                   ~~~~~~~^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 175, in qualify
+    nested = [qualify(target) for target in summary['callees']]
+              ~~~~~~~^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 175, in qualify
+    nested = [qualify(target) for target in summary['callees']]
+              ~~~~~~~^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 177, in qualify
+    contract = metadata_contract(summary,body,nodes,roots,successors,predecessors)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_stat_outputs.py", line 58, in metadata_contract
+    assert restore >= p.at and body.find(suffix,restore+1,normal) == -1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

@@ -575,3 +575,31 @@ union remains 88/91. Boundary observations and selected physical exclusions do
 not qualify complete actual owners/nonaliasing, continuous lifetime, complete
 helper/entry/callee/return/fatal/exception effects, fallbacks or canonical
 production. Stage 3, initial Step 4 and the original objective remain unfinished.
+
+## Stage 3 shared stat output preparation
+
+The [stat checkpoint](tools/user-memory/results/stage-3-stat-outputs/README.md)
+checks descriptor and namespace paths to a shared 144-byte output, including
+six actual preparation callees. The 1140-instruction metadata validator has
+explicit saved-register restoration and spill retirement; nested normal-return
+effects preserve the admitted candidate/count. Raw checks and separate GNU
+readback cover 1384 instructions in six windows. Fourteen offline artifact
+controls and all 82 model/reader tests pass.
+
+Four ordinary source executions pass 152 syscalls and 88 stat queries, with
+sixty completed copies, twenty refused output admissions and eight lookup
+errors before output events. Records cover terminal, file, directory, pipe
+and volatile-file variants. Read-only observations check complete output bytes
+and selected private state. Separate saved-record correspondence retains the
+live private oracle for dynamic mode/time/inode fields; it does not independently
+reconstruct every private read. Existing ordinary/pinned regressions and both
+fixture build tests pass with the same thirteen frozen changed inputs.
+
+Seventeen kernel objects/images per native cohort match the preceding checkpoint.
+Frozen replay reproduces the selected source join, seven reports, 82 tests and
+saved stat records. The conditional index reaches 83/91 sites and 310 distinct
+user instructions, leaving eight sites without intervals. All three fallbacks,
+actual owners/nonaliasing, continuous lifetime, complete entry/helper/callee/
+return/fatal/exception contracts and canonical production reconstruction remain
+open. No executable kernel or authoritative design bytes change. Stage 3,
+initial Step 4 and the original objective remain unfinished.

@@ -1,0 +1,1161 @@
+
+linux-kernel/.cache/x86_64/user-extent-source-stat-2373431-1794449036311016637/kernel.elf:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000002bc1f90 <topal_x86_frame_mm_cleanup_return_v1+0x191cc>:
+ 2bc1f90:	57                                              	push   rdi
+ 2bc1f91:	4c 89 e7                                        	mov    rdi,r12
+ 2bc1f94:	48 81 c7 00 30 04 00                            	add    rdi,0x43000
+ 2bc1f9b:	e8 4b 00 00 00                                  	call   2bc1feb <topal_x86_frame_mm_cleanup_return_v1+0x19227>
+ 2bc1fa0:	5f                                              	pop    rdi
+ 2bc1fa1:	48 c7 84 24 f0 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x10],0x0
+ 2bc1fad:	48 c7 84 24 f8 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x8],0x0
+ 2bc1fb9:	48 81 bc 24 f0 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x10],0x0
+ 2bc1fc5:	0f 85 eb a7 fe ff                               	jne    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc1fcb:	48 81 bc 24 f8 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x8],0x0
+ 2bc1fd7:	0f 85 d9 a7 fe ff                               	jne    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc1fdd:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc1fe4:	0f 85 cc a7 fe ff                               	jne    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bc1fea:	c3                                              	ret
+ 2bc1feb:	51                                              	push   rcx
+ 2bc1fec:	52                                              	push   rdx
+ 2bc1fed:	56                                              	push   rsi
+ 2bc1fee:	57                                              	push   rdi
+ 2bc1fef:	41 50                                           	push   r8
+ 2bc1ff1:	41 51                                           	push   r9
+ 2bc1ff3:	41 52                                           	push   r10
+ 2bc1ff5:	41 53                                           	push   r11
+ 2bc1ff7:	49 89 f8                                        	mov    r8,rdi
+ 2bc1ffa:	49 8b 80 00 00 00 00                            	mov    rax,QWORD PTR [r8+0x0]
+ 2bc2001:	48 81 f8 07 00 00 00                            	cmp    rax,0x7
+ 2bc2008:	0f 82 a0 1b 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc200e:	49 8b 80 20 00 00 00                            	mov    rax,QWORD PTR [r8+0x20]
+ 2bc2015:	48 81 e0 00 f0 ff ff                            	and    rax,0xfffffffffffff000
+ 2bc201c:	48 81 f8 00 40 00 00                            	cmp    rax,0x4000
+ 2bc2023:	0f 85 85 1b 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2029:	4c 89 c6                                        	mov    rsi,r8
+ 2bc202c:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2033:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc203d:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2044:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc204b:	0f 85 5d 1b 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2051:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2058:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc205f:	0f 85 d8 ff ff ff                               	jne    2bc203d <topal_x86_frame_mm_cleanup_return_v1+0x19279>
+ 2bc2065:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2068:	48 81 c6 80 00 00 00                            	add    rsi,0x80
+ 2bc206f:	48 b9 10 00 00 00 00 00 00 00                   	movabs rcx,0x10
+ 2bc2079:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2080:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2087:	0f 85 21 1b 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc208d:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2094:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc209b:	0f 85 d8 ff ff ff                               	jne    2bc2079 <topal_x86_frame_mm_cleanup_return_v1+0x192b5>
+ 2bc20a1:	4c 89 c6                                        	mov    rsi,r8
+ 2bc20a4:	48 81 c6 00 03 00 00                            	add    rsi,0x300
+ 2bc20ab:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc20b5:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc20bc:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc20c3:	0f 85 e5 1a 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc20c9:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc20d0:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc20d7:	0f 85 d8 ff ff ff                               	jne    2bc20b5 <topal_x86_frame_mm_cleanup_return_v1+0x192f1>
+ 2bc20dd:	4c 89 c6                                        	mov    rsi,r8
+ 2bc20e0:	48 81 c6 00 05 00 00                            	add    rsi,0x500
+ 2bc20e7:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc20f1:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc20f8:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc20ff:	0f 85 a9 1a 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2105:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc210c:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2113:	0f 85 d8 ff ff ff                               	jne    2bc20f1 <topal_x86_frame_mm_cleanup_return_v1+0x1932d>
+ 2bc2119:	4c 89 c6                                        	mov    rsi,r8
+ 2bc211c:	48 81 c6 00 0a 00 00                            	add    rsi,0xa00
+ 2bc2123:	48 b9 40 00 00 00 00 00 00 00                   	movabs rcx,0x40
+ 2bc212d:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2134:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc213b:	0f 85 6d 1a 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2141:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2148:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc214f:	0f 85 d8 ff ff ff                               	jne    2bc212d <topal_x86_frame_mm_cleanup_return_v1+0x19369>
+ 2bc2155:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2158:	48 81 c6 00 0e 00 00                            	add    rsi,0xe00
+ 2bc215f:	48 b9 40 00 00 00 00 00 00 00                   	movabs rcx,0x40
+ 2bc2169:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2170:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2177:	0f 85 31 1a 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc217d:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2184:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc218b:	0f 85 d8 ff ff ff                               	jne    2bc2169 <topal_x86_frame_mm_cleanup_return_v1+0x193a5>
+ 2bc2191:	49 8b 80 00 01 00 00                            	mov    rax,QWORD PTR [r8+0x100]
+ 2bc2198:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc219f:	0f 85 41 00 00 00                               	jne    2bc21e6 <topal_x86_frame_mm_cleanup_return_v1+0x19422>
+ 2bc21a5:	4c 89 c6                                        	mov    rsi,r8
+ 2bc21a8:	48 81 c6 00 01 00 00                            	add    rsi,0x100
+ 2bc21af:	48 b9 10 00 00 00 00 00 00 00                   	movabs rcx,0x10
+ 2bc21b9:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc21c0:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc21c7:	0f 85 e1 19 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc21cd:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc21d4:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc21db:	0f 85 d8 ff ff ff                               	jne    2bc21b9 <topal_x86_frame_mm_cleanup_return_v1+0x193f5>
+ 2bc21e1:	e9 34 01 00 00                                  	jmp    2bc231a <topal_x86_frame_mm_cleanup_return_v1+0x19556>
+ 2bc21e6:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc21ed:	0f 85 bb 19 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc21f3:	49 8b 90 08 01 00 00                            	mov    rdx,QWORD PTR [r8+0x108]
+ 2bc21fa:	48 81 fa 07 00 00 00                            	cmp    rdx,0x7
+ 2bc2201:	0f 82 a7 19 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2207:	49 3b 90 00 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x0]
+ 2bc220e:	0f 83 9a 19 00 00                               	jae    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2214:	49 8b 80 10 01 00 00                            	mov    rax,QWORD PTR [r8+0x110]
+ 2bc221b:	48 b9 ff ff ff ff ff ff ff 7f                   	movabs rcx,0x7fffffffffffffff
+ 2bc2225:	48 39 c8                                        	cmp    rax,rcx
+ 2bc2228:	0f 87 80 19 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc222e:	49 8b 80 18 01 00 00                            	mov    rax,QWORD PTR [r8+0x118]
+ 2bc2235:	48 81 e0 00 f0 ff ff                            	and    rax,0xfffffffffffff000
+ 2bc223c:	48 81 f8 00 80 00 00                            	cmp    rax,0x8000
+ 2bc2243:	0f 85 65 19 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2249:	49 8b 80 40 01 00 00                            	mov    rax,QWORD PTR [r8+0x140]
+ 2bc2250:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc2257:	0f 87 51 19 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc225d:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc2267:	49 3b 90 40 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x40]
+ 2bc226e:	0f 85 07 00 00 00                               	jne    2bc227b <topal_x86_frame_mm_cleanup_return_v1+0x194b7>
+ 2bc2274:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc227b:	49 3b 90 50 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x50]
+ 2bc2282:	0f 85 07 00 00 00                               	jne    2bc228f <topal_x86_frame_mm_cleanup_return_v1+0x194cb>
+ 2bc2288:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc228f:	49 3b 90 60 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x60]
+ 2bc2296:	0f 85 07 00 00 00                               	jne    2bc22a3 <topal_x86_frame_mm_cleanup_return_v1+0x194df>
+ 2bc229c:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc22a3:	49 3b 90 70 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x70]
+ 2bc22aa:	0f 85 07 00 00 00                               	jne    2bc22b7 <topal_x86_frame_mm_cleanup_return_v1+0x194f3>
+ 2bc22b0:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc22b7:	49 3b 88 38 01 00 00                            	cmp    rcx,QWORD PTR [r8+0x138]
+ 2bc22be:	0f 85 ea 18 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc22c4:	48 81 f9 00 00 00 00                            	cmp    rcx,0x0
+ 2bc22cb:	0f 84 0d 00 00 00                               	je     2bc22de <topal_x86_frame_mm_cleanup_return_v1+0x1951a>
+ 2bc22d1:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc22d8:	0f 85 d0 18 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc22de:	4c 89 c6                                        	mov    rsi,r8
+ 2bc22e1:	48 81 c6 48 01 00 00                            	add    rsi,0x148
+ 2bc22e8:	48 b9 07 00 00 00 00 00 00 00                   	movabs rcx,0x7
+ 2bc22f2:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc22f9:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2300:	0f 85 a8 18 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2306:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc230d:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2314:	0f 85 d8 ff ff ff                               	jne    2bc22f2 <topal_x86_frame_mm_cleanup_return_v1+0x1952e>
+ 2bc231a:	49 8b 80 80 01 00 00                            	mov    rax,QWORD PTR [r8+0x180]
+ 2bc2321:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2328:	0f 85 41 00 00 00                               	jne    2bc236f <topal_x86_frame_mm_cleanup_return_v1+0x195ab>
+ 2bc232e:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2331:	48 81 c6 80 01 00 00                            	add    rsi,0x180
+ 2bc2338:	48 b9 10 00 00 00 00 00 00 00                   	movabs rcx,0x10
+ 2bc2342:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2349:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2350:	0f 85 58 18 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2356:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc235d:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2364:	0f 85 d8 ff ff ff                               	jne    2bc2342 <topal_x86_frame_mm_cleanup_return_v1+0x1957e>
+ 2bc236a:	e9 41 01 00 00                                  	jmp    2bc24b0 <topal_x86_frame_mm_cleanup_return_v1+0x196ec>
+ 2bc236f:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc2376:	0f 85 32 18 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc237c:	49 8b 90 88 01 00 00                            	mov    rdx,QWORD PTR [r8+0x188]
+ 2bc2383:	48 81 fa 07 00 00 00                            	cmp    rdx,0x7
+ 2bc238a:	0f 82 1e 18 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2390:	49 3b 90 00 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x0]
+ 2bc2397:	0f 83 11 18 00 00                               	jae    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc239d:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc23a4:	0f 84 04 18 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc23aa:	49 8b 80 90 01 00 00                            	mov    rax,QWORD PTR [r8+0x190]
+ 2bc23b1:	48 b9 ff ff ff ff ff ff ff 7f                   	movabs rcx,0x7fffffffffffffff
+ 2bc23bb:	48 39 c8                                        	cmp    rax,rcx
+ 2bc23be:	0f 87 ea 17 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc23c4:	49 8b 80 98 01 00 00                            	mov    rax,QWORD PTR [r8+0x198]
+ 2bc23cb:	48 81 e0 00 f0 ff ff                            	and    rax,0xfffffffffffff000
+ 2bc23d2:	48 81 f8 00 80 00 00                            	cmp    rax,0x8000
+ 2bc23d9:	0f 85 cf 17 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc23df:	49 8b 80 c0 01 00 00                            	mov    rax,QWORD PTR [r8+0x1c0]
+ 2bc23e6:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc23ed:	0f 87 bb 17 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc23f3:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc23fd:	49 3b 90 40 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x40]
+ 2bc2404:	0f 85 07 00 00 00                               	jne    2bc2411 <topal_x86_frame_mm_cleanup_return_v1+0x1964d>
+ 2bc240a:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2411:	49 3b 90 50 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x50]
+ 2bc2418:	0f 85 07 00 00 00                               	jne    2bc2425 <topal_x86_frame_mm_cleanup_return_v1+0x19661>
+ 2bc241e:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2425:	49 3b 90 60 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x60]
+ 2bc242c:	0f 85 07 00 00 00                               	jne    2bc2439 <topal_x86_frame_mm_cleanup_return_v1+0x19675>
+ 2bc2432:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2439:	49 3b 90 70 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x70]
+ 2bc2440:	0f 85 07 00 00 00                               	jne    2bc244d <topal_x86_frame_mm_cleanup_return_v1+0x19689>
+ 2bc2446:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc244d:	49 3b 88 b8 01 00 00                            	cmp    rcx,QWORD PTR [r8+0x1b8]
+ 2bc2454:	0f 85 54 17 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc245a:	48 81 f9 00 00 00 00                            	cmp    rcx,0x0
+ 2bc2461:	0f 84 0d 00 00 00                               	je     2bc2474 <topal_x86_frame_mm_cleanup_return_v1+0x196b0>
+ 2bc2467:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc246e:	0f 85 3a 17 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2474:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2477:	48 81 c6 c8 01 00 00                            	add    rsi,0x1c8
+ 2bc247e:	48 b9 07 00 00 00 00 00 00 00                   	movabs rcx,0x7
+ 2bc2488:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc248f:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2496:	0f 85 12 17 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc249c:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc24a3:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc24aa:	0f 85 d8 ff ff ff                               	jne    2bc2488 <topal_x86_frame_mm_cleanup_return_v1+0x196c4>
+ 2bc24b0:	49 8b 80 00 02 00 00                            	mov    rax,QWORD PTR [r8+0x200]
+ 2bc24b7:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc24be:	0f 85 41 00 00 00                               	jne    2bc2505 <topal_x86_frame_mm_cleanup_return_v1+0x19741>
+ 2bc24c4:	4c 89 c6                                        	mov    rsi,r8
+ 2bc24c7:	48 81 c6 00 02 00 00                            	add    rsi,0x200
+ 2bc24ce:	48 b9 10 00 00 00 00 00 00 00                   	movabs rcx,0x10
+ 2bc24d8:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc24df:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc24e6:	0f 85 c2 16 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc24ec:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc24f3:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc24fa:	0f 85 d8 ff ff ff                               	jne    2bc24d8 <topal_x86_frame_mm_cleanup_return_v1+0x19714>
+ 2bc2500:	e9 4e 01 00 00                                  	jmp    2bc2653 <topal_x86_frame_mm_cleanup_return_v1+0x1988f>
+ 2bc2505:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc250c:	0f 85 9c 16 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2512:	49 8b 90 08 02 00 00                            	mov    rdx,QWORD PTR [r8+0x208]
+ 2bc2519:	48 81 fa 07 00 00 00                            	cmp    rdx,0x7
+ 2bc2520:	0f 82 88 16 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2526:	49 3b 90 00 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x0]
+ 2bc252d:	0f 83 7b 16 00 00                               	jae    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2533:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc253a:	0f 84 6e 16 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2540:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc2547:	0f 84 61 16 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc254d:	49 8b 80 10 02 00 00                            	mov    rax,QWORD PTR [r8+0x210]
+ 2bc2554:	48 b9 ff ff ff ff ff ff ff 7f                   	movabs rcx,0x7fffffffffffffff
+ 2bc255e:	48 39 c8                                        	cmp    rax,rcx
+ 2bc2561:	0f 87 47 16 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2567:	49 8b 80 18 02 00 00                            	mov    rax,QWORD PTR [r8+0x218]
+ 2bc256e:	48 81 e0 00 f0 ff ff                            	and    rax,0xfffffffffffff000
+ 2bc2575:	48 81 f8 00 80 00 00                            	cmp    rax,0x8000
+ 2bc257c:	0f 85 2c 16 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2582:	49 8b 80 40 02 00 00                            	mov    rax,QWORD PTR [r8+0x240]
+ 2bc2589:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc2590:	0f 87 18 16 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2596:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc25a0:	49 3b 90 40 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x40]
+ 2bc25a7:	0f 85 07 00 00 00                               	jne    2bc25b4 <topal_x86_frame_mm_cleanup_return_v1+0x197f0>
+ 2bc25ad:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc25b4:	49 3b 90 50 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x50]
+ 2bc25bb:	0f 85 07 00 00 00                               	jne    2bc25c8 <topal_x86_frame_mm_cleanup_return_v1+0x19804>
+ 2bc25c1:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc25c8:	49 3b 90 60 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x60]
+ 2bc25cf:	0f 85 07 00 00 00                               	jne    2bc25dc <topal_x86_frame_mm_cleanup_return_v1+0x19818>
+ 2bc25d5:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc25dc:	49 3b 90 70 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x70]
+ 2bc25e3:	0f 85 07 00 00 00                               	jne    2bc25f0 <topal_x86_frame_mm_cleanup_return_v1+0x1982c>
+ 2bc25e9:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc25f0:	49 3b 88 38 02 00 00                            	cmp    rcx,QWORD PTR [r8+0x238]
+ 2bc25f7:	0f 85 b1 15 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc25fd:	48 81 f9 00 00 00 00                            	cmp    rcx,0x0
+ 2bc2604:	0f 84 0d 00 00 00                               	je     2bc2617 <topal_x86_frame_mm_cleanup_return_v1+0x19853>
+ 2bc260a:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2611:	0f 85 97 15 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2617:	4c 89 c6                                        	mov    rsi,r8
+ 2bc261a:	48 81 c6 48 02 00 00                            	add    rsi,0x248
+ 2bc2621:	48 b9 07 00 00 00 00 00 00 00                   	movabs rcx,0x7
+ 2bc262b:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2632:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2639:	0f 85 6f 15 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc263f:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2646:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc264d:	0f 85 d8 ff ff ff                               	jne    2bc262b <topal_x86_frame_mm_cleanup_return_v1+0x19867>
+ 2bc2653:	49 8b 80 80 02 00 00                            	mov    rax,QWORD PTR [r8+0x280]
+ 2bc265a:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2661:	0f 85 41 00 00 00                               	jne    2bc26a8 <topal_x86_frame_mm_cleanup_return_v1+0x198e4>
+ 2bc2667:	4c 89 c6                                        	mov    rsi,r8
+ 2bc266a:	48 81 c6 80 02 00 00                            	add    rsi,0x280
+ 2bc2671:	48 b9 10 00 00 00 00 00 00 00                   	movabs rcx,0x10
+ 2bc267b:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2682:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2689:	0f 85 1f 15 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc268f:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2696:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc269d:	0f 85 d8 ff ff ff                               	jne    2bc267b <topal_x86_frame_mm_cleanup_return_v1+0x198b7>
+ 2bc26a3:	e9 5b 01 00 00                                  	jmp    2bc2803 <topal_x86_frame_mm_cleanup_return_v1+0x19a3f>
+ 2bc26a8:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc26af:	0f 85 f9 14 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc26b5:	49 8b 90 88 02 00 00                            	mov    rdx,QWORD PTR [r8+0x288]
+ 2bc26bc:	48 81 fa 07 00 00 00                            	cmp    rdx,0x7
+ 2bc26c3:	0f 82 e5 14 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc26c9:	49 3b 90 00 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x0]
+ 2bc26d0:	0f 83 d8 14 00 00                               	jae    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc26d6:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc26dd:	0f 84 cb 14 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc26e3:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc26ea:	0f 84 be 14 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc26f0:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc26f7:	0f 84 b1 14 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc26fd:	49 8b 80 90 02 00 00                            	mov    rax,QWORD PTR [r8+0x290]
+ 2bc2704:	48 b9 ff ff ff ff ff ff ff 7f                   	movabs rcx,0x7fffffffffffffff
+ 2bc270e:	48 39 c8                                        	cmp    rax,rcx
+ 2bc2711:	0f 87 97 14 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2717:	49 8b 80 98 02 00 00                            	mov    rax,QWORD PTR [r8+0x298]
+ 2bc271e:	48 81 e0 00 f0 ff ff                            	and    rax,0xfffffffffffff000
+ 2bc2725:	48 81 f8 00 80 00 00                            	cmp    rax,0x8000
+ 2bc272c:	0f 85 7c 14 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2732:	49 8b 80 c0 02 00 00                            	mov    rax,QWORD PTR [r8+0x2c0]
+ 2bc2739:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc2740:	0f 87 68 14 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2746:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc2750:	49 3b 90 40 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x40]
+ 2bc2757:	0f 85 07 00 00 00                               	jne    2bc2764 <topal_x86_frame_mm_cleanup_return_v1+0x199a0>
+ 2bc275d:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2764:	49 3b 90 50 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x50]
+ 2bc276b:	0f 85 07 00 00 00                               	jne    2bc2778 <topal_x86_frame_mm_cleanup_return_v1+0x199b4>
+ 2bc2771:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2778:	49 3b 90 60 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x60]
+ 2bc277f:	0f 85 07 00 00 00                               	jne    2bc278c <topal_x86_frame_mm_cleanup_return_v1+0x199c8>
+ 2bc2785:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc278c:	49 3b 90 70 00 00 00                            	cmp    rdx,QWORD PTR [r8+0x70]
+ 2bc2793:	0f 85 07 00 00 00                               	jne    2bc27a0 <topal_x86_frame_mm_cleanup_return_v1+0x199dc>
+ 2bc2799:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc27a0:	49 3b 88 b8 02 00 00                            	cmp    rcx,QWORD PTR [r8+0x2b8]
+ 2bc27a7:	0f 85 01 14 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc27ad:	48 81 f9 00 00 00 00                            	cmp    rcx,0x0
+ 2bc27b4:	0f 84 0d 00 00 00                               	je     2bc27c7 <topal_x86_frame_mm_cleanup_return_v1+0x19a03>
+ 2bc27ba:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc27c1:	0f 85 e7 13 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc27c7:	4c 89 c6                                        	mov    rsi,r8
+ 2bc27ca:	48 81 c6 c8 02 00 00                            	add    rsi,0x2c8
+ 2bc27d1:	48 b9 07 00 00 00 00 00 00 00                   	movabs rcx,0x7
+ 2bc27db:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc27e2:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc27e9:	0f 85 bf 13 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc27ef:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc27f6:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc27fd:	0f 85 d8 ff ff ff                               	jne    2bc27db <topal_x86_frame_mm_cleanup_return_v1+0x19a17>
+ 2bc2803:	49 8b 90 40 00 00 00                            	mov    rdx,QWORD PTR [r8+0x40]
+ 2bc280a:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc2811:	0f 85 7d 00 00 00                               	jne    2bc2894 <topal_x86_frame_mm_cleanup_return_v1+0x19ad0>
+ 2bc2817:	4c 89 c6                                        	mov    rsi,r8
+ 2bc281a:	48 81 c6 40 00 00 00                            	add    rsi,0x40
+ 2bc2821:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc282b:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2832:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2839:	0f 85 6f 13 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc283f:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2846:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc284d:	0f 85 d8 ff ff ff                               	jne    2bc282b <topal_x86_frame_mm_cleanup_return_v1+0x19a67>
+ 2bc2853:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2856:	48 81 c6 00 06 00 00                            	add    rsi,0x600
+ 2bc285d:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2867:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc286e:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2875:	0f 85 33 13 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc287b:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2882:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2889:	0f 85 d8 ff ff ff                               	jne    2bc2867 <topal_x86_frame_mm_cleanup_return_v1+0x19aa3>
+ 2bc288f:	e9 1c 01 00 00                                  	jmp    2bc29b0 <topal_x86_frame_mm_cleanup_return_v1+0x19bec>
+ 2bc2894:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc289b:	0f 84 2c 00 00 00                               	je     2bc28cd <topal_x86_frame_mm_cleanup_return_v1+0x19b09>
+ 2bc28a1:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc28a8:	0f 84 1f 00 00 00                               	je     2bc28cd <topal_x86_frame_mm_cleanup_return_v1+0x19b09>
+ 2bc28ae:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc28b5:	0f 84 12 00 00 00                               	je     2bc28cd <topal_x86_frame_mm_cleanup_return_v1+0x19b09>
+ 2bc28bb:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc28c2:	0f 84 05 00 00 00                               	je     2bc28cd <topal_x86_frame_mm_cleanup_return_v1+0x19b09>
+ 2bc28c8:	e9 e1 12 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc28cd:	49 8b 90 48 00 00 00                            	mov    rdx,QWORD PTR [r8+0x48]
+ 2bc28d4:	4c 89 c6                                        	mov    rsi,r8
+ 2bc28d7:	48 81 c6 00 06 00 00                            	add    rsi,0x600
+ 2bc28de:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc28e5:	0f 82 c3 12 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc28eb:	48 81 fa ff 00 00 00                            	cmp    rdx,0xff
+ 2bc28f2:	0f 87 b6 12 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc28f8:	48 81 fa 02 00 00 00                            	cmp    rdx,0x2
+ 2bc28ff:	0f 87 43 00 00 00                               	ja     2bc2948 <topal_x86_frame_mm_cleanup_return_v1+0x19b84>
+ 2bc2905:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc290c:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2913:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc291a:	0f 85 28 00 00 00                               	jne    2bc2948 <topal_x86_frame_mm_cleanup_return_v1+0x19b84>
+ 2bc2920:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc2927:	0f 84 81 12 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc292d:	48 8b 86 01 00 00 00                            	mov    rax,QWORD PTR [rsi+0x1]
+ 2bc2934:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc293b:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc2942:	0f 84 66 12 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2948:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc2952:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2959:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2960:	48 39 d1                                        	cmp    rcx,rdx
+ 2bc2963:	0f 83 1f 00 00 00                               	jae    2bc2988 <topal_x86_frame_mm_cleanup_return_v1+0x19bc4>
+ 2bc2969:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2970:	0f 84 38 12 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2976:	48 81 f8 2f 00 00 00                            	cmp    rax,0x2f
+ 2bc297d:	0f 84 2b 12 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2983:	e9 0d 00 00 00                                  	jmp    2bc2995 <topal_x86_frame_mm_cleanup_return_v1+0x19bd1>
+ 2bc2988:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc298f:	0f 85 19 12 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2995:	48 81 c6 01 00 00 00                            	add    rsi,0x1
+ 2bc299c:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc29a3:	48 81 f9 00 01 00 00                            	cmp    rcx,0x100
+ 2bc29aa:	0f 85 a2 ff ff ff                               	jne    2bc2952 <topal_x86_frame_mm_cleanup_return_v1+0x19b8e>
+ 2bc29b0:	49 8b 90 50 00 00 00                            	mov    rdx,QWORD PTR [r8+0x50]
+ 2bc29b7:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc29be:	0f 85 7d 00 00 00                               	jne    2bc2a41 <topal_x86_frame_mm_cleanup_return_v1+0x19c7d>
+ 2bc29c4:	4c 89 c6                                        	mov    rsi,r8
+ 2bc29c7:	48 81 c6 50 00 00 00                            	add    rsi,0x50
+ 2bc29ce:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc29d8:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc29df:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc29e6:	0f 85 c2 11 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc29ec:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc29f3:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc29fa:	0f 85 d8 ff ff ff                               	jne    2bc29d8 <topal_x86_frame_mm_cleanup_return_v1+0x19c14>
+ 2bc2a00:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2a03:	48 81 c6 00 07 00 00                            	add    rsi,0x700
+ 2bc2a0a:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2a14:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2a1b:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2a22:	0f 85 86 11 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2a28:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2a2f:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2a36:	0f 85 d8 ff ff ff                               	jne    2bc2a14 <topal_x86_frame_mm_cleanup_return_v1+0x19c50>
+ 2bc2a3c:	e9 44 01 00 00                                  	jmp    2bc2b85 <topal_x86_frame_mm_cleanup_return_v1+0x19dc1>
+ 2bc2a41:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc2a48:	0f 84 2c 00 00 00                               	je     2bc2a7a <topal_x86_frame_mm_cleanup_return_v1+0x19cb6>
+ 2bc2a4e:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc2a55:	0f 84 1f 00 00 00                               	je     2bc2a7a <topal_x86_frame_mm_cleanup_return_v1+0x19cb6>
+ 2bc2a5b:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc2a62:	0f 84 12 00 00 00                               	je     2bc2a7a <topal_x86_frame_mm_cleanup_return_v1+0x19cb6>
+ 2bc2a68:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc2a6f:	0f 84 05 00 00 00                               	je     2bc2a7a <topal_x86_frame_mm_cleanup_return_v1+0x19cb6>
+ 2bc2a75:	e9 34 11 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2a7a:	49 8b 90 58 00 00 00                            	mov    rdx,QWORD PTR [r8+0x58]
+ 2bc2a81:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2a84:	48 81 c6 00 07 00 00                            	add    rsi,0x700
+ 2bc2a8b:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc2a92:	0f 82 16 11 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2a98:	48 81 fa ff 00 00 00                            	cmp    rdx,0xff
+ 2bc2a9f:	0f 87 09 11 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2aa5:	48 81 fa 02 00 00 00                            	cmp    rdx,0x2
+ 2bc2aac:	0f 87 43 00 00 00                               	ja     2bc2af5 <topal_x86_frame_mm_cleanup_return_v1+0x19d31>
+ 2bc2ab2:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2ab9:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2ac0:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc2ac7:	0f 85 28 00 00 00                               	jne    2bc2af5 <topal_x86_frame_mm_cleanup_return_v1+0x19d31>
+ 2bc2acd:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc2ad4:	0f 84 d4 10 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2ada:	48 8b 86 01 00 00 00                            	mov    rax,QWORD PTR [rsi+0x1]
+ 2bc2ae1:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2ae8:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc2aef:	0f 84 b9 10 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2af5:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc2aff:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2b06:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2b0d:	48 39 d1                                        	cmp    rcx,rdx
+ 2bc2b10:	0f 83 1f 00 00 00                               	jae    2bc2b35 <topal_x86_frame_mm_cleanup_return_v1+0x19d71>
+ 2bc2b16:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2b1d:	0f 84 8b 10 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2b23:	48 81 f8 2f 00 00 00                            	cmp    rax,0x2f
+ 2bc2b2a:	0f 84 7e 10 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2b30:	e9 0d 00 00 00                                  	jmp    2bc2b42 <topal_x86_frame_mm_cleanup_return_v1+0x19d7e>
+ 2bc2b35:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2b3c:	0f 85 6c 10 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2b42:	48 81 c6 01 00 00 00                            	add    rsi,0x1
+ 2bc2b49:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2b50:	48 81 f9 00 01 00 00                            	cmp    rcx,0x100
+ 2bc2b57:	0f 85 a2 ff ff ff                               	jne    2bc2aff <topal_x86_frame_mm_cleanup_return_v1+0x19d3b>
+ 2bc2b5d:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2b60:	48 81 c6 00 07 00 00                            	add    rsi,0x700
+ 2bc2b67:	4c 89 c7                                        	mov    rdi,r8
+ 2bc2b6a:	48 81 c7 00 06 00 00                            	add    rdi,0x600
+ 2bc2b71:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2b7b:	fc                                              	cld
+ 2bc2b7c:	f3 48 a7                                        	repz cmps QWORD PTR [rsi],QWORD PTR [rdi]
+ 2bc2b7f:	0f 84 29 10 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2b85:	49 8b 90 60 00 00 00                            	mov    rdx,QWORD PTR [r8+0x60]
+ 2bc2b8c:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc2b93:	0f 85 7d 00 00 00                               	jne    2bc2c16 <topal_x86_frame_mm_cleanup_return_v1+0x19e52>
+ 2bc2b99:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2b9c:	48 81 c6 60 00 00 00                            	add    rsi,0x60
+ 2bc2ba3:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc2bad:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2bb4:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2bbb:	0f 85 ed 0f 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2bc1:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2bc8:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2bcf:	0f 85 d8 ff ff ff                               	jne    2bc2bad <topal_x86_frame_mm_cleanup_return_v1+0x19de9>
+ 2bc2bd5:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2bd8:	48 81 c6 00 08 00 00                            	add    rsi,0x800
+ 2bc2bdf:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2be9:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2bf0:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2bf7:	0f 85 b1 0f 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2bfd:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2c04:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2c0b:	0f 85 d8 ff ff ff                               	jne    2bc2be9 <topal_x86_frame_mm_cleanup_return_v1+0x19e25>
+ 2bc2c11:	e9 6c 01 00 00                                  	jmp    2bc2d82 <topal_x86_frame_mm_cleanup_return_v1+0x19fbe>
+ 2bc2c16:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc2c1d:	0f 84 2c 00 00 00                               	je     2bc2c4f <topal_x86_frame_mm_cleanup_return_v1+0x19e8b>
+ 2bc2c23:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc2c2a:	0f 84 1f 00 00 00                               	je     2bc2c4f <topal_x86_frame_mm_cleanup_return_v1+0x19e8b>
+ 2bc2c30:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc2c37:	0f 84 12 00 00 00                               	je     2bc2c4f <topal_x86_frame_mm_cleanup_return_v1+0x19e8b>
+ 2bc2c3d:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc2c44:	0f 84 05 00 00 00                               	je     2bc2c4f <topal_x86_frame_mm_cleanup_return_v1+0x19e8b>
+ 2bc2c4a:	e9 5f 0f 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2c4f:	49 8b 90 68 00 00 00                            	mov    rdx,QWORD PTR [r8+0x68]
+ 2bc2c56:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2c59:	48 81 c6 00 08 00 00                            	add    rsi,0x800
+ 2bc2c60:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc2c67:	0f 82 41 0f 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2c6d:	48 81 fa ff 00 00 00                            	cmp    rdx,0xff
+ 2bc2c74:	0f 87 34 0f 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2c7a:	48 81 fa 02 00 00 00                            	cmp    rdx,0x2
+ 2bc2c81:	0f 87 43 00 00 00                               	ja     2bc2cca <topal_x86_frame_mm_cleanup_return_v1+0x19f06>
+ 2bc2c87:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2c8e:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2c95:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc2c9c:	0f 85 28 00 00 00                               	jne    2bc2cca <topal_x86_frame_mm_cleanup_return_v1+0x19f06>
+ 2bc2ca2:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc2ca9:	0f 84 ff 0e 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2caf:	48 8b 86 01 00 00 00                            	mov    rax,QWORD PTR [rsi+0x1]
+ 2bc2cb6:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2cbd:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc2cc4:	0f 84 e4 0e 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2cca:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc2cd4:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2cdb:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2ce2:	48 39 d1                                        	cmp    rcx,rdx
+ 2bc2ce5:	0f 83 1f 00 00 00                               	jae    2bc2d0a <topal_x86_frame_mm_cleanup_return_v1+0x19f46>
+ 2bc2ceb:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2cf2:	0f 84 b6 0e 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2cf8:	48 81 f8 2f 00 00 00                            	cmp    rax,0x2f
+ 2bc2cff:	0f 84 a9 0e 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2d05:	e9 0d 00 00 00                                  	jmp    2bc2d17 <topal_x86_frame_mm_cleanup_return_v1+0x19f53>
+ 2bc2d0a:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2d11:	0f 85 97 0e 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2d17:	48 81 c6 01 00 00 00                            	add    rsi,0x1
+ 2bc2d1e:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2d25:	48 81 f9 00 01 00 00                            	cmp    rcx,0x100
+ 2bc2d2c:	0f 85 a2 ff ff ff                               	jne    2bc2cd4 <topal_x86_frame_mm_cleanup_return_v1+0x19f10>
+ 2bc2d32:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2d35:	48 81 c6 00 08 00 00                            	add    rsi,0x800
+ 2bc2d3c:	4c 89 c7                                        	mov    rdi,r8
+ 2bc2d3f:	48 81 c7 00 06 00 00                            	add    rdi,0x600
+ 2bc2d46:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2d50:	fc                                              	cld
+ 2bc2d51:	f3 48 a7                                        	repz cmps QWORD PTR [rsi],QWORD PTR [rdi]
+ 2bc2d54:	0f 84 54 0e 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2d5a:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2d5d:	48 81 c6 00 08 00 00                            	add    rsi,0x800
+ 2bc2d64:	4c 89 c7                                        	mov    rdi,r8
+ 2bc2d67:	48 81 c7 00 07 00 00                            	add    rdi,0x700
+ 2bc2d6e:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2d78:	fc                                              	cld
+ 2bc2d79:	f3 48 a7                                        	repz cmps QWORD PTR [rsi],QWORD PTR [rdi]
+ 2bc2d7c:	0f 84 2c 0e 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2d82:	49 8b 90 70 00 00 00                            	mov    rdx,QWORD PTR [r8+0x70]
+ 2bc2d89:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc2d90:	0f 85 7d 00 00 00                               	jne    2bc2e13 <topal_x86_frame_mm_cleanup_return_v1+0x1a04f>
+ 2bc2d96:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2d99:	48 81 c6 70 00 00 00                            	add    rsi,0x70
+ 2bc2da0:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc2daa:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2db1:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2db8:	0f 85 f0 0d 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2dbe:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2dc5:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2dcc:	0f 85 d8 ff ff ff                               	jne    2bc2daa <topal_x86_frame_mm_cleanup_return_v1+0x19fe6>
+ 2bc2dd2:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2dd5:	48 81 c6 00 09 00 00                            	add    rsi,0x900
+ 2bc2ddc:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2de6:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2ded:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2df4:	0f 85 b4 0d 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2dfa:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2e01:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2e08:	0f 85 d8 ff ff ff                               	jne    2bc2de6 <topal_x86_frame_mm_cleanup_return_v1+0x1a022>
+ 2bc2e0e:	e9 94 01 00 00                                  	jmp    2bc2fa7 <topal_x86_frame_mm_cleanup_return_v1+0x1a1e3>
+ 2bc2e13:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc2e1a:	0f 84 2c 00 00 00                               	je     2bc2e4c <topal_x86_frame_mm_cleanup_return_v1+0x1a088>
+ 2bc2e20:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc2e27:	0f 84 1f 00 00 00                               	je     2bc2e4c <topal_x86_frame_mm_cleanup_return_v1+0x1a088>
+ 2bc2e2d:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc2e34:	0f 84 12 00 00 00                               	je     2bc2e4c <topal_x86_frame_mm_cleanup_return_v1+0x1a088>
+ 2bc2e3a:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc2e41:	0f 84 05 00 00 00                               	je     2bc2e4c <topal_x86_frame_mm_cleanup_return_v1+0x1a088>
+ 2bc2e47:	e9 62 0d 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2e4c:	49 8b 90 78 00 00 00                            	mov    rdx,QWORD PTR [r8+0x78]
+ 2bc2e53:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2e56:	48 81 c6 00 09 00 00                            	add    rsi,0x900
+ 2bc2e5d:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc2e64:	0f 82 44 0d 00 00                               	jb     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2e6a:	48 81 fa ff 00 00 00                            	cmp    rdx,0xff
+ 2bc2e71:	0f 87 37 0d 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2e77:	48 81 fa 02 00 00 00                            	cmp    rdx,0x2
+ 2bc2e7e:	0f 87 43 00 00 00                               	ja     2bc2ec7 <topal_x86_frame_mm_cleanup_return_v1+0x1a103>
+ 2bc2e84:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2e8b:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2e92:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc2e99:	0f 85 28 00 00 00                               	jne    2bc2ec7 <topal_x86_frame_mm_cleanup_return_v1+0x1a103>
+ 2bc2e9f:	48 81 fa 01 00 00 00                            	cmp    rdx,0x1
+ 2bc2ea6:	0f 84 02 0d 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2eac:	48 8b 86 01 00 00 00                            	mov    rax,QWORD PTR [rsi+0x1]
+ 2bc2eb3:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2eba:	48 81 f8 2e 00 00 00                            	cmp    rax,0x2e
+ 2bc2ec1:	0f 84 e7 0c 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2ec7:	48 b9 00 00 00 00 00 00 00 00                   	movabs rcx,0x0
+ 2bc2ed1:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2ed8:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc2edf:	48 39 d1                                        	cmp    rcx,rdx
+ 2bc2ee2:	0f 83 1f 00 00 00                               	jae    2bc2f07 <topal_x86_frame_mm_cleanup_return_v1+0x1a143>
+ 2bc2ee8:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2eef:	0f 84 b9 0c 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2ef5:	48 81 f8 2f 00 00 00                            	cmp    rax,0x2f
+ 2bc2efc:	0f 84 ac 0c 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2f02:	e9 0d 00 00 00                                  	jmp    2bc2f14 <topal_x86_frame_mm_cleanup_return_v1+0x1a150>
+ 2bc2f07:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2f0e:	0f 85 9a 0c 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2f14:	48 81 c6 01 00 00 00                            	add    rsi,0x1
+ 2bc2f1b:	48 81 c1 01 00 00 00                            	add    rcx,0x1
+ 2bc2f22:	48 81 f9 00 01 00 00                            	cmp    rcx,0x100
+ 2bc2f29:	0f 85 a2 ff ff ff                               	jne    2bc2ed1 <topal_x86_frame_mm_cleanup_return_v1+0x1a10d>
+ 2bc2f2f:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2f32:	48 81 c6 00 09 00 00                            	add    rsi,0x900
+ 2bc2f39:	4c 89 c7                                        	mov    rdi,r8
+ 2bc2f3c:	48 81 c7 00 06 00 00                            	add    rdi,0x600
+ 2bc2f43:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2f4d:	fc                                              	cld
+ 2bc2f4e:	f3 48 a7                                        	repz cmps QWORD PTR [rsi],QWORD PTR [rdi]
+ 2bc2f51:	0f 84 57 0c 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2f57:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2f5a:	48 81 c6 00 09 00 00                            	add    rsi,0x900
+ 2bc2f61:	4c 89 c7                                        	mov    rdi,r8
+ 2bc2f64:	48 81 c7 00 07 00 00                            	add    rdi,0x700
+ 2bc2f6b:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2f75:	fc                                              	cld
+ 2bc2f76:	f3 48 a7                                        	repz cmps QWORD PTR [rsi],QWORD PTR [rdi]
+ 2bc2f79:	0f 84 2f 0c 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2f7f:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2f82:	48 81 c6 00 09 00 00                            	add    rsi,0x900
+ 2bc2f89:	4c 89 c7                                        	mov    rdi,r8
+ 2bc2f8c:	48 81 c7 00 08 00 00                            	add    rdi,0x800
+ 2bc2f93:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bc2f9d:	fc                                              	cld
+ 2bc2f9e:	f3 48 a7                                        	repz cmps QWORD PTR [rsi],QWORD PTR [rdi]
+ 2bc2fa1:	0f 84 07 0c 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2fa7:	49 8b 90 00 04 00 00                            	mov    rdx,QWORD PTR [r8+0x400]
+ 2bc2fae:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc2fb5:	0f 85 66 00 00 00                               	jne    2bc3021 <topal_x86_frame_mm_cleanup_return_v1+0x1a25d>
+ 2bc2fbb:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2fbe:	48 81 c6 00 04 00 00                            	add    rsi,0x400
+ 2bc2fc5:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc2fcf:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc2fd6:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc2fdd:	0f 85 cb 0b 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc2fe3:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc2fea:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc2ff1:	0f 85 d8 ff ff ff                               	jne    2bc2fcf <topal_x86_frame_mm_cleanup_return_v1+0x1a20b>
+ 2bc2ff7:	4c 89 c6                                        	mov    rsi,r8
+ 2bc2ffa:	48 81 c6 18 00 00 00                            	add    rsi,0x18
+ 2bc3001:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3008:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc300f:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3016:	0f 85 92 0b 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc301c:	e9 aa 00 00 00                                  	jmp    2bc30cb <topal_x86_frame_mm_cleanup_return_v1+0x1a307>
+ 2bc3021:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc3028:	0f 84 2c 00 00 00                               	je     2bc305a <topal_x86_frame_mm_cleanup_return_v1+0x1a296>
+ 2bc302e:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc3035:	0f 84 1f 00 00 00                               	je     2bc305a <topal_x86_frame_mm_cleanup_return_v1+0x1a296>
+ 2bc303b:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc3042:	0f 84 12 00 00 00                               	je     2bc305a <topal_x86_frame_mm_cleanup_return_v1+0x1a296>
+ 2bc3048:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc304f:	0f 84 05 00 00 00                               	je     2bc305a <topal_x86_frame_mm_cleanup_return_v1+0x1a296>
+ 2bc3055:	e9 54 0b 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc305a:	49 8b 80 08 04 00 00                            	mov    rax,QWORD PTR [r8+0x408]
+ 2bc3061:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc306b:	48 39 c8                                        	cmp    rax,rcx
+ 2bc306e:	0f 87 3a 0b 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3074:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3077:	48 81 c6 10 04 00 00                            	add    rsi,0x410
+ 2bc307e:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc3088:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc308f:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3096:	0f 85 12 0b 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc309c:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc30a3:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc30aa:	0f 85 d8 ff ff ff                               	jne    2bc3088 <topal_x86_frame_mm_cleanup_return_v1+0x1a2c4>
+ 2bc30b0:	49 8b 80 18 00 00 00                            	mov    rax,QWORD PTR [r8+0x18]
+ 2bc30b7:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc30be:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc30c5:	0f 85 e3 0a 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc30cb:	49 8b 90 20 04 00 00                            	mov    rdx,QWORD PTR [r8+0x420]
+ 2bc30d2:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc30d9:	0f 85 66 00 00 00                               	jne    2bc3145 <topal_x86_frame_mm_cleanup_return_v1+0x1a381>
+ 2bc30df:	4c 89 c6                                        	mov    rsi,r8
+ 2bc30e2:	48 81 c6 20 04 00 00                            	add    rsi,0x420
+ 2bc30e9:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc30f3:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc30fa:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3101:	0f 85 a7 0a 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3107:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc310e:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc3115:	0f 85 d8 ff ff ff                               	jne    2bc30f3 <topal_x86_frame_mm_cleanup_return_v1+0x1a32f>
+ 2bc311b:	4c 89 c6                                        	mov    rsi,r8
+ 2bc311e:	48 81 c6 19 00 00 00                            	add    rsi,0x19
+ 2bc3125:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc312c:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc3133:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc313a:	0f 85 6e 0a 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3140:	e9 c4 00 00 00                                  	jmp    2bc3209 <topal_x86_frame_mm_cleanup_return_v1+0x1a445>
+ 2bc3145:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc314c:	0f 84 2c 00 00 00                               	je     2bc317e <topal_x86_frame_mm_cleanup_return_v1+0x1a3ba>
+ 2bc3152:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc3159:	0f 84 1f 00 00 00                               	je     2bc317e <topal_x86_frame_mm_cleanup_return_v1+0x1a3ba>
+ 2bc315f:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc3166:	0f 84 12 00 00 00                               	je     2bc317e <topal_x86_frame_mm_cleanup_return_v1+0x1a3ba>
+ 2bc316c:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc3173:	0f 84 05 00 00 00                               	je     2bc317e <topal_x86_frame_mm_cleanup_return_v1+0x1a3ba>
+ 2bc3179:	e9 30 0a 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc317e:	49 8b 80 28 04 00 00                            	mov    rax,QWORD PTR [r8+0x428]
+ 2bc3185:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc318f:	48 39 c8                                        	cmp    rax,rcx
+ 2bc3192:	0f 87 16 0a 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3198:	49 3b 90 00 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x400]
+ 2bc319f:	0f 85 0d 00 00 00                               	jne    2bc31b2 <topal_x86_frame_mm_cleanup_return_v1+0x1a3ee>
+ 2bc31a5:	49 3b 80 08 04 00 00                            	cmp    rax,QWORD PTR [r8+0x408]
+ 2bc31ac:	0f 84 fc 09 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc31b2:	4c 89 c6                                        	mov    rsi,r8
+ 2bc31b5:	48 81 c6 30 04 00 00                            	add    rsi,0x430
+ 2bc31bc:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc31c6:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc31cd:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc31d4:	0f 85 d4 09 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc31da:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc31e1:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc31e8:	0f 85 d8 ff ff ff                               	jne    2bc31c6 <topal_x86_frame_mm_cleanup_return_v1+0x1a402>
+ 2bc31ee:	49 8b 80 19 00 00 00                            	mov    rax,QWORD PTR [r8+0x19]
+ 2bc31f5:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc31fc:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc3203:	0f 85 a5 09 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3209:	49 8b 90 40 04 00 00                            	mov    rdx,QWORD PTR [r8+0x440]
+ 2bc3210:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc3217:	0f 85 66 00 00 00                               	jne    2bc3283 <topal_x86_frame_mm_cleanup_return_v1+0x1a4bf>
+ 2bc321d:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3220:	48 81 c6 40 04 00 00                            	add    rsi,0x440
+ 2bc3227:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc3231:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3238:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc323f:	0f 85 69 09 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3245:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc324c:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc3253:	0f 85 d8 ff ff ff                               	jne    2bc3231 <topal_x86_frame_mm_cleanup_return_v1+0x1a46d>
+ 2bc3259:	4c 89 c6                                        	mov    rsi,r8
+ 2bc325c:	48 81 c6 1a 00 00 00                            	add    rsi,0x1a
+ 2bc3263:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc326a:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc3271:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3278:	0f 85 30 09 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc327e:	e9 de 00 00 00                                  	jmp    2bc3361 <topal_x86_frame_mm_cleanup_return_v1+0x1a59d>
+ 2bc3283:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc328a:	0f 84 2c 00 00 00                               	je     2bc32bc <topal_x86_frame_mm_cleanup_return_v1+0x1a4f8>
+ 2bc3290:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc3297:	0f 84 1f 00 00 00                               	je     2bc32bc <topal_x86_frame_mm_cleanup_return_v1+0x1a4f8>
+ 2bc329d:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc32a4:	0f 84 12 00 00 00                               	je     2bc32bc <topal_x86_frame_mm_cleanup_return_v1+0x1a4f8>
+ 2bc32aa:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc32b1:	0f 84 05 00 00 00                               	je     2bc32bc <topal_x86_frame_mm_cleanup_return_v1+0x1a4f8>
+ 2bc32b7:	e9 f2 08 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc32bc:	49 8b 80 48 04 00 00                            	mov    rax,QWORD PTR [r8+0x448]
+ 2bc32c3:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc32cd:	48 39 c8                                        	cmp    rax,rcx
+ 2bc32d0:	0f 87 d8 08 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc32d6:	49 3b 90 00 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x400]
+ 2bc32dd:	0f 85 0d 00 00 00                               	jne    2bc32f0 <topal_x86_frame_mm_cleanup_return_v1+0x1a52c>
+ 2bc32e3:	49 3b 80 08 04 00 00                            	cmp    rax,QWORD PTR [r8+0x408]
+ 2bc32ea:	0f 84 be 08 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc32f0:	49 3b 90 20 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x420]
+ 2bc32f7:	0f 85 0d 00 00 00                               	jne    2bc330a <topal_x86_frame_mm_cleanup_return_v1+0x1a546>
+ 2bc32fd:	49 3b 80 28 04 00 00                            	cmp    rax,QWORD PTR [r8+0x428]
+ 2bc3304:	0f 84 a4 08 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc330a:	4c 89 c6                                        	mov    rsi,r8
+ 2bc330d:	48 81 c6 50 04 00 00                            	add    rsi,0x450
+ 2bc3314:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc331e:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3325:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc332c:	0f 85 7c 08 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3332:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc3339:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc3340:	0f 85 d8 ff ff ff                               	jne    2bc331e <topal_x86_frame_mm_cleanup_return_v1+0x1a55a>
+ 2bc3346:	49 8b 80 1a 00 00 00                            	mov    rax,QWORD PTR [r8+0x1a]
+ 2bc334d:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc3354:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc335b:	0f 85 4d 08 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3361:	49 8b 90 60 04 00 00                            	mov    rdx,QWORD PTR [r8+0x460]
+ 2bc3368:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc336f:	0f 85 66 00 00 00                               	jne    2bc33db <topal_x86_frame_mm_cleanup_return_v1+0x1a617>
+ 2bc3375:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3378:	48 81 c6 60 04 00 00                            	add    rsi,0x460
+ 2bc337f:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc3389:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3390:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3397:	0f 85 11 08 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc339d:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc33a4:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc33ab:	0f 85 d8 ff ff ff                               	jne    2bc3389 <topal_x86_frame_mm_cleanup_return_v1+0x1a5c5>
+ 2bc33b1:	4c 89 c6                                        	mov    rsi,r8
+ 2bc33b4:	48 81 c6 1b 00 00 00                            	add    rsi,0x1b
+ 2bc33bb:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc33c2:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc33c9:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc33d0:	0f 85 d8 07 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc33d6:	e9 f8 00 00 00                                  	jmp    2bc34d3 <topal_x86_frame_mm_cleanup_return_v1+0x1a70f>
+ 2bc33db:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc33e2:	0f 84 2c 00 00 00                               	je     2bc3414 <topal_x86_frame_mm_cleanup_return_v1+0x1a650>
+ 2bc33e8:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc33ef:	0f 84 1f 00 00 00                               	je     2bc3414 <topal_x86_frame_mm_cleanup_return_v1+0x1a650>
+ 2bc33f5:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc33fc:	0f 84 12 00 00 00                               	je     2bc3414 <topal_x86_frame_mm_cleanup_return_v1+0x1a650>
+ 2bc3402:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc3409:	0f 84 05 00 00 00                               	je     2bc3414 <topal_x86_frame_mm_cleanup_return_v1+0x1a650>
+ 2bc340f:	e9 9a 07 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3414:	49 8b 80 68 04 00 00                            	mov    rax,QWORD PTR [r8+0x468]
+ 2bc341b:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc3425:	48 39 c8                                        	cmp    rax,rcx
+ 2bc3428:	0f 87 80 07 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc342e:	49 3b 90 00 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x400]
+ 2bc3435:	0f 85 0d 00 00 00                               	jne    2bc3448 <topal_x86_frame_mm_cleanup_return_v1+0x1a684>
+ 2bc343b:	49 3b 80 08 04 00 00                            	cmp    rax,QWORD PTR [r8+0x408]
+ 2bc3442:	0f 84 66 07 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3448:	49 3b 90 20 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x420]
+ 2bc344f:	0f 85 0d 00 00 00                               	jne    2bc3462 <topal_x86_frame_mm_cleanup_return_v1+0x1a69e>
+ 2bc3455:	49 3b 80 28 04 00 00                            	cmp    rax,QWORD PTR [r8+0x428]
+ 2bc345c:	0f 84 4c 07 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3462:	49 3b 90 40 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x440]
+ 2bc3469:	0f 85 0d 00 00 00                               	jne    2bc347c <topal_x86_frame_mm_cleanup_return_v1+0x1a6b8>
+ 2bc346f:	49 3b 80 48 04 00 00                            	cmp    rax,QWORD PTR [r8+0x448]
+ 2bc3476:	0f 84 32 07 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc347c:	4c 89 c6                                        	mov    rsi,r8
+ 2bc347f:	48 81 c6 70 04 00 00                            	add    rsi,0x470
+ 2bc3486:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc3490:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3497:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc349e:	0f 85 0a 07 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc34a4:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc34ab:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc34b2:	0f 85 d8 ff ff ff                               	jne    2bc3490 <topal_x86_frame_mm_cleanup_return_v1+0x1a6cc>
+ 2bc34b8:	49 8b 80 1b 00 00 00                            	mov    rax,QWORD PTR [r8+0x1b]
+ 2bc34bf:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc34c6:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc34cd:	0f 85 db 06 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc34d3:	49 8b 90 80 04 00 00                            	mov    rdx,QWORD PTR [r8+0x480]
+ 2bc34da:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc34e1:	0f 85 66 00 00 00                               	jne    2bc354d <topal_x86_frame_mm_cleanup_return_v1+0x1a789>
+ 2bc34e7:	4c 89 c6                                        	mov    rsi,r8
+ 2bc34ea:	48 81 c6 80 04 00 00                            	add    rsi,0x480
+ 2bc34f1:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc34fb:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3502:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3509:	0f 85 9f 06 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc350f:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc3516:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc351d:	0f 85 d8 ff ff ff                               	jne    2bc34fb <topal_x86_frame_mm_cleanup_return_v1+0x1a737>
+ 2bc3523:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3526:	48 81 c6 1c 00 00 00                            	add    rsi,0x1c
+ 2bc352d:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3534:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc353b:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3542:	0f 85 66 06 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3548:	e9 12 01 00 00                                  	jmp    2bc365f <topal_x86_frame_mm_cleanup_return_v1+0x1a89b>
+ 2bc354d:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc3554:	0f 84 2c 00 00 00                               	je     2bc3586 <topal_x86_frame_mm_cleanup_return_v1+0x1a7c2>
+ 2bc355a:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc3561:	0f 84 1f 00 00 00                               	je     2bc3586 <topal_x86_frame_mm_cleanup_return_v1+0x1a7c2>
+ 2bc3567:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc356e:	0f 84 12 00 00 00                               	je     2bc3586 <topal_x86_frame_mm_cleanup_return_v1+0x1a7c2>
+ 2bc3574:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc357b:	0f 84 05 00 00 00                               	je     2bc3586 <topal_x86_frame_mm_cleanup_return_v1+0x1a7c2>
+ 2bc3581:	e9 28 06 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3586:	49 8b 80 88 04 00 00                            	mov    rax,QWORD PTR [r8+0x488]
+ 2bc358d:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc3597:	48 39 c8                                        	cmp    rax,rcx
+ 2bc359a:	0f 87 0e 06 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc35a0:	49 3b 90 00 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x400]
+ 2bc35a7:	0f 85 0d 00 00 00                               	jne    2bc35ba <topal_x86_frame_mm_cleanup_return_v1+0x1a7f6>
+ 2bc35ad:	49 3b 80 08 04 00 00                            	cmp    rax,QWORD PTR [r8+0x408]
+ 2bc35b4:	0f 84 f4 05 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc35ba:	49 3b 90 20 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x420]
+ 2bc35c1:	0f 85 0d 00 00 00                               	jne    2bc35d4 <topal_x86_frame_mm_cleanup_return_v1+0x1a810>
+ 2bc35c7:	49 3b 80 28 04 00 00                            	cmp    rax,QWORD PTR [r8+0x428]
+ 2bc35ce:	0f 84 da 05 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc35d4:	49 3b 90 40 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x440]
+ 2bc35db:	0f 85 0d 00 00 00                               	jne    2bc35ee <topal_x86_frame_mm_cleanup_return_v1+0x1a82a>
+ 2bc35e1:	49 3b 80 48 04 00 00                            	cmp    rax,QWORD PTR [r8+0x448]
+ 2bc35e8:	0f 84 c0 05 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc35ee:	49 3b 90 60 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x460]
+ 2bc35f5:	0f 85 0d 00 00 00                               	jne    2bc3608 <topal_x86_frame_mm_cleanup_return_v1+0x1a844>
+ 2bc35fb:	49 3b 80 68 04 00 00                            	cmp    rax,QWORD PTR [r8+0x468]
+ 2bc3602:	0f 84 a6 05 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3608:	4c 89 c6                                        	mov    rsi,r8
+ 2bc360b:	48 81 c6 90 04 00 00                            	add    rsi,0x490
+ 2bc3612:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc361c:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3623:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc362a:	0f 85 7e 05 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3630:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc3637:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc363e:	0f 85 d8 ff ff ff                               	jne    2bc361c <topal_x86_frame_mm_cleanup_return_v1+0x1a858>
+ 2bc3644:	49 8b 80 1c 00 00 00                            	mov    rax,QWORD PTR [r8+0x1c]
+ 2bc364b:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc3652:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc3659:	0f 85 4f 05 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc365f:	49 8b 90 a0 04 00 00                            	mov    rdx,QWORD PTR [r8+0x4a0]
+ 2bc3666:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc366d:	0f 85 66 00 00 00                               	jne    2bc36d9 <topal_x86_frame_mm_cleanup_return_v1+0x1a915>
+ 2bc3673:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3676:	48 81 c6 a0 04 00 00                            	add    rsi,0x4a0
+ 2bc367d:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc3687:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc368e:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3695:	0f 85 13 05 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc369b:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc36a2:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc36a9:	0f 85 d8 ff ff ff                               	jne    2bc3687 <topal_x86_frame_mm_cleanup_return_v1+0x1a8c3>
+ 2bc36af:	4c 89 c6                                        	mov    rsi,r8
+ 2bc36b2:	48 81 c6 1d 00 00 00                            	add    rsi,0x1d
+ 2bc36b9:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc36c0:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc36c7:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc36ce:	0f 85 da 04 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc36d4:	e9 2c 01 00 00                                  	jmp    2bc3805 <topal_x86_frame_mm_cleanup_return_v1+0x1aa41>
+ 2bc36d9:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc36e0:	0f 84 2c 00 00 00                               	je     2bc3712 <topal_x86_frame_mm_cleanup_return_v1+0x1a94e>
+ 2bc36e6:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc36ed:	0f 84 1f 00 00 00                               	je     2bc3712 <topal_x86_frame_mm_cleanup_return_v1+0x1a94e>
+ 2bc36f3:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc36fa:	0f 84 12 00 00 00                               	je     2bc3712 <topal_x86_frame_mm_cleanup_return_v1+0x1a94e>
+ 2bc3700:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc3707:	0f 84 05 00 00 00                               	je     2bc3712 <topal_x86_frame_mm_cleanup_return_v1+0x1a94e>
+ 2bc370d:	e9 9c 04 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3712:	49 8b 80 a8 04 00 00                            	mov    rax,QWORD PTR [r8+0x4a8]
+ 2bc3719:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc3723:	48 39 c8                                        	cmp    rax,rcx
+ 2bc3726:	0f 87 82 04 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc372c:	49 3b 90 00 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x400]
+ 2bc3733:	0f 85 0d 00 00 00                               	jne    2bc3746 <topal_x86_frame_mm_cleanup_return_v1+0x1a982>
+ 2bc3739:	49 3b 80 08 04 00 00                            	cmp    rax,QWORD PTR [r8+0x408]
+ 2bc3740:	0f 84 68 04 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3746:	49 3b 90 20 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x420]
+ 2bc374d:	0f 85 0d 00 00 00                               	jne    2bc3760 <topal_x86_frame_mm_cleanup_return_v1+0x1a99c>
+ 2bc3753:	49 3b 80 28 04 00 00                            	cmp    rax,QWORD PTR [r8+0x428]
+ 2bc375a:	0f 84 4e 04 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3760:	49 3b 90 40 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x440]
+ 2bc3767:	0f 85 0d 00 00 00                               	jne    2bc377a <topal_x86_frame_mm_cleanup_return_v1+0x1a9b6>
+ 2bc376d:	49 3b 80 48 04 00 00                            	cmp    rax,QWORD PTR [r8+0x448]
+ 2bc3774:	0f 84 34 04 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc377a:	49 3b 90 60 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x460]
+ 2bc3781:	0f 85 0d 00 00 00                               	jne    2bc3794 <topal_x86_frame_mm_cleanup_return_v1+0x1a9d0>
+ 2bc3787:	49 3b 80 68 04 00 00                            	cmp    rax,QWORD PTR [r8+0x468]
+ 2bc378e:	0f 84 1a 04 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3794:	49 3b 90 80 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x480]
+ 2bc379b:	0f 85 0d 00 00 00                               	jne    2bc37ae <topal_x86_frame_mm_cleanup_return_v1+0x1a9ea>
+ 2bc37a1:	49 3b 80 88 04 00 00                            	cmp    rax,QWORD PTR [r8+0x488]
+ 2bc37a8:	0f 84 00 04 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc37ae:	4c 89 c6                                        	mov    rsi,r8
+ 2bc37b1:	48 81 c6 b0 04 00 00                            	add    rsi,0x4b0
+ 2bc37b8:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc37c2:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc37c9:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc37d0:	0f 85 d8 03 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc37d6:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc37dd:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc37e4:	0f 85 d8 ff ff ff                               	jne    2bc37c2 <topal_x86_frame_mm_cleanup_return_v1+0x1a9fe>
+ 2bc37ea:	49 8b 80 1d 00 00 00                            	mov    rax,QWORD PTR [r8+0x1d]
+ 2bc37f1:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc37f8:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc37ff:	0f 85 a9 03 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3805:	49 8b 90 c0 04 00 00                            	mov    rdx,QWORD PTR [r8+0x4c0]
+ 2bc380c:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc3813:	0f 85 66 00 00 00                               	jne    2bc387f <topal_x86_frame_mm_cleanup_return_v1+0x1aabb>
+ 2bc3819:	4c 89 c6                                        	mov    rsi,r8
+ 2bc381c:	48 81 c6 c0 04 00 00                            	add    rsi,0x4c0
+ 2bc3823:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc382d:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3834:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc383b:	0f 85 6d 03 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3841:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc3848:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc384f:	0f 85 d8 ff ff ff                               	jne    2bc382d <topal_x86_frame_mm_cleanup_return_v1+0x1aa69>
+ 2bc3855:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3858:	48 81 c6 1e 00 00 00                            	add    rsi,0x1e
+ 2bc385f:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3866:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc386d:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3874:	0f 85 34 03 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc387a:	e9 46 01 00 00                                  	jmp    2bc39c5 <topal_x86_frame_mm_cleanup_return_v1+0x1ac01>
+ 2bc387f:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc3886:	0f 84 2c 00 00 00                               	je     2bc38b8 <topal_x86_frame_mm_cleanup_return_v1+0x1aaf4>
+ 2bc388c:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc3893:	0f 84 1f 00 00 00                               	je     2bc38b8 <topal_x86_frame_mm_cleanup_return_v1+0x1aaf4>
+ 2bc3899:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc38a0:	0f 84 12 00 00 00                               	je     2bc38b8 <topal_x86_frame_mm_cleanup_return_v1+0x1aaf4>
+ 2bc38a6:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc38ad:	0f 84 05 00 00 00                               	je     2bc38b8 <topal_x86_frame_mm_cleanup_return_v1+0x1aaf4>
+ 2bc38b3:	e9 f6 02 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc38b8:	49 8b 80 c8 04 00 00                            	mov    rax,QWORD PTR [r8+0x4c8]
+ 2bc38bf:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc38c9:	48 39 c8                                        	cmp    rax,rcx
+ 2bc38cc:	0f 87 dc 02 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc38d2:	49 3b 90 00 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x400]
+ 2bc38d9:	0f 85 0d 00 00 00                               	jne    2bc38ec <topal_x86_frame_mm_cleanup_return_v1+0x1ab28>
+ 2bc38df:	49 3b 80 08 04 00 00                            	cmp    rax,QWORD PTR [r8+0x408]
+ 2bc38e6:	0f 84 c2 02 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc38ec:	49 3b 90 20 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x420]
+ 2bc38f3:	0f 85 0d 00 00 00                               	jne    2bc3906 <topal_x86_frame_mm_cleanup_return_v1+0x1ab42>
+ 2bc38f9:	49 3b 80 28 04 00 00                            	cmp    rax,QWORD PTR [r8+0x428]
+ 2bc3900:	0f 84 a8 02 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3906:	49 3b 90 40 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x440]
+ 2bc390d:	0f 85 0d 00 00 00                               	jne    2bc3920 <topal_x86_frame_mm_cleanup_return_v1+0x1ab5c>
+ 2bc3913:	49 3b 80 48 04 00 00                            	cmp    rax,QWORD PTR [r8+0x448]
+ 2bc391a:	0f 84 8e 02 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3920:	49 3b 90 60 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x460]
+ 2bc3927:	0f 85 0d 00 00 00                               	jne    2bc393a <topal_x86_frame_mm_cleanup_return_v1+0x1ab76>
+ 2bc392d:	49 3b 80 68 04 00 00                            	cmp    rax,QWORD PTR [r8+0x468]
+ 2bc3934:	0f 84 74 02 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc393a:	49 3b 90 80 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x480]
+ 2bc3941:	0f 85 0d 00 00 00                               	jne    2bc3954 <topal_x86_frame_mm_cleanup_return_v1+0x1ab90>
+ 2bc3947:	49 3b 80 88 04 00 00                            	cmp    rax,QWORD PTR [r8+0x488]
+ 2bc394e:	0f 84 5a 02 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3954:	49 3b 90 a0 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x4a0]
+ 2bc395b:	0f 85 0d 00 00 00                               	jne    2bc396e <topal_x86_frame_mm_cleanup_return_v1+0x1abaa>
+ 2bc3961:	49 3b 80 a8 04 00 00                            	cmp    rax,QWORD PTR [r8+0x4a8]
+ 2bc3968:	0f 84 40 02 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc396e:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3971:	48 81 c6 d0 04 00 00                            	add    rsi,0x4d0
+ 2bc3978:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc3982:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3989:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3990:	0f 85 18 02 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3996:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc399d:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc39a4:	0f 85 d8 ff ff ff                               	jne    2bc3982 <topal_x86_frame_mm_cleanup_return_v1+0x1abbe>
+ 2bc39aa:	49 8b 80 1e 00 00 00                            	mov    rax,QWORD PTR [r8+0x1e]
+ 2bc39b1:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc39b8:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc39bf:	0f 85 e9 01 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc39c5:	49 8b 90 e0 04 00 00                            	mov    rdx,QWORD PTR [r8+0x4e0]
+ 2bc39cc:	48 81 fa 00 00 00 00                            	cmp    rdx,0x0
+ 2bc39d3:	0f 85 66 00 00 00                               	jne    2bc3a3f <topal_x86_frame_mm_cleanup_return_v1+0x1ac7b>
+ 2bc39d9:	4c 89 c6                                        	mov    rsi,r8
+ 2bc39dc:	48 81 c6 e0 04 00 00                            	add    rsi,0x4e0
+ 2bc39e3:	48 b9 04 00 00 00 00 00 00 00                   	movabs rcx,0x4
+ 2bc39ed:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc39f4:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc39fb:	0f 85 ad 01 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3a01:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc3a08:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc3a0f:	0f 85 d8 ff ff ff                               	jne    2bc39ed <topal_x86_frame_mm_cleanup_return_v1+0x1ac29>
+ 2bc3a15:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3a18:	48 81 c6 1f 00 00 00                            	add    rsi,0x1f
+ 2bc3a1f:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3a26:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc3a2d:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3a34:	0f 85 74 01 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3a3a:	e9 60 01 00 00                                  	jmp    2bc3b9f <topal_x86_frame_mm_cleanup_return_v1+0x1addb>
+ 2bc3a3f:	49 3b 90 08 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x108]
+ 2bc3a46:	0f 84 2c 00 00 00                               	je     2bc3a78 <topal_x86_frame_mm_cleanup_return_v1+0x1acb4>
+ 2bc3a4c:	49 3b 90 88 01 00 00                            	cmp    rdx,QWORD PTR [r8+0x188]
+ 2bc3a53:	0f 84 1f 00 00 00                               	je     2bc3a78 <topal_x86_frame_mm_cleanup_return_v1+0x1acb4>
+ 2bc3a59:	49 3b 90 08 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x208]
+ 2bc3a60:	0f 84 12 00 00 00                               	je     2bc3a78 <topal_x86_frame_mm_cleanup_return_v1+0x1acb4>
+ 2bc3a66:	49 3b 90 88 02 00 00                            	cmp    rdx,QWORD PTR [r8+0x288]
+ 2bc3a6d:	0f 84 05 00 00 00                               	je     2bc3a78 <topal_x86_frame_mm_cleanup_return_v1+0x1acb4>
+ 2bc3a73:	e9 36 01 00 00                                  	jmp    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3a78:	49 8b 80 e8 04 00 00                            	mov    rax,QWORD PTR [r8+0x4e8]
+ 2bc3a7f:	48 b9 ff ff ff ff ff ff 07 00                   	movabs rcx,0x7ffffffffffff
+ 2bc3a89:	48 39 c8                                        	cmp    rax,rcx
+ 2bc3a8c:	0f 87 1c 01 00 00                               	ja     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3a92:	49 3b 90 00 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x400]
+ 2bc3a99:	0f 85 0d 00 00 00                               	jne    2bc3aac <topal_x86_frame_mm_cleanup_return_v1+0x1ace8>
+ 2bc3a9f:	49 3b 80 08 04 00 00                            	cmp    rax,QWORD PTR [r8+0x408]
+ 2bc3aa6:	0f 84 02 01 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3aac:	49 3b 90 20 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x420]
+ 2bc3ab3:	0f 85 0d 00 00 00                               	jne    2bc3ac6 <topal_x86_frame_mm_cleanup_return_v1+0x1ad02>
+ 2bc3ab9:	49 3b 80 28 04 00 00                            	cmp    rax,QWORD PTR [r8+0x428]
+ 2bc3ac0:	0f 84 e8 00 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3ac6:	49 3b 90 40 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x440]
+ 2bc3acd:	0f 85 0d 00 00 00                               	jne    2bc3ae0 <topal_x86_frame_mm_cleanup_return_v1+0x1ad1c>
+ 2bc3ad3:	49 3b 80 48 04 00 00                            	cmp    rax,QWORD PTR [r8+0x448]
+ 2bc3ada:	0f 84 ce 00 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3ae0:	49 3b 90 60 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x460]
+ 2bc3ae7:	0f 85 0d 00 00 00                               	jne    2bc3afa <topal_x86_frame_mm_cleanup_return_v1+0x1ad36>
+ 2bc3aed:	49 3b 80 68 04 00 00                            	cmp    rax,QWORD PTR [r8+0x468]
+ 2bc3af4:	0f 84 b4 00 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3afa:	49 3b 90 80 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x480]
+ 2bc3b01:	0f 85 0d 00 00 00                               	jne    2bc3b14 <topal_x86_frame_mm_cleanup_return_v1+0x1ad50>
+ 2bc3b07:	49 3b 80 88 04 00 00                            	cmp    rax,QWORD PTR [r8+0x488]
+ 2bc3b0e:	0f 84 9a 00 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3b14:	49 3b 90 a0 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x4a0]
+ 2bc3b1b:	0f 85 0d 00 00 00                               	jne    2bc3b2e <topal_x86_frame_mm_cleanup_return_v1+0x1ad6a>
+ 2bc3b21:	49 3b 80 a8 04 00 00                            	cmp    rax,QWORD PTR [r8+0x4a8]
+ 2bc3b28:	0f 84 80 00 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3b2e:	49 3b 90 c0 04 00 00                            	cmp    rdx,QWORD PTR [r8+0x4c0]
+ 2bc3b35:	0f 85 0d 00 00 00                               	jne    2bc3b48 <topal_x86_frame_mm_cleanup_return_v1+0x1ad84>
+ 2bc3b3b:	49 3b 80 c8 04 00 00                            	cmp    rax,QWORD PTR [r8+0x4c8]
+ 2bc3b42:	0f 84 66 00 00 00                               	je     2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3b48:	4c 89 c6                                        	mov    rsi,r8
+ 2bc3b4b:	48 81 c6 f0 04 00 00                            	add    rsi,0x4f0
+ 2bc3b52:	48 b9 02 00 00 00 00 00 00 00                   	movabs rcx,0x2
+ 2bc3b5c:	48 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [rsi+0x0]
+ 2bc3b63:	48 81 f8 00 00 00 00                            	cmp    rax,0x0
+ 2bc3b6a:	0f 85 3e 00 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3b70:	48 81 c6 08 00 00 00                            	add    rsi,0x8
+ 2bc3b77:	48 81 c1 ff ff ff ff                            	add    rcx,0xffffffffffffffff
+ 2bc3b7e:	0f 85 d8 ff ff ff                               	jne    2bc3b5c <topal_x86_frame_mm_cleanup_return_v1+0x1ad98>
+ 2bc3b84:	49 8b 80 1f 00 00 00                            	mov    rax,QWORD PTR [r8+0x1f]
+ 2bc3b8b:	48 81 e0 ff 00 00 00                            	and    rax,0xff
+ 2bc3b92:	48 81 f8 01 00 00 00                            	cmp    rax,0x1
+ 2bc3b99:	0f 85 0f 00 00 00                               	jne    2bc3bae <topal_x86_frame_mm_cleanup_return_v1+0x1adea>
+ 2bc3b9f:	48 b8 01 00 00 00 00 00 00 00                   	movabs rax,0x1
+ 2bc3ba9:	e9 0a 00 00 00                                  	jmp    2bc3bb8 <topal_x86_frame_mm_cleanup_return_v1+0x1adf4>
+ 2bc3bae:	48 b8 00 00 00 00 00 00 00 00                   	movabs rax,0x0
+ 2bc3bb8:	41 5b                                           	pop    r11
+ 2bc3bba:	41 5a                                           	pop    r10
+ 2bc3bbc:	41 59                                           	pop    r9
+ 2bc3bbe:	41 58                                           	pop    r8
+ 2bc3bc0:	5f                                              	pop    rdi
+ 2bc3bc1:	5e                                              	pop    rsi
+ 2bc3bc2:	5a                                              	pop    rdx
+ 2bc3bc3:	59                                              	pop    rcx
+ 2bc3bc4:	48 c7 84 24 c0 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x40],0x0
+ 2bc3bd0:	48 c7 84 24 c8 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x38],0x0
+ 2bc3bdc:	48 c7 84 24 d0 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x30],0x0
+ 2bc3be8:	48 c7 84 24 d8 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x28],0x0
+ 2bc3bf4:	48 c7 84 24 e0 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x20],0x0
+ 2bc3c00:	48 c7 84 24 e8 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x18],0x0
+ 2bc3c0c:	48 c7 84 24 f0 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x10],0x0
+ 2bc3c18:	48 c7 84 24 f8 ff ff ff 00 00 00 00             	mov    QWORD PTR [rsp-0x8],0x0
+ 2bc3c24:	48 81 bc 24 c0 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x40],0x0
+ 2bc3c30:	0f 85 7f 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3c36:	48 81 bc 24 c8 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x38],0x0
+ 2bc3c42:	0f 85 6d 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3c48:	48 81 bc 24 d0 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x30],0x0
+ 2bc3c54:	0f 85 5b 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3c5a:	48 81 bc 24 d8 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x28],0x0
+ 2bc3c66:	0f 85 49 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3c6c:	48 81 bc 24 e0 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x20],0x0
+ 2bc3c78:	0f 85 37 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3c7e:	48 81 bc 24 e8 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x18],0x0
+ 2bc3c8a:	0f 85 25 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3c90:	48 81 bc 24 f0 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x10],0x0
+ 2bc3c9c:	0f 85 13 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3ca2:	48 81 bc 24 f8 ff ff ff 00 00 00 00             	cmp    QWORD PTR [rsp-0x8],0x0
+ 2bc3cae:	0f 85 01 00 00 00                               	jne    2bc3cb5 <topal_x86_frame_mm_cleanup_return_v1+0x1aef1>
+ 2bc3cb4:	c3                                              	ret
+ 2bc3cb5:	48 b8 00 00 00 00 00 00 00 00                   	movabs rax,0x0
+ 2bc3cbf:	c3                                              	ret

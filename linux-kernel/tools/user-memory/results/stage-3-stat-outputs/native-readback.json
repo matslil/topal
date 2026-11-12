@@ -1,0 +1,646 @@
+{
+  "passed": true,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "audit_sha256": "e7e83feb07e4be249561927e4b2da9d3fc880404320c658a30007e961120d30d",
+  "observation_sha256": "b02809942f86b69bae30f4a3847a5012988218351a83cee118ac786a258daaa6",
+  "source_syscalls": 152,
+  "stat_queries": 88,
+  "completed_copies": [
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "immutable-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-root",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "24078bbee039a30c13c7965b4d69e8f027a444ee2be853432051b003606f54a4"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-bin",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "c6a7e1b1cfaa7e63a62ffcad05851dfdfd7f0a73adc786952b51ea071813de3d"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-tmp",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "9cfcf07cbfb97eb7b9d376fae7f3ef0b3e36fa9e93fa8ae51c78c5d2bde2455c"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "immutable-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "directory-tmp",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "9cfcf07cbfb97eb7b9d376fae7f3ef0b3e36fa9e93fa8ae51c78c5d2bde2455c"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-reader",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "41a65bac96f343dbcdad7984ece0f410627edd2dbd78051f8473e4023795cc5d"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-writer",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "41a65bac96f343dbcdad7984ece0f410627edd2dbd78051f8473e4023795cc5d"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "55967901bd35f065150507aa09b1abb85448be108680637860093ae20369dafc"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "55967901bd35f065150507aa09b1abb85448be108680637860093ae20369dafc"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "53eefeddcc80d185c5bf11a7fef93890cd80f0b592c4ec631731cfe7f2b2bf29"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "53eefeddcc80d185c5bf11a7fef93890cd80f0b592c4ec631731cfe7f2b2bf29"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "d17cad897d9887e48ad85c17405b7f8e1cbea4973da314d92997c88cd49d996f"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "immutable-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-root",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "24078bbee039a30c13c7965b4d69e8f027a444ee2be853432051b003606f54a4"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-bin",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "c6a7e1b1cfaa7e63a62ffcad05851dfdfd7f0a73adc786952b51ea071813de3d"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-tmp",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "0b6b7e9ef097c04f05be7ddb81767d4c01a25cac70452ecd2c4e21ec133b29c1"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "immutable-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "directory-tmp",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "0b6b7e9ef097c04f05be7ddb81767d4c01a25cac70452ecd2c4e21ec133b29c1"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-reader",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "b2006feac21dbd8228898d1a1776682c67c89f35053a9cd44566a06990ba3c3a"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-writer",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "b2006feac21dbd8228898d1a1776682c67c89f35053a9cd44566a06990ba3c3a"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "41354a6be8d6f9c002ecf99e3d9326aaf5d62b8902272c7f6e082d9132e6d3aa"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "41354a6be8d6f9c002ecf99e3d9326aaf5d62b8902272c7f6e082d9132e6d3aa"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "b0b1c6065de9c6db174e8b799f2de207624e56c9aac14fa59e77f0e64290a59e"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "b0b1c6065de9c6db174e8b799f2de207624e56c9aac14fa59e77f0e64290a59e"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "8d730b10c5762889b380c2935f8d4c8ca9af7d9e46ff48d53ccb8ce62ef56f0a"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "immutable-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-root",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "24078bbee039a30c13c7965b4d69e8f027a444ee2be853432051b003606f54a4"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-bin",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "c6a7e1b1cfaa7e63a62ffcad05851dfdfd7f0a73adc786952b51ea071813de3d"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-tmp",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "32d068e1d3ad5e943633381d33b7b160131cadaacf0a12fedf34d220064a4544"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "immutable-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "directory-tmp",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "32d068e1d3ad5e943633381d33b7b160131cadaacf0a12fedf34d220064a4544"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-reader",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "a0104cce70a3c4ff5611eaec81b3809a2b0981bd7267ccd28fb67398846ea1ee"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-writer",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "a0104cce70a3c4ff5611eaec81b3809a2b0981bd7267ccd28fb67398846ea1ee"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "a192d59c1a493aeca99091aa63c1d4f5398e6bae535d03c09c1377eb03160d6c"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "a192d59c1a493aeca99091aa63c1d4f5398e6bae535d03c09c1377eb03160d6c"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "a0ef9d33f58d3d097401bdaf2aa7c7a7de82fe04918084d179505c7ea7f2a2de"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "a0ef9d33f58d3d097401bdaf2aa7c7a7de82fe04918084d179505c7ea7f2a2de"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "4b6ee865d39bc0e8d36d56626aec19e46cd830d9026d672a2553d449c35b4311"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "terminal",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "be9be1f25f0c278a5fc7502a923a50f95d4a05d2b94bff5f284d316c67932312"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "immutable-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-root",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "24078bbee039a30c13c7965b4d69e8f027a444ee2be853432051b003606f54a4"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-bin",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "c6a7e1b1cfaa7e63a62ffcad05851dfdfd7f0a73adc786952b51ea071813de3d"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "directory-tmp",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "952b0bafcc14f583bb7f4269eb38bc00499b3a9a0e5b27000165f50507c7f9e9"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "immutable-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "9391a4b03b9e7a176d58b829e6c9662d96f56635c87c91ad8543d60f6aa118b7"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "directory-tmp",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "952b0bafcc14f583bb7f4269eb38bc00499b3a9a0e5b27000165f50507c7f9e9"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-reader",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "d4260e2f461619f317dc29e95fd993d82ed9c9a7fe2ad7f9c62b8f30f68930a7"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "pipe-writer",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "d4260e2f461619f317dc29e95fd993d82ed9c9a7fe2ad7f9c62b8f30f68930a7"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "b70cdaaade168e53d9e3a0bb5653c6555f1cb9cb54e63bdfdc092a8d4af577a4"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "b70cdaaade168e53d9e3a0bb5653c6555f1cb9cb54e63bdfdc092a8d4af577a4"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "42896c19c11e0ff166bb90c0c1617fb66d0895a89dac3a1d4b884fd4ce012d75"
+    },
+    {
+      "name": "namespace-stat-output",
+      "variant": "volatile-file",
+      "number": 262,
+      "pointer": 6524864,
+      "payload_sha256": "42896c19c11e0ff166bb90c0c1617fb66d0895a89dac3a1d4b884fd4ce012d75"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "variant": "volatile-file",
+      "number": 5,
+      "pointer": 6524864,
+      "payload_sha256": "bfffe377a620bb67a1ae19410132b2a494a0206264943f997185874976af4baf"
+    }
+  ],
+  "refused_output_admissions": [
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 4194304,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 4194304,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 4194304,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 4194304,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "descriptor-stat-output",
+      "number": 5,
+      "pointer": 6528960,
+      "result": -14
+    },
+    {
+      "name": "namespace-stat-output",
+      "number": 262,
+      "pointer": 6528960,
+      "result": -14
+    }
+  ],
+  "lookup_errors_without_registered_output_events": [
+    {
+      "number": 5,
+      "args": [
+        16,
+        6529024,
+        0,
+        0
+      ],
+      "result": -9
+    },
+    {
+      "number": 262,
+      "args": [
+        18446744073709551516,
+        5711505,
+        6529024,
+        0
+      ],
+      "result": -2
+    },
+    {
+      "number": 5,
+      "args": [
+        16,
+        6529024,
+        0,
+        0
+      ],
+      "result": -9
+    },
+    {
+      "number": 262,
+      "args": [
+        18446744073709551516,
+        5711505,
+        6529024,
+        0
+      ],
+      "result": -2
+    },
+    {
+      "number": 5,
+      "args": [
+        16,
+        6529024,
+        0,
+        0
+      ],
+      "result": -9
+    },
+    {
+      "number": 262,
+      "args": [
+        18446744073709551516,
+        5711505,
+        6529024,
+        0
+      ],
+      "result": -2
+    },
+    {
+      "number": 5,
+      "args": [
+        16,
+        6529024,
+        0,
+        0
+      ],
+      "result": -9
+    },
+    {
+      "number": 262,
+      "args": [
+        18446744073709551516,
+        5711505,
+        6529024,
+        0
+      ],
+      "result": -2
+    }
+  ],
+  "variants": {
+    "terminal": 8,
+    "immutable-file": 8,
+    "directory-root": 4,
+    "directory-bin": 4,
+    "directory-tmp": 8,
+    "pipe-reader": 4,
+    "pipe-writer": 4,
+    "volatile-file": 20
+  },
+  "saved_observer_programs_present": true,
+  "scope": "Independent saved-source/event order and selected stat constants/relations, with runtime payload/private-oracle correspondence. Dynamic mode/time/inode fields retain the live observer oracle. Not a second native run, independent reconstruction of all private reads, complete owners/nonalias/lifetime/callee/exception or production qualification"
+}

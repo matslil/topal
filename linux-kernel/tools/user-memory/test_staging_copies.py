@@ -90,6 +90,20 @@ class StagingCopyControls(unittest.TestCase):
                 with self.subTest(result=result,pointer=pointer,phase=phase), self.assertRaises(AssertionError):
                     ns['copy_source_syscall_returned'](returned)
 
+    def test_source_completion_requires_success_and_the_actual_argument(self):
+        for result,pointer,accepted in [(0,0x2000,True),(-14,0x2000,False),(0,0x2001,False)]:
+            ns = self.observer()
+            call = dict(number=5,args=[3,0x2000,0],phase_before=8)
+            ns['copy_source_syscall_entered'](call)
+            ns['copy_source_scope']['completed'].append(dict(name='model',candidate=pointer))
+            returned = dict(**call,result=result,phase_after=8)
+            if accepted:
+                ns['copy_source_syscall_returned'](returned)
+                self.assertEqual(len(ns['copy_source_completions']),1)
+            else:
+                with self.subTest(result=result,pointer=pointer),self.assertRaises(AssertionError):
+                    ns['copy_source_syscall_returned'](returned)
+
 
 if __name__ == '__main__':
     unittest.main()

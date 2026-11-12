@@ -220,3 +220,18 @@ instructions, leaving ten sites without intervals. Complete owners/nonaliasing,
 continuous lifetime, helper/entry/callee/exception/fallback and canonical
 production obligations remain open; neither boundary equality nor observed
 disjoint ranges grants that authority.
+
+The [stat output checkpoint](results/stage-3-stat-outputs/README.md) adds two
+conditional admission paths to one shared 144-byte copy. Exact setup, wipe,
+restricted preparation effects, six normal-return callee contracts and saved
+register retirement preserve candidate/count/DF. GNU readback, fourteen offline
+artifact controls, 82 model/reader tests and exact selected replay pass.
+Ordinary source execution observes sixty completed copies and twenty output
+refusals among 88 stat queries; eight lookup errors precede registered output
+events. Separate record correspondence checks selected independent constants
+and relations while retaining the runtime private oracle for dynamic fields.
+The joined seven-report index now has 83/91 sites and 310 distinct user
+instructions, with eight sites still without intervals. Kernel bytes are
+unchanged. Actual owners/nonaliasing, continuous lifetime, complete entry/helper/
+callee/return/fatal/exception guarantees, all three fallbacks and canonical
+production qualification remain required.
