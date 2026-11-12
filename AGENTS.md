@@ -122,7 +122,7 @@ For kernel, compiler systems features, and their validation:
   Monitoring can be asynchronous: inspect the preceding actions without assuming
   the final command triggered the interruption. Lack of visible findings does
   not establish whether the decision came from the model or a service monitor.
-  Consult [official provider guidance](https://learn.chatgpt.com/docs/agent-approvals-security)
+  Consult [official provider guidance](https://learn.chatgpt.com/docs/cyber-safety#false-positives)
   for documented behavior; do not present possible dual-use concerns as a
   confirmed explanation of a particular interruption.
 - Respect explicit safeguard denials. Do not disguise, obfuscate, or indirectly
