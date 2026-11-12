@@ -101,6 +101,14 @@ successful one-page and empty-heap forks using PIDs 2 and 3. The native test,
 Other resource/identity/fatal, continuous lifetime and public-kernel gates
 remain required.
 
+The subsequent [maximum-copy cohort](step-4-process-memory-ownership.md#successful-maximum-copy-and-emptyone-page-handoff)
+passes successful ordinary fork and fork-like clone with complete independent
+519-page heap copies, followed by four zero/one-page child handoffs and retained
+518-page parent contents in each case. Both native runs, 44 saved-data controls,
+complete erasure readback and current readers for retained same-kernel
+regressions pass. General process/MM geometry, all callers/loans, identity/fatal
+and continuous lifetime/public-activation gates remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

@@ -448,7 +448,10 @@ program and selected sources. The earlier two successful runs retain their own
 records with narrower observation scopes; they are not evidence for the final
 firmware/identity/return observations. Existing child-exec and reader/writer
 cancellation native records are retained on the byte-identical kernel and
-rechecked with the current readers, including all **142 existing controls**.
+rechecked with the current readers, including **58 existing controls**: thirty
+child-exec controls, twelve for one reader case and sixteen for one writer case.
+The earlier summary's count of 142 incorrectly counted all cancellation cases;
+the frozen archive actually retains one case of each wait kind.
 Those VM runs are not newly executed here. Frozen replay repeats the new and
 retained record checks from the archived inputs.
 
@@ -471,6 +474,60 @@ review is claimed. This qualifies the selected fork/resize physical misses and
 retries, not every resource failure, successful maximal-heap fork copy, identity
 exhaustion, fatal partial effects, continuous exclusion or public activation.
 
+## Successful maximum copy and empty/one-page handoff
+
+The next [ordinary C program](labs/qemu/x86_64/user_extent_process_mm_geometry_cases.c)
+execs a fresh first-party image, fills every byte of a partial **519-page heap**,
+then creates an independently mapped child. Separate builds select actual
+`fork` (57) and fork-like `clone` (56, SIGCHLD, zero child stack). The compile
+choice affects userspace only. Both use the normal **640-MiB, two-CPU QEMU TCG**
+guest, the same linked kernel and unchanged host protections.
+
+The complete **2,125,824-byte** prepared copy matches the parent, including the
+last mapped page's thirteen bytes beyond the byte break. Actual frame records,
+pins and complete table observations bind disjoint backing. The child changes
+its break within the last page without allocating, checks every copied byte,
+inverts its complete heap, then shrinks to an empty heap. The parent retains
+the original full pattern. Four ordinary yields hand off between the parent
+and a child with first zero, then one mapped page. The new child page is wholly
+zero before it is marked; those marks survive handoff independently of the
+parent's retained **518-page** pattern. Child exit restores the parent; invalid
+wait-output buffers preserve the status for a valid retry. Parent exit retires
+its remaining heap and completes descriptor/PID-policy/MM readback.
+
+Both native cases pass in **149.54 seconds**, including their builds. The
+[reader](tools/process-memory/readback_geometry.py) checks **28 MM boundaries,
+six retired extents and 6,520,832 erased bytes per case**. Its **22 saved-data
+controls per case** reject incomplete maximum copies, final-page corruption,
+lost/aliased empty owners, nonzero new pages, mapping/identity errors and missing
+retirement or terminal erasure. These controls modify saved records only.
+
+The [archive](tools/process-memory/results/stage-3-maximum-geometry/report.json)
+retains both native cases, exact generated/debugger inputs, commands and bounds.
+Frozen replay repeats their checks from selected archived inputs. Identified
+allocation-refusal, child-exec and all four reader plus all four writer
+cancellation records are rechecked with current readers on the byte-identical kernel, including their
+**163 existing controls**; those older VM runs are not newly executed here.
+All seven LLVM modules verify for both builds. Fresh workspace/all-target
+checking, 196 user-memory tests, 27 process-memory tests, default ABI-fixture
+hash, formatting and the Rust file ceiling pass. Thirteen predecessor
+contributions remain byte-identical per build. Kernel SHA-256 remains
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+Complete native stack/physical bounds remain **2,280 / 4,096** and
+**4,088 / 4,096 bytes**. The swap-free cgroup spanning both native builds/runs
+has a last sampled peak of **2,251,784,192 / 2,986,774,528 bytes**, with all
+sampled event counters zero. Its last live sample and subsequent retirement do
+not measure an unseen final instant.
+
+Risk is high for process isolation and false acceptance of whole-heap copying,
+empty-owner identity, handoff or erasure. Review uses the approved authority
+chain, source/diff review, ordinary native requests, complete boundary bytes,
+exact predecessor/kernel comparisons and saved-data controls. No independent
+human security review is claimed. This qualifies the selected maximal eager
+copy and zero/one-page handoffs; it does not qualify general address spaces,
+every mapping producer/loan, continuous exclusion, identity-width exhaustion,
+fatal partial effects or public activation. No core-language meaning changes.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss
@@ -479,7 +536,7 @@ exhaustion, fatal partial effects, continuous exclusion or public activation.
    changes in its real process path retain allocation-free behavior.
 3. Broaden native cancellation to every remaining wait/relationship shape,
    broader child exec/image cases, every remaining switch/exit and
-   overlapping leaf-table writer. Qualify remaining maximal-copy and resource
+   overlapping leaf-table writer. Qualify remaining creation/resize/resource
    failure shapes and full invalidation/pre-release ordering.
    Existing child cases pass in this component; full pipe and 51-workload
    application regressions remain required.

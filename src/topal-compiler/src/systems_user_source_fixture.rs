@@ -233,6 +233,22 @@ pub(crate) fn build_process_memory_allocation(work: &Path, tools: &crate::LlvmTo
     build_selected(work, tools, "process-mm-allocation")
 }
 
+pub(crate) fn build_process_memory_geometry(
+    work: &Path,
+    tools: &crate::LlvmTools,
+    clone: bool,
+) -> Vec<u8> {
+    build_selected(
+        work,
+        tools,
+        if clone {
+            "process-mm-geometry-clone"
+        } else {
+            "process-mm-geometry-fork"
+        },
+    )
+}
+
 pub(crate) fn build_process_memory_cancel(
     work: &Path,
     tools: &crate::LlvmTools,
@@ -268,8 +284,17 @@ fn build_configured(
 ) -> Vec<u8> {
     let image_entry_selected = matches!(
         mode,
-        "process-mm-exec" | "process-mm-cancel" | "process-mm-allocation"
+        "process-mm-exec"
+            | "process-mm-cancel"
+            | "process-mm-allocation"
+            | "process-mm-geometry-fork"
+            | "process-mm-geometry-clone"
     );
+    let geometry_syscall = match mode {
+        "process-mm-geometry-fork" => Some(57),
+        "process-mm-geometry-clone" => Some(56),
+        _ => None,
+    };
     let cancellation_config = cancellation.map(|(early, group, writer)| {
         let status = match (early, group) {
             (false, false) => 0x13a,
@@ -280,6 +305,10 @@ fn build_configured(
         (early, if group { 231 } else { 60 }, status, writer)
     });
     let (entry_name, extra) = match mode {
+        "process-mm-geometry-fork" | "process-mm-geometry-clone" => (
+            "topal_process_memory_geometry_cases",
+            Some(("process_mm_geometry", "process-mm-geometry-cases")),
+        ),
         "process-mm-allocation" => (
             "topal_process_memory_allocation_cases",
             Some(("process_mm_allocation", "process-mm-allocation-cases")),
@@ -350,6 +379,11 @@ fn build_configured(
                 format!("-DTOPAL_CANCEL_STATUS={status}"),
                 format!("-DTOPAL_CANCEL_WRITER={}", u8::from(writer)),
             ]
+        } else if *stem == "process-mm-geometry-cases" {
+            vec![format!(
+                "-DTOPAL_GEOMETRY_SYSCALL={}",
+                geometry_syscall.unwrap()
+            )]
         } else {
             vec![]
         };
@@ -520,6 +554,12 @@ fn build_configured(
         "syscall4": syscall4.address(),
         "mode": mode,
         "image_entry": image_entry,
+        "geometry_profile": geometry_syscall.map(|syscall| serde_json::json!({
+            "syscall": syscall,
+            "process_storage_bytes": crate::systems_provider_object::PROCESS_MM_TABLE_BYTES,
+            "identity_storage_bytes": crate::systems_provider_object::PROCESS_MM_IDENTITY_STORE_BYTES,
+        })),
+        "process_mm_geometry_source_sha256": if geometry_syscall.is_some() { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_process_mm_geometry_cases.c")).unwrap()))) } else { None },
         "allocation_profile": if mode == "process-mm-allocation" { Some(serde_json::json!({
             "guest_ram_mib": 52,
             "process_storage_bytes": crate::systems_provider_object::PROCESS_MM_TABLE_BYTES,

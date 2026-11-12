@@ -21,8 +21,10 @@ observed=dict(passed=False,cases=[],events=[],child_exec_entries=[],replacement_
 child_exec=component['mode']=='process-mm-exec'
 cancel_config=component.get('cancellation')
 allocation_config=component.get('allocation_profile')
+geometry_config=component.get('geometry_profile')
 observed['cancellation']=cancel_config
 observed['allocation_profile']=allocation_config
+observed['geometry_profile']=geometry_config
 pending=case=None
 refusal_attempt=None
 returns={}
@@ -72,8 +74,10 @@ def capture():
         assert 0<allocator[3]<=4096, 'observer catalog bound for the small-RAM cohort'
         result.update(catalog=words(allocator[4]+128,allocator[3]*3),
                       registry=words(allocator[6],allocator[3]*8))
+    identity_config=allocation_config or geometry_config
+    if identity_config is not None:
         policy=result['context']['policy_store']
-        result['identity_store']=memory(policy,allocation_config['identity_storage_bytes']).hex() if policy else ''
+        result['identity_store']=memory(policy,identity_config['identity_storage_bytes']).hex() if policy else ''
     return result
 
 def save():
@@ -140,7 +144,7 @@ class CaseReturned(Checked):
         global case
         self.enabled=False
         assert case is not None and pending is None and reg('cs')&3==3
-        assert cancel_config is allocation_config is None, ('terminal case unexpectedly returned',reg('rax'))
+        assert cancel_config is allocation_config is geometry_config is None, ('terminal case unexpectedly returned',reg('rax'))
         if reg('rax')!=0:
             value=capture()
             raise AssertionError(('source case failed',reg('rax'),value['context'],value['ids']))
@@ -178,7 +182,7 @@ class ImageEntered(Checked):
     def observe(self):
         assert reg('cs')&3==3 and pending is None
         value=capture()
-        if ((cancel_config is not None and cancel_config['early']) or allocation_config is not None) and value['ids'][0]==1:
+        if ((cancel_config is not None and cancel_config['early']) or allocation_config is not None or geometry_config is not None) and value['ids'][0]==1:
             assert value['ids'][2]==1 and value['context']['phase']==0 and value['state']==[0]*4
             assert value['fs_base']==value['context']['tls']==0
             observed['replacement_entries'].append(dict(snapshot=value,initial_sp=reg('rsp')))
@@ -284,6 +288,24 @@ class Terminal(Checked):
         save()
         return False
 
+class GeometryTerminal(Checked):
+    def __init__(self,symbol,retired):
+        self.retired=retired
+        super().__init__("*'"+symbol+"'",internal=True)
+    def observe(self):
+        assert geometry_config is not None and pending is None and case is not None
+        value=capture();model['snapshot'](value)
+        assert reg('cs')&3==0 and value['ids']==[1,2,1,0,0,0,4]
+        assert value['epoch'][1]==231 and value['context']['user_arg']==0
+        assert value['state'][:3]==[1,0x5f7000+518*4096-7,518]
+        raw=memory(value['context']['table'],geometry_config['process_storage_bytes'])
+        assert len(observed['terminal'])==int(self.retired)
+        if self.retired:assert raw==bytes(len(raw))
+        else:assert value['context']['pid']==1 and value['context']['relationship']==0
+        observed['terminal'].append(dict(retired=self.retired,snapshot=value,storage=raw.hex()))
+        save()
+        return False
+
 class Halt(Checked):
     def observe(self):
         value=capture()
@@ -298,7 +320,16 @@ class Complete(Checked):
         ops=[r['operation'] for r in observed['events']]
         # Four new large-heap cases plus the unchanged four child/clone cases
         # in the surrounding full ABI witness all use actual MM owners.
-        if allocation_config is not None:
+        if geometry_config is not None:
+            assert case is not None and observed['cases']==[] and len(observed['terminal'])==2
+            assert [ops.count(n) for n in [6,7,9,10,11,12,13]]==[1,1,1,1,4,1,1]
+            prep=[r for r in observed['events'] if r['operation']==9]
+            assert [(r['before']['state'][2],r['result'],r['before']['epoch'][1]) for r in prep]==[(519,1,geometry_config['syscall'])]
+            assert len(observed['replacement_entries'])==1 and observed['refusals']==[]
+            identity=memory(case['before']['context']['policy_store'],geometry_config['identity_storage_bytes'])
+            assert identity==bytes(len(identity))
+            observed['final_identity_store']=identity.hex()
+        elif allocation_config is not None:
             assert case is not None and observed['cases']==[] and len(observed['terminal'])==2
             assert [ops.count(n) for n in [6,7,9,10,11,12,13]]==[1,1,3,2,0,2,1]
             prep=[r for r in observed['events'] if r['operation']==9]
@@ -337,7 +368,7 @@ try:
     Gateway('topal_x86_frame_gateway_v1',True)
     Gateway('topal_x86_frame_gateway_return_reclaimed_v1',False)
     CaseEntered('*'+hex(component['entry']),internal=True)
-    if child_exec or allocation_config is not None or (cancel_config is not None and cancel_config['early']):
+    if child_exec or allocation_config is not None or geometry_config is not None or (cancel_config is not None and cancel_config['early']):
         ImageEntered('*'+hex(component['image_entry']),internal=True)
     if cancel_config is not None:
         Terminal('topal_x86_process_mm_parent_exit_v1',False)
@@ -346,6 +377,9 @@ try:
         UserFork('*'+hex(component['syscall']),internal=True)
         AllocationTerminal('topal_x86_process_mm_parent_exit_v1',False)
         AllocationTerminal('topal_x86_process_mm_parent_resources_retired_v1',True)
+    if geometry_config is not None:
+        GeometryTerminal('topal_x86_process_mm_parent_exit_v1',False)
+        GeometryTerminal('topal_x86_process_mm_parent_resources_retired_v1',True)
     Halt('*'+hex(native_halt),internal=True)
     Complete('*topal_x86_systems_fatal',internal=True)
     gdb.execute('continue')
@@ -362,8 +396,9 @@ except Exception:
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
-    assert component['mode'] in ['process-mm','process-mm-exec','process-mm-cancel','process-mm-allocation']
-    suffix={'process-mm':'','process-mm-exec':'_exec','process-mm-cancel':'_cancel','process-mm-allocation':'_allocation'}[component['mode']]
+    assert component['mode'] in ['process-mm','process-mm-exec','process-mm-cancel','process-mm-allocation','process-mm-geometry-fork','process-mm-geometry-clone']
+    suffix={'process-mm':'','process-mm-exec':'_exec','process-mm-cancel':'_cancel','process-mm-allocation':'_allocation',
+            'process-mm-geometry-fork':'_geometry','process-mm-geometry-clone':'_geometry'}[component['mode']]
     source = Path(__file__).with_name('user_extent_process_mm'+suffix+'_cases.c').read_bytes()
     assert hashlib.sha256(source).hexdigest() == component['process_mm'+suffix+'_source_sha256']
     kernel = (build / 'kernel.elf').read_bytes()

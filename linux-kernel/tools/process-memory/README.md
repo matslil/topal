@@ -190,3 +190,26 @@ exclusion, all-caller, every-failure, fatal-retirement or public-activation proo
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_allocation_refusal_preserves_owner_and_pid_history -- --ignored --nocapture
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_allocation.py linux-kernel/tools/process-memory/results/stage-3-allocation-refusal linux-kernel/.cache/x86_64/process-memory-allocation-replay-new
 ```
+
+## Successful maximum copy
+
+The [maximum-geometry archive](results/stage-3-maximum-geometry/report.json)
+records successful ordinary fork and fork-like clone of complete 519-page heaps
+in the normal 640-MiB guest. The child independently empties its heap and grows
+one page; four ordinary yields retain the parent's 519/518-page pattern and
+the child's zero/marked contents. Child exit, wait-output retry and parent
+termination complete the observed lifetime. The native kernel remains identical
+to the preceding allocation and cancellation cohorts.
+
+[readback_geometry.py](readback_geometry.py) checks complete mapped copies,
+owners, pins, table/bank transitions and retirement, with 22 altered saved-data
+controls per case. [archive_geometry.py](archive_geometry.py) binds both builds,
+actual guest configurations, sources, commands, bounds and identified retained
+same-kernel regressions. [replay_geometry.py](replay_geometry.py) repeats the
+checks with frozen selected inputs; it does not execute a VM or establish
+continuous exclusion, unobserved invalidation order or public activation.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_maximum_fork_and_clone_copy_survive_empty_and_one_page_handoff -- --ignored --nocapture
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_geometry.py linux-kernel/tools/process-memory/results/stage-3-maximum-geometry linux-kernel/.cache/x86_64/process-memory-geometry-replay-new
+```

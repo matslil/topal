@@ -115,6 +115,21 @@ fn process_mm_allocation_refusal_preserves_owner_and_pid_history() {
 }
 
 #[test]
+#[ignore = "requires the bounded QEMU/GDB maximum-copy geometry cohort"]
+fn process_mm_maximum_fork_and_clone_copy_survive_empty_and_one_page_handoff() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001: full 519-page eager copy, independent
+    // ordinary resize and handoff through zero/one-page child owners.
+    for clone in [false, true] {
+        execute_selected(
+            true,
+            true,
+            true,
+            Some(CallerFocus::SourceProcessGeometry(clone)),
+        );
+    }
+}
+
+#[test]
 #[ignore = "requires the bounded QEMU/GDB live-child cancellation cohort"]
 fn process_mm_parent_exit_cancels_blocked_child_and_all_resources() {
     // TOPAL-SYSTEMS-PROCESS-MM-001: actual pipe wait, both exit operations,
@@ -208,6 +223,7 @@ enum CallerFocus {
     SourceProcessOwners,
     SourceProcessExec,
     SourceProcessAllocation,
+    SourceProcessGeometry(bool),
     SourceProcessCancel(bool, bool, bool),
     SourceSerial,
     SourceStat,
@@ -225,6 +241,7 @@ fn process_memory_focus(focus: Option<CallerFocus>) -> bool {
             CallerFocus::SourceProcessOwners
                 | CallerFocus::SourceProcessExec
                 | CallerFocus::SourceProcessAllocation
+                | CallerFocus::SourceProcessGeometry(..)
                 | CallerFocus::SourceProcessCancel(..)
         )
     )
@@ -279,7 +296,11 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::SourceProcessAllocation) {
+    let prefix = if matches!(focus, Some(CallerFocus::SourceProcessGeometry(true))) {
+        "process-mm-geometry-clone"
+    } else if matches!(focus, Some(CallerFocus::SourceProcessGeometry(false))) {
+        "process-mm-geometry-fork"
+    } else if focus == Some(CallerFocus::SourceProcessAllocation) {
         "process-mm-allocation"
     } else if matches!(focus, Some(CallerFocus::SourceProcessCancel(_, _, true))) {
         "process-mm-writer-cancel"
@@ -345,6 +366,7 @@ fn execute_selected(
                 | CallerFocus::SourceProcessOwners
                 | CallerFocus::SourceProcessExec
                 | CallerFocus::SourceProcessAllocation
+                | CallerFocus::SourceProcessGeometry(..)
                 | CallerFocus::SourceProcessCancel(..)
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
@@ -442,7 +464,11 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if focus == Some(CallerFocus::SourceProcessAllocation) {
+    let fixture_bytes = if let Some(CallerFocus::SourceProcessGeometry(clone)) = focus {
+        crate::systems_user_extent::source_fixture::build_process_memory_geometry(
+            work, tools, clone,
+        )
+    } else if focus == Some(CallerFocus::SourceProcessAllocation) {
         crate::systems_user_extent::source_fixture::build_process_memory_allocation(work, tools)
     } else if let Some(CallerFocus::SourceProcessCancel(early, group, writer)) = focus {
         crate::systems_user_extent::source_fixture::build_process_memory_cancel(

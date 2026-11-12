@@ -1,0 +1,3587 @@
+{
+  "cohorts": [
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "bzImage": {
+          "bytes": 45243376,
+          "sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b"
+        },
+        "command-cases.o": {
+          "bytes": 7856,
+          "sha256": "f96a1fa564bc6b7af9fe9f8de0a81388cebbf8b6b5e85c2ad1b1d15149837f9c"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16064,
+          "sha256": "4b1655456f679ca9e392f52f8ea4634c16323b6c28ec566026259b2f064ff838"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "9faed92e3536ed25bf727d2537c6c2bd83c43214815f9fbea64c4a252b8a8b9a"
+        },
+        "kernel.elf": {
+          "bytes": 1678416,
+          "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-geometry-cases.o": {
+          "bytes": 19096,
+          "sha256": "6e9a5ffe5bd3c6ff02946964c3c92602e536b3670f5b63b44607aaaf66f69ef2"
+        },
+        "provider.o": {
+          "bytes": 1066288,
+          "sha256": "89e18a47f27d0625eef47ac36c711e4bad3ddd2aae19daa4fc0d600a775c9240"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13584,
+          "sha256": "ce62f47d027a0cebb01b01b2039a540c5b02abea54b1d89065eb94c0c0bb6e25"
+        },
+        "source-cases.o": {
+          "bytes": 8800,
+          "sha256": "980f2bc9b5171ad96c091dacc14a735bc921529dcbd479e13ef5fed3bd19582d"
+        },
+        "source-syscall.o": {
+          "bytes": 1496,
+          "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+        },
+        "source-user.elf": {
+          "bytes": 47560,
+          "sha256": "30d8add27fcf054b0f42aec32a45ce5919a59d5227b92fa1d19b7d615549053f"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13928,
+          "sha256": "111ae8c0a2115918857350a6dcd46457ebceb213ab96f7f68e60727b981fdd6b"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "3de1da50699bdafebe060fbcca5668e9a1a4db6e0b9a24bd694b11a5727e5f8a"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "boundaries": 28,
+      "component": {
+        "allocation_profile": null,
+        "base": 5701632,
+        "cancellation": null,
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1264,
+        "entry": 5710256,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "geometry_profile": {
+          "identity_storage_bytes": 4096,
+          "process_storage_bytes": 311296,
+          "syscall": 57
+        },
+        "image_entry": 5710432,
+        "image_sha256": "3de1da50699bdafebe060fbcca5668e9a1a4db6e0b9a24bd694b11a5727e5f8a",
+        "linked_sha256": "30d8add27fcf054b0f42aec32a45ce5919a59d5227b92fa1d19b7d615549053f",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-geometry-fork",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_allocation_source_sha256": null,
+        "process_mm_cancel_source_sha256": null,
+        "process_mm_exec_source_sha256": null,
+        "process_mm_geometry_source_sha256": "868e71699cab2a0285477e80f5d320e305caf13fced7547008fff57992efe466",
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-geometry-cases": 96,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5710368,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5710320,
+        "syscall4": 5710336,
+        "text_bytes": 8997
+      },
+      "controls": [
+        {
+          "name": "prepared-truncated-to-34-pages",
+          "reason": "whole allocation bytes",
+          "rejected": true
+        },
+        {
+          "name": "prepared-pin-missing",
+          "reason": "heap backing/pin",
+          "rejected": true
+        },
+        {
+          "name": "prepared-stale-entry",
+          "reason": "prepared entry receipt",
+          "rejected": true
+        },
+        {
+          "name": "child-adopts-parent-MM",
+          "reason": "inactive MM identity",
+          "rejected": true
+        },
+        {
+          "name": "child-issuance-rolled-back",
+          "reason": "active MM identity",
+          "rejected": true
+        },
+        {
+          "name": "empty-handoff-loses-child-owner",
+          "reason": "empty inactive owner",
+          "rejected": true
+        },
+        {
+          "name": "empty-handoff-constructs-backing",
+          "reason": "live record",
+          "rejected": true
+        },
+        {
+          "name": "handoff-reuses-empty-mapping",
+          "reason": "selected heap translations",
+          "rejected": true
+        },
+        {
+          "name": "child-exit-missing-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "child-exit-truncated-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "parent-exit-missing-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "parent-exit-truncated-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "write-protection-disabled",
+          "reason": "paging/write protection",
+          "rejected": true
+        },
+        {
+          "name": "copy-wrong-after-page-34",
+          "reason": "incomplete fork copy",
+          "rejected": true
+        },
+        {
+          "name": "copy-wrong-final-mapped-byte",
+          "reason": "incomplete fork copy",
+          "rejected": true
+        },
+        {
+          "name": "one-page-growth-not-zero",
+          "reason": "new heap pages not zero",
+          "rejected": true
+        },
+        {
+          "name": "parent-shrink-loses-prefix",
+          "reason": "resize retained prefix",
+          "rejected": true
+        },
+        {
+          "name": "wrong-creation-syscall",
+          "reason": "actual maximum source owner",
+          "rejected": true
+        },
+        {
+          "name": "dirty-terminal-descriptor",
+          "reason": "whole terminal descriptor readback",
+          "rejected": true
+        },
+        {
+          "name": "dirty-final-PID-policy",
+          "reason": "whole final PID-policy readback",
+          "rejected": true
+        },
+        {
+          "name": "wrong-replacement-stage",
+          "reason": "actual empty parent replacement entry",
+          "rejected": true
+        },
+        {
+          "name": "wrong-actual-terminal-status",
+          "reason": "parent terminal owner",
+          "rejected": true
+        }
+      ],
+      "copied_heap_bytes": 2125824,
+      "erased_released_bytes": 6520832,
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-geometry-fork-2451104-1794498196531200988"
+        ],
+        "exit_code": 0
+      },
+      "native_bounds": {
+        "complete_physical_bytes": 4088,
+        "complete_stack_bytes": 2280,
+        "inner_retirement_bytes": 3952,
+        "outer_bytes": 88,
+        "reserve_bytes": 4096
+      },
+      "observation": {
+        "bytes": 239478245,
+        "sha256": "92fd97d348652c1a0c6816badd068e675df01937309df5aa40c7cc186af826bc"
+      },
+      "operations": {
+        "5": 18,
+        "6": 1,
+        "7": 1,
+        "9": 1,
+        "10": 1,
+        "11": 4,
+        "12": 1,
+        "13": 1
+      },
+      "passed": true,
+      "preserved": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        }
+      },
+      "retired_extents": 6,
+      "scope": "Saved successful 519-page copy and empty/one-page handoff boundaries; not all callers, continuous exclusion, identity exhaustion, fatal paths or public activation",
+      "syscall": 57
+    },
+    {
+      "artifacts": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "bzImage": {
+          "bytes": 45243376,
+          "sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b"
+        },
+        "command-cases.o": {
+          "bytes": 7856,
+          "sha256": "f9ecddd324dd9d6b92be828ab65e2177fe0177aa8f33affa8ee78b17504af958"
+        },
+        "controller.ll": {
+          "bytes": 22671,
+          "sha256": "b537c1b08b3d705da775073fc215d76a22f4f9a447afa9b52db0b4903fa25a1c"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "dispatch.ll": {
+          "bytes": 50437,
+          "sha256": "d8bd7f3e6b20076920d99986e37255b8af05db34a077c7c7768f04a116c206f2"
+        },
+        "dispatch.o": {
+          "bytes": 44304,
+          "sha256": "3dca6efa30f4a5d0c05a4dcebbacc06b73e8bdd6b7a133ecfa883f12aa91de45"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.ll": {
+          "bytes": 4670,
+          "sha256": "7852933f4606fd54c6c823b3f4b181bfdfb858f9a5c0ee9bfc336a314467eaa9"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "file-cases.o": {
+          "bytes": 16064,
+          "sha256": "560f68f8ada5b12df6cbd11d4de85dde64d0b4bb4f8996d6766e5beb43af96f8"
+        },
+        "gateway.o": {
+          "bytes": 10168,
+          "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+        },
+        "initramfs.cpio": {
+          "bytes": 2037200,
+          "sha256": "958ab29174b49145d641479de53e0d51b02dfea68ee33f4c76934849cca907a6"
+        },
+        "kernel.elf": {
+          "bytes": 1678416,
+          "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+        },
+        "owner.ll": {
+          "bytes": 12741,
+          "sha256": "8c47e4733025cd0bcdfd9113d3f227eb9cf9796523776c4c514cd540446e96e1"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "process-mm-geometry-cases.o": {
+          "bytes": 19096,
+          "sha256": "d828f8680bd508b278f046ed67574ba3e1421be033f910edc9c2bcd3e0be8f0f"
+        },
+        "provider.o": {
+          "bytes": 1066288,
+          "sha256": "89e18a47f27d0625eef47ac36c711e4bad3ddd2aae19daa4fc0d600a775c9240"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.ll": {
+          "bytes": 53406,
+          "sha256": "ada456b15a6f5e12458602c6093080e9a9ab16d7ce5514d3f7268004454eb5cf"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "shell-cases.o": {
+          "bytes": 13584,
+          "sha256": "0ef0c54ff214ee1f4bd1bb0494a67c19b12b4245ddb32d1fa2d48c4412ed57b1"
+        },
+        "source-cases.o": {
+          "bytes": 8800,
+          "sha256": "f9722f09a02d5ac0098b234a5df70a569c2d23ec5818deb930d461ff63f25fd2"
+        },
+        "source-syscall.o": {
+          "bytes": 1496,
+          "sha256": "21bb284a23214b53e902079059fbc597ba3644fdd50c16df37c0634b9b634213"
+        },
+        "source-user.elf": {
+          "bytes": 47568,
+          "sha256": "1774175b2ede45e96ffd77c8b6870a464b344c24af1928adbb29b901b3082993"
+        },
+        "source.ll": {
+          "bytes": 330401,
+          "sha256": "c257e12cdfea06bcd069251767c3950c1c68efd5d68bd5fd1b892c4fb569edd6"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        },
+        "startup-cases.o": {
+          "bytes": 13936,
+          "sha256": "fc48aa999086eb5ef86ac5eaedb483f27ae165b7aaf2142936298ff2886490a3"
+        },
+        "static-elf-abi-fixture.elf": {
+          "bytes": 2024544,
+          "sha256": "f54f21bb0af42673c1b04addd9c5b74c5d642a5aa2ad5ee33a7bd7e732c755f8"
+        },
+        "target.ll": {
+          "bytes": 49107,
+          "sha256": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706"
+        },
+        "target.o": {
+          "bytes": 29312,
+          "sha256": "eed323dd58fcd77e9e7d8681b3c58f9e315fe25f454c7aad3b31adf027626e34"
+        }
+      },
+      "boundaries": 28,
+      "component": {
+        "allocation_profile": null,
+        "base": 5701632,
+        "cancellation": null,
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1264,
+        "entry": 5710256,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "geometry_profile": {
+          "identity_storage_bytes": 4096,
+          "process_storage_bytes": 311296,
+          "syscall": 56
+        },
+        "image_entry": 5710432,
+        "image_sha256": "f54f21bb0af42673c1b04addd9c5b74c5d642a5aa2ad5ee33a7bd7e732c755f8",
+        "linked_sha256": "1774175b2ede45e96ffd77c8b6870a464b344c24af1928adbb29b901b3082993",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-geometry-clone",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_allocation_source_sha256": null,
+        "process_mm_cancel_source_sha256": null,
+        "process_mm_exec_source_sha256": null,
+        "process_mm_geometry_source_sha256": "868e71699cab2a0285477e80f5d320e305caf13fced7547008fff57992efe466",
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-geometry-cases": 96,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5710368,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5710320,
+        "syscall4": 5710336,
+        "text_bytes": 8997
+      },
+      "controls": [
+        {
+          "name": "prepared-truncated-to-34-pages",
+          "reason": "whole allocation bytes",
+          "rejected": true
+        },
+        {
+          "name": "prepared-pin-missing",
+          "reason": "heap backing/pin",
+          "rejected": true
+        },
+        {
+          "name": "prepared-stale-entry",
+          "reason": "prepared entry receipt",
+          "rejected": true
+        },
+        {
+          "name": "child-adopts-parent-MM",
+          "reason": "inactive MM identity",
+          "rejected": true
+        },
+        {
+          "name": "child-issuance-rolled-back",
+          "reason": "active MM identity",
+          "rejected": true
+        },
+        {
+          "name": "empty-handoff-loses-child-owner",
+          "reason": "empty inactive owner",
+          "rejected": true
+        },
+        {
+          "name": "empty-handoff-constructs-backing",
+          "reason": "live record",
+          "rejected": true
+        },
+        {
+          "name": "handoff-reuses-empty-mapping",
+          "reason": "selected heap translations",
+          "rejected": true
+        },
+        {
+          "name": "child-exit-missing-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "child-exit-truncated-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "parent-exit-missing-retirement",
+          "reason": "complete retirement set",
+          "rejected": true
+        },
+        {
+          "name": "parent-exit-truncated-erasure",
+          "reason": "complete retirement geometry",
+          "rejected": true
+        },
+        {
+          "name": "write-protection-disabled",
+          "reason": "paging/write protection",
+          "rejected": true
+        },
+        {
+          "name": "copy-wrong-after-page-34",
+          "reason": "incomplete fork copy",
+          "rejected": true
+        },
+        {
+          "name": "copy-wrong-final-mapped-byte",
+          "reason": "incomplete fork copy",
+          "rejected": true
+        },
+        {
+          "name": "one-page-growth-not-zero",
+          "reason": "new heap pages not zero",
+          "rejected": true
+        },
+        {
+          "name": "parent-shrink-loses-prefix",
+          "reason": "resize retained prefix",
+          "rejected": true
+        },
+        {
+          "name": "wrong-creation-syscall",
+          "reason": "actual maximum source owner",
+          "rejected": true
+        },
+        {
+          "name": "dirty-terminal-descriptor",
+          "reason": "whole terminal descriptor readback",
+          "rejected": true
+        },
+        {
+          "name": "dirty-final-PID-policy",
+          "reason": "whole final PID-policy readback",
+          "rejected": true
+        },
+        {
+          "name": "wrong-replacement-stage",
+          "reason": "actual empty parent replacement entry",
+          "rejected": true
+        },
+        {
+          "name": "wrong-actual-terminal-status",
+          "reason": "parent terminal owner",
+          "rejected": true
+        }
+      ],
+      "copied_heap_bytes": 2125824,
+      "erased_released_bytes": 6520832,
+      "guest": {
+        "argv": [
+          "python3",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py",
+          "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-geometry-clone-2451104-1794498271177427152"
+        ],
+        "exit_code": 0
+      },
+      "native_bounds": {
+        "complete_physical_bytes": 4088,
+        "complete_stack_bytes": 2280,
+        "inner_retirement_bytes": 3952,
+        "outer_bytes": 88,
+        "reserve_bytes": 4096
+      },
+      "observation": {
+        "bytes": 239478245,
+        "sha256": "2635de0742e3cc413f849f7504019fec16d036c161da0ffdcfd58070e61db2d5"
+      },
+      "operations": {
+        "5": 18,
+        "6": 1,
+        "7": 1,
+        "9": 1,
+        "10": 1,
+        "11": 4,
+        "12": 1,
+        "13": 1
+      },
+      "passed": true,
+      "preserved": {
+        "boundary.o": {
+          "bytes": 9384,
+          "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+        },
+        "controller.o": {
+          "bytes": 16784,
+          "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+        },
+        "extent-bridge.o": {
+          "bytes": 1176,
+          "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+        },
+        "extent-callers.o": {
+          "bytes": 2544,
+          "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+        },
+        "extent.o": {
+          "bytes": 1808,
+          "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+        },
+        "owner.o": {
+          "bytes": 6280,
+          "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+        },
+        "predecessor-gateway.o": {
+          "bytes": 8008,
+          "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+        },
+        "predecessor-provider.o": {
+          "bytes": 1069736,
+          "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+        },
+        "retained-owned-gateway.o": {
+          "bytes": 8904,
+          "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+        },
+        "retained-owned-provider.o": {
+          "bytes": 1061624,
+          "sha256": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767"
+        },
+        "root.o": {
+          "bytes": 359056,
+          "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+        },
+        "runtime.o": {
+          "bytes": 35264,
+          "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+        },
+        "source.o": {
+          "bytes": 155832,
+          "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+        }
+      },
+      "retired_extents": 6,
+      "scope": "Saved successful 519-page copy and empty/one-page handoff boundaries; not all callers, continuous exclusion, identity exhaustion, fatal paths or public activation",
+      "syscall": 56
+    }
+  ],
+  "last_resource_sample": {
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "group": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-2450799-c9ab05ac.scope",
+    "group_retired": true,
+    "memory_max_bytes": 2986774528,
+    "observed_peak_bytes": 2251784192,
+    "retirement_observed_at": 1794498345.8881812,
+    "sampled_at": 1794498344.8877196,
+    "swap_max_bytes": 0
+  },
+  "passed": true,
+  "remaining": [
+    "all caller/loan/mapping producers and general process/MM geometry",
+    "other resource failures, identity-width exhaustion and native fatal partial effects",
+    "continuous exclusion, complete invalidation/pre-release order, full application corpus and public activation",
+    "original full Linux/distribution/container/VM-host objectives"
+  ],
+  "retained_regressions": {
+    "allocation-refusal": {
+      "component": {
+        "allocation_profile": {
+          "guest_ram_mib": 52,
+          "identity_storage_bytes": 4096,
+          "process_storage_bytes": 311296
+        },
+        "base": 5701632,
+        "cancellation": null,
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1264,
+        "entry": 5710048,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5710224,
+        "image_sha256": "febd158bf4071e7771afd85702fb8f2f5f62f13e73f820f779dcf1ee15227a3e",
+        "linked_sha256": "cbbf15751656d4ca3897a7a95284b2c93ce1f36ee13c305cfab3f60434b49e91",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-allocation",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_allocation_source_sha256": "df4b6fee8fcac9f8f87cc087abd4ce08510bef48ce192b8a754c147324d8557e",
+        "process_mm_cancel_source_sha256": null,
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-allocation-cases": 96,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5710160,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5710112,
+        "syscall4": 5710128,
+        "text_bytes": 8807
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 69537912,
+        "sha256": "db59259b053893d35153dca0c1ace77df6e0d69644ddc837722af03ee722326d"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 27,
+        "capacity": {
+          "frames": 1480,
+          "free": 445,
+          "free_records": 1474,
+          "largest_run": 445
+        },
+        "controls": [
+          {
+            "name": "returned-success-instead-of-ENOMEM",
+            "reason": "ordinary ENOMEM return",
+            "rejected": true
+          },
+          {
+            "name": "truncated-frontend-readback",
+            "reason": "whole fork frontend storage changed",
+            "rejected": true
+          },
+          {
+            "name": "retained-PID-store-changed",
+            "reason": "user refusal changed identity_store",
+            "rejected": true
+          },
+          {
+            "name": "truncated-parent-extent",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "wrong-user-return-mode",
+            "reason": "actual user refusal return",
+            "rejected": true
+          },
+          {
+            "name": "wrong-return-stack",
+            "reason": "ordinary ENOMEM return",
+            "rejected": true
+          },
+          {
+            "name": "wrong-return-PC",
+            "reason": "source ABI refusal return",
+            "rejected": true
+          },
+          {
+            "name": "lost-callee-register",
+            "reason": "source ABI refusal return",
+            "rejected": true
+          },
+          {
+            "name": "omitted-firmware-reservation",
+            "reason": "complete firmware frame count",
+            "rejected": true
+          },
+          {
+            "name": "stale-refusal-entry",
+            "reason": "actual failed fork entry",
+            "rejected": true
+          },
+          {
+            "name": "dirty-terminal-descriptors",
+            "reason": "terminal whole descriptor readback",
+            "rejected": true
+          },
+          {
+            "name": "dirty-final-PID-store",
+            "reason": "terminal whole PID-policy readback",
+            "rejected": true
+          },
+          {
+            "name": "wrong-replacement-entry",
+            "reason": "actual empty replacement startup",
+            "rejected": true
+          },
+          {
+            "name": "refusal-issued-frame-identity",
+            "reason": "refusal changed allocator",
+            "rejected": true
+          },
+          {
+            "name": "refusal-retained-prepared-receipt",
+            "reason": "MM state",
+            "rejected": true
+          },
+          {
+            "name": "refusal-changed-MM-generation",
+            "reason": "changed source during preparation",
+            "rejected": true
+          },
+          {
+            "name": "refusal-truncated-catalog",
+            "reason": "catalog differs from original firmware",
+            "rejected": true
+          },
+          {
+            "name": "refusal-truncated-registry",
+            "reason": "refusal changed registry",
+            "rejected": true
+          },
+          {
+            "name": "refusal-retained-PID-store",
+            "reason": "refusal changed identity_store",
+            "rejected": true
+          },
+          {
+            "name": "fragmentation-reported-success",
+            "reason": "raw break return",
+            "rejected": true
+          },
+          {
+            "name": "fragmentation-issued-identity",
+            "reason": "resize refusal changed allocator",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 4399104,
+        "fragmentation": {
+          "frames": 1480,
+          "free": 962,
+          "free_records": 1473,
+          "largest_run": 518
+        },
+        "operations": {
+          "5": 17,
+          "6": 1,
+          "7": 1,
+          "9": 3,
+          "10": 2,
+          "12": 2,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 6,
+        "scope": "Saved real capacity/fragmentation refusals, ordinary retries and retirement boundaries; not continuous exclusion, all resource failures, identity exhaustion, fatal paths or public activation"
+      }
+    },
+    "child-exec": {
+      "component": {
+        "base": 5701632,
+        "cancellation": null,
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1312,
+        "entry": 5709504,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5710736,
+        "image_sha256": "159f9f1cd52d07e64a4ad01fbe0c75f966763ee0e5d9a91f89e9a86ff246ea1d",
+        "linked_sha256": "00e5cf1e64e4fac9c8a0a262105c337850b0264f765efeb1cb94997fd5c37b34",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-exec",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": null,
+        "process_mm_exec_source_sha256": "e129112ff5bbc268a8ff10f3bfe9f49deb23e6961b71802a5b7903bc239cb91b",
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-exec-cases": 144,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5710672,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5710624,
+        "syscall4": 5710640,
+        "text_bytes": 9314
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 152954277,
+        "sha256": "d3348354549f3fa6216cc49fc7c696cd5aff1fc0f1a4872a3b9c30625e01305c"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "allocation_free_queries": 28,
+        "allocation_free_within_page_changes": 4,
+        "cases": 4,
+        "child_exec_controls": [
+          {
+            "name": "child-exec-changes-parent-byte",
+            "reason": "changed retained inactive",
+            "rejected": true
+          },
+          {
+            "name": "child-exec-restores-old-MM",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "child-exec-restores-old-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "child-exec-retires-parent",
+            "reason": "MM state",
+            "rejected": true
+          },
+          {
+            "name": "child-entry-old-stack",
+            "reason": "child exec initial stack",
+            "rejected": true
+          },
+          {
+            "name": "child-entry-lost-parent",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "child-entry-retained-old-heap",
+            "reason": "fresh child heap",
+            "rejected": true
+          },
+          {
+            "name": "child-entry-retained-FS",
+            "reason": "child exec FS reset",
+            "rejected": true
+          },
+          {
+            "name": "child-entry-retained-TID",
+            "reason": "child exec registration reset",
+            "rejected": true
+          },
+          {
+            "name": "child-entry-retained-robust-list",
+            "reason": "child exec registration reset",
+            "rejected": true
+          }
+        ],
+        "child_exec_entries": [
+          {
+            "generation": 1,
+            "mm": 3,
+            "parent_mm": 1,
+            "parent_pages": 67,
+            "pid": 2
+          },
+          {
+            "generation": 2,
+            "mm": 6,
+            "parent_mm": 4,
+            "parent_pages": 67,
+            "pid": 3
+          },
+          {
+            "generation": 3,
+            "mm": 9,
+            "parent_mm": 7,
+            "parent_pages": 67,
+            "pid": 4
+          },
+          {
+            "generation": 4,
+            "mm": 12,
+            "parent_mm": 10,
+            "parent_pages": 67,
+            "pid": 5
+          }
+        ],
+        "comparisons": [
+          {
+            "active_pages": 0,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 2,
+            "inactive_pages": 67,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 2,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 2,
+            "inactive_pages": 67,
+            "operation": 7,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 2,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 2,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 2,
+            "inactive_pages": 35,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 2,
+            "inactive_pages": 35,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 7,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 3,
+            "inactive_pages": 67,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 3,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 3,
+            "inactive_pages": 67,
+            "operation": 7,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 3,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 3,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 3,
+            "inactive_pages": 35,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 3,
+            "inactive_pages": 35,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 7,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 4,
+            "inactive_pages": 67,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 4,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 4,
+            "inactive_pages": 67,
+            "operation": 7,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 4,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 4,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 4,
+            "inactive_pages": 35,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 4,
+            "inactive_pages": 35,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 7,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 1,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 5,
+            "inactive_pages": 67,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 5,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 5,
+            "inactive_pages": 67,
+            "operation": 7,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 5,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 5,
+            "inactive_pages": 67,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 67,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 101,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 5,
+            "inactive_pages": 35,
+            "operation": 11,
+            "passed": true
+          },
+          {
+            "active_pages": 101,
+            "active_pid": 5,
+            "inactive_pages": 35,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 35,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 5,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 6,
+            "inactive_pages": 34,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 7,
+            "inactive_pages": 34,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 8,
+            "inactive_pages": 34,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 9,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 9,
+            "inactive_pages": 34,
+            "operation": 10,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 12,
+            "passed": true
+          },
+          {
+            "active_pages": 34,
+            "active_pid": 1,
+            "inactive_pages": 0,
+            "operation": 13,
+            "passed": true
+          },
+          {
+            "active_pages": 0,
+            "active_pid": 0,
+            "inactive_pages": 0,
+            "operation": 6,
+            "passed": true
+          }
+        ],
+        "controls": [
+          {
+            "name": "prepared-pin-missing",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "prepared-wrong-epoch",
+            "reason": "prepared entry receipt",
+            "rejected": true
+          },
+          {
+            "name": "prepared-wrong-source-generation",
+            "reason": "prepared source owner",
+            "rejected": true
+          },
+          {
+            "name": "prepared-truncated-to-old-34-pages",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "child-adopts-parent-MM",
+            "reason": "inactive MM identity",
+            "rejected": true
+          },
+          {
+            "name": "child-identity-counter-restored",
+            "reason": "active MM identity",
+            "rejected": true
+          },
+          {
+            "name": "handoff-loses-parent",
+            "reason": "MM state",
+            "rejected": true
+          },
+          {
+            "name": "handoff-reuses-heap-PTE",
+            "reason": "selected heap translations",
+            "rejected": true
+          },
+          {
+            "name": "exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "exit-truncated-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "exit-retains-child-MM",
+            "reason": "inactive MM identity",
+            "rejected": true
+          },
+          {
+            "name": "hardware-root-changed",
+            "reason": "actual live root/context",
+            "rejected": true
+          },
+          {
+            "name": "write-protection-disabled",
+            "reason": "paging/write protection",
+            "rejected": true
+          },
+          {
+            "name": "retained-resize-candidate",
+            "reason": "token binding",
+            "rejected": true
+          },
+          {
+            "name": "query-consumes-frame-identity",
+            "reason": "query/within-page allocation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-syscall",
+            "reason": "syscall identity",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-copy-beyond-page-34",
+            "reason": "incomplete fork copy",
+            "rejected": true
+          },
+          {
+            "name": "exit-nonzero-erasure",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "resize-loses-retained-byte",
+            "reason": "resize retained prefix",
+            "rejected": true
+          },
+          {
+            "name": "resize-new-page-nonzero",
+            "reason": "new heap pages not zero",
+            "rejected": true
+          }
+        ],
+        "copied_heap_bytes": 1654784,
+        "erased_released_bytes": 7766016,
+        "operations": {
+          "5": 60,
+          "6": 1,
+          "7": 7,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 36,
+        "scope": "Experimental child exec, retained parent and early ordinary services; not public ELF-loader, continuous lifetime, cancellation or fatal-path qualification"
+      }
+    },
+    "reader-cancellation-early-exit": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 709,
+          "syscall": 60
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1264,
+        "entry": 5709488,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709664,
+        "image_sha256": "2f5337e304532571606f3d3a17463fadec1d1a518b12cf2bdf5fc3afe6e1f678",
+        "linked_sha256": "83d721a35e3e4654dc4d6a81effb121cba2b504d596f5069e803e53ac062fd39",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 96,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709600,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709552,
+        "syscall4": 5709568,
+        "text_bytes": 8236
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 14180072,
+        "sha256": "be9e33474fe3c52e4ff9165afcb067afa9af68ac7cf396b25021b05349e9c5f5"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 709,
+          "syscall": 60
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 700416,
+        "operations": {
+          "5": 9,
+          "6": 1,
+          "7": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 4,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    },
+    "reader-cancellation-early-exit-group": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 769,
+          "syscall": 231
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1264,
+        "entry": 5709488,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709664,
+        "image_sha256": "737023628e47c18ea265b46f6d9c0b6851907b2ccf82a191b6393ab4d1f7aa9e",
+        "linked_sha256": "7bc724f7aa63625e39263f46154ef37fc8346743efabff4ce2f17ddd67722074",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 96,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709600,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709552,
+        "syscall4": 5709568,
+        "text_bytes": 8236
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 14180079,
+        "sha256": "76599d03100a48e807e61e0660ea1e906a5bd94825c479d16cd0de34f84e74b7"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 769,
+          "syscall": 231
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 700416,
+        "operations": {
+          "5": 9,
+          "6": 1,
+          "7": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 4,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    },
+    "reader-cancellation-late-exit": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 314,
+          "syscall": 60
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1272,
+        "entry": 5709632,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709824,
+        "image_sha256": "5e569e824ed4de0a97457b5a8491a6ca44296d2bb80f40e6c1ec901c4a7d654d",
+        "linked_sha256": "73940cb7f34eeac45994da0626dd76a0d2e154627d05ef8f20722cfb848e2892",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 104,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709760,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709712,
+        "syscall4": 5709728,
+        "text_bytes": 8371
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 24622668,
+        "sha256": "8af6858f9c76c2affe9a78cfee8d504325ecd7c905ddd2afae089c34bbe9e78d"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 314,
+          "syscall": 60
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 1249280,
+        "operations": {
+          "5": 10,
+          "6": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 6,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    },
+    "reader-cancellation-late-exit-group": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 512,
+          "syscall": 231
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1272,
+        "entry": 5709632,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709824,
+        "image_sha256": "96d622b67a3d8776c76490d360de4cfd8a4f177cc7e6e57c34be00ec0b0539da",
+        "linked_sha256": "37b2db26f8a66aab6a2d0a8fc66d6c1ee32c09ace0c9dc6ed803fe53c0be0d7c",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "319c599ccd3f6c7fda9a5b9cb453285379038e09fa910de551ae869e37ab6438",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 104,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709760,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709712,
+        "syscall4": 5709728,
+        "text_bytes": 8371
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 24622675,
+        "sha256": "5103fb0f2379e6a8732b88d5544ef1cb1392e6ca19b14a644aec1df10bc7505a"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 512,
+          "syscall": 231
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 1249280,
+        "operations": {
+          "5": 10,
+          "6": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 6,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    },
+    "writer-cancellation-early-exit": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 709,
+          "syscall": 60,
+          "writer": true
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1280,
+        "entry": 5709600,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709776,
+        "image_sha256": "784b590795964688c75a005d639aaa9f44164093b72ec673a96d529ab0148e6d",
+        "linked_sha256": "ef86c334eaefb5d0c6f8472cb639def1c465f2d9367f160ffb068ea65b8069e8",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "27e33148a69193a4a24a68f265aba9ebfb59f360d5ade425dd2469412d804658",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 112,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709712,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709664,
+        "syscall4": 5709680,
+        "text_bytes": 8364
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 14180088,
+        "sha256": "a22fd40fc5c4b35d6676736ad6e41faad41ba40ae03fe1fff3c8116710c5ab3a"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 709,
+          "syscall": 60,
+          "writer": true
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          },
+          {
+            "name": "full-FIFO-count-lost",
+            "reason": "parked operation and inactive last endpoint",
+            "rejected": true
+          },
+          {
+            "name": "writer-wait-replaced-with-reader",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "writer-reference-not-last",
+            "reason": "live endpoint description references",
+            "rejected": true
+          },
+          {
+            "name": "dirty-FIFO-last-byte-lost",
+            "reason": "whole dirty FIFO payload",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 700416,
+        "operations": {
+          "5": 9,
+          "6": 1,
+          "7": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 4,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    },
+    "writer-cancellation-early-exit-group": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 769,
+          "syscall": 231,
+          "writer": true
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1280,
+        "entry": 5709600,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709776,
+        "image_sha256": "a2477e57cda5a37920d9b0696d84ae3fe1463a43e9d0e74fee51b8e3595a3543",
+        "linked_sha256": "79a212a9d92d2b4e90aca5f2977124bea04cc0468ba0b068d10d94507590584e",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "27e33148a69193a4a24a68f265aba9ebfb59f360d5ade425dd2469412d804658",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 112,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709712,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709664,
+        "syscall4": 5709680,
+        "text_bytes": 8364
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 14180095,
+        "sha256": "cb43e1a4c446c57f481a100e831d2752b4d7672f26ef118e4549c61e32937b1c"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": true,
+          "process_storage_bytes": 311296,
+          "status": 769,
+          "syscall": 231,
+          "writer": true
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          },
+          {
+            "name": "full-FIFO-count-lost",
+            "reason": "parked operation and inactive last endpoint",
+            "rejected": true
+          },
+          {
+            "name": "writer-wait-replaced-with-reader",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "writer-reference-not-last",
+            "reason": "live endpoint description references",
+            "rejected": true
+          },
+          {
+            "name": "dirty-FIFO-last-byte-lost",
+            "reason": "whole dirty FIFO payload",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 700416,
+        "operations": {
+          "5": 9,
+          "6": 1,
+          "7": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 4,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    },
+    "writer-cancellation-late-exit": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 314,
+          "syscall": 60,
+          "writer": true
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1272,
+        "entry": 5709792,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709984,
+        "image_sha256": "1fc6133f4eb13666ec66be1c14632dfef8a33e702b75a92b3e1fb62512ce73a3",
+        "linked_sha256": "7f77e5fb1942f63e5d190c4383f6b6d878bd22346e210e551c0c97a5b1a12602",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "27e33148a69193a4a24a68f265aba9ebfb59f360d5ade425dd2469412d804658",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 104,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709920,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709872,
+        "syscall4": 5709888,
+        "text_bytes": 8531
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 24622684,
+        "sha256": "bddb916bf698d4e3640576704eff03a16716ca3f359256cbd505e4ad8c7812a5"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 314,
+          "syscall": 60,
+          "writer": true
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          },
+          {
+            "name": "full-FIFO-count-lost",
+            "reason": "parked operation and inactive last endpoint",
+            "rejected": true
+          },
+          {
+            "name": "writer-wait-replaced-with-reader",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "writer-reference-not-last",
+            "reason": "live endpoint description references",
+            "rejected": true
+          },
+          {
+            "name": "dirty-FIFO-last-byte-lost",
+            "reason": "whole dirty FIFO payload",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 1249280,
+        "operations": {
+          "5": 10,
+          "6": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 6,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    },
+    "writer-cancellation-late-exit-group": {
+      "component": {
+        "base": 5701632,
+        "cancellation": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 512,
+          "syscall": 231,
+          "writer": true
+        },
+        "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+        "conservative_user_stack_bytes": 1272,
+        "entry": 5709792,
+        "exec_source_sha256": null,
+        "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+        "image_entry": 5709984,
+        "image_sha256": "1108ff568d22ee5ef590bd47f4d849efb1407faa41c998b1612c241b62b453bd",
+        "linked_sha256": "b5642731808d0cc23e539300a83f1b73a6cbd536c6d30e2fa8959de72e7d23e8",
+        "metadata_source_sha256": null,
+        "mode": "process-mm-cancel",
+        "pipe_source_sha256": null,
+        "poll_source_sha256": null,
+        "process_mm_cancel_source_sha256": "27e33148a69193a4a24a68f265aba9ebfb59f360d5ade425dd2469412d804658",
+        "process_mm_exec_source_sha256": null,
+        "process_mm_source_sha256": null,
+        "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+        "serial_source_sha256": null,
+        "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+        "signal_source_sha256": null,
+        "source_sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+        "stack_frame_costs": {
+          "command-cases": 104,
+          "file-cases": 400,
+          "process-mm-cancel-cases": 104,
+          "shell-cases": 168,
+          "source-cases": 496,
+          "startup-cases": 168
+        },
+        "startup": 5702592,
+        "startup_call": 5709920,
+        "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+        "stat_source_sha256": null,
+        "storage_source_sha256": null,
+        "syscall": 5709872,
+        "syscall4": 5709888,
+        "text_bytes": 8531
+      },
+      "kernel": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "observation": {
+        "bytes": 24622691,
+        "sha256": "fd19508f73fdf6fee3e8bbf19a760084ab4e0ace1abe40f7f70c93cd2744c1de"
+      },
+      "scope": "Retained native run on the byte-identical kernel, replayed with current readers; no new VM execution",
+      "summary": {
+        "boundaries": 15,
+        "case": {
+          "early": false,
+          "process_storage_bytes": 311296,
+          "status": 512,
+          "syscall": 231,
+          "writer": true
+        },
+        "controls": [
+          {
+            "name": "missing-cancelled-child",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "no-real-wait",
+            "reason": "actual blocked pipe operation",
+            "rejected": true
+          },
+          {
+            "name": "wrong-wait-generation",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "wrong-exit-status",
+            "reason": "captured terminal syscall/status",
+            "rejected": true
+          },
+          {
+            "name": "wrong-startup-stage",
+            "reason": "actual early/late stage",
+            "rejected": true
+          },
+          {
+            "name": "truncated-destructor-readback",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "dirty-destructor-storage",
+            "reason": "whole destructor storage not zero",
+            "rejected": true
+          },
+          {
+            "name": "wrong-child-retirement",
+            "reason": "whole allocation bytes",
+            "rejected": true
+          },
+          {
+            "name": "missing-child-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "truncated-child-erasure",
+            "reason": "complete retirement geometry",
+            "rejected": true
+          },
+          {
+            "name": "child-record-still-live",
+            "reason": "retired backing not consumed/zero",
+            "rejected": true
+          },
+          {
+            "name": "wait-survives-to-retirement",
+            "reason": "wait not cancelled before MM retirement",
+            "rejected": true
+          },
+          {
+            "name": "full-FIFO-count-lost",
+            "reason": "parked operation and inactive last endpoint",
+            "rejected": true
+          },
+          {
+            "name": "writer-wait-replaced-with-reader",
+            "reason": "wait storage binding",
+            "rejected": true
+          },
+          {
+            "name": "writer-reference-not-last",
+            "reason": "live endpoint description references",
+            "rejected": true
+          },
+          {
+            "name": "dirty-FIFO-last-byte-lost",
+            "reason": "whole dirty FIFO payload",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 1249280,
+        "operations": {
+          "5": 10,
+          "6": 1,
+          "9": 1,
+          "10": 1,
+          "11": 1,
+          "13": 1
+        },
+        "passed": true,
+        "retired_extents": 6,
+        "scope": "Saved cancellation boundaries and destructor readback; no continuous exclusion, every release-order, general orphan/init or public-kernel qualification"
+      }
+    }
+  },
+  "schema": "topal-process-mm-native-maximum-geometry-v1",
+  "selected_inputs": {
+    "AGENTS.md": {
+      "bytes": 8040,
+      "sha256": "e70a710c3fc25459bb811f3442ed6114ecef9324b0fa4143bf09fb54c3cfaefe"
+    },
+    "docs/systems-profile.md": {
+      "bytes": 134869,
+      "sha256": "cb38a25f3849799eb689c9e74408efc57912321979bab44b078ce3a514dc7847"
+    },
+    "linux-kernel/design/decision-register.md": {
+      "bytes": 179174,
+      "sha256": "2c107fb5d30cd402209098a056d0736ef7fa7f66281611a20155549ef0184f39"
+    },
+    "linux-kernel/design/process-memory-ownership.md": {
+      "bytes": 12061,
+      "sha256": "a6771fb00188c2689bd96384697f2d32c8268d860ed20649876d0db70434fdba"
+    },
+    "linux-kernel/kernel/memory/frame-metadata.t": {
+      "bytes": 8572,
+      "sha256": "b63fa2aca690d3e2c102b645f17fc872e3c4aabcf61710b73993192476076b32"
+    },
+    "linux-kernel/kernel/policy/structured-process-identity.t": {
+      "bytes": 572,
+      "sha256": "0432f164804d9d58cce0aaa566f86ddee3a6ca36654923f529425a6fe74766ee"
+    },
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": {
+      "bytes": 17623,
+      "sha256": "a95f8b8f332d06910b457cf1259bb4bad4a35ce7350e4a51faf33267a8c56099"
+    },
+    "linux-kernel/labs/qemu/x86_64/manifest.json": {
+      "bytes": 5458,
+      "sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694"
+    },
+    "linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py": {
+      "bytes": 23263,
+      "sha256": "4ab7363705439274bc57c05d8f591aa02f3abaf02cd26768eb76eee69a07fbdf"
+    },
+    "linux-kernel/labs/qemu/x86_64/topal_gate.py": {
+      "bytes": 91390,
+      "sha256": "82e0b6fb53f626734be9a1a151956c5c4458ca87833fdd5694453d9600f417b8"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_allocation_cases.c": {
+      "bytes": 3839,
+      "sha256": "df4b6fee8fcac9f8f87cc087abd4ce08510bef48ce192b8a754c147324d8557e"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_cancel_cases.c": {
+      "bytes": 3742,
+      "sha256": "27e33148a69193a4a24a68f265aba9ebfb59f360d5ade425dd2469412d804658"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_cases.c": {
+      "bytes": 3276,
+      "sha256": "135d000a5ba6ce5d0f2a28b01a23a955e30f88796a8bfa5d9fda0ce8e6116acf"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_exec_cases.c": {
+      "bytes": 5028,
+      "sha256": "e129112ff5bbc268a8ff10f3bfe9f49deb23e6961b71802a5b7903bc239cb91b"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_process_mm_geometry_cases.c": {
+      "bytes": 3752,
+      "sha256": "868e71699cab2a0285477e80f5d320e305caf13fced7547008fff57992efe466"
+    },
+    "linux-kernel/step-4-process-memory-ownership.md": {
+      "bytes": 36155,
+      "sha256": "39b1a34dd8e7f8db1953dd253a71de42e979fe4f0337d2ea99a7be0769843dee"
+    },
+    "linux-kernel/step-4-status.md": {
+      "bytes": 27133,
+      "sha256": "0eb50e894c1579c9178ab178916084fdd692c8750580b443160b8475c3a1ea0f"
+    },
+    "linux-kernel/tools/process-memory/README.md": {
+      "bytes": 14096,
+      "sha256": "d345aaeea4cf56ca598fa4a1980ce4fbe5a46103d1a24c51857e712ebff664d3"
+    },
+    "linux-kernel/tools/process-memory/archive_allocation.py": {
+      "bytes": 10639,
+      "sha256": "62fd06d14735ffd7925732788a18d172b7d7ffff51f2b9d0ed9e90a5455dd923"
+    },
+    "linux-kernel/tools/process-memory/archive_cancel.py": {
+      "bytes": 10842,
+      "sha256": "38899e9ffec884cf8ce2e23cf5c93a3f0acca592b903ffb000534fd73b7dab4a"
+    },
+    "linux-kernel/tools/process-memory/archive_geometry.py": {
+      "bytes": 10783,
+      "sha256": "300e349eb9fa1b8db5add982b80287c3b0f6e55e5d1493cbab2279ad04a30d1d"
+    },
+    "linux-kernel/tools/process-memory/archive_process.py": {
+      "bytes": 12265,
+      "sha256": "8bb64d08ad925cfd92db77c3a987139bc76920edac6bb08b5cf91e748cc5b5fc"
+    },
+    "linux-kernel/tools/process-memory/model.py": {
+      "bytes": 12994,
+      "sha256": "e4983eaa8c58c6cd9920af00e3084aa4f1223a2df3d8726f69ee7206fa1ff6d1"
+    },
+    "linux-kernel/tools/process-memory/process_native.py": {
+      "bytes": 17466,
+      "sha256": "fc03bcb20b0aa4ad4c249294813f5807e531d46f8f34328283d583530a281ee5"
+    },
+    "linux-kernel/tools/process-memory/readback_allocation.py": {
+      "bytes": 9896,
+      "sha256": "6968ecd5cf4c8c7701b938fbc3def54564c152b018f117f606c37dae9f353647"
+    },
+    "linux-kernel/tools/process-memory/readback_cancel.py": {
+      "bytes": 10133,
+      "sha256": "b8aba5d7a817d93da32e2f18b9d838667099bc7043c4e6d5cd5ae3e68f72746c"
+    },
+    "linux-kernel/tools/process-memory/readback_exec.py": {
+      "bytes": 5026,
+      "sha256": "702f094e97fa8b5b4c73083a8195cc42369586661569e07689cf1f2d9ba4d135"
+    },
+    "linux-kernel/tools/process-memory/readback_geometry.py": {
+      "bytes": 9692,
+      "sha256": "98931a8990420aae728f1cb3a9390fd7e232f1e0cd01c7706218b4e397ab48f2"
+    },
+    "linux-kernel/tools/process-memory/readback_process.py": {
+      "bytes": 9401,
+      "sha256": "aaab11926bf2600e2a873e18291657197df6548cb0b3b03654ef213b79cdb73b"
+    },
+    "linux-kernel/tools/process-memory/replay_allocation.py": {
+      "bytes": 3340,
+      "sha256": "9567af0ae56165512e5eca2b671472b8e9239a07617afdab6b11ebd202c3b243"
+    },
+    "linux-kernel/tools/process-memory/replay_cancel.py": {
+      "bytes": 3149,
+      "sha256": "dbdb254f487d56b8eb81246137b5c603ddf720135d24b035d20adc548a426a71"
+    },
+    "linux-kernel/tools/process-memory/replay_geometry.py": {
+      "bytes": 3770,
+      "sha256": "49031e03ad483565384afe5d2d852313e89ef63eddc3ba8e97c7ed470139c474"
+    },
+    "linux-kernel/tools/process-memory/replay_process.py": {
+      "bytes": 3510,
+      "sha256": "5342d5361aa0e9a148559b719080bedb45a864a443ab4a27a63ce91184a2ac1c"
+    },
+    "linux-kernel/tools/process-memory/test_model.py": {
+      "bytes": 16446,
+      "sha256": "037a463ba5a587e0daecb8fd432ab4269654e4ba3d2498c9f0884d26ab5fcb9c"
+    },
+    "linux-kernel/tools/process-memory/test_physical_catalog.py": {
+      "bytes": 2836,
+      "sha256": "9ec5c0be3ebd8a61cf9c26db06ae732b1bc86c2267cb4936bf5e8104aca2f6cd"
+    },
+    "linux-kernel/tools/process-memory/trace_check.py": {
+      "bytes": 3321,
+      "sha256": "9296070cc3e6d4ccf8deec07076c56f4f77d0fda31629108b4cd7918c480f4b3"
+    },
+    "se/requirements.md": {
+      "bytes": 127941,
+      "sha256": "e37c4faaa2841cd85f7be9a4819a0cb432e73631b34c59d81dcb896fe0467179"
+    },
+    "spec/systems-profile.md": {
+      "bytes": 686881,
+      "sha256": "b515752e0e970846ac6889890a31cea2518d3ff94a7763902e2120425590fc90"
+    },
+    "src/topal-compiler/se-requirements.md": {
+      "bytes": 814318,
+      "sha256": "bfb0d4c1b410aa83bd820dcac770aefb6cc9871fa313cf658f6698d3a998a5cb"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_controller.ll": {
+      "bytes": 21451,
+      "sha256": "c9445f96bac7a5b1d2c3e1b0e5463d098909326c2263970787781d0ca2e987f5"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_gateway_lease.ll": {
+      "bytes": 972,
+      "sha256": "8d3b31d9deb5167c1caa4958157eb8287fdc3d90536a10693eccfff0bb629b4b"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": {
+      "bytes": 14321,
+      "sha256": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory_lease.ll": {
+      "bytes": 3828,
+      "sha256": "fb3d0af5155c40ee507ccbf4bf1ae8d301c84ae08ed1e5a4022b42a207b9604a"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_target.ll": {
+      "bytes": 23887,
+      "sha256": "c0c640202dfd9788acb34b82e3ffd76e7aea3a09cbc93a0109525bbbe369f172"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm.ll": {
+      "bytes": 9723,
+      "sha256": "dedf6ea9583ffb0b2d2e6e271bae85967e07718ff7235c413e137049306d51c9"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm_context.ll": {
+      "bytes": 1998,
+      "sha256": "8867223f998abe47a8bf03c28a967fb7cd0148531d2e9ea7290924d4c551efbc"
+    },
+    "src/topal-compiler/src/runtime/kernel_process_mm_owners.ll": {
+      "bytes": 23488,
+      "sha256": "08599c6f930c91135ee9ec57a642ed6ef3728728f845d49fb9111b054494c7fb"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_clean.ll": {
+      "bytes": 1107,
+      "sha256": "383acf13bef9959641de5f52bbe0bf16b0f18f11872972c363184ca64bba66b5"
+    },
+    "src/topal-compiler/src/runtime/kernel_user_extent_target.ll": {
+      "bytes": 14834,
+      "sha256": "ac21900da006203802acb6ec6bfb58fc14ef968579bb710d35cdf044f4ac84c5"
+    },
+    "src/topal-compiler/src/systems_artifact_static_image.rs": {
+      "bytes": 78277,
+      "sha256": "725fdae49ab7b5995f489b7ce7d1dcc3bd335795c0100a2d442bc76d44340e1e"
+    },
+    "src/topal-compiler/src/systems_file_descriptions.rs": {
+      "bytes": 22917,
+      "sha256": "c256c6462108f66cf89c33308cd2ee55a21833cf5dda79f22dcc6ba18f950c60"
+    },
+    "src/topal-compiler/src/systems_frame_gateway.rs": {
+      "bytes": 14896,
+      "sha256": "662ec81c617d3936affd22e4e44709516d0fe3ac9fca24ab1b6bcdc4f1988926"
+    },
+    "src/topal-compiler/src/systems_frame_gateway_memory.rs": {
+      "bytes": 8323,
+      "sha256": "227214524e116e914ba5f595dcae3b67c4f3c7d00f6e050dadadd329ad4c250b"
+    },
+    "src/topal-compiler/src/systems_frame_gateway_process_memory.rs": {
+      "bytes": 1771,
+      "sha256": "9eb691d729fb121cfbaf0aa16b87c93c1bd9e07d0292e93c185200ead66e8351"
+    },
+    "src/topal-compiler/src/systems_frame_inspection.rs": {
+      "bytes": 7316,
+      "sha256": "cef1141c03c083e234037036b249b1fb91f21c1ecb8273bdafbb48db06991877"
+    },
+    "src/topal-compiler/src/systems_frame_root_tests.rs": {
+      "bytes": 44487,
+      "sha256": "011f08b65408d50350697b7d60fe6fc551d221507b5b55c863350f6416b0c0e4"
+    },
+    "src/topal-compiler/src/systems_frame_target.rs": {
+      "bytes": 5896,
+      "sha256": "739b8b778a382a6d67e4bc44c773a314470104e0eb902993e810afe6178f71d9"
+    },
+    "src/topal-compiler/src/systems_pipe_wait.rs": {
+      "bytes": 4691,
+      "sha256": "2617235f98e3d95c19f77c338f136c81995ce14beef22472d716423a477c9862"
+    },
+    "src/topal-compiler/src/systems_process_children.rs": {
+      "bytes": 18414,
+      "sha256": "a6ae4db456346c6768fb98520e63e3c0d4936417469f94eb40858ff936734bd4"
+    },
+    "src/topal-compiler/src/systems_process_entry_completion.rs": {
+      "bytes": 71446,
+      "sha256": "bb0b0e8b7f9ee1e607c9c236a6ea8e476808b03878871086123afd6c2b4d2ad3"
+    },
+    "src/topal-compiler/src/systems_process_entry_start.rs": {
+      "bytes": 56861,
+      "sha256": "f807dd8b9f44bd9b0f947e81098c5921a933f7d6c7519d6ec43249d55b87a500"
+    },
+    "src/topal-compiler/src/systems_process_identity.rs": {
+      "bytes": 2807,
+      "sha256": "7a8f3d84e133be38cb2f90d5726a057098cb67672a2fefdfcf48a514639106d1"
+    },
+    "src/topal-compiler/src/systems_process_mm.rs": {
+      "bytes": 6124,
+      "sha256": "812e710f0ff44b6e95a03f464808aef390c376d5895183ec6a1c513cb34f8f2f"
+    },
+    "src/topal-compiler/src/systems_process_observations.rs": {
+      "bytes": 2523,
+      "sha256": "b46572bc80fd44259c6ee6904a6c5091433cd580c7caa3c47d874f4f6b130817"
+    },
+    "src/topal-compiler/src/systems_process_pair.rs": {
+      "bytes": 8815,
+      "sha256": "342f57ac03e0b849b535b35dd45570b74aca7930778ea2feec1660178ab9ce1f"
+    },
+    "src/topal-compiler/src/systems_process_pipes.rs": {
+      "bytes": 6778,
+      "sha256": "c776fdb5fa4f23b9383392ae67b44fc51b407930902c29d5b5b12fde7faf3bc0"
+    },
+    "src/topal-compiler/src/systems_process_retained.rs": {
+      "bytes": 6006,
+      "sha256": "f16f19523869c31548115e1f2909e231e6d6576011b0830773fb1321ca7b3a50"
+    },
+    "src/topal-compiler/src/systems_process_runtime.rs": {
+      "bytes": 17670,
+      "sha256": "556ad1d6f39a06f5e30191cccf40aa966a31907f29094455f603bb312f02184a"
+    },
+    "src/topal-compiler/src/systems_process_terminal.rs": {
+      "bytes": 4747,
+      "sha256": "dd8e8bded0d1b1d0459dcacc0b23d51063ff258be0b321576664cb2a83d6444a"
+    },
+    "src/topal-compiler/src/systems_provider_emit_process_entry.rs": {
+      "bytes": 14742,
+      "sha256": "1ea1a9a006e2f1eae566481d23f3096b5cad3248d4c98c9bd420ca258c644faf"
+    },
+    "src/topal-compiler/src/systems_provider_emit_publication.rs": {
+      "bytes": 35909,
+      "sha256": "4239b656d7288921728b497a9236d54e73176b388eee7993eff0b709fb992b10"
+    },
+    "src/topal-compiler/src/systems_provider_emit_translation.rs": {
+      "bytes": 23934,
+      "sha256": "58c705379703d7b2f2e0e317f5e17829b25bd3ef7e3e5c6ecb9e9214b3262992"
+    },
+    "src/topal-compiler/src/systems_provider_object.rs": {
+      "bytes": 28155,
+      "sha256": "12d45920789a907fab90c67c62828a4bc6f213796f233a1fddc46381bf9153de"
+    },
+    "src/topal-compiler/src/systems_retained_layout.rs": {
+      "bytes": 25257,
+      "sha256": "93bdf7df95bdfcb135fcadb7805a270330f69738500e7427bf445d07f7bb1209"
+    },
+    "src/topal-compiler/src/systems_user_extent.rs": {
+      "bytes": 7956,
+      "sha256": "ea9c09eccfd8e243158f0ed22eba78f0163a295a5b06e31e2fd35c68a9f45771"
+    },
+    "src/topal-compiler/src/systems_user_extent_clean.rs": {
+      "bytes": 2146,
+      "sha256": "a8784718accfb2a64b565d7d99554c99f3ce26e61498d07bd35bd311d806b67f"
+    },
+    "src/topal-compiler/src/systems_user_source_fixture.rs": {
+      "bytes": 25682,
+      "sha256": "842f81527772544875a262512a34e3c7aa49b1aa18ad298a8ab7d0003f6b8f3e"
+    },
+    "src/topal-compiler/src/systems_volatile_files.rs": {
+      "bytes": 16970,
+      "sha256": "94ba8898afd3115ede9aa2a13d71df7c2743c6d232e3d69ce32d9ff732c87158"
+    }
+  },
+  "validation": {
+    "Rust-file-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "elapsed_seconds": 0.37403345108032227,
+      "exit_code": 0
+    },
+    "default-ABI-fixture": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "elapsed_seconds": 0.21020048204809427,
+      "exit_code": 0
+    },
+    "format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "elapsed_seconds": 1.1628777887672186,
+      "exit_code": 0
+    },
+    "process-memory-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "elapsed_seconds": 0.6870149401947856,
+      "exit_code": 0
+    },
+    "user-memory-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "elapsed_seconds": 1.8442744351923466,
+      "exit_code": 0
+    },
+    "workspace-check": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "elapsed_seconds": 4.851188773289323,
+      "exit_code": 0
+    }
+  }
+}
