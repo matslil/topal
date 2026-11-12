@@ -62,6 +62,13 @@ def linked_inventory(build):
         assert stats['passed'] and not stats['complete']
         assert stats['kernel_sha256'] == reader.digest(elf.data)
         assert stats['graph_sha256'] == bindings['process_graph_sha256']
+    serial_path = build / 'serial-prefix-audit.json'
+    serial_bytes = serial_path.read_bytes() if serial_path.exists() else None
+    serial = json.loads(serial_bytes) if serial_bytes is not None else None
+    if serial is not None:
+        assert serial['passed'] and not serial['complete']
+        assert serial['kernel_sha256'] == reader.digest(elf.data)
+        assert serial['graph_sha256'] == bindings['process_graph_sha256']
     return dict(function=inventory['function'], address=symbol['value'], calls=inventory['calls'],
                 callback_bindings=native_bindings,
                 copy_transfer_audit=copies, copy_transfer_audit_sha256=reader.digest(copy_bytes),
@@ -72,6 +79,8 @@ def linked_inventory(build):
                 pipe_fixed_output_audit_sha256=reader.digest(pipe_bytes) if pipe_bytes is not None else None,
                 stat_output_audit=stats,
                 stat_output_audit_sha256=reader.digest(stat_bytes) if stat_bytes is not None else None,
+                serial_prefix_audit=serial,
+                serial_prefix_audit_sha256=reader.digest(serial_bytes) if serial_bytes is not None else None,
                 callback_header_hex=(build / 'static-elf-abi-fixture.elf').read_bytes()[:64].hex(),
                 kernel_sha256=reader.digest(elf.data), inventory_sha256=inspection['inventory_sha256'])
 

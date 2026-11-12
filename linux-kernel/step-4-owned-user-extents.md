@@ -603,3 +603,26 @@ actual owners/nonaliasing, continuous lifetime, complete entry/helper/callee/
 return/fatal/exception contracts and canonical production reconstruction remain
 open. No executable kernel or authoritative design bytes change. Stage 3,
 initial Step 4 and the original objective remain unfinished.
+
+## Stage 3 serial output prefixes
+
+The [serial prefix checkpoint](tools/user-memory/results/stage-3-serial-prefix/README.md)
+checks the existing zero-length exit, 256-byte cap, output admission, bounded
+UART staging and exact positive prefix publication. Its observer distinguishes
+this partial-count contract from ordinary exact copies. Four source executions
+pass 64 syscalls, twelve copies totaling 64 bytes and sixteen refused admissions.
+Each 512-byte request admits 256 bytes and returns eight without touching the
+remaining suffix. Existing UART/table/context/phase/retirement checks still run.
+
+Separate saved-record readback reconciles syscall/UART records and aggregate
+copy counts. GNU readback covers 56 instructions in two windows; twelve offline
+controls, all 88 model/reader tests and exact eight-report/source-join/record
+replay pass. The unchanged pinned BusyBox regression also passes. All seventeen
+compared kernel objects/images per cohort match the preceding stat checkpoint;
+the same five changed inputs remain frozen across both final native commands.
+
+The conditional index now has 84/91 sites and 311 user instructions, with seven
+sites without intervals. Actual owners/nonaliasing, continuous lifetime,
+complete helper/entry/callee/return/fatal/exception contracts, all fallbacks and
+canonical production qualification remain open. Stage 3, initial Step 4 and the
+original objective remain unfinished.

@@ -1,0 +1,41 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_application_fixture_reaches_actual_shared_extents",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 0.13310401048511267,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794452046200474333/temporary",
+  "resources": {
+    "memory.max": "3283161088",
+    "memory.swap.max": "0",
+    "memory.peak": "33247232",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "ca90e58ecca7630ea7e9c03842ea5fd3d906669cb5d3fbcc2bafd896b6c4283f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py": "99e8237c3f48f9ac9f24c2c51290536318070f911fe95163b21853ee7961c490",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "fcbd790d4efb3ec6790c9c8f8363fa0b21c937d6c5aae9b3b0c1dc8d60422a2b",
+    "linux-kernel/tools/user-memory/audit_serial_prefix.py": "79e034f4d20676635dbfc70c526a749b2936497d8b61d0e23292fcbac26db6a1",
+    "linux-kernel/tools/user-memory/test_serial_prefix.py": "d9e561ac1a0f193965b0341e614cd8f823c1a195ebdf4b2f01dc2e512d41113c"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "ca90e58ecca7630ea7e9c03842ea5fd3d906669cb5d3fbcc2bafd896b6c4283f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py": "99e8237c3f48f9ac9f24c2c51290536318070f911fe95163b21853ee7961c490",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "fcbd790d4efb3ec6790c9c8f8363fa0b21c937d6c5aae9b3b0c1dc8d60422a2b",
+    "linux-kernel/tools/user-memory/audit_serial_prefix.py": "79e034f4d20676635dbfc70c526a749b2936497d8b61d0e23292fcbac26db6a1",
+    "linux-kernel/tools/user-memory/test_serial_prefix.py": "d9e561ac1a0f193965b0341e614cd8f823c1a195ebdf4b2f01dc2e512d41113c"
+  },
+  "source_changes_during_run": false
+}

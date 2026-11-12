@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "audit_sha256": "598a31450ea2a2baa51d113dbdc39629b1e102d494ff698dc77bc649f813f692",
+  "graph_sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa",
+  "gnu_instructions": 56,
+  "gnu_windows": 2,
+  "selected_zero_cap_receive_publication_operands_equal": true,
+  "reverse_zero_and_admission_cuts": true,
+  "reverse_predecessor_counts": [
+    34,
+    42
+  ],
+  "scope": "Selected GNU byte/boundary/operand and reverse-cut readback only; not independent full x86 semantics, native execution, owners/nonalias/lifetime or production qualification"
+}

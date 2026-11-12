@@ -235,3 +235,14 @@ instructions, with eight sites still without intervals. Kernel bytes are
 unchanged. Actual owners/nonaliasing, continuous lifetime, complete entry/helper/
 callee/return/fatal/exception guarantees, all three fallbacks and canonical
 production qualification remain required.
+
+The [serial prefix checkpoint](results/stage-3-serial-prefix/README.md) checks
+positive capped admission and bounded UART accumulation before copying only
+the received prefix. Ordinary exact-copy contracts remain exact. Four source
+executions observe twelve copies, sixteen refusals and four short 8-of-256-byte
+outputs; the unchanged pinned regression also passes. GNU operands/reverse cuts,
+twelve offline controls, 88 model/reader tests and exact frozen replay pass.
+Kernel bytes are unchanged. The joined conditional index reaches 84/91 sites
+and 311 user instructions, leaving seven sites without intervals. Actual owners/
+nonaliasing, continuous lifetime, full helper/entry/callee/return/fatal/exception,
+all three fallback and canonical production obligations remain required.

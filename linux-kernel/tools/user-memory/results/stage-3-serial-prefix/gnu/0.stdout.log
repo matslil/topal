@@ -1,0 +1,11 @@
+
+linux-kernel/.cache/x86_64/user-extent-source-serial-2376795-1794451786977016215/kernel.elf:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000002bb0b64 <topal_x86_frame_mm_cleanup_return_v1+0x7da0>:
+ 2bb0b64:	49 81 f9 00 00 00 00                            	cmp    r9,0x0
+ 2bb0b6b:	0f 84 9e 02 00 00                               	je     2bb0e0f <topal_x86_frame_mm_cleanup_return_v1+0x804b>
+ 2bb0b71:	48 81 fb 01 00 00 00                            	cmp    rbx,0x1
+ 2bb0b78:	0f 84 eb 03 00 00                               	je     2bb0f69 <topal_x86_frame_mm_cleanup_return_v1+0x81a5>

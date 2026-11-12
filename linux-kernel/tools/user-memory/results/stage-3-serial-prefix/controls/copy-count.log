@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_serial_prefix.py", line 131, in <module>
+    audit(Path(sys.argv[1]).resolve())
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_serial_prefix.py", line 91, in audit
+    s.take('4c89e64881c6800500004c89c74c89f9')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_staging_copies.py", line 67, in take
+    assert self.body[self.at:self.at+len(raw)] == raw, ('staging slice encoding',self.at,raw.hex())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('staging slice encoding', 142463, '4c89e64881c6800500004c89c74c89f9')

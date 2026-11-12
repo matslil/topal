@@ -60,6 +60,17 @@ def copy_mode(before=None):
         assert result == before
     return result
 
+def copy_transfer_size(row,elements,admitted):
+    assert row['copy_width'] > 0 and 0 <= elements < 1<<64 and 0 <= admitted < 1<<64
+    size = elements*row['copy_width']
+    assert size < 1<<64
+    kind = row.get('copy_count_kind','exact')
+    if kind == 'positive-prefix':
+        assert 0 < size <= admitted <= row['admitted_maximum']
+    else:
+        assert kind == 'exact' and size == admitted
+    return size
+
 def copy_mapping(pointer):
     table = reg('cr3') & 0x000ffffffffff000
     path, user, writable = [], True, True
@@ -159,8 +170,9 @@ class CopyStarted(Checked):
         assert reg('rsp') == before['rsp'] and not reg('eflags')&(1<<10)
         assert memory(context+296,64) == before['captured']
         source, target, elements = reg('rsi'),reg('rdi'),reg('rcx')
-        size = elements*row['copy_width']
-        assert size == before['size'] and size < 1<<64
+        size = copy_transfer_size(row,elements,before['size'])
+        if row.get('copy_count_kind') == 'positive-prefix':
+            assert reg(copy_register_names[row['copy_count_register']]) == size
         assert (source if row['admitted_direction'] == 'read' else target) == before['candidate']
         source_map = copy_range(source,size,row['admitted_direction']=='read',False)
         target_map = copy_range(target,size,row['admitted_direction']=='write',True)
@@ -212,6 +224,9 @@ class CopyFinished(Checked):
                 payload_sha256=hashlib.sha256(payload).hexdigest(),
                 helper_registers_preserved=True,captured_arguments_preserved=True,
                 translation_observations_equal=True,exact_payload_equal=True)
+            if row.get('copy_count_kind') == 'positive-prefix':
+                copy_samples[row['name']]['admitted_size'] = before['size']
+                copy_samples[row['name']]['copy_count_kind'] = 'positive-prefix'
         copy_active,copy_pending = None,None
         self.enabled = False
         copy_start_breakpoints[self.group['copy_offset']].enabled = True
@@ -227,6 +242,8 @@ def install_copy_observation():
         audits = [extent_inventory['staging_copy_audit']]
     if extent_inventory.get('stat_output_audit') is not None:
         audits.append(extent_inventory['stat_output_audit'])
+    if extent_inventory.get('serial_prefix_audit') is not None:
+        audits.append(extent_inventory['serial_prefix_audit'])
     assert all(a['passed'] and a['kernel_sha256'] == extent_inventory['kernel_sha256'] for a in audits)
     rows = [r for a in audits for r in a['cases']]
     groups = [g for a in audits for g in a['copy_groups']]
@@ -263,6 +280,9 @@ def copy_observation_complete():
     if extent_inventory.get('stat_output_audit') is not None:
         observed['copy_transfer_observation']['stat_audit_sha256'] = extent_inventory['stat_output_audit_sha256']
         observed['copy_transfer_observation']['audit_kind'] += '-and-stat'
+    if extent_inventory.get('serial_prefix_audit') is not None:
+        observed['copy_transfer_observation']['serial_prefix_audit_sha256'] = extent_inventory['serial_prefix_audit_sha256']
+        observed['copy_transfer_observation']['audit_kind'] += '-and-serial-prefix'
     if copy_source_enabled():
         assert len(copy_source_refusals) == sum(row['refused'] for row in copy_counts.values())
         observed['copy_transfer_observation']['source_syscall_refusals'] = copy_source_refusals
