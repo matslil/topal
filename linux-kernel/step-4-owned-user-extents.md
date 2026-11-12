@@ -901,3 +901,35 @@ effects, unrun native paths, all fallback gates and canonical clean production
 reconstruction remain required. Core language, kernel behavior and production
 selection are unchanged; Stage 3, Step 4 and full Linux/container/VM-host
 acceptance remain unfinished.
+
+## Stage 3 complete recorded paging graphs and inverse routes
+
+The [mapping analysis](tools/user-memory/results/stage-3-mapping-aliases/README.md)
+enumerates every present descriptor in the six actual recorded tables, including
+supervisor paths and upper canonical addresses. It checks next-table ownership
+roles before following pointers and keeps small/large-leaf formats and effective
+permissions distinct. Every selected user mapping agrees with its actual live
+image, stack or heap backing, including pages outside the admitted buffer.
+
+The same 52 ordinary stat/pwrite transfers supply 156 helper-entry, helper-return
+and copy-completion associations, stored as 116 distinct snapshots and six
+inventories. Every inventory contains 572 user pages, 512 supervisor leaves,
+1084 total leaves and 1089 present descriptors. All physical intersections with
+the 26 protected ranges have complete, unique writable supervisor identity
+coverage. A second, direct-table algorithm independently reconstructs every
+inventory and protected range without importing the recursive or owner/interval
+models. All 164 models and twenty coherently rebound offline observation/report
+controls pass. The initial tuple-versus-JSON-array control-harness failure remains
+separately recorded; it involved no new native execution or provider notice.
+
+The frozen 183-input/93-artifact replay reproduces all thirteen preceding audits,
+owner/interval/metadata readbacks, fourteen preceding controls, the current tests
+and exact mapping/independent/twenty-control reports. It reads data only. No new
+VM run or kernel behavior change is claimed. Descriptor aliases are excluded
+only in these recorded address spaces at these boundaries; stale TLB entries,
+alternate or changing paging modes, DMA and competing AP/asynchronous actions
+throughout the interval remain unqualified. No protection is removed or
+replacement selected. General stable lifetime, other caller/private-counterpart
+loans, complete exception/fatal/whole-syscall effects, unrun native paths, all
+fallback gates and canonical clean production reconstruction remain required.
+Stage 3, Step 4 and full original Linux/container/VM-host acceptance remain open.

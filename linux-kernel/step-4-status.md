@@ -21,6 +21,12 @@ The [subsequent interval observation](tools/user-memory/results/stage-3-owner-in
 guards 26 selected identity-address ranges through each of those 52 copies.
 It records twelve ordinary write controls and preserves the two-CPU VM; this
 does not qualify physical aliases, DMA or all asynchronous behavior.
+The subsequent [recorded mapping analysis](tools/user-memory/results/stage-3-mapping-aliases/README.md)
+checks complete paging graphs at 156 observed boundaries, all 572 selected user
+pages and unique supervisor identity routes to the 26 protected ranges.
+Independent direct-table readback, 164 models and twenty offline controls pass.
+There is no new native execution; stale TLB, DMA and continuous mode/asynchronous
+exclusion remain required.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 

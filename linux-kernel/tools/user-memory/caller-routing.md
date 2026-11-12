@@ -357,3 +357,15 @@ the same deadline and observations. Physical aliases, DMA, continuous mode and
 all asynchronous-entry exclusion, other callers/private counterparts, complete
 exception/fatal/whole-syscall effects and canonical production still need their
 own qualification.
+
+The [complete recorded mapping analysis](results/stage-3-mapping-aliases/README.md)
+adds 156 helper-entry/return/copy associations over 116 saved snapshots. Each
+graph contains 572 user pages, 512 supervisor leaves and 1089 present descriptors.
+Every user mapping matches its live selected backing; the 26 protected physical
+ranges have unique writable supervisor identity routes. A separately written
+fixed-topology reader reconstructs every descriptor/leaf/visit and inverse route.
+All 164 models and twenty coherently rebound JSON controls pass, with exact
+frozen source/thirteen-report/owner/interval/metadata/mapping replay. The kernel
+and original native run are unchanged. These are boundary descriptor facts;
+stale translations, DMA, alternate/continuously stable mode, AP/asynchronous
+behavior and all preceding general caller/lifetime/production gates remain open.

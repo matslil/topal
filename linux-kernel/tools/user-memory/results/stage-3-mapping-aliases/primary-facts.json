@@ -1,0 +1,12 @@
+{
+  "decision": "TK-DEC-283",
+  "edition": "Intel SDM Volume 3A, 253668-083US, March 2024",
+  "url": "https://cdrdv2-public.intel.com/819714/253668-sdm-vol-3a.pdf",
+  "sections": [
+    "4.5, tables 4-15 through 4-20: four-level entry formats",
+    "4.6.1: effective U/S, R/W and execute-disable across levels",
+    "4.10.2: cached translations are distinct from memory-resident paging structures"
+  ],
+  "relation": "Descriptor traversal checks recorded supported formats and combines permissions across levels. It cannot establish the absence of stale cached translations.",
+  "scope": "Specific consulted manual edition, already referenced by the repository; not every feature, physical-address width, newest-manual or hardware-mode qualification"
+}

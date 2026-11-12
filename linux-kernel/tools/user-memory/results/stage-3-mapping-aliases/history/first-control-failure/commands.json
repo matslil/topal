@@ -1,0 +1,55 @@
+[
+  {
+    "label": "models",
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "/home/mats/git/topal/linux-kernel/tools/user-memory",
+      "-v"
+    ],
+    "exit_code": 0,
+    "seconds": 1.6406784523278475,
+    "log_sha256": "157fce0c1cd1226632a6cd3f504341a24fc9ac25595ae442ec88d25203cbd285"
+  },
+  {
+    "label": "aliases",
+    "command": [
+      "/usr/bin/python3",
+      "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_mapping_aliases.py",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-metadata-2408345-1794470644696506965",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-checks/mapping-aliases.json"
+    ],
+    "exit_code": 0,
+    "seconds": 2.486199291422963,
+    "log_sha256": "26757ca877ae0f0f7ac34090171a2d847a80d8303c0600d04888d09760364c3d"
+  },
+  {
+    "label": "independent",
+    "command": [
+      "/usr/bin/python3",
+      "/home/mats/git/topal/linux-kernel/tools/user-memory/readback_mapping_aliases.py",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-metadata-2408345-1794470644696506965",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-checks/mapping-aliases.json",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-checks/independent.json"
+    ],
+    "exit_code": 0,
+    "seconds": 1.9827039064839482,
+    "log_sha256": "b91db0f9e33f054b6611a49453f89c8a2d86c0e0dc8e2b7fa103c5676ffc71d4"
+  },
+  {
+    "label": "controls",
+    "command": [
+      "/usr/bin/python3",
+      "/home/mats/git/topal/linux-kernel/tools/user-memory/control_mapping_aliases.py",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-metadata-2408345-1794470644696506965",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-checks/mapping-aliases.json",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-checks/controls"
+    ],
+    "exit_code": 1,
+    "seconds": 2.9322206126526,
+    "log_sha256": "7696976b78af7d063c76747a86bc5cf22838cc0d84c44c48675262ceb400e9a5"
+  }
+]

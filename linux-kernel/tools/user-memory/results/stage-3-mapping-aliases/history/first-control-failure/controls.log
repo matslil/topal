@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/control_mapping_aliases.py", line 109, in <module>
+    result=controls(args.build,json.loads(args.report.read_bytes()),args.output)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/control_mapping_aliases.py", line 28, in controls
+    assert baseline==report
+           ^^^^^^^^^^^^^^^^
+AssertionError

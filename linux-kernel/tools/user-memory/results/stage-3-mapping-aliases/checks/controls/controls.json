@@ -1,0 +1,129 @@
+{
+  "passed": true,
+  "original_observation_sha256": "6c55c06f17a105063f16c8fd7a76b2316837bb2db5bcfe2b1808f327b23915d9",
+  "alias_report_sha256": "5a24398d729058e348d1e02e297f51669167bbc7840824c60ac10c8b0071027c",
+  "runner_sha256": "a63fe783eb95e4a1746084731d2a88fcb412f057a85e892abe9b76c2692cf972",
+  "controls": [
+    {
+      "name": "upper-supervisor-alias",
+      "rejected": true,
+      "expected": "nonidentity route",
+      "assertion": "nonidentity route to protected physical storage"
+    },
+    {
+      "name": "upper-user-alias",
+      "rejected": true,
+      "expected": "outside the selected live user owners",
+      "assertion": "mapping outside the selected live user owners"
+    },
+    {
+      "name": "foreign-next-table",
+      "rejected": true,
+      "expected": "foreign or wrong-level table",
+      "assertion": "foreign or wrong-level table"
+    },
+    {
+      "name": "wrong-level-next-table",
+      "rejected": true,
+      "expected": "foreign or wrong-level table",
+      "assertion": "foreign or wrong-level table"
+    },
+    {
+      "name": "unselected-user-kernel-backing",
+      "rejected": true,
+      "expected": "actual backing owner",
+      "assertion": "user mapping lacks its actual backing owner"
+    },
+    {
+      "name": "unselected-user-table-backing",
+      "rejected": true,
+      "expected": "actual backing owner",
+      "assertion": "user mapping lacks its actual backing owner"
+    },
+    {
+      "name": "missing-protected-identity",
+      "rejected": true,
+      "expected": "unmapped protected physical range",
+      "assertion": "unmapped protected physical range"
+    },
+    {
+      "name": "reserved-large-address",
+      "rejected": true,
+      "expected": "large leaf format",
+      "assertion": "unsupported large leaf format"
+    },
+    {
+      "name": "unqualified-user-large-leaf",
+      "rejected": true,
+      "expected": "large user mapping",
+      "assertion": "unqualified large user mapping"
+    },
+    {
+      "name": "extra-supervisor-protected-alias",
+      "rejected": true,
+      "expected": "nonidentity route",
+      "assertion": "nonidentity route to protected physical storage"
+    },
+    {
+      "name": "missing-unselected-user-page",
+      "rejected": true,
+      "expected": "missing live user mapping",
+      "assertion": "missing live user mapping"
+    },
+    {
+      "name": "report-missing-leaf",
+      "rejected": true,
+      "expected": "flat descriptor inventory disagrees",
+      "assertion": "flat descriptor inventory disagrees"
+    },
+    {
+      "name": "report-wrong-physical",
+      "rejected": true,
+      "expected": "flat descriptor inventory disagrees",
+      "assertion": "flat descriptor inventory disagrees"
+    },
+    {
+      "name": "report-wrong-user",
+      "rejected": true,
+      "expected": "flat descriptor inventory disagrees",
+      "assertion": "flat descriptor inventory disagrees"
+    },
+    {
+      "name": "report-wrong-writable",
+      "rejected": true,
+      "expected": "flat descriptor inventory disagrees",
+      "assertion": "flat descriptor inventory disagrees"
+    },
+    {
+      "name": "report-wrong-executable",
+      "rejected": true,
+      "expected": "flat descriptor inventory disagrees",
+      "assertion": "flat descriptor inventory disagrees"
+    },
+    {
+      "name": "report-wrong-present-entry",
+      "rejected": true,
+      "expected": "flat descriptor inventory disagrees",
+      "assertion": "flat descriptor inventory disagrees"
+    },
+    {
+      "name": "report-wrong-table-level",
+      "rejected": true,
+      "expected": "flat descriptor inventory disagrees",
+      "assertion": "flat descriptor inventory disagrees"
+    },
+    {
+      "name": "report-wrong-protected-route",
+      "rejected": true,
+      "expected": "protected inverse routes disagree",
+      "assertion": "protected inverse routes disagree"
+    },
+    {
+      "name": "report-missing-protected-route",
+      "rejected": true,
+      "expected": "protected inverse routes disagree",
+      "assertion": "protected inverse routes disagree"
+    }
+  ],
+  "scope": "Eleven coherently rebound offline observation changes and nine coherently rebound report changes; data-only rejection evidence, no changed guest program/state execution or native refusal coverage"
+}

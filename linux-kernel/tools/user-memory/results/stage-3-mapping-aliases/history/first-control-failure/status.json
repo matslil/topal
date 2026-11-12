@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "reason": "Baseline equality compared Python tuple segments with JSON list segments. Normalize the data representation before the semantic controls. No guest code ran.",
+  "failure_log_sha256": "7696976b78af7d063c76747a86bc5cf22838cc0d84c44c48675262ceb400e9a5",
+  "exact_control_source_sha256": "ce0279d77a837d5e39863994a3182988729f791f701c2e365328a081e8abd7d9",
+  "full_initial_source_set_retained": false,
+  "scope": "Exact control runner and failed log; no claim to retain every initial input or establish a provider safeguard reason"
+}

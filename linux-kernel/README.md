@@ -24,6 +24,11 @@ The [subsequent interval observation](tools/user-memory/results/stage-3-owner-in
 watches selected owner/translation records through all 52 actual copies, with
 ordinary heap edits verifying the hardware watches. General lifetime and
 physical-alias/DMA/asynchronous exclusion remain separate requirements.
+The [recorded mapping analysis](tools/user-memory/results/stage-3-mapping-aliases/README.md)
+now enumerates every descriptor and protected physical route at 156 boundaries.
+A separate flat reader agrees, with 164 models and twenty saved-data controls
+passing. This reuses the existing native run; stale TLB, DMA and continuous
+asynchronous/mapping stability remain unqualified.
 Actual ownership/lifetime, complete caller qualification and canonical production
 activation remain required. This does not complete Step 4 or distribution,
 container or VM-host acceptance.

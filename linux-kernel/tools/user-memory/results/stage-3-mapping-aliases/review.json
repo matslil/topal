@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "risk": "high",
+  "executable_kernel_changed": false,
+  "core_language_or_authority_meaning_changed": false,
+  "new_native_execution": false,
+  "review": "Single-agent review against TK-DEC-283 and TOPAL-SYSTEMS-USER-EXTENT-001; separate recursive and direct fixed-topology descriptor algorithms, independent range reconstruction, exact ELF/source/observation joins, 164 models and twenty coherently rebound data controls. No independent human security review claimed.",
+  "remaining": [
+    "stale TLB and alternate/continuously stable paging mode",
+    "DMA and all AP/asynchronous-entry exclusion",
+    "continuous stable ownership/mapping lifetime",
+    "other callers/private-counterpart loans and complete exception/fatal/whole-syscall effects",
+    "all fallback gates and unrun native lengths/refusals",
+    "canonical clean production reconstruction/activation",
+    "full Linux distribution/container/VM-host acceptance"
+  ]
+}
