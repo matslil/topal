@@ -115,6 +115,9 @@ pub(super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), Compile
     e.rr(0x39, A, R11);
     e.0.jump_if(0x85, "fatal");
     for offset in [24, 112, 120, 256, 904, 928, 936, 944, 952, 960, 968] {
+        if offset == 120 && e.0.process_memory {
+            continue;
+        }
         e.gs(0x8b, A, offset);
         e.load(R11, R15, CONTEXT + offset as i32);
         e.rr(0x39, A, R11);
@@ -143,28 +146,43 @@ pub(super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), Compile
         e.load(R11, R15, HEADER + pointer);
         exchange(&mut e, R11, 0, R15, snapshot, length, label)?;
     }
-    e.gs(0x8b, R11, 120);
-    exchange(&mut e, R11, 0, R15, HEAP, 0x22000, "pair-exchange-heap")?;
+    if !e.0.process_memory {
+        e.gs(0x8b, R11, 120);
+        exchange(&mut e, R11, 0, R15, HEAP, 0x22000, "pair-exchange-heap")?;
+    }
     e.gs(0x8b, R11, 112);
+    let low_bytes = if e.0.process_memory { 503 * 8 } else { 4096 };
     exchange(
         &mut e,
         R11,
         0,
         R15,
         LOW_LEAVES,
-        4096,
+        low_bytes,
         "pair-exchange-low-leaves",
     )?;
     e.gs(0x8b, R11, 24);
-    exchange(
-        &mut e,
-        R11,
-        0x4000,
-        R15,
-        HIGH_LEAVES,
-        4096,
-        "pair-exchange-high-leaves",
-    )?;
+    if e.0.process_memory {
+        exchange(
+            &mut e,
+            R11,
+            0x4ff0,
+            R15,
+            HIGH_LEAVES + 4080,
+            16,
+            "pair-exchange-high-leaves",
+        )?;
+    } else {
+        exchange(
+            &mut e,
+            R11,
+            0x4000,
+            R15,
+            HIGH_LEAVES,
+            4096,
+            "pair-exchange-high-leaves",
+        )?;
+    }
     // Shared description cells are not part of either private table snapshot.
     exchange(&mut e, R15, 0, R15, TABLE, 320, "pair-exchange-slots")?;
     exchange(
@@ -206,6 +224,12 @@ pub(super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), Compile
     e.imm(C, 0xc0000100);
     e.0.bytes(&[0x0f, 0x30]);
     e.store(R15, HEADER + 72, R14);
+    if e.0.process_memory {
+        e.imm(Si, 0);
+        super::super::super::frame_memory::call(e.0, 11, "process-mm-switch-return")?;
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.gs(0x8b, A, 24);
     e.0.bytes(&[0x0f, 0x22, 0xd8]);
     e.load(A, R15, HEADER + 112);

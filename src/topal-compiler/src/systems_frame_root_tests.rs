@@ -93,6 +93,13 @@ fn process_mm_preparation_copies_and_retires_real_frame_backing() {
 }
 
 #[test]
+#[ignore = "requires the bounded QEMU/GDB independent process-MM cohort"]
+fn process_mm_fork_handoff_and_exit_preserve_independent_heap_owners() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001: source-built ordinary fork/yield/brk/wait.
+    execute_selected(true, true, true, Some(CallerFocus::SourceProcessOwners));
+}
+
+#[test]
 #[ignore = "requires a C compiler, QEMU and GDB"]
 fn owned_source_fixture_checks_serial_transfer_boundaries() {
     // TOPAL-SYSTEMS-USER-EXTENT-001; STATIC-PROCESS-FD-TABLE-001.
@@ -149,6 +156,7 @@ enum CallerFocus {
     SourceStorage,
     SourceMetadata,
     SourceProcessMemory,
+    SourceProcessOwners,
     SourceSerial,
     SourceStat,
     Startup,
@@ -207,7 +215,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::SourceProcessMemory) {
+    let prefix = if focus == Some(CallerFocus::SourceProcessOwners) {
+        "process-mm-owners"
+    } else if focus == Some(CallerFocus::SourceProcessMemory) {
         "process-mm-preparation"
     } else if focus == Some(CallerFocus::SourceMetadata) {
         "user-extent-source-metadata"
@@ -260,6 +270,7 @@ fn execute_selected(
                 | CallerFocus::SourceStorage
                 | CallerFocus::SourceMetadata
                 | CallerFocus::SourceProcessMemory
+                | CallerFocus::SourceProcessOwners
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
         )
@@ -310,7 +321,9 @@ fn execute_selected(
             .arg(work.join("root.o")),
     );
     let target = if let Some(owners) = &owners {
-        if focus == Some(CallerFocus::SourceProcessMemory) {
+        if focus == Some(CallerFocus::SourceProcessOwners) {
+            super::process_mm::process_target_llvm(&checked.component, owners)
+        } else if focus == Some(CallerFocus::SourceProcessMemory) {
             super::process_mm::target_llvm(&checked.component, owners)
         } else if owned_callers {
             crate::systems_user_extent::caller_target_llvm(&checked.component, owners)
@@ -354,7 +367,9 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if matches!(
+    let fixture_bytes = if focus == Some(CallerFocus::SourceProcessOwners) {
+        crate::systems_user_extent::source_fixture::build_process_memory(work, tools)
+    } else if matches!(
         focus,
         Some(CallerFocus::SourceMetadata | CallerFocus::SourceProcessMemory)
     ) {
@@ -449,7 +464,9 @@ fn build_guest(
     }
     fs::write(
         work.join("dispatch.ll"),
-        if focus == Some(CallerFocus::SourceProcessMemory) {
+        if focus == Some(CallerFocus::SourceProcessOwners) {
+            super::process_mm::process_dispatch_llvm().unwrap()
+        } else if focus == Some(CallerFocus::SourceProcessMemory) {
             super::process_mm::dispatch_llvm().unwrap()
         } else if user_extents {
             crate::systems_user_extent::dispatch_llvm().unwrap()
@@ -591,7 +608,9 @@ fn build_guest(
     .unwrap();
     fs::write(
         work.join("gateway.o"),
-        (if owned_callers {
+        (if focus == Some(CallerFocus::SourceProcessOwners) {
+            crate::systems_provider_object::tail_boundary::frame_gateway::process_memory_component_object
+        } else if owned_callers {
             crate::systems_provider_object::tail_boundary::frame_gateway::owned_user_extent_component_object
         } else if user_extents {
             crate::systems_provider_object::tail_boundary::frame_gateway::user_extent_component_object
@@ -609,7 +628,9 @@ fn build_guest(
     .unwrap();
     let mut dependencies = checked.program.clone();
     dependencies.frame_allocator_library = None;
-    let provider = (if owned_callers {
+    let provider = (if focus == Some(CallerFocus::SourceProcessOwners) {
+        crate::systems_provider_object::generate_process_memory_provider(checked)
+    } else if owned_callers {
         crate::systems_provider_object::generate_owned_user_extent_provider(checked)
     } else if user_extents {
         crate::systems_provider_object::generate_user_extent_probe_provider(checked)
@@ -620,6 +641,18 @@ fn build_guest(
     })
     .unwrap();
     fs::write(work.join("provider.o"), &provider.bytes).unwrap();
+    if focus == Some(CallerFocus::SourceProcessOwners) {
+        // Reconstruct the unchanged owned selection alongside the experiment.
+        // 2160 is the archived preparation component's actual dispatch bound;
+        // this artifact is compared at that same parameter, never selected.
+        let retained =
+            crate::systems_provider_object::generate_owned_user_extent_provider(checked).unwrap();
+        fs::write(work.join("retained-owned-provider.o"), retained.bytes).unwrap();
+        fs::write(
+            work.join("retained-owned-gateway.o"),
+            crate::systems_provider_object::tail_boundary::frame_gateway::owned_user_extent_component_object(2160).unwrap(),
+        ).unwrap();
+    }
     let access_audit_selected = matches!(
         focus,
         Some(
@@ -672,6 +705,18 @@ fn build_guest(
                 )
                 .arg(work),
         );
+    }
+    if focus == Some(CallerFocus::SourceProcessOwners) {
+        fs::write(
+            work.join("process-byte-origins.json"),
+            serde_json::to_vec_pretty(provider.byte_origins.as_ref().unwrap()).unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            work.join("extent-call-inventory.json"),
+            serde_json::to_vec_pretty(provider.extent_inventory.as_ref().unwrap()).unwrap(),
+        )
+        .unwrap();
     }
     if owned_callers {
         // Retain actual predecessor factories for separate byte comparison;
@@ -951,7 +996,9 @@ fn build_guest(
         "guest",
         Command::new("python3")
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-                if matches!(
+                if focus == Some(CallerFocus::SourceProcessOwners) {
+                    "../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py"
+                } else if matches!(
                     focus,
                     Some(
                         CallerFocus::SourceBoundary

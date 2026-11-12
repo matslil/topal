@@ -129,17 +129,89 @@ proof is claimed. Original kernel/UAPI/permission checks are retained. Canonical
 production selection, core-language meaning and pinned third-party binaries
 remain unchanged; the 51-workload production corpus is not newly rerun here.
 
+## Stage 3: first independent process/MM integration
+
+The test-only process selection now routes ordinary creation, cooperative
+handoff and child exit through distinct active/inactive frame owners. It keeps
+heap PTEs out of the legacy image/stack snapshots and uses the existing MM
+publisher for heap changes. Prepared ownership binds the source PID/MM/image
+generation and actual entry/context/root; allocator handles remain distinct
+from these logical identities. Real process callers replace the preparation
+stage's deliberate `brk` witness hook in this selection.
+
+The [source-built application](labs/qemu/x86_64/user_extent_process_mm_cases.c)
+executes normal `brk`, fork, yield, exit and wait syscalls. In each of four image
+generations the parent grows to a partial 67-page heap, the child copies it and
+grows independently to a partial 101-page heap, and two handoffs preserve their
+different bytes and breaks while the parent shrinks to 35 pages. Child exit
+restores the parent; read-only and unmapped wait outputs fail before a valid
+retry reaps the same child. The parent's original 34-page prefix and break are
+restored. Unsupported clone flags and occupied-slot errors retain their order.
+
+The complete ordinary ABI witness also runs its existing four 34-page child/
+clone cases, including TLS/SIMD and shared-description checks. The
+[native observer](labs/qemu/x86_64/process_mm_process_inspect.py) records eight
+preparations, eight child publications, eight handoffs, eight child exits, three
+parent execs, one sole-parent cancellation boundary and final detached cleanup.
+The sole-parent boundary does **not** test cancellation of a live inactive child.
+The ignored compiler test passes in **177.55 seconds**. The pinned two-CPU QEMU
+configuration, 600-second guest deadline and host boundaries are retained.
+
+The [saved-record checks](tools/process-memory/readback_process.py) replay 97
+boundaries and reject twenty altered saved-data controls. They compare actual
+allocator records/pins, disjoint complete backing, all 519 selected heap leaves,
+entry/mode observations, whole-heap copies, retained resize prefixes and zeroed
+new pages. They require every disappearing extent to have a consumed registry
+record, unowned cells and complete zero bytes: **32 extents / 6,111,232 bytes**.
+Fork copies cover **1,654,784 bytes**. These are boundary observations, not
+independent continuous translation or pre-release ordering observations.
+
+The [archive](tools/process-memory/results/stage-3-process-integration/report.json)
+binds kernel SHA-256
+`abb82dd0548df5386aef8651f536a96a97b407a237d3e8fd16af2089306dac10`,
+the actual application sources/image, generated native modules, caller bounds,
+debugger program, saved observations and selected inputs. Thirteen predecessor
+contributions compare byte-identically, including regenerated unselected owned
+provider/gateway artifacts at the archived gateway parameter. All seven generated
+LLVM modules verify. Locked workspace/all-target checking, 196 user-memory
+models, 17 process-memory models, the unchanged default ABI-fixture hash test,
+formatting and the Rust source-size ceiling pass.
+
+Complete compiled stack use is **2,280 / 4,096 bytes**; the complete physical
+retirement window remains **4,088 / 4,096 bytes**. The native cgroup's sampled
+peak is **1,396,228,096 bytes**, below its **2,983,030,784-byte** limit, with swap
+disabled and all sampled memory-event counters zero. The sampler records its
+last live observation and subsequent cgroup retirement, not an unseen final
+instant.
+
+The archive retains failed attempts: dispatch initially excluded the normal
+prompt's later startup state; a child's ordinary exit initially encountered an
+outer-executable witness check; and the observer initially counted only the four
+new cases instead of also requiring the four existing child/clone cases. The
+experimental dispatch now retains initialized descriptor/process ownership at
+later prompt states and routes live-child exits through relationship-checked
+teardown. Predecessor selection bytes remain preserved. These concrete guest/
+observer failures do not explain any earlier model/provider safeguard decision.
+
+Risk remains high. Review is single-agent authority/source/diff review, native
+ordinary execution, saved-data controls and predecessor byte comparison; no
+independent human security review is claimed. The observer and boundary reader
+share a model. The additional resize and whole-case reader checks do not replace
+independent native instruction/lifetime qualification. This component remains
+unpublished; original Step 4 acceptance is still open.
+
 ## Remaining stages and blockers
 
-2. Complete active/inactive MM owner binding and prepared-to-active publication,
-   complete caller/loan exclusion, identity-width and actual allocation-miss
-   behavior, and native fatal partial-effect retirement. The preparation witness
-   alone does not complete this stage. Replace its `brk` validation hook with
-   real process callers and retain allocation-free query/within-page behavior.
-3. Migrate creation, all switches, exec/exit/wait/cancellation and overlapping
-   leaf-table writers. Run source-built ordinary syscall witnesses for independent
-   heaps/partial breaks/resize/exec/yields/wait retry and physical cancellation.
-   Preserve existing child, pipe and unchanged pinned application workloads.
+2. Complete all caller/loan exclusion, identity-width and actual allocation-miss
+   behavior, and native fatal partial-effect retirement. The first integrated
+   cohort does not complete native owner qualification. Queries and within-page
+   changes in its real process path retain allocation-free behavior.
+3. Complete active-child exec with an inactive parent, live inactive-child
+   cancellation on every parent terminal path, every remaining switch/exit and
+   overlapping leaf-table writer. Qualify native empty/one/maximum heaps,
+   prepublication resource failure and full invalidation/pre-release ordering.
+   Existing child cases pass in this component; full pipe and 51-workload
+   application regressions remain required.
 4. Complete affected production qualification and immutable source/native/load/
    boot reconstruction before activation. Preserve mode, concurrent-access and
    fault gaps as acceptance blockers, not successful model evidence.

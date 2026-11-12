@@ -18,14 +18,14 @@ pub fn generate_x86_64_systems_provider_object(
     program: &CompilerSystemsProgram,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let plan = plan_x86_64_systems_provider(program)?;
-    generate_provider_selected(program, plan, false, false, false)
+    generate_provider_selected(program, plan, false, false, false, false)
 }
 
 pub(crate) fn generate_frame_memory_provider(
     checked: &crate::systems_frame_policy_binding::Checked,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let plan = crate::systems_provider::plan_frame_systems_provider(checked)?;
-    generate_provider_selected(&checked.program, plan, true, false, false)
+    generate_provider_selected(&checked.program, plan, true, false, false, false)
 }
 
 #[cfg(test)]
@@ -33,7 +33,7 @@ pub(crate) fn generate_user_extent_probe_provider(
     checked: &crate::systems_frame_policy_binding::Checked,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let plan = crate::systems_provider::plan_frame_systems_provider(checked)?;
-    generate_provider_selected(&checked.program, plan, true, true, false)
+    generate_provider_selected(&checked.program, plan, true, true, false, false)
 }
 
 #[cfg(test)]
@@ -41,7 +41,15 @@ pub(crate) fn generate_owned_user_extent_provider(
     checked: &crate::systems_frame_policy_binding::Checked,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let plan = crate::systems_provider::plan_frame_systems_provider(checked)?;
-    generate_provider_selected(&checked.program, plan, true, false, true)
+    generate_provider_selected(&checked.program, plan, true, false, true, false)
+}
+
+#[cfg(test)]
+pub(crate) fn generate_process_memory_provider(
+    checked: &crate::systems_frame_policy_binding::Checked,
+) -> Result<GeneratedSystemsProviderObject, CompileError> {
+    let plan = crate::systems_provider::plan_frame_systems_provider(checked)?;
+    generate_provider_selected(&checked.program, plan, true, false, true, true)
 }
 
 fn generate_provider_selected(
@@ -50,6 +58,7 @@ fn generate_provider_selected(
     frame_memory: bool,
     user_extent_probe: bool,
     owned_user_extents: bool,
+    process_memory: bool,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
     object.add_file_symbol(b"topal-generated-x86-systems-provider".to_vec());
@@ -478,6 +487,7 @@ fn generate_provider_selected(
             frame_memory,
             user_extent_probe,
             owned_user_extents,
+            process_memory,
         )?;
     #[cfg(test)]
     let extent_inventory = process_enter.extent_inventory.clone();

@@ -208,6 +208,7 @@ fn static_image_process_enter(
         false,
         false,
         false,
+        false,
     )
 }
 
@@ -228,14 +229,18 @@ fn static_image_process_enter_selected(
     frame_memory: bool,
     user_extent_probe: bool,
     owned_user_extents: bool,
+    process_memory: bool,
 ) -> Result<LinkableX86Function, CompileError> {
-    if owned_user_extents && (!frame_memory || user_extent_probe) {
+    if (owned_user_extents && (!frame_memory || user_extent_probe))
+        || (process_memory && !owned_user_extents)
+    {
         return Err(CompileError::Tool(
             "E-SYSTEMS-USER-EXTENT: caller migration needs its own frame selection".into(),
         ));
     }
     let mut code = X86FunctionEncoder {
         owned_user_extents,
+        process_memory,
         ..Default::default()
     };
     emit_static_process_start(
@@ -297,6 +302,17 @@ fn static_image_process_enter_selected(
                 "user-extent-wp-before",
             ),
             ("topal_x86_user_extent_wp_ready_v1", "user-extent-wp-ready"),
+        ] {
+            markers.push((symbol, code.labels[label] as u64));
+        }
+    }
+    if process_memory {
+        for (symbol, label) in [
+            ("topal_x86_process_mm_prepare_return_v1", "process-mm-prepare-return"),
+            ("topal_x86_process_mm_commit_return_v1", "process-mm-commit-return"),
+            ("topal_x86_process_mm_switch_return_v1", "process-mm-switch-return"),
+            ("topal_x86_process_mm_child_exit_return_v1", "process-mm-child-exit-return"),
+            ("topal_x86_process_mm_cancel_return_v1", "process-mm-cancel-return"),
         ] {
             markers.push((symbol, code.labels[label] as u64));
         }

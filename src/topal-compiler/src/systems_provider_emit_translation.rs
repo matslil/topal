@@ -286,6 +286,8 @@ struct X86FunctionEncoder {
     // Private emitter selection; no source value or serialized flag can enable
     // the owned-buffer component's publication route.
     owned_user_extents: bool,
+    // Private experimental process-MM selection; never source-constructible.
+    process_memory: bool,
     bytes: Vec<u8>,
     labels: BTreeMap<String, usize>,
     fixups: Vec<(usize, String)>,

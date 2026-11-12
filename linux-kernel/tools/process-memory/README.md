@@ -82,3 +82,29 @@ activation, fork/exec/switch integration or general Linux compatibility.
 The test-only `brk` hook is a component witness, including deliberately allocating
 on queries; it is not a publishable `brk` policy. Actual process callers must
 replace it while preserving the production allocation-free query contract.
+
+## Independent process/MM component
+
+The [first integrated archive](results/stage-3-process-integration/report.json)
+records eight real creations/exits and eight handoffs, including four new
+source-built 67/101-page independent-heap scenarios and the full ABI witness's
+four existing 34-page child/clone cases. Three parent execs and terminal cleanup
+also execute. [process_native.py](process_native.py) checks actual saved banks,
+pins, entry/mode observations, complete table snapshots and consumed/zeroed
+backing. [readback_process.py](readback_process.py) adds whole-case/resize checks
+and twenty saved-data negative controls; these controls never modify the guest.
+
+Replay its frozen records without building or executing a kernel:
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_process.py linux-kernel/tools/process-memory/results/stage-3-process-integration linux-kernel/.cache/x86_64/process-memory-integration-replay-new
+```
+
+Use a fresh output directory. [archive_process.py](archive_process.py) retains
+selected sources, native records, commands, bounds, regression logs, prior
+failed attempts and exact predecessor artifact comparisons. Frozen replay
+checks archive/source identities and repeats the saved-record comparisons; it
+does not independently establish the recorded load or any unobserved native
+lifetime. Child exec, inactive-child cancellation, empty/maximum/resource/fatal
+cases, continuous exclusion, complete publication observations and public
+production qualification remain blockers listed in the stage report.

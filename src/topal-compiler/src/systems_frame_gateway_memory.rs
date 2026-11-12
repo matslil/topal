@@ -3,11 +3,14 @@ use super::*;
 
 pub(super) const STATE: &str = "topal_x86_frame_mm_state_v1";
 const EPOCH: &str = "topal_x86_frame_mm_epoch_v1";
+#[path = "systems_frame_gateway_process_memory.rs"]
+mod process;
 
 pub(super) fn entry(
     code: &mut Code,
     user_extents: bool,
     owned_callers: bool,
+    process_memory: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(&mut code.encoder);
     address(&mut e, &mut code.references, R11, "topal_bootstrap_storage");
@@ -17,6 +20,13 @@ pub(super) fn entry(
     if user_extents {
         e.cmp(Di, 8);
         e.0.jump_if(0x84, "mm_extent_entry");
+    }
+    if process_memory {
+        e.cmp(Di, 9);
+        e.0.jump_if(0x82, "mm_not_process");
+        e.cmp(Di, 13);
+        e.0.jump_if(0x86, "mm_process_entry");
+        e.0.bind("mm_not_process")?;
     }
     e.cmp(Di, 7);
     e.0.jump_if(0x87, "unsafe");
@@ -109,6 +119,19 @@ pub(super) fn entry(
     e.rr(0x39, A, R9);
     e.0.jump_if(0x85, "unsafe");
     e.0.bind("mm_context_ready")?;
+    if process_memory {
+        // Follow the retained private table only after binding the live actual
+        // process context, hardware root/GS and captured syscall identity.
+        e.cmp(Di, 10);
+        e.0.jump_if(0x85, "mm_process_argument_ready");
+        address(&mut e, &mut code.references, R10, "topal_bootstrap_storage");
+        e.add(R10, 512);
+        e.load(R10, R10, 928);
+        e.load(A, R10, 0x2010);
+        e.rr(0x39, Si, A);
+        e.0.jump_if(0x85, "unsafe");
+        e.0.bind("mm_process_argument_ready")?;
+    }
     e.imm(D, 0);
     e.imm(C, 0);
     e.imm(R9, 0);
@@ -122,6 +145,11 @@ pub(super) fn entry(
         e.0.jump("mm_extent_entry_done");
         extent_entry(code, owned_callers)?;
         code.encoder.bind("mm_extent_entry_done")?;
+    }
+    if process_memory {
+        code.encoder.jump("mm_process_entry_done");
+        process::entry(code)?;
+        code.encoder.bind("mm_process_entry_done")?;
     }
     Ok(())
 }

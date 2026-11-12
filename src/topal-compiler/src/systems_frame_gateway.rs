@@ -147,6 +147,7 @@ fn call(
     syscalls: bool,
     user_extents: bool,
     retired: u64,
+    process_memory: bool,
 ) -> Result<(Code, u64, u64), CompileError> {
     let mut code = Code::default();
     {
@@ -176,7 +177,7 @@ fn call(
         e.0.jump_if(0x85, "unsafe"); // IF=DF=0
     }
     if syscalls {
-        memory::entry(&mut code, user_extents, retired != RETIRED)?;
+        memory::entry(&mut code, user_extents, retired != RETIRED, process_memory)?;
     }
     {
         let mut e = E(&mut code.encoder);
@@ -320,20 +321,35 @@ fn abort(syscalls: bool, retired: u64) -> Result<(Code, u64), CompileError> {
     Ok((code, reclaimed))
 }
 pub(crate) fn component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, false, false, RETIRED)
+    component_selected(complete_body_bound, false, false, RETIRED, false)
 }
 pub(crate) fn memory_component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, true, false, RETIRED)
+    component_selected(complete_body_bound, true, false, RETIRED, false)
 }
 pub(crate) fn user_extent_component_object(
     complete_body_bound: u64,
 ) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, true, true, RETIRED)
+    component_selected(complete_body_bound, true, true, RETIRED, false)
 }
 
 #[cfg(test)]
 pub(crate) fn owned_user_extent_component_object(
     complete_body_bound: u64,
+) -> Result<Vec<u8>, CompileError> {
+    owned_component_selected(complete_body_bound, false)
+}
+
+#[cfg(test)]
+pub(crate) fn process_memory_component_object(
+    complete_body_bound: u64,
+) -> Result<Vec<u8>, CompileError> {
+    owned_component_selected(complete_body_bound, true)
+}
+
+#[cfg(test)]
+fn owned_component_selected(
+    complete_body_bound: u64,
+    process_memory: bool,
 ) -> Result<Vec<u8>, CompileError> {
     use crate::systems_provider_object::user_extent_bridge::{
         CALLER_OUTER_BYTES, CALLER_RETIRED_BYTES,
@@ -347,13 +363,20 @@ pub(crate) fn owned_user_extent_component_object(
             "E-SYSTEMS-USER-EXTENT: complete caller exceeds its reserve".into(),
         ));
     }
-    component_selected(complete_body_bound, true, true, CALLER_RETIRED_BYTES)
+    component_selected(
+        complete_body_bound,
+        true,
+        true,
+        CALLER_RETIRED_BYTES,
+        process_memory,
+    )
 }
 fn component_selected(
     complete_body_bound: u64,
     syscalls: bool,
     user_extents: bool,
     retired: u64,
+    process_memory: bool,
 ) -> Result<Vec<u8>, CompileError> {
     if retired == 0
         || retired % 16 != 0
@@ -407,7 +430,7 @@ fn component_selected(
         "topal_x86_frame_gateway_fatal_reclaimed_v1",
         start + point,
     );
-    let (code, normal, refused) = call(syscalls, user_extents, retired)?;
+    let (code, normal, refused) = call(syscalls, user_extents, retired, process_memory)?;
     let checking = code.encoder.labels["recovery_cleared"] as u64;
     let late = code.encoder.labels["late_halt"] as u64;
     let dispatched = code.encoder.labels["dispatched"] as u64;

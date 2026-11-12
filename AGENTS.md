@@ -119,6 +119,12 @@ For kernel, compiler systems features, and their validation:
   Repository defects, resource failures and successful retries cannot establish
   why a model or service safeguard intervened. Preserve the exact notice and
   proposed operation when available; label any inferred explanation as such.
+  Monitoring can be asynchronous: inspect the preceding actions without assuming
+  the final command triggered the interruption. Lack of visible findings does
+  not establish whether the decision came from the model or a service monitor.
+  Consult [official provider guidance](https://learn.chatgpt.com/docs/agent-approvals-security)
+  for documented behavior; do not present possible dual-use concerns as a
+  confirmed explanation of a particular interruption.
 - Respect explicit safeguard denials. Do not disguise, obfuscate, or indirectly
   execute the same denied operation. Continue independent permitted work and use
   a materially safer approach consistent with the stated reason when possible;

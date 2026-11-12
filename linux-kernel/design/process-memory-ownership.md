@@ -99,6 +99,13 @@ caller/resource analysis. This design does not assign new source-visible
 operation numbers or permit callers to construct MM handles. Existing operation
 8 for owned extents must retain its separate contract.
 
+In the experimental MM selection, an initialized descriptor/process owner stays
+eligible for child services after shell startup progresses beyond the legacy
+11..15 dispatch window. The imported descriptor state, live process relationship,
+actual context/root and backing owners remain mandatory; a later shell phase
+neither revokes them nor supplies their authority. Predecessor selections retain
+their original admission and error order.
+
 AArch64 implementations need their own translation granule, ASID/TTBR context,
 TLBI/barrier and extended-state rules. RISC-V needs its own page geometry,
 satp/ASID/SFENCE and extension-state rules. Neither backend should expose x86

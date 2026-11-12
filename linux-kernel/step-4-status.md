@@ -51,7 +51,7 @@ The [process-MM foundation](step-4-process-memory-ownership.md) addresses the
 remaining fixed child/pair heap snapshot and shared active MM state. Its design
 preserves qualified child/pipe behavior with independent frame-backed heaps.
 Seventeen portable tests, 3,200 application-oracle transitions and saved-data
-controls pass. No native kernel behavior changes; actual process integration,
+controls pass. This portable stage changes no native behavior; actual integration,
 mapping-producer migration and public production qualification remain required.
 Its [first native preparation component](step-4-process-memory-ownership.md#stage-2-first-native-preparationcancellation-component)
 now copies, pins, cancels, erases and releases actual heaps in 32 ordinary `brk`
@@ -59,6 +59,14 @@ invocations, including four 67-page heaps. The complete VM, 196 existing models,
 17 process-memory models, source/metadata readback and fourteen saved-data controls
 pass. This does not switch processes or activate the replacement in production;
 active/inactive binding, native failure paths and full process integration remain.
+The subsequent [independent process/MM component](step-4-process-memory-ownership.md#stage-3-first-independent-processmm-integration)
+passes eight real fork/clone creations and exits, eight handoffs, independent
+parent/child resize at 67/101 pages, wait-output retry and three parent execs in the
+complete ordinary ABI witness. Saved records cover 32 consumed/zeroed extents,
+with twenty offline controls and thirteen byte-identical predecessor artifacts.
+This is a test-only selection: child exec, live-child cancellation, complete
+caller/loan/mode/publication/fatal proofs and production reconstruction remain
+required. The full original step remains incomplete.
 
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.

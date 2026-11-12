@@ -65,8 +65,12 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
     e.gs(0x8b, R11, 104);
     e.cmp(R11, 11);
     e.0.jump_if(0x82, "child-dispatch-done");
-    e.cmp(R11, 15);
-    e.0.jump_if(0x87, "child-dispatch-done");
+    if !e.0.process_memory {
+        e.cmp(R11, 15);
+        e.0.jump_if(0x87, "child-dispatch-done");
+    }
+    // The MM selection binds the actual descriptor/process owner. A later
+    // shell startup phase does not invalidate that initialized owner.
     for (number, label) in [
         (57, "child-fork"),
         (56, "child-clone"),
@@ -78,6 +82,24 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
     ] {
         e.cmp(A, number);
         e.0.jump_if(0x84, label);
+    }
+    if e.0.process_memory {
+        // A live child's ordinary exit does not depend on the outer shell's
+        // successful-exec witness. Child-exit validates its exact relationship
+        // before publishing the parent and consuming the child's owners.
+        e.cmp(A, 60);
+        e.0.jump_if(0x84, "process-mm-exit-selected");
+        e.cmp(A, 231);
+        e.0.jump_if(0x85, "child-dispatch-done");
+        e.0.bind("process-mm-exit-selected")?;
+        e.gs(0x8b, R11, TABLE_CONTEXT);
+        e.load(R11, R11, HEADER);
+        e.cmp(R11, 1);
+        e.0.jump_if(0x85, "child-dispatch-done");
+        e.gs(0x8b, R11, TABLE_CONTEXT);
+        e.load(R11, R11, 56);
+        e.cmp(R11, 1);
+        e.0.jump_if(0x85, "child-exit");
     }
     e.0.bind("child-dispatch-done")?;
     Ok(())
@@ -196,6 +218,18 @@ pub(in super::super) fn emit_services(
     e.0.jump_if(0x85, "fatal");
     e.store(R15, HEADER + 32, R8);
     e.store(R15, HEADER + 40, R9);
+    if e.0.process_memory {
+        e.imm(Si, 0);
+        super::super::frame_memory::call(e.0, 9, "process-mm-prepare-return")?;
+        e.cmp(A, 1);
+        e.0.jump_if(0x84, "process-mm-prepared");
+        e.imm(A, 0);
+        e.store(R15, HEADER + 32, A);
+        e.store(R15, HEADER + 40, A);
+        e.imm(A, (-12_i64) as u64);
+        emit_static_process_sysret(e.0);
+        e.0.bind("process-mm-prepared")?;
+    }
     if source_identity {
         super::identity::emit_invoke(e.0, retained_identity, structured_identity)?;
         e.mov(R14, A);
@@ -238,17 +272,24 @@ pub(in super::super) fn emit_services(
     e.store(R15, HEADER + 72, A);
     copy(&mut e, R15, 0, R15, TABLE, 8192);
     e.gs(0x8b, R11, 112);
-    copy(&mut e, R11, 0, R15, LOW_LEAVES, 4096);
+    let low_bytes = if e.0.process_memory { 503 * 8 } else { 4096 };
+    copy(&mut e, R11, 0, R15, LOW_LEAVES, low_bytes);
     e.gs(0x8b, R11, 24);
-    copy(&mut e, R11, 0x4000, R15, HIGH_LEAVES, 4096);
+    if e.0.process_memory {
+        copy(&mut e, R11, 0x4ff0, R15, HIGH_LEAVES + 4080, 16);
+    } else {
+        copy(&mut e, R11, 0x4000, R15, HIGH_LEAVES, 4096);
+    }
     // The exact writable ELF role is eighteen contiguous owned frames.
     e.gs(0x8b, R11, 112);
     e.load(R11, R11, 0xf28);
     backing(&mut e, 0)?;
     e.store(R15, HEADER + 48, R11);
     copy(&mut e, R11, 0, R15, DATA, 0x12000);
-    e.gs(0x8b, R11, 120);
-    copy(&mut e, R11, 0, R15, HEAP, 0x22000);
+    if !e.0.process_memory {
+        e.gs(0x8b, R11, 120);
+        copy(&mut e, R11, 0, R15, HEAP, 0x22000);
+    }
     for (index, leaf, target) in [(1, 0x4ff0, STACK), (2, 0x4ff8, STACK + 4096)] {
         e.gs(0x8b, R11, 24);
         e.load(R11, R11, leaf);
@@ -294,6 +335,12 @@ pub(in super::super) fn emit_services(
     e.add(R8, 1);
     e.cmp(R8, 16);
     e.0.jump_if(0x82, "child-retain-slot");
+    if e.0.process_memory {
+        e.mov(Si, R14);
+        super::super::frame_memory::call(e.0, 10, "process-mm-commit-return")?;
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.store(R15, 56, R14);
     e.imm(A, 1);
     e.store(R15, HEADER, A);
@@ -348,12 +395,23 @@ pub(in super::super) fn emit_services(
         e.load(R11, R15, HEADER + target);
         copy(&mut e, R15, saved, R11, 0, length);
     }
-    e.gs(0x8b, R11, 120);
-    copy(&mut e, R15, HEAP, R11, 0, 0x22000);
+    if !e.0.process_memory {
+        e.gs(0x8b, R11, 120);
+        copy(&mut e, R15, HEAP, R11, 0, 0x22000);
+    }
     e.gs(0x8b, R11, 112);
-    copy(&mut e, R15, LOW_LEAVES, R11, 0, 4096);
+    let low_bytes = if e.0.process_memory { 503 * 8 } else { 4096 };
+    copy(&mut e, R15, LOW_LEAVES, R11, 0, low_bytes);
     e.gs(0x8b, R11, 24);
-    copy(&mut e, R15, HIGH_LEAVES, R11, 0x4000, 4096);
+    if e.0.process_memory {
+        copy(&mut e, R15, HIGH_LEAVES + 4080, R11, 0x4ff0, 16);
+        e.imm(Si, 0);
+        super::super::frame_memory::call(e.0, 12, "process-mm-child-exit-return")?;
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+    } else {
+        copy(&mut e, R15, HIGH_LEAVES, R11, 0x4000, 4096);
+    }
     e.gs(0x8b, A, 24);
     e.0.bytes(&[0x0f, 0x22, 0xd8]); // restore permissions, invalidate translations
     // Shared descriptions retain child position/reference changes; restore only
@@ -478,6 +536,13 @@ pub(in super::super) fn emit_exit_dispatch(
     e.cmp(R11, 1);
     e.0.jump_if(0x85, "child-exit");
     e.0.bind("pair-exit-parent")?;
+    if e.0.process_memory {
+        e.imm(Si, 0);
+        super::super::frame_memory::call(e.0, 13, "process-mm-cancel-return")?;
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+        e.gs(0x8b, Di, 312); // preserve the outer process's captured exit argument
+    }
     Ok(())
 }
 
