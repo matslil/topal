@@ -1,0 +1,6 @@
+{
+  "exit_code": 1,
+  "stage": "Independent GNU RTC effect projection",
+  "reason": "A RIP-relative LEA comment remained attached to its destination register",
+  "reported_operand": "%r13 # 0x2bba355"
+}

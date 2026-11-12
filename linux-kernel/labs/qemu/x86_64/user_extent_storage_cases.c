@@ -50,6 +50,25 @@ long topal_user_extent_storage_cases(void) {
     if (call(17,fd,0x63a000,16,16,0)) return 720;
     if (call(0,fd,0x63a000,16,0,0)) return 721;
     if (call(17,fd,~(word)0,1,~(word)0,-22)) return 722;
+    for (unsigned i=0;i<512;++i)
+        ((volatile unsigned char *)0x635ff8)[i]=(unsigned char)(i*19+7);
+    /* Ordinary write reuses page zero and clips to its 256-byte quantum. */
+    if (call(1,fd,0x635ff8,512,0,256)) return 737;
+    if (call(8,fd,0,1,0,272)) return 738;
+    if (call(17,fd,0x637ff8,256,16,256)) return 739;
+    for (unsigned i=0;i<256;++i)
+        if (((volatile unsigned char *)0x637ff8)[i]!=(unsigned char)(i*19+7)) return 740;
+    /* Only four input bytes are used before the file page boundary. The
+     * requested suffix lies beyond mapped application memory. */
+    for (unsigned i=0;i<4;++i) ((volatile unsigned char *)0x639ffc)[i]=(unsigned char)(0xd0+i);
+    if (call(18,fd,0x639ffc,512,8188,4)) return 741;
+    if (call(8,fd,0,1,0,272)) return 742;
+    if (call(17,fd,0x638ffc,8,8184,8)) return 743;
+    for (unsigned i=0;i<8;++i)
+        if (((volatile unsigned char *)0x638ffc)[i]!=(i<4 ? 0 : (unsigned char)(0xd0+i-4))) return 744;
+    if (call(1,fd,0x63a000,0,0,0) || call(18,fd,0x63a000,0,8188,0)) return 745;
+    if (call(8,fd,0,1,0,272)) return 746;
+    if (call(17,fd,0x63a000,16,8192,0)) return 747;
     if (call(3,fd,0,0,0,0)) return 723;
 
     fd=topal_test_syscall4(257,(word)-100,(word)"/bin/busybox",0,0);

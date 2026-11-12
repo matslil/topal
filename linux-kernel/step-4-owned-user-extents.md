@@ -654,3 +654,37 @@ lifetime, complete helper/entry/callee/return/fatal/exception effects, all three
 fallbacks, further current-kernel profiles and canonical clean production
 qualification remain required. Stage 3, initial Step 4 and the original goal
 remain unfinished.
+
+## Stage 3 staged volatile file inputs
+
+The [file-input checkpoint](tools/user-memory/results/stage-3-file-inputs/README.md)
+adds conditional intervals for ordinary and positional file input through page
+lookup, allocation preparation and the actual RTC leaf. It checks clipped
+candidate/count preservation, twelve-register save/reverse restore, a selected
+112-byte clock stack cost and the one live saved word at each user copy.
+The 96 retired clock spill bytes have not been proved erased; cleanup remains
+an acceptance blocker. Table/stack/calendar ownership, nonaliasing and continuous
+lifetime remain separate obligations.
+
+Four source executions pass 248 syscalls, forty input admissions, sixteen copies
+totaling 1136 bytes and twenty-four refusals. Both paths cover resident and
+missing file pages, bounded short transfers, inaccessible requested suffixes,
+zero requests, EOF and positional preservation. Complete storage reclamation
+and prior refusal assertions remain. Saved-record readback reconstructs payloads
+and admission order. The complete source stack bound is 1320 of 2048 bytes.
+
+Seventeen core objects/images and thirteen preceding metadata/reports compare
+equal in all three fresh VM cohorts. The kernel and default source image bytes
+are unchanged. Saved full GNU decoding for this identical kernel supports
+independent readback of 422 selected instructions, including all 269 RTC leaf
+instructions and two admission cuts. Twenty-one offline controls, 100 model/
+reader tests, ordinary/pinned regressions and two fixture tests pass. Exact
+frozen replay restores 155 selected source inputs and reproduces all ten reports.
+
+The conditional index now has 88/91 sites and 316 user instructions, with three
+sites lacking intervals. Fresh native first reach is 83/91; joining the explicitly
+bound preceding cohorts on the same kernel gives 87/91. Actual owners/nonalias,
+continuous lifetime, retired spill cleanup, complete helper/entry/callee/return/
+fatal/exception/post-copy effects, remaining sites, fallback obligations, further
+native profiles and canonical clean production qualification remain required.
+Stage 3, initial Step 4 and the original goal remain unfinished.

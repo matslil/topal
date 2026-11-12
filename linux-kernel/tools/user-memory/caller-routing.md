@@ -259,3 +259,18 @@ pass. The nine-report conditional index on this new kernel has 86/91 sites and
 81/91, separate from earlier-kernel evidence. Actual owners/nonaliasing,
 continuous lifetime, complete helper/entry/callee/return/fatal/exception, fallback
 and canonical production obligations remain open.
+
+The [staged volatile inputs](results/stage-3-file-inputs/README.md) cover the first
+user-to-staging copy for both `write` and `pwrite`, including page lookup and
+normal-return RTC effects, saved candidate/count registers and one live stack
+word. Four source executions pass forty admissions, sixteen copies and twenty-
+four refusals across resident/missing file pages. Independent saved GNU and
+native-record readback, twenty-one offline controls, 100 model/reader tests,
+ordinary/pinned regressions, two fixture tests and exact ten-report frozen replay
+pass without executable kernel changes. The conditional index is 88/91 sites
+and 316 user instructions, leaving three sites without intervals. Fresh first
+reach is 83/91, or 87/91 with the explicitly bound preceding same-kernel cohorts.
+The 96 retired clock spill bytes are not proved erased. Their cleanup, actual
+owners/nonaliasing, continuous lifetime, complete callee/entry/helper/return/
+fatal/exception/post-copy effects, fallback and canonical production obligations
+remain required.

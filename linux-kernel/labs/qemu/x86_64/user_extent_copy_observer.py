@@ -12,6 +12,8 @@ copy_result_breakpoints = {}
 copy_source_scope = None
 copy_source_refusals = []
 copy_source_completions = []
+copy_retained_admissions = []
+copy_retained_completions = []
 copy_register_names = ['rax','rcx','rdx','rbx','rsp','rbp','rsi','rdi','r8','r9','r10','r11','r12','r13','r14','r15']
 copy_preserved = [2,3,5,6,7,8,9,12,13,14,15]
 
@@ -70,6 +72,12 @@ def copy_transfer_size(row,elements,admitted):
     else:
         assert kind == 'exact' and size == admitted
     return size
+
+def copy_live_stack_words(row,call_rsp,current_rsp):
+    words = row.get('copy_live_stack_words',0)
+    assert words in [0,1] and call_rsp >= words*8
+    assert current_rsp == call_rsp-words*8
+    return words
 
 def copy_mapping(pointer):
     table = reg('cr3') & 0x000ffffffffff000
@@ -138,6 +146,12 @@ class CopyAdmissionResult(Checked):
         assert reg('rsp') == before['rsp'] and word(reg('rsp')-8) == 0
         assert all(reg(copy_register_names[i]) == before['registers'][i] for i in copy_preserved)
         assert memory(context+296,64) == before['captured']
+        if self.row.get('retain_transfer_records'):
+            assert before['size'] <= self.row['maximum_bytes']
+            assert reg(copy_register_names[self.row['count_register']]) == before['size']
+            copy_retained_admissions.append(dict(name=before['name'],call_offset=self.row['call_offset'],
+                candidate=before['candidate'],size=before['size'],accepted=not bool(reg('eflags')&1),
+                helper_registers_preserved=True,captured_arguments_preserved=True))
         if reg('eflags')&1:
             copy_counts[self.row['name']]['refused'] += 1
             if copy_source_enabled():
@@ -167,7 +181,8 @@ class CopyStarted(Checked):
         row = copy_rows[copy_pending['name']]
         before = copy_pending
         copy_mode(before['mode'])
-        assert reg('rsp') == before['rsp'] and not reg('eflags')&(1<<10)
+        live_words = copy_live_stack_words(row,before['rsp'],reg('rsp'))
+        assert not reg('eflags')&(1<<10)
         assert memory(context+296,64) == before['captured']
         source, target, elements = reg('rsi'),reg('rdi'),reg('rcx')
         size = copy_transfer_size(row,elements,before['size'])
@@ -176,6 +191,15 @@ class CopyStarted(Checked):
         assert (source if row['admitted_direction'] == 'read' else target) == before['candidate']
         source_map = copy_range(source,size,row['admitted_direction']=='read',False)
         target_map = copy_range(target,size,row['admitted_direction']=='write',True)
+        live_stack = memory(reg('rsp'),live_words*8) if live_words else b''
+        if live_words:
+            stack_map = copy_range(reg('rsp'),live_words*8,False,True)
+            assert all(a['physical']+a['size'] <= b['physical'] or b['physical']+b['size'] <= a['physical']
+                for a in source_map+target_map for b in stack_map)
+        if row.get('retain_transfer_records'):
+            assert size <= row['maximum_bytes'] and reg(copy_register_names[row['count_register']]) == size
+            assert target == before['registers'][12]+row['counterpart']['offset']
+            assert reg('r12') == before['registers'][12] == word(context+928)
         assert all(a['physical']+a['size'] <= b['physical'] or b['physical']+b['size'] <= a['physical']
                    for a in source_map for b in target_map)
         tables = {entry[0] for m in source_map+target_map for entry in m['path']}
@@ -183,7 +207,8 @@ class CopyStarted(Checked):
                    for m in source_map+target_map for table in tables)
         payload = memory(source,size) if size else b''
         copy_active = dict(name=row['name'],source=source,target=target,size=size,
-            elements=elements,source_map=source_map,target_map=target_map,payload=payload)
+            elements=elements,source_map=source_map,target_map=target_map,payload=payload,
+            live_words=live_words,live_stack=live_stack)
         return False
 
 class CopyFinished(Checked):
@@ -199,7 +224,9 @@ class CopyFinished(Checked):
         assert active['name'] == before['name'] and active['name'] in self.group['cases']
         row = copy_rows[active['name']]
         copy_mode(before['mode'])
-        assert reg('rsp') == before['rsp'] and not reg('eflags')&(1<<10)
+        assert copy_live_stack_words(row,before['rsp'],reg('rsp')) == active['live_words']
+        assert not reg('eflags')&(1<<10)
+        assert not active['live_words'] or memory(reg('rsp'),active['live_words']*8) == active['live_stack']
         assert reg('rcx') == 0 and reg('rsi') == active['source']+active['size']
         assert reg('rdi') == active['target']+active['size']
         assert memory(context+296,64) == before['captured']
@@ -210,6 +237,12 @@ class CopyFinished(Checked):
         counts = copy_counts[row['name']]
         counts['completed'] += 1
         counts['bytes'] += active['size']
+        if row.get('retain_transfer_records'):
+            copy_retained_completions.append(dict(name=row['name'],call_offset=row['call_offset'],
+                copy_offset=row['copy_offset'],candidate=before['candidate'],size=active['size'],
+                payload_hex=payload.hex(),live_stack_words=active['live_words'],
+                live_stack_preserved=True,captured_arguments_preserved=True,
+                translation_observations_equal=True,exact_payload_equal=True))
         if copy_source_enabled():
             assert copy_source_scope is not None
             copy_source_scope['completed'].append(dict(name=row['name'],call_offset=row['call_offset'],
@@ -244,6 +277,8 @@ def install_copy_observation():
         audits.append(extent_inventory['stat_output_audit'])
     if extent_inventory.get('serial_prefix_audit') is not None:
         audits.append(extent_inventory['serial_prefix_audit'])
+    if extent_inventory.get('file_input_audit') is not None:
+        audits.append(extent_inventory['file_input_audit'])
     assert all(a['passed'] and a['kernel_sha256'] == extent_inventory['kernel_sha256'] for a in audits)
     rows = [r for a in audits for r in a['cases']]
     groups = [g for a in audits for g in a['copy_groups']]
@@ -283,6 +318,14 @@ def copy_observation_complete():
     if extent_inventory.get('serial_prefix_audit') is not None:
         observed['copy_transfer_observation']['serial_prefix_audit_sha256'] = extent_inventory['serial_prefix_audit_sha256']
         observed['copy_transfer_observation']['audit_kind'] += '-and-serial-prefix'
+    if extent_inventory.get('file_input_audit') is not None:
+        selected = [row for row in copy_rows.values() if row.get('retain_transfer_records')]
+        assert len(copy_retained_admissions) == sum(copy_counts[r['name']]['attempts'] for r in selected)
+        assert len(copy_retained_completions) == sum(copy_counts[r['name']]['completed'] for r in selected)
+        observed['copy_transfer_observation']['file_input_audit_sha256'] = extent_inventory['file_input_audit_sha256']
+        observed['copy_transfer_observation']['retained_admissions'] = copy_retained_admissions
+        observed['copy_transfer_observation']['retained_completions'] = copy_retained_completions
+        observed['copy_transfer_observation']['audit_kind'] += '-and-file-input'
     if copy_source_enabled():
         assert len(copy_source_refusals) == sum(row['refused'] for row in copy_counts.values())
         observed['copy_transfer_observation']['source_syscall_refusals'] = copy_source_refusals

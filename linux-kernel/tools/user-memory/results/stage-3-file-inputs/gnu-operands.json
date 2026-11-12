@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "29de5cda82d8b48bcc68a2b00306c7ebc0156decf457366c62850fa8ccc02d6c",
+  "graph_sha256": "407c27095ed319e6b2d90e10338ba4aa8f0b92c6b5c10cf2feca5490f82ba76a",
+  "gnu_transcript_sha256": "1284594d470f78c97820f59844220a52cd6f57360a53a03a703f44a008cea869",
+  "selected_instructions": 422,
+  "rtc_effect_instructions": 269,
+  "twelve_register_save_reverse_restore_equal": true,
+  "exact_copy_setup_and_live_word_equal": true,
+  "reverse_admission_cuts": [
+    {
+      "name": "volatile-write-input",
+      "removed_edge": [
+        223015,
+        223021
+      ],
+      "predecessors": 44
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "removed_edge": [
+        224086,
+        224092
+      ],
+      "predecessors": 44
+    }
+  ],
+  "scope": "Independent selected GNU RTC register/memory effects, saved-register order, live-word/copy operands and reverse input-admission cuts, bound to the preceding byte-identical full GNU graph. Not new native/GNU execution, complete owners/nonalias/lifetime/retired-spill cleanup or production qualification"
+}

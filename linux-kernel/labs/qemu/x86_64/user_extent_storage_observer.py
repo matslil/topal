@@ -7,6 +7,40 @@ STORAGE_BYTES=0x9000
 def storage_word(data,offset): return struct.unpack_from('<Q',data,offset)[0]
 def storage_put(data,offset,value): struct.pack_into('<Q',data,offset,value)
 
+class StorageInputCalled(Checked):
+    def __init__(self,row):
+        super().__init__('*'+hex(extent_inventory['address']+row['call_offset']),internal=True)
+        self.row=row
+
+    def observe(self):
+        assert current and pending and pending['number'] in [1,18]
+        assert component.get('mode')=='storage' and 'file_input_admission' not in pending
+        n,args=pending['number'],pending['args']
+        assert self.row['name']==('volatile-write-input' if n==1 else 'volatile-pwrite-input')
+        table=word(context+928)
+        desc=pending['description_before']
+        assert desc[0]==7 and reg('r12')==table
+        objects=[table+0x43100+i*128 for i in range(4)
+            if word(table+0x43100+i*128)==1 and word(table+0x43108+i*128)==desc[4]]
+        assert len(objects)==1 and reg('rbx')==objects[0]
+        position=args[3] if n==18 else desc[3]
+        if desc[2]&0x400: position=word(objects[0]+16)
+        length=min(args[2],256,4096-position%4096,(1<<63)-1-position)
+        assert 1<=length<=256 and reg('r8')==args[1] and reg('r9')==reg('rbp')==length
+        assert reg('r15')==position
+        pages=[i for i in range(8) if word(table+0x43400+i*32)==desc[4] and
+               word(table+0x43408+i*32)==position//4096]
+        assert len(pages)<=1
+        pending['file_input_admission']=dict(name=self.row['name'],candidate=args[1],length=length,
+            position=position,page_present=bool(pages),captured_table=table)
+        return False
+
+def install_storage_input_observation():
+    if component.get('mode')=='storage':
+        audit=extent_inventory['file_input_audit']
+        assert audit['passed'] and audit['kernel_sha256']==extent_inventory['kernel_sha256']
+        for row in audit['cases']: StorageInputCalled(row)
+
 def storage_request(call):
     table=word(context+928)
     assert word(table)==1 and memory(table+1408,256)==bytes(256)
@@ -20,7 +54,7 @@ def storage_request(call):
         call['path_hex']=path.hex()
         pointer,size=args[1],len(path)
     elif n in [0,1,17,18,217]:
-        pointer,size=args[1],min(args[2],48)
+        pointer,size=args[1],min(args[2],256)
     else:
         pointer=size=None
     if pointer is not None:
@@ -178,9 +212,9 @@ def storage_result(call):
 def storage_returned(row,after):
     global current
     calls=row['calls']
-    assert len(calls)==52
+    assert len(calls)==62
     assert {n:sum(c['number']==n for c in calls) for n in [12,257,1,8,0,17,18,3,217]}=={
-        12:3,257:3,1:5,8:5,0:7,17:15,18:5,3:3,217:6}
+        12:3,257:3,1:7,8:8,0:7,17:18,18:7,3:3,217:6}
     actions=[c for c in calls if c['number']!=12]
     assert sum(c['result']==-14 for c in actions)==28
     assert sum(c['result']==-22 for c in actions)==1

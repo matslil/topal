@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 224, in <module>
+    if __name__=='__main__': audit(Path(sys.argv[1]).resolve())
+                             ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 195, in audit
+    s.take('5f')
+    ~~~~~~^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_staging_copies.py", line 67, in take
+    assert self.body[self.at:self.at+len(raw)] == raw, ('staging slice encoding',self.at,raw.hex())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('staging slice encoding', 223262, '5f')

@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 224, in <module>
+    if __name__=='__main__': audit(Path(sys.argv[1]).resolve())
+                             ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 189, in audit
+    clocks[clock_entry]=clock_contract(body,nodes,roots,successors,predecessors,clock_entry)
+                        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 110, in clock_contract
+    for raw in pushes: s.take(raw)
+                       ~~~~~~^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py", line 24, in take
+    assert row['size'] == len(raw) and row['bytes'] == raw.hex(), (
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('pipe instruction contract', 219803, '4150')

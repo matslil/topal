@@ -510,6 +510,7 @@ class InvariantHalt(Checked):
 try:
     install_extent_coverage()
     install_serial_observation()
+    install_storage_input_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
