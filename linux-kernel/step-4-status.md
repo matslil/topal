@@ -109,6 +109,15 @@ complete erasure readback and current readers for retained same-kernel
 regressions pass. General process/MM geometry, all callers/loans, identity/fatal
 and continuous lifetime/public-activation gates remain open.
 
+The subsequent [runnable/zombie cohort](step-4-process-memory-ownership.md#runnable-and-zombie-child-relationships-at-parent-termination)
+passes eight parent-termination cases across both exit operations and startup
+positions. Runnable children retain their dirty heap/file until cancellation;
+zombies retain unreaped status after their resources retire, with no duplicate
+retirement during parent exit. All 176 saved-data controls and current readers
+for twelve retained same-kernel native runs pass. This adds bounded lifetime
+evidence; general orphan/init behavior, broader caller/loan/fatal and production
+qualification remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

@@ -131,6 +131,25 @@ fn process_mm_maximum_fork_and_clone_copy_survive_empty_and_one_page_handoff() {
 
 #[test]
 #[ignore = "requires the bounded QEMU/GDB live-child cancellation cohort"]
+fn process_mm_parent_exit_retires_ready_and_zombie_relationships() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001: ordinary yield or child exit, followed
+    // by outer-owner termination without reaping or resuming that child.
+    for zombie in [false, true] {
+        for early in [false, true] {
+            for group in [false, true] {
+                execute_selected(
+                    true,
+                    true,
+                    true,
+                    Some(CallerFocus::SourceProcessRelationship(early, group, zombie)),
+                );
+            }
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires the bounded QEMU/GDB live-child cancellation cohort"]
 fn process_mm_parent_exit_cancels_blocked_child_and_all_resources() {
     // TOPAL-SYSTEMS-PROCESS-MM-001: actual pipe wait, both exit operations,
     // initial-shell and phase-zero replacement startup, zero/nonzero statuses.
@@ -224,6 +243,7 @@ enum CallerFocus {
     SourceProcessExec,
     SourceProcessAllocation,
     SourceProcessGeometry(bool),
+    SourceProcessRelationship(bool, bool, bool),
     SourceProcessCancel(bool, bool, bool),
     SourceSerial,
     SourceStat,
@@ -242,6 +262,7 @@ fn process_memory_focus(focus: Option<CallerFocus>) -> bool {
                 | CallerFocus::SourceProcessExec
                 | CallerFocus::SourceProcessAllocation
                 | CallerFocus::SourceProcessGeometry(..)
+                | CallerFocus::SourceProcessRelationship(..)
                 | CallerFocus::SourceProcessCancel(..)
         )
     )
@@ -296,7 +317,14 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if matches!(focus, Some(CallerFocus::SourceProcessGeometry(true))) {
+    let prefix = if matches!(
+        focus,
+        Some(CallerFocus::SourceProcessRelationship(_, _, true))
+    ) {
+        "process-mm-zombie-termination"
+    } else if matches!(focus, Some(CallerFocus::SourceProcessRelationship(..))) {
+        "process-mm-ready-termination"
+    } else if matches!(focus, Some(CallerFocus::SourceProcessGeometry(true))) {
         "process-mm-geometry-clone"
     } else if matches!(focus, Some(CallerFocus::SourceProcessGeometry(false))) {
         "process-mm-geometry-fork"
@@ -367,6 +395,7 @@ fn execute_selected(
                 | CallerFocus::SourceProcessExec
                 | CallerFocus::SourceProcessAllocation
                 | CallerFocus::SourceProcessGeometry(..)
+                | CallerFocus::SourceProcessRelationship(..)
                 | CallerFocus::SourceProcessCancel(..)
                 | CallerFocus::SourceSerial
                 | CallerFocus::SourceStat
@@ -464,7 +493,13 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if let Some(CallerFocus::SourceProcessGeometry(clone)) = focus {
+    let fixture_bytes = if let Some(CallerFocus::SourceProcessRelationship(early, group, zombie)) =
+        focus
+    {
+        crate::systems_user_extent::source_fixture::build_process_memory_relationship(
+            work, tools, early, group, zombie,
+        )
+    } else if let Some(CallerFocus::SourceProcessGeometry(clone)) = focus {
         crate::systems_user_extent::source_fixture::build_process_memory_geometry(
             work, tools, clone,
         )

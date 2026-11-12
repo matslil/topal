@@ -213,3 +213,28 @@ continuous exclusion, unobserved invalidation order or public activation.
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_maximum_fork_and_clone_copy_survive_empty_and_one_page_handoff -- --ignored --nocapture
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_geometry.py linux-kernel/tools/process-memory/results/stage-3-maximum-geometry linux-kernel/.cache/x86_64/process-memory-geometry-replay-new
 ```
+
+## Runnable and zombie termination
+
+The [relationship archive](results/stage-3-relationship-termination/report.json)
+records eight ordinary parent terminations: runnable child or unreaped zombie,
+both exit operations, and late/early replacement startup. Read-only observation
+captures the child's actual yield/exit request with dirty heap/file resources.
+The runnable child retains them until cancellation; the zombie's resources have
+already retired while its wait status remains. Complete parent/shared cleanup
+then passes without duplicate child retirement.
+
+[readback_relationship.py](readback_relationship.py) checks those observations
+and 22 altered saved-data controls per case.
+[archive_relationship.py](archive_relationship.py) binds all eight builds and
+verifies the preceding maximum-copy archive before rechecking its twelve
+identified same-kernel native runs. It retains their observations and summaries,
+not complete historical rebuilds. [replay_relationship.py](replay_relationship.py)
+repeats all new and retained comparisons with frozen selected inputs, without a
+VM. These checks do not qualify general Linux orphan/init semantics, continuous
+exclusion, every release/invalidation instruction or public kernel activation.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_parent_exit_retires_ready_and_zombie_relationships -- --ignored --nocapture
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_relationship.py linux-kernel/tools/process-memory/results/stage-3-relationship-termination linux-kernel/.cache/x86_64/process-memory-relationship-replay-new
+```

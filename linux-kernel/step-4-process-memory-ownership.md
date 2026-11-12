@@ -528,13 +528,78 @@ copy and zero/one-page handoffs; it does not qualify general address spaces,
 every mapping producer/loan, continuous exclusion, identity-width exhaustion,
 fatal partial effects or public activation. No core-language meaning changes.
 
+## Runnable and zombie child relationships at parent termination
+
+The next [source-built program](labs/qemu/x86_64/user_extent_process_mm_relationship_cases.c)
+qualifies parent termination with a runnable child or an unreaped zombie.
+Eight cases combine those relationships with ordinary `exit`/`exit_group` and
+late-shell/early replacement startup. The child dirties a **101-page heap** and
+an unlinked anonymous file with **256 nontrivial bytes**, then either yields
+without parking a wait or exits with full status `0x217`. The parent retains
+two writer aliases, closes its reader and independently resizes to **35 pages**.
+An occupied-slot fork still returns EAGAIN. A runnable child's WNOHANG returns
+zero without validating an unused output; a zombie's invalid wait-output buffer
+returns EFAULT and preserves its unreaped status. The parent then terminates
+without resuming or reaping that child.
+
+Read-only observation captures the actual child's ordinary userspace departure
+and complete process storage before either yield or exit. The runnable child
+retains its heap, last reader, file description and complete dirty file page
+until parent cancellation. The zombie retains status **0x17** after its heap,
+file object/page, private continuation and reader have already been retired.
+Parent termination performs no duplicate child retirement. Both paths preserve
+the independent parent heap until detached cleanup, consume the remaining
+descriptions/FIFO and read back whole descriptor, PID-policy and MM storage.
+These are the existing bounded outer-owner lifetime rules, not general Linux
+orphan reparenting or system-init termination semantics.
+
+All eight native cases pass in **323.87 seconds**, including their builds,
+using the normal **640-MiB, two-CPU QEMU TCG** guest. The
+[reader](tools/process-memory/readback_relationship.py) checks **120 MM
+boundaries, 40 retired extents and 7,798,784 erased bytes**. All **176 saved-data
+controls** reject wrong relationships, altered departure/status, missing owners,
+incomplete erasure, invented waits and lost/retained file bytes. These controls
+change saved records only; no debugger memory/register writes manufacture a
+relationship, failure or successful return.
+
+The [archive](tools/process-memory/results/stage-3-relationship-termination/report.json)
+binds all eight source configurations, actual guest commands, exact debugger
+program, complete bounds and predecessor comparisons. It verifies the preceding
+maximum-copy archive and rechecks its twelve identified native runs with current
+readers: both maximum copies, allocation refusal, child exec and all eight
+reader/writer cancellation cases. Their **207 controls** pass; those older VMs
+are not newly executed here. The current linked kernels are byte-identical to
+the retained maximum-copy kernel. Frozen replay repeats the new and retained
+record comparisons from the selected archived inputs; it is not a new VM run
+or full historical rebuild.
+
+All seven LLVM modules verify for each of the eight builds. Fresh workspace/
+all-target checking, 196 user-memory tests, 27 process-memory tests, default
+ABI-fixture hash, formatting and the Rust file ceiling pass. Thirteen predecessor
+contributions remain byte-identical per build. Kernel SHA-256 remains
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`,
+with complete native stack/physical bounds **2,280 / 4,096** and
+**4,088 / 4,096 bytes**. The swap-free cgroup spanning all eight native builds/
+runs has a last sampled peak of **2,056,458,240 / 3,333,943,296 bytes**, with
+all sampled event counters zero. Its last live sample and retirement do not
+measure an unseen final instant. Host protections and boundaries remain intact.
+
+Risk is high for isolation, relationship/resource consistency and false claims
+of exact retirement. Review uses the authority chain, source/diff review,
+ordinary native requests, whole saved ownership/resource observations, exact
+kernel/predecessor comparison and saved-data controls. No independent human
+security review is claimed. This extends the selected runnable/zombie lifetime
+evidence without changing kernel behavior or core-language meaning. Broader
+mapping/loan/caller, identity/fatal, continuous lifetime/invalidation and public
+activation obligations remain open.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss
    behavior, and native fatal partial-effect retirement. The first integrated
    cohort does not complete native owner qualification. Queries and within-page
    changes in its real process path retain allocation-free behavior.
-3. Broaden native cancellation to every remaining wait/relationship shape,
+3. Broaden native cancellation beyond the selected blocked/runnable/zombie shapes,
    broader child exec/image cases, every remaining switch/exit and
    overlapping leaf-table writer. Qualify remaining creation/resize/resource
    failure shapes and full invalidation/pre-release ordering.

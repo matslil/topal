@@ -261,6 +261,23 @@ pub(crate) fn build_process_memory_cancel(
         tools,
         "process-mm-cancel",
         Some((early, group, writer)),
+        None,
+    )
+}
+
+pub(crate) fn build_process_memory_relationship(
+    work: &Path,
+    tools: &crate::LlvmTools,
+    early: bool,
+    group: bool,
+    zombie: bool,
+) -> Vec<u8> {
+    build_configured(
+        work,
+        tools,
+        "process-mm-relationship",
+        None,
+        Some((early, group, zombie)),
     )
 }
 
@@ -273,7 +290,7 @@ pub(crate) fn build_stat(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
 }
 
 fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> {
-    build_configured(work, tools, mode, None)
+    build_configured(work, tools, mode, None, None)
 }
 
 fn build_configured(
@@ -281,6 +298,7 @@ fn build_configured(
     tools: &crate::LlvmTools,
     mode: &str,
     cancellation: Option<(bool, bool, bool)>,
+    relationship: Option<(bool, bool, bool)>,
 ) -> Vec<u8> {
     let image_entry_selected = matches!(
         mode,
@@ -289,6 +307,7 @@ fn build_configured(
             | "process-mm-allocation"
             | "process-mm-geometry-fork"
             | "process-mm-geometry-clone"
+            | "process-mm-relationship"
     );
     let geometry_syscall = match mode {
         "process-mm-geometry-fork" => Some(57),
@@ -305,6 +324,10 @@ fn build_configured(
         (early, if group { 231 } else { 60 }, status, writer)
     });
     let (entry_name, extra) = match mode {
+        "process-mm-relationship" => (
+            "topal_process_memory_relationship_cases",
+            Some(("process_mm_relationship", "process-mm-relationship-cases")),
+        ),
         "process-mm-geometry-fork" | "process-mm-geometry-clone" => (
             "topal_process_memory_geometry_cases",
             Some(("process_mm_geometry", "process-mm-geometry-cases")),
@@ -371,7 +394,14 @@ fn build_configured(
     }
     for (input, stem) in &inputs {
         fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
-        let defines = if *stem == "process-mm-cancel-cases" {
+        let defines = if *stem == "process-mm-relationship-cases" {
+            let (early, group, zombie) = relationship.unwrap();
+            vec![
+                format!("-DTOPAL_RELATIONSHIP_EARLY={}", u8::from(early)),
+                format!("-DTOPAL_RELATIONSHIP_GROUP={}", u8::from(group)),
+                format!("-DTOPAL_RELATIONSHIP_ZOMBIE={}", u8::from(zombie)),
+            ]
+        } else if *stem == "process-mm-cancel-cases" {
             let (early, syscall, status, writer) = cancellation_config.unwrap();
             vec![
                 format!("-DTOPAL_CANCEL_EARLY={}", u8::from(early)),
@@ -554,6 +584,14 @@ fn build_configured(
         "syscall4": syscall4.address(),
         "mode": mode,
         "image_entry": image_entry,
+        "relationship_profile": relationship.map(|(early, group, zombie)| serde_json::json!({
+            "early": early, "syscall": if group { 231 } else { 60 },
+            "status": match (early,group) { (false,false)=>0x13a, (false,true)=>0x200, (true,false)=>0x2c5, (true,true)=>0x301 },
+            "zombie": zombie,
+            "process_storage_bytes": crate::systems_provider_object::PROCESS_MM_TABLE_BYTES,
+            "identity_storage_bytes": crate::systems_provider_object::PROCESS_MM_IDENTITY_STORE_BYTES,
+        })),
+        "process_mm_relationship_source_sha256": if relationship.is_some() { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_process_mm_relationship_cases.c")).unwrap()))) } else { None },
         "geometry_profile": geometry_syscall.map(|syscall| serde_json::json!({
             "syscall": syscall,
             "process_storage_bytes": crate::systems_provider_object::PROCESS_MM_TABLE_BYTES,
