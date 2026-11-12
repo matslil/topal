@@ -972,3 +972,31 @@ competing AP actions, DMA, all asynchronous entries, other caller/private loans,
 complete exception/fatal/whole-syscall effects, native gaps, fallback and clean
 production reconstruction remain required. Stage 3, Step 4 and full original
 Linux/distribution/container/VM-host acceptance remain unfinished.
+
+## Stage 3 linked paging-control inventory
+
+The [saved-code inventory](tools/user-memory/results/stage-3-paging-controls/README.md)
+checks fresh LLVM/GNU listings against every byte of the unchanged linked
+1267581-byte executable section. Their union retains 847 selected privileged
+controls, including ten control-register writes, 29 invalidation sites and 27
+MSR writes. Of those controls, 523 bind to the preceding process graph. Three
+control-register writes belong to separate image activation/restoration and
+bootstrap functions, outside that graph.
+
+The listings agree on 846 controls. One LLVM interrupt-return interpretation
+in bytes absent from the preceding graph remains unmatched after an earlier
+unknown-length decoder difference. LLVM's unknown and overlapping padding rows,
+GNU's bad rows, isolated prefixes and one raw MSR opcode embedded in another
+instruction remain explicit. Complete byte coverage is not unique decoding or
+complete control-flow coverage; the inventory's agreement flag remains false.
+
+Nine targeted reader tests and exact frozen replay pass, with three selected
+sources, two unchanged inherited artifacts and two new saved listings. Peak
+memory is 348233728 bytes, with zero swap and memory events. Four earlier reader
+failures retain exact source versions and summaries; original complete stderr
+files were not saved. No VM/compiler/guest behavior or host protection changes.
+
+The inventory identifies further review sites. It does not close all-entry,
+mapping-store, runtime-generated/boot/AP code, continuous mode/TLB, asynchronous
+or stable-lifetime requirements. Remaining caller/effect, production and full
+original kernel acceptance gates remain open.

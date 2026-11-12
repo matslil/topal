@@ -34,6 +34,11 @@ checks 20 publications, 812 invalidation-loop states, old-backing retirement and
 the actual final CR3 handoff. The complete ordinary VM, 177 models and eighteen
 offline controls pass. Other mapping editors and continuous/AP/DMA/asynchronous
 lifetime protection remain required.
+The [linked control inventory](tools/user-memory/results/stage-3-paging-controls/README.md)
+retains 847 selected control sites from two complete section listings, including
+ten control-register writes and 29 invalidation sites. Nine reader tests and
+exact frozen replay pass. One decoder disagreement, unknown/padding rows and an
+embedded opcode candidate remain explicit; this is not continuous-mode proof.
 Actual ownership/lifetime, complete caller qualification and canonical production
 activation remain required. This does not complete Step 4 or distribution,
 container or VM-host acceptance.

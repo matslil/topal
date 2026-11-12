@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "source_hashes_before": {
+    "linux-kernel/tools/user-memory/inventory_paging_controls.py": "87a49991d6b181867c3382f4419b891375469e4ac9d58b47fd7e25c38e2cb748",
+    "linux-kernel/tools/user-memory/test_paging_controls.py": "84d90a7e0ed50dba6fe87601f4d33be9b02d8bb276728986447e6b6ccc276da2",
+    "linux-kernel/tools/user-memory/inspect_call_inventory.py": "c78251433f3c07f686e78261f391fa0ab719705cc29bbd9e54ca920b3a607807"
+  },
+  "source_hashes_after": {
+    "linux-kernel/tools/user-memory/inventory_paging_controls.py": "87a49991d6b181867c3382f4419b891375469e4ac9d58b47fd7e25c38e2cb748",
+    "linux-kernel/tools/user-memory/test_paging_controls.py": "84d90a7e0ed50dba6fe87601f4d33be9b02d8bb276728986447e6b6ccc276da2",
+    "linux-kernel/tools/user-memory/inspect_call_inventory.py": "c78251433f3c07f686e78261f391fa0ab719705cc29bbd9e54ca920b3a607807"
+  },
+  "input_hashes_before": {
+    "kernel.elf": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+    "process-access-inventory.json": "62a92404a664e1be515652803b2e5007ddf0c716e57a9b656ba62a7afff5d2f0",
+    "llvm.stdout.log": "06495329adbcae89ba439525ee08a2150a5569144757145ffa6d6c1236493bc2",
+    "gnu.stdout.log": "61bd8f91092c9ea870d8abf63a7cd4597b6d29f865b2940f765282f12bb349e5"
+  },
+  "input_hashes_after": {
+    "kernel.elf": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+    "process-access-inventory.json": "62a92404a664e1be515652803b2e5007ddf0c716e57a9b656ba62a7afff5d2f0",
+    "llvm.stdout.log": "06495329adbcae89ba439525ee08a2150a5569144757145ffa6d6c1236493bc2",
+    "gnu.stdout.log": "61bd8f91092c9ea870d8abf63a7cd4597b6d29f865b2940f765282f12bb349e5"
+  },
+  "commands": [
+    {
+      "label": "models",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_paging_controls.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.0775648346170783,
+      "log_sha256": "cc4226929c6e22cfcf2b92b6bdea5186e9ee5d3794f9a60bb2887b4ed7932c8c"
+    },
+    {
+      "label": "inventory",
+      "argv": [
+        "/usr/bin/python3",
+        "linux-kernel/tools/user-memory/inventory_paging_controls.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build/kernel.elf",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/paging-mode-inventory/llvm.stdout.log",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/paging-mode-inventory/gnu.stdout.log",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build/process-access-inventory.json",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/paging-mode-inventory/inventory.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 6.309305842034519,
+      "log_sha256": "e57b388f645594b932d1a4a9787af1b8c827a8ff5271b13e560a55ec78dedf22"
+    }
+  ],
+  "resources": {
+    "memory.max": "3385622528",
+    "memory.swap.max": "0",
+    "memory.peak": "348233728",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "new_native_execution": false,
+  "scope": "New saved linked-code inventory and nine reader counterexample tests; not guest execution or complete mode/ownership qualification"
+}

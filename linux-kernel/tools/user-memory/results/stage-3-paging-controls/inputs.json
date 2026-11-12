@@ -1,0 +1,57 @@
+{
+  "base_commit": "74512a9eaaadbc050af550643824f27237afa07d",
+  "sources": {
+    "linux-kernel/tools/user-memory/inventory_paging_controls.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/inventory_paging_controls.py.gz",
+      "sha256": "87a49991d6b181867c3382f4419b891375469e4ac9d58b47fd7e25c38e2cb748",
+      "bytes": 12353,
+      "snapshot_sha256": "27a38a3a4b88ed4548cbcaefe7a767184393233bacce5f2073f8155e1fb5a620"
+    },
+    "linux-kernel/tools/user-memory/test_paging_controls.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_paging_controls.py.gz",
+      "sha256": "84d90a7e0ed50dba6fe87601f4d33be9b02d8bb276728986447e6b6ccc276da2",
+      "bytes": 4955,
+      "snapshot_sha256": "d9364e323774f7dc05e51de611e5d3ed694952b789a44320e0c73f257004ed55"
+    },
+    "linux-kernel/tools/user-memory/inspect_call_inventory.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/inspect_call_inventory.py.gz",
+      "sha256": "c78251433f3c07f686e78261f391fa0ab719705cc29bbd9e54ca920b3a607807",
+      "bytes": 7722,
+      "snapshot_sha256": "b4ac3023ad85ae68c887b068128d7b636c4f26212540fcfad24070ab94855e5b"
+    }
+  },
+  "artifacts": {
+    "kernel.elf": {
+      "snapshot": "../stage-3-stack-retirement/artifacts/kernel.elf.gz",
+      "sha256": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+      "bytes": 1665712,
+      "snapshot_sha256": "23054c0097b2a4de11ded5694112753a2aa307472098020e16322c11bfe30906"
+    },
+    "process-access-inventory.json": {
+      "snapshot": "../stage-3-stack-retirement/artifacts/process-access-inventory.json.gz",
+      "sha256": "62a92404a664e1be515652803b2e5007ddf0c716e57a9b656ba62a7afff5d2f0",
+      "bytes": 10323144,
+      "snapshot_sha256": "ab30be83850f467af936cfaf84437376de7966f4fa8dc34b6cab06f82d5d0e87"
+    }
+  },
+  "records": {
+    "llvm.stdout.log": {
+      "snapshot": "records/llvm.stdout.log.gz",
+      "sha256": "06495329adbcae89ba439525ee08a2150a5569144757145ffa6d6c1236493bc2",
+      "bytes": 17590508,
+      "snapshot_sha256": "597700a6aa13555c60f076fdb0152a228732fb4d9ab8373aa1cddc6b16b21d8c"
+    },
+    "gnu.stdout.log": {
+      "snapshot": "records/gnu.stdout.log.gz",
+      "sha256": "61bd8f91092c9ea870d8abf63a7cd4597b6d29f865b2940f765282f12bb349e5",
+      "bytes": 21934398,
+      "snapshot_sha256": "f2d0872f2bce484d871b2ef61e618e056d9ad7622db677b954ec7a8f72dc4c6d"
+    }
+  },
+  "base_artifact_metadata": {
+    "path": "../stage-3-mapping-aliases/artifact-identity.json",
+    "sha256": "cadd521b937f274d6350c4573691152e233f6f2b09457c51d945279426717602",
+    "bytes": 29143
+  },
+  "scope": "Three current source snapshots, two unchanged inherited first-party artifacts and two new saved listings; not a complete kernel producer"
+}

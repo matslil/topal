@@ -34,6 +34,11 @@ binds the flushing CR3 handoff; it does not treat bootstrap-context invalidation
 as user-root invalidations. The complete ordinary VM, 177 models and eighteen
 offline controls pass. Other mapping editors and general stable lifetime remain
 unqualified.
+The [linked paging-control inventory](tools/user-memory/results/stage-3-paging-controls/README.md)
+retains 847 selected sites, ten control-register writes and 29 invalidation sites
+across two full executable-section listings. Nine targeted tests and exact
+frozen replay pass. Unknown/overlapping rows, one decoder disagreement and an
+embedded opcode candidate remain unresolved; no new guest or mode proof runs.
 Actual ownership/lifetime and complete caller qualification, canonical production
 selection and original kernel acceptance remain required.
 

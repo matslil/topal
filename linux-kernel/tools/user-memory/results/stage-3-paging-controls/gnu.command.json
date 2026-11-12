@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "objdump",
+    "-d",
+    "-z",
+    "-M",
+    "intel",
+    "--insn-width=16",
+    "linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build/kernel.elf"
+  ],
+  "exit_code": 0
+}

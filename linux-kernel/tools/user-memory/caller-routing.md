@@ -381,3 +381,12 @@ bootstrap context. The complete enclosing VM, all 177 models, eighteen offline
 controls and exact frozen layout/publication/owner/metadata replay pass. No
 kernel/protection behavior changes. Other mapping editors, AP/DMA/asynchronous
 and continuous stable-lifetime gates remain open.
+
+The [saved linked-control inventory](results/stage-3-paging-controls/README.md)
+retains 847 selected sites over both full-section listings and joins 523 to the
+preceding process graph. Ten control-register writes include three in separate
+image activation/restoration and bootstrap functions. One decoder disagreement,
+unknown/overlapping rows and an embedded MSR opcode remain unresolved. Nine
+reader tests and exact frozen replay pass without guest execution. This is an
+inventory for further mapping/mode review, not a closure of continuous lifetime,
+all-entry/effect, AP/DMA/asynchronous or production requirements.

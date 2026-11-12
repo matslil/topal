@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "source_sha256": "5ff72b17a2694e993c39e7ec13bf152611e5aefe60a9052bbe006b9d4f734826",
+  "exception": "AssertionError: missing or overlapping executable section bytes",
+  "cause": "-z decodes zero padding across symbol boundaries, then restarts at the actual symbol; retain overlapping interpretations with exact bytes and verify their union coverage",
+  "native_execution": false,
+  "exact_original_stderr_retained": false
+}
