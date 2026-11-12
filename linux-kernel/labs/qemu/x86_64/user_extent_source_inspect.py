@@ -26,6 +26,7 @@ from user_extent_interval_observer import PROGRAM as INTERVAL_PROGRAM, MODEL as 
 from user_extent_translation_observer import PROGRAM as TRANSLATION_PROGRAM, MODEL as TRANSLATION_MODEL, TRACE_MODEL as TRANSLATION_TRACE_MODEL
 from user_extent_image_observer import PROGRAM as IMAGE_PROGRAM, MODEL as IMAGE_MODEL
 from process_mm_preparation_observer import PROGRAM as PROCESS_PREPARATION_PROGRAM, MODEL as PROCESS_PREPARATION_MODEL
+from process_mm_regression_observer import PROGRAM as PROCESS_REGRESSION_PROGRAM, BOUNDARY_PROGRAM as PROCESS_REGRESSION_BOUNDARY_PROGRAM
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -90,6 +91,7 @@ class SourceReturned(Checked):
         assert prefix(after[2]) == current['prefix_before']
         assert word(context+904) == current['snapshot']
         assert hashlib.sha256(memory(current['snapshot']+0x9e00,512)).hexdigest() == current['command_before']
+        process_regression_case_returned()
         if component.get('mode') == 'exec':
             return exec_returned(current,after)
         if component.get('mode') == 'signals':
@@ -168,6 +170,7 @@ class SourceEntered(Checked):
             current['serial_markers']=0
         if component.get('mode') == 'stat':
             current['stat_table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
+        process_regression_case_entered()
         if return_site not in component_returns:
             component_returns[return_site] = SourceReturned('*'+hex(return_site), internal=True)
         component_returns[return_site].enabled = True
@@ -503,6 +506,7 @@ def file_returned(row):
 # TRANSLATION_OBSERVER
 # IMAGE_PUBLICATION_OBSERVER
 # PROCESS_PREPARATION_OBSERVER
+# PROCESS_REGRESSION_OBSERVER
 
 class Complete(Checked):
     def observe(self):
@@ -534,6 +538,7 @@ class Complete(Checked):
         translation_observation_complete()
         image_publication_observation_complete()
         process_preparation_observation_complete()
+        process_regression_observation_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -558,6 +563,7 @@ try:
     install_translation_observation()
     install_image_publication_observation()
     install_process_preparation_observation()
+    install_process_regression_observation()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -604,11 +610,29 @@ assert PROGRAM.count('# IMAGE_PUBLICATION_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# IMAGE_PUBLICATION_OBSERVER', IMAGE_PROGRAM)
 assert PROGRAM.count('# PROCESS_PREPARATION_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# PROCESS_PREPARATION_OBSERVER', PROCESS_PREPARATION_PROGRAM)
+assert PROGRAM.count('# PROCESS_REGRESSION_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# PROCESS_REGRESSION_OBSERVER', PROCESS_REGRESSION_PROGRAM)
 
 
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
     component = json.loads((build / 'source-component.json').read_text())
+    process_regression_profile = None
+    regression_path=build/'process-mm-regression.json'
+    if regression_path.exists():
+        process_regression_profile=json.loads(regression_path.read_text())
+        assert process_regression_profile['process_memory'] is True
+        kernel=(build/'kernel.elf').read_bytes()
+        phoff=struct.unpack_from('<Q',kernel,32)[0]
+        phsize,phcount=struct.unpack_from('<HH',kernel,54)
+        spans=[]
+        for index in range(phcount):
+            kind,flags,offset,virtual,physical,filesize,memsize,alignment=struct.unpack_from('<IIQQQQQQ',kernel,phoff+index*phsize)
+            if kind==1:
+                assert virtual==physical and physical+memsize<=1<<30
+                spans.append([physical,physical+memsize])
+        assert spans
+        process_regression_profile.update(kernel_spans=spans,kernel_sha256=hashlib.sha256(kernel).hexdigest())
     process_preparation_profile = None
     preparation_setting = os.environ.get('TOPAL_TEST_PROCESS_MM_PREPARATION')
     assert preparation_setting in [None,'metadata']
@@ -683,6 +707,8 @@ if __name__ == '__main__':
     harness.main(
         work_name='source-user-extents',
         program_prefix=(f'component={component!r}\n'
+                        f'process_regression_profile={process_regression_profile!r}\n'
+                        f'process_regression_boundary_program={PROCESS_REGRESSION_BOUNDARY_PROGRAM!r}\n'
                         f'process_preparation_profile={process_preparation_profile!r}\n'
                         f'process_preparation_model_source={PROCESS_PREPARATION_MODEL!r}\n'
                         f'owner_profile={owner_profile!r}\n'
@@ -699,9 +725,11 @@ if __name__ == '__main__':
                         f'extent_inventory={extent_inventory!r}\n'
                         f'native_sites={invariant_halt(build / "kernel.elf")!r}\n'),
         input_scope='source-built ordinary user-buffer boundary cases',
-        # The additional read-only stack breakpoints consume debugger wall time.
-        # Keep a finite deadline and the same guest/host resource boundaries.
-        guest_timeout_seconds=(600 if component.get('mode')=='metadata' else
+        # MM capture adds read-only gateway stops and whole-bank readback to
+        # the ordinary interface observers. Use the existing experimental MM
+        # cohort's finite 600-second deadline; predecessor profiles retain
+        # their original deadlines and every interface assertion.
+        guest_timeout_seconds=(600 if process_regression_profile is not None or component.get('mode')=='metadata' else
                                480 if component.get('mode')=='transfers' and extent_inventory is not None and
                                extent_inventory.get('stack_retirement_audit') is not None else 300),
         serial_dialogue=DIALOGUE*4 if component.get('mode')=='serial' else (),

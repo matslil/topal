@@ -238,3 +238,47 @@ exclusion, every release/invalidation instruction or public kernel activation.
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_parent_exit_retires_ready_and_zombie_relationships -- --ignored --nocapture
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/replay_relationship.py linux-kernel/tools/process-memory/results/stage-3-relationship-termination linux-kernel/.cache/x86_64/process-memory-relationship-replay-new
 ```
+
+## Ordinary application interfaces on the process-MM selection
+
+The [ordinary-interface archive](results/stage-3-interface-regressions/report.json)
+records the existing transfer, exec-refusal,
+signal, poll, pipe, storage, metadata, serial and stat programs on the
+experimental process-MM kernel. It retains their original source and native
+interface assertions. A separate observer namespace reuses the process-MM
+boundary model and captures complete active/inactive/prepared banks around
+each selected MM operation, plus the four ordinary source invocations.
+
+The observer enables the common return breakpoint only for a pending MM
+operation. Complete records remain in memory; atomic compact JSON checkpoints
+occur every 64 events, on MM observer failure and at final completion. Four
+host-only transport/checkpoint tests distinguish these observer mechanics from
+native memory evidence. The guest retains its finite 600-second deadline,
+normal two-CPU/640-MiB TCG configuration and existing host boundaries.
+
+```sh
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- cargo test -p topal-compiler --lib process_mm_preserves_source_built_application_interfaces -- --ignored --nocapture
+```
+
+For an explicit retry, set `TOPAL_TEST_PROCESS_MM_INTERFACES` to a comma-separated
+selection such as `metadata,serial,stat`. Unknown, empty or repeated names fail;
+without the variable all nine cohorts run. Archive acceptance still requires
+successful records from all nine modes, regardless of how the runs were grouped.
+
+[readback_interfaces.py](readback_interfaces.py) joins the ordinary interface
+records to complete MM ownership/heap histories and rechecks selected interface
+results. Its pipe checker independently reconstructs application FIFO byte order
+through wrapped and full-ring transfers. Its metadata checker reconstructs the
+whole filesystem/table from every recorded delta and captured clock/payload.
+The ordinary ABI witness's children exit directly; cooperative handoff evidence
+comes from the retained process cohorts, not this new matrix.
+
+[archive_interfaces.py](archive_interfaces.py) binds sources, generated artifacts,
+guest commands, exact observer programs, LLVM verification, bounds, predecessor
+comparisons and sampled resources. It checks the preceding relationship archive
+and retains twenty identified native histories on the byte-identical kernel.
+[replay_interfaces.py](replay_interfaces.py) repeats saved-record checks from
+frozen selected inputs without a VM or full historical rebuild. These checks
+do not independently replay every native observer assertion or complete the
+remaining caller/loan/fatal, continuous lifetime, application-corpus and public
+activation gates.

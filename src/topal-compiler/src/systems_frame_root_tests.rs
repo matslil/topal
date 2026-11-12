@@ -130,6 +130,52 @@ fn process_mm_maximum_fork_and_clone_copy_survive_empty_and_one_page_handoff() {
 }
 
 #[test]
+#[ignore = "requires the bounded QEMU/GDB process-MM ordinary-interface regression matrix"]
+fn process_mm_preserves_source_built_application_interfaces() {
+    // TOPAL-SYSTEMS-PROCESS-MM-001; TOPAL-SYSTEMS-USER-EXTENT-001:
+    // The existing ordinary syscall programs and interface assertions run
+    // unchanged on the independently owned process-MM kernel selection.
+    let cohorts = [
+        ("transfers", CallerFocus::SourceBoundary),
+        ("exec", CallerFocus::SourceExec),
+        ("signals", CallerFocus::SourceSignals),
+        ("poll", CallerFocus::SourcePoll),
+        ("pipes", CallerFocus::SourcePipes),
+        ("storage", CallerFocus::SourceStorage),
+        ("metadata", CallerFocus::SourceMetadata),
+        ("serial", CallerFocus::SourceSerial),
+        ("stat", CallerFocus::SourceStat),
+    ];
+    // A failed cohort can be rerun without discarding the other native
+    // records. With no explicit selection the complete matrix still runs;
+    // the archive independently requires all nine successful cohorts.
+    let selection = std::env::var("TOPAL_TEST_PROCESS_MM_INTERFACES").ok();
+    let selected: Vec<_> = selection
+        .as_deref()
+        .map(|value| value.split(',').collect())
+        .unwrap_or_else(|| cohorts.iter().map(|(name, _)| *name).collect());
+    assert!(!selected.is_empty());
+    for (index, name) in selected.iter().enumerate() {
+        assert!(cohorts.iter().any(|(candidate, _)| candidate == name));
+        assert!(!selected[..index].contains(name));
+    }
+    for (name, focus) in cohorts {
+        if !selected.contains(&name) {
+            continue;
+        }
+        execute_profiled(
+            KernelProfile {
+                memory: true,
+                user_extents: true,
+                owned_callers: true,
+                process_memory: true,
+            },
+            Some(focus),
+        );
+    }
+}
+
+#[test]
 #[ignore = "requires the bounded QEMU/GDB live-child cancellation cohort"]
 fn process_mm_parent_exit_retires_ready_and_zombie_relationships() {
     // TOPAL-SYSTEMS-PROCESS-MM-001: ordinary yield or child exit, followed
@@ -274,6 +320,32 @@ fn execute_selected(
     owned_callers: bool,
     focus: Option<CallerFocus>,
 ) -> std::path::PathBuf {
+    execute_profiled(
+        KernelProfile {
+            memory,
+            user_extents,
+            owned_callers,
+            process_memory: process_memory_focus(focus),
+        },
+        focus,
+    )
+}
+
+#[derive(Clone, Copy)]
+struct KernelProfile {
+    memory: bool,
+    user_extents: bool,
+    owned_callers: bool,
+    process_memory: bool,
+}
+
+fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::path::PathBuf {
+    let KernelProfile {
+        memory,
+        user_extents,
+        owned_callers,
+        process_memory,
+    } = profile;
     // TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001: complete existing boot IR, not
     // a smaller constant probe. Canonical publication remains unqualified.
     let root = root();
@@ -317,7 +389,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if matches!(
+    let prefix = if process_memory && !process_memory_focus(focus) {
+        "process-mm-interface-regression"
+    } else if matches!(
         focus,
         Some(CallerFocus::SourceProcessRelationship(_, _, true))
     ) {
@@ -447,7 +521,7 @@ fn execute_selected(
             .arg(work.join("root.o")),
     );
     let target = if let Some(owners) = &owners {
-        if process_memory_focus(focus) {
+        if process_memory {
             super::process_mm::process_target_llvm(&checked.component, owners)
         } else if focus == Some(CallerFocus::SourceProcessMemory) {
             super::process_mm::target_llvm(&checked.component, owners)
@@ -470,15 +544,7 @@ fn execute_selected(
             .args(["-passes=verify", "-disable-output"])
             .arg(work.join("target.ll")),
     );
-    build_guest(
-        &work,
-        &checked,
-        &tools,
-        memory,
-        user_extents,
-        owned_callers,
-        focus,
-    );
+    build_guest(&work, &checked, &tools, profile, focus);
     work
 }
 
@@ -486,11 +552,15 @@ fn build_guest(
     work: &std::path::Path,
     checked: &crate::systems_frame_policy_binding::Checked,
     tools: &crate::LlvmTools,
-    memory: bool,
-    user_extents: bool,
-    owned_callers: bool,
+    profile: KernelProfile,
     focus: Option<CallerFocus>,
 ) {
+    let KernelProfile {
+        memory,
+        user_extents,
+        owned_callers,
+        process_memory,
+    } = profile;
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
     let fixture_bytes = if let Some(CallerFocus::SourceProcessRelationship(early, group, zombie)) =
@@ -576,6 +646,26 @@ fn build_guest(
         crate::qualified_x86_64_static_user_image_fixture()
     };
     fs::write(&fixture, fixture_bytes).unwrap();
+    if process_memory && !process_memory_focus(focus) {
+        assert!(matches!(
+            focus,
+            Some(
+                CallerFocus::SourceBoundary
+                    | CallerFocus::SourceExec
+                    | CallerFocus::SourceSignals
+                    | CallerFocus::SourcePoll
+                    | CallerFocus::SourcePipes
+                    | CallerFocus::SourceStorage
+                    | CallerFocus::SourceMetadata
+                    | CallerFocus::SourceSerial
+                    | CallerFocus::SourceStat
+            )
+        ));
+        fs::write(work.join("process-mm-regression.json"), serde_json::to_vec_pretty(&serde_json::json!({
+            "process_memory": true,
+            "scope": "Existing ordinary source-built syscall fixtures on the experimental process-MM kernel; no public activation",
+        })).unwrap()).unwrap();
+    }
     let baseline = crate::publish_systems_source(
         ROOT,
         &crate::CompileOptions {
@@ -608,7 +698,7 @@ fn build_guest(
     }
     fs::write(
         work.join("dispatch.ll"),
-        if process_memory_focus(focus) {
+        if process_memory {
             super::process_mm::process_dispatch_llvm().unwrap()
         } else if focus == Some(CallerFocus::SourceProcessMemory) {
             super::process_mm::dispatch_llvm().unwrap()
@@ -752,7 +842,7 @@ fn build_guest(
     .unwrap();
     fs::write(
         work.join("gateway.o"),
-        (if process_memory_focus(focus) {
+        (if process_memory {
             crate::systems_provider_object::tail_boundary::frame_gateway::process_memory_component_object
         } else if owned_callers {
             crate::systems_provider_object::tail_boundary::frame_gateway::owned_user_extent_component_object
@@ -772,7 +862,7 @@ fn build_guest(
     .unwrap();
     let mut dependencies = checked.program.clone();
     dependencies.frame_allocator_library = None;
-    let provider = (if process_memory_focus(focus) {
+    let provider = (if process_memory {
         crate::systems_provider_object::generate_process_memory_provider(checked)
     } else if owned_callers {
         crate::systems_provider_object::generate_owned_user_extent_provider(checked)
@@ -785,7 +875,7 @@ fn build_guest(
     })
     .unwrap();
     fs::write(work.join("provider.o"), &provider.bytes).unwrap();
-    if process_memory_focus(focus) {
+    if process_memory {
         // Reconstruct the unchanged owned selection alongside the experiment.
         // 2160 is the archived preparation component's actual dispatch bound;
         // this artifact is compared at that same parameter, never selected.
@@ -850,7 +940,7 @@ fn build_guest(
                 .arg(work),
         );
     }
-    if process_memory_focus(focus) {
+    if process_memory {
         fs::write(
             work.join("process-byte-origins.json"),
             serde_json::to_vec_pretty(provider.byte_origins.as_ref().unwrap()).unwrap(),

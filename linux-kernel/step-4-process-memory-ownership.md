@@ -622,6 +622,101 @@ omission or conflation in security evidence; review covers all consumers of
 symbol enumeration and tests explicit ambiguity rejection. Ordinary-interface
 matrix execution and frozen qualification remain subsequent work.
 
+## Ordinary application interfaces on the process-MM kernel
+
+The existing source-built transfer, exec-refusal, signal, poll, pipe, storage,
+metadata, serial and stat fixtures now run on the experimental process-MM
+selection. Their application sources and interface assertions remain unchanged.
+The test factory selects kernel ownership independently of the application
+cohort; default/predecessor selections retain their previous behavior. No public
+kernel path or core-language meaning changes.
+
+All **nine native cohorts** complete in the normal **640-MiB, two-CPU TCG VM**.
+They cover **36 source invocations / 1,228 source-case syscalls**, with **2,032
+recorded application-interface syscalls** when the transfer/startup/shell/file
+and poll delegations are included. Complete process-MM observations cover
+**702 boundaries**, **354 retired extents / 59,437,056 erased bytes**. Each
+ordinary source invocation preserves its original 34-page heap while growing,
+using and retiring its temporary transfer pages. The retained ABI witness
+creates four children, replaces the parent image three times and completes
+terminal cleanup per cohort. Its children exit directly; it supplies no new
+cooperative-handoff observation.
+
+The [observer](labs/qemu/x86_64/process_mm_regression_observer.py) reuses the
+original process-MM capture/model in a separate namespace, preserving every
+selected MM entry/return and register/ownership comparison. The common return
+breakpoint is enabled only while a selected MM request is pending. Complete
+events remain in memory; compact JSON is published atomically every 64 events,
+on MM observer failure and at final completion. Four host-only transport and
+checkpoint tests verify these mechanics; they do not supply native authority.
+
+The [saved-record reader](tools/process-memory/readback_interfaces.py) joins
+ordinary source records with complete MM banks, identities and heap bytes,
+replays every MM event and rejects **139 altered-record controls**. Its separate
+FIFO byte-order reconstruction checks wrapped and full-ring transfers. Metadata
+reconstruction applies every captured filesystem/table delta to whole initial
+storage and checks it against the metadata model with actual clock returns and
+write payloads. That model is shared with the native metadata observer; neither
+it nor the selected result checks independently replays every native observer
+assertion. All controls change saved data only.
+
+The [archive](tools/process-memory/results/stage-3-interface-regressions/report.json)
+binds the nine builds, original C sources, exact observer programs, LLVM and
+native artifacts, guest commands, resource samples and fresh validation. Every
+linked kernel is byte-identical to the retained maximum-copy kernel:
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+All seven LLVM modules verify per build; complete stack/physical bounds remain
+**2,280/4,096** and **4,088/4,096 bytes**. Thirteen predecessor contributions
+remain unchanged per build. Workspace/all-target locked checking, all **203
+user-memory tests**, all **31 process-memory tests**, the default ABI-fixture
+hash, formatting and the Rust file-size ceiling pass.
+
+The archive verifies the preceding relationship archive and rechecks **twenty
+identified previous native histories / 383 retained controls** on this same
+kernel. Those older VMs and full historical rebuilds are not newly executed.
+Frozen replay runs the selected archived Python inputs without a VM; cold
+production reconstruction remains required.
+
+Four earlier failed attempts remain recorded: the pre-VM ELF-name failure,
+480- and 600-second observer deadlines, and a subsequent metadata
+`SyscallEntered` assertion before any source invocation was recorded. The last
+failure did not capture its assertion operands, so its cause remains unresolved.
+A read-only diagnostic that added assertion-message context passed all four
+metadata invocations and teardown; a subsequent fresh build/run with the
+unchanged observer also passed. The diagnostic and retry cannot establish the
+original failure's cause. Retain this observer reliability question for further
+qualification.
+
+The first efficient batch took **2,077.36 seconds**, passing six cohorts before
+that metadata assertion; the explicitly selected metadata/serial/stat retry
+passes in **992.98 seconds**, including guest construction. A saved-partial-data benchmark
+measured the old JSON sink at **1.798 seconds / 2,945,859 Python writes**, versus
+compact encoding at **0.641 seconds / one write**, with decoded equality.
+This host-only benchmark does not establish the sole cause of either deadline.
+The efficient observer keeps the existing finite **600-second** MM deadline;
+predecessor deadlines, all interface assertions and host protections remain.
+An initial offline reader also incorrectly expected handoffs from the ordinary
+ABI witness; it now requires the actual direct-exit lifecycle and retains the
+separate historical handoff evidence. None of these failures or successful
+retries explains a model/provider safeguard decision.
+
+The two successful-cohort batches have last sampled cgroup peaks of
+**1,815,711,744 / 3,385,348,096 bytes** and
+**1,842,712,576 / 3,227,897,856 bytes**, respectively. Both have zero swap and
+zero sampled memory events. Last live samples and subsequent group retirement
+do not measure an unseen final instant. The diagnostic has no retained cgroup
+sample; its monitor attempted to attach after that group had retired.
+
+Risk remains high for false acceptance of interface/ownership regressions.
+Review combines the approved authority chain, full source/diff review, existing
+ordinary native assertions, MM observations, FIFO byte-order reconstruction,
+metadata reconstruction, exact artifact comparisons and altered saved-data
+controls. No independent human security review is claimed. The observer
+reliability question, remaining caller/loan/mapping and fatal/identity-width
+proofs, continuous lifetime/invalidation, unchanged 51-workload application
+corpus and public activation remain open. This stage does not complete initial
+Step 4 or the original full Linux/distribution/container/VM-host objective.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

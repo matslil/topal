@@ -124,6 +124,18 @@ rejects ambiguous named lookups. Seven scope controls bring the user-memory
 suite to 203 passing tests. This prepares ordinary-interface process-MM
 regressions; it does not itself qualify new VM behavior or production use.
 
+The subsequent [ordinary-interface matrix](step-4-process-memory-ownership.md#ordinary-application-interfaces-on-the-process-mm-kernel)
+passes all nine existing source-built cohorts on the experimental process-MM
+kernel: transfers, exec refusals, signals, poll, pipes, storage, metadata, serial
+and stat. It records 36 source invocations, 2,032 application-interface syscalls,
+702 MM boundaries and 354 retired extents, with 139 saved-data controls.
+Whole MM histories and selected interface reconstruction pass, alongside fresh
+203 user-memory and 31 process-memory tests. Twenty previous native histories
+remain identified on the byte-identical kernel. An initial uninstrumented
+metadata observer assertion remains unexplained despite two later successful
+runs. Broader caller/loan/fatal, continuous lifetime, unchanged application-corpus
+and public-activation gates remain required; initial Step 4 is incomplete.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,
