@@ -274,3 +274,22 @@ The 96 retired clock spill bytes are not proved erased. Their cleanup, actual
 owners/nonaliasing, continuous lifetime, complete callee/entry/helper/return/
 fatal/exception/post-copy effects, fallback and canonical production obligations
 remain required.
+
+The [selector-bound warning inputs](results/stage-3-warning-inputs/README.md)
+connect one shared readable admission to three exact segment lengths and seven
+scalar loads. The count/selector prelude, captured candidate, success-edge
+dominance and variant dispatch are checked conditionally on shared helper and
+stable selector/owner contracts. Actual ordered staging of all 45 bytes agrees
+with independent saved-record and GNU readback. A second native-record join
+reconciles fifteen ordinary source admissions, twelve refused without scalar
+access and three completed, with actual syscall results and preserved phase.
+Fifteen offline controls, 104
+models/readers, ordinary/pinned regressions, two fixture tests and eleven-report
+frozen replay pass. Executable kernel and installed storage fixture bytes remain
+unchanged; differing nonallocated intermediate debug sections retain their own
+identity and allocated/load-byte comparison. The conditional index is 89/91 sites
+and 323 user instructions, with random output and the named-root fallback still
+lacking intervals. First reach remains 83/91 fresh and 87/91 with preceding
+same-kernel evidence. Actual owners/nonalias, continuous lifetime, full helper/
+entry/callee/return/fatal/exception/staging/output effects, retired clock spills,
+fallback and canonical production obligations remain open.

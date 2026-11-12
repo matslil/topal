@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High: selector-dependent admission and scalar bounds/evidence accuracy; executable kernel, core language, authority meaning and canonical production selection unchanged",
+  "review": "Single-agent higher-authority/source/full-diff review, separate saved GNU selector/register/scalar/cut readback, fifteen offline controls, 104 model/reader tests, three native regressions and two fixture tests",
+  "selected_inputs": 158,
+  "changed_inputs_stable_in_all_four_commands": 5,
+  "model_reader_tests": 104,
+  "warning_variants": 3,
+  "storage_warning_admissions": 3,
+  "storage_warning_bytes": 45,
+  "storage_warning_scalar_loads": 7,
+  "conditional_sites": 89,
+  "user_access_instructions": 323,
+  "remaining_sites": 2,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "executable_kernel_changed": false,
+  "core_language_or_authority_meaning_changed": false,
+  "failures": [
+    "history/intermediate-inheritance/failure.json",
+    "history/intermediate-inheritance/premature-replay-failure.json"
+  ],
+  "safeguard_notices": [],
+  "retired_clock_spill_erasure_verified": false,
+  "remaining": [
+    "Actual private/input owners, nonalias and continuous entry/mapping lifetime",
+    "Shared helper RSI/RDX and retained selector preservation; complete output/staging/callee/entry/return/fatal/exception effects",
+    "Two sites, fallback obligations, retired clock spills, further profiles and canonical clean production qualification",
+    "Complete original Linux-compatible kernel acceptance"
+  ],
+  "source_warning_admissions": 15,
+  "source_warning_refusals": 12,
+  "source_warning_completions": 3,
+  "source_warning_bytes": 45
+}

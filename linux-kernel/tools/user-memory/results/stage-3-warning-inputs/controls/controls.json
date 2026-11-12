@@ -1,0 +1,173 @@
+{
+  "passed": true,
+  "reader_sha256": "5c1cb12795ffd333eabb25f58fce4ac968d8f87a9103ddeb0d22f167780547d8",
+  "positive_report_sha256": "dad9f028a9e79e5c7b696e398dd22daa7ff44c69c5ff342b4b4151ba3b21678d",
+  "controls": [
+    {
+      "name": "one-byte-count",
+      "offset": 76617,
+      "before": "01",
+      "after": "02",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "f940f9b7d954968dfed3c3e1a9908fb1cee886178d867b4c24ef9cd73958ccaf",
+      "provider_sha256": "1a9dd0c94a169eae91e06a28d53b12cfd7ef24685f47d878b71ee31b37bb6ce8",
+      "log_sha256": "df8939cd9b6bda916aa2ac799049f5efa70cf7e16ab9979f48ab494d489bfd5d"
+    },
+    {
+      "name": "four-byte-count",
+      "offset": 76628,
+      "before": "04",
+      "after": "05",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "ca9b87d00bf345cadfe99c8322fb6235a09a7f429fcbb24618e15e63ef17e3cb",
+      "provider_sha256": "6e39b6c52e46fe7bd40c697d7c2ccdfc5186e2ece971ac854904bfb423040c18",
+      "log_sha256": "41728d46aaa442868646d36427b05e25fe861486a94d55ddb00a2ab5b5a2655e"
+    },
+    {
+      "name": "forty-byte-count",
+      "offset": 76639,
+      "before": "28",
+      "after": "29",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "261435e0b2465fea950371904eaf6e4dad2bc12747abe807876d5f6ed05d43e8",
+      "provider_sha256": "d792174e8dae5cedab7bf72315313d014716b6e97b5ac4fce00e4bda4016cdb9",
+      "log_sha256": "eb3f058ec91690ed3f863bc2e6b63c96ebd17754004efde25249eeec231bd6d2"
+    },
+    {
+      "name": "requested-count-binding",
+      "offset": 76655,
+      "before": "ca",
+      "after": "cb",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "beb1379c3285be05c4b57cc48cdb04e46d584adcbd9878387b68dfea89e50cee",
+      "provider_sha256": "e294ef0aff15f4e1d37888123a5b115840be3ef5fb6cf682124d3fcae18d7393",
+      "log_sha256": "5e9c90bca2cb0c0f4ce011d688a98c19daab9e6a0262ed9d39007e91657288f4"
+    },
+    {
+      "name": "captured-candidate",
+      "offset": 76902,
+      "before": "40",
+      "after": "48",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "75eb7b5be14e9dcf59b18516ade0498c8ba40b9010784985f30a0e1f0e85c4a2",
+      "provider_sha256": "0b28c486494c798df6754febb1f7b43350d4462a8f1efdd7beb466ad044803c7",
+      "log_sha256": "1be9e833c12fd53ffe18c0a69e298fadaa4a38c0c48169ea0b840c78daf87a33"
+    },
+    {
+      "name": "admission-candidate",
+      "offset": 76914,
+      "before": "c0",
+      "after": "c8",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "b5aef9fe9f50c2b07df03ed3b3659add3d587dc23740c54de270ced84f553fc4",
+      "provider_sha256": "c9eecc8553b296a550f8816a31e9a4847b0d23b329cf6393bf0389f34e3a952c",
+      "log_sha256": "c1fc47dbe3d6cd0f94af8ce613d73d78936e616310f5cfd75b685ab2d04f3f5e"
+    },
+    {
+      "name": "admission-count",
+      "offset": 76911,
+      "before": "d1",
+      "after": "d9",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "4d0f7e2261236f64777a54ecd2f451633d8e5ee8cb175d106e8aa1c63933154e",
+      "provider_sha256": "063f0ea4f64dfe1e66d9783690650f22b690709fad71c246b441b8654cd0c9a6",
+      "log_sha256": "e8da109755b85052ad4cfa4d23218aa2ad06321a7b4bd2f13688f3709f3da9ee"
+    },
+    {
+      "name": "selector-reload",
+      "offset": 76940,
+      "before": "68",
+      "after": "70",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "9e651a9a050e2bf7201e67ac1f670f0c11589df9f3af7dd5fccc2173da6333c5",
+      "provider_sha256": "779f00871a6ce556968ea6ad363fba644ca62cd0d370ff7d47471c98a837d951",
+      "log_sha256": "a26e95612ab594a535f2045f3233c32e9dbb2b595abc552fbedcd0c38af6e664"
+    },
+    {
+      "name": "carry-polarity",
+      "offset": 76930,
+      "before": "82",
+      "after": "83",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "30db233da5ae8b6ef2e5bb20d177350bbde5c316b4a6ada0de43727b18cc78f2",
+      "provider_sha256": "12bc2f545a8a126a2c4d9be3e7543b3c9cb8cb007f00b9f8549e51a17f290b75",
+      "log_sha256": "66f2a6d286f124cf6f9883a727051ca9e8e2ee6d10462ca53d531b6cce78383c"
+    },
+    {
+      "name": "four-byte-base",
+      "offset": 76975,
+      "before": "06",
+      "after": "07",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "dcccd9b878eeadbb37180e6b0d46f3eed39184ac377c10531548d9e04c27c06d",
+      "provider_sha256": "dfb063cb9290c92d9cb9a461dbc1395383dd1ae146b6ea21a17dabc36d9d9226",
+      "log_sha256": "58a496f56b9b922a1f9ae2200fa41dce7a92b2832f558254fc0a9a5926f66a92"
+    },
+    {
+      "name": "four-byte-width",
+      "offset": 76973,
+      "before": "44",
+      "after": "4c",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "43866e1b6d7b0cf24f5cb51fd511000673b93da1419e378eb69833ee752ce3a6",
+      "provider_sha256": "194cd34d38a7014638eb5b5229f64be29edeee1b381f0503fd2307211d31f2f8",
+      "log_sha256": "58a496f56b9b922a1f9ae2200fa41dce7a92b2832f558254fc0a9a5926f66a92"
+    },
+    {
+      "name": "forty-byte-last-offset",
+      "offset": 77455,
+      "before": "20",
+      "after": "28",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "c7c4f72c455c390960db7731c8f530ca05d3013718892e8d8a447b5263583863",
+      "provider_sha256": "948a8885f4ec8e418ec010bca1548bff162fb3d95bac223a4117a083413c240f",
+      "log_sha256": "0773e6f5f04f0bd5b9a7ba807b0a070ecec6cb8f245d49e35f25eb83aaebf443"
+    },
+    {
+      "name": "newline-base",
+      "offset": 78897,
+      "before": "06",
+      "after": "07",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "1886447b7b5e725595cc6ef781a1b01b51e097c930b8fe15ac9a515c09f938dc",
+      "provider_sha256": "431099f7ee99e150cb68153099ad4318cfa63756328e8baeeeab4d0d19491195",
+      "log_sha256": "b0606dcebad637c089846d398925e00bf482595ce77e2a30ff37ae07d0d16366"
+    },
+    {
+      "name": "selector-dispatch",
+      "offset": 76946,
+      "before": "01",
+      "after": "00",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "aa57a58a504eb996e987e2f187925317aa8ce75b6f82eb9d0c28203afebd2958",
+      "provider_sha256": "fcea148e1b0c88cf87c013ea847b584cb0d8dccc37b2810e3dfccecdfe120d7a",
+      "log_sha256": "6f97bc39fff088e723e1cd7e0390b3fcc722eb64cfd4fb9476a8ff6c0d010970"
+    },
+    {
+      "name": "wrong-variant-edge",
+      "offset": 76952,
+      "before": "11000000",
+      "after": "93070000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "fd72038e7325410a6c551e287cea2d6bf5ee7fe571abb489ebe5bd69b150bc52",
+      "provider_sha256": "fe16e964987d04d4be5a02c13c6f0f26931e0214cfc9188ce725bfff22acc234",
+      "log_sha256": "96ad198613732ffdead60bc51e5be3240bf78eb80e333c3040ad89085fcdeaa2"
+    }
+  ],
+  "scope": "Positive-backed offline first-party kernel/provider ELF changes with rebound outer identities; no changed image is executed, booted or loaded into a VM. Not source-provenance authentication or native fault/owner/lifetime qualification"
+}

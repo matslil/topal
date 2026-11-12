@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "exact_source_intermediate_comparison_equal": true,
+  "exact_source_warning_record_readback_equal": true,
+  "selected_inputs": 158,
+  "artifacts": 35,
+  "exact_source_join_equal": true,
+  "exact_eleven_reports_equal": true,
+  "models": 104,
+  "exact_native_record_readback_equal": true,
+  "exact_saved_gnu_operand_readback_equal": true,
+  "scope": "Frozen selected sources/reports/models and saved native/GNU records only. No ELF, compiler, GNU decoder, GDB or VM execution; not a complete clean producer, actual owners/nonalias/lifetime/retired-spill cleanup or production qualification"
+}

@@ -688,3 +688,36 @@ continuous lifetime, retired spill cleanup, complete helper/entry/callee/return/
 fatal/exception/post-copy effects, remaining sites, fallback obligations, further
 native profiles and canonical clean production qualification remain required.
 Stage 3, initial Step 4 and the original goal remain unfinished.
+
+## Stage 3 selector-bound warning inputs
+
+The [warning checkpoint](tools/user-memory/results/stage-3-warning-inputs/README.md)
+connects one shared admission to its three selector-dependent intervals: four,
+forty and one byte. Exact prelude checks bind the requested count and captured
+candidate; post-admission dispatch and seven scalar loads retain the selector
+and admitted bounds. Shared helper/selector preservation and actual stable
+private/input ownership remain explicit conditions.
+
+The storage VM observes all three ordered admissions and 45 bytes of complete
+register staging. Separate saved-record readback reconciles all load operands,
+payloads, first reach and actual serial output. The ordinary-buffer join adds
+fifteen source-issued admissions, including twelve `EFAULT` refusals with no
+scalar access and preserved phase/queue, then three complete segment copies.
+Saved GNU decoding for the same
+kernel agrees on 74 selected instructions and the reverse admission cut.
+Fifteen offline controls, 104 model/reader tests, ordinary/pinned regressions and
+two fixture build tests pass with five frozen changed sources. The pinned
+profile records no warning execution. Seventeen core objects/images and fourteen
+preceding metadata/reports per cohort compare equal. The source intermediate
+differs only in three nonallocated DWARF sections; all allocated/load bytes and
+the installed storage fixture/boot images remain identical.
+
+Exact frozen replay restores 158 selected inputs and reproduces eleven reports,
+models, saved native/GNU readback and intermediate ELF comparison. The conditional
+index reaches 89/91 sites and 323 user instructions, leaving random output and
+the named-root fallback without selected intervals. Fresh first reach remains
+83/91, or 87/91 with explicitly bound preceding same-kernel cohorts. Actual
+owners/nonalias, continuous lifetime, complete helper/entry/callee/return/fatal/
+exception/staging/output effects, remaining sites, fallback obligations, retired
+clock spills, further profiles and canonical clean production qualification
+remain required. Stage 3, initial Step 4 and the original goal remain unfinished.

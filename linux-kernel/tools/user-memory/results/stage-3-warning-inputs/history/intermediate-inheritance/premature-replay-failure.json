@@ -1,0 +1,5 @@
+{
+  "exit_code": 1,
+  "stage": "Premature replay after archive failure",
+  "reason": "The incomplete archive has no artifact-identity.json; dependency failure should have stopped replay"
+}

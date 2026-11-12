@@ -1,0 +1,137 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "dad9f028a9e79e5c7b696e398dd22daa7ff44c69c5ff342b4b4151ba3b21678d",
+  "observation_sha256": "24173731e8d62521454af3ccc605cc323658183fd34ba99acec64ab7b8f1228a",
+  "serial_sha256": "7dfe3f98ae27386c41cf11443c3ae446b7094937b4a005cbdf0e27ebfd179afb",
+  "events": [
+    {
+      "selector": 196865,
+      "candidate": 6529024,
+      "size": 4,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 196865,
+      "candidate": 18446744073709551615,
+      "size": 4,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 196865,
+      "candidate": 8388608,
+      "size": 4,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 196865,
+      "candidate": 6529023,
+      "size": 4,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 196865,
+      "candidate": 6524920,
+      "size": 4,
+      "result": 4,
+      "accepted": true,
+      "scalar_loads": 1
+    },
+    {
+      "selector": 16974081,
+      "candidate": 6529024,
+      "size": 40,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 16974081,
+      "candidate": 18446744073709551615,
+      "size": 40,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 16974081,
+      "candidate": 8388608,
+      "size": 40,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 16974081,
+      "candidate": 6529023,
+      "size": 40,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 16974081,
+      "candidate": 6524920,
+      "size": 40,
+      "result": 40,
+      "accepted": true,
+      "scalar_loads": 5
+    },
+    {
+      "selector": 33751297,
+      "candidate": 6529024,
+      "size": 1,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 33751297,
+      "candidate": 18446744073709551615,
+      "size": 1,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 33751297,
+      "candidate": 8388608,
+      "size": 1,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 33751297,
+      "candidate": 6533120,
+      "size": 1,
+      "result": -14,
+      "accepted": false,
+      "scalar_loads": 0
+    },
+    {
+      "selector": 33751297,
+      "candidate": 6524920,
+      "size": 1,
+      "result": 1,
+      "accepted": true,
+      "scalar_loads": 1
+    }
+  ],
+  "admissions": 15,
+  "refusals": 12,
+  "completions": 3,
+  "copied_bytes": 45,
+  "scalar_loads": 7,
+  "source_syscall_and_selector_order_equal": true,
+  "saved_observer_programs_present": true,
+  "scope": "Independent saved native warning records joined to source syscall candidates/counts/results, preserved phase and refused queue state, empty refused-access records and complete staged payloads. Protected-state and helper/mapping checks retain their live observer evidence; not another execution, continuous lifetime, independent owners or complete warning/production qualification"
+}
