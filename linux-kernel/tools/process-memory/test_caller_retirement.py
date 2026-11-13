@@ -18,7 +18,7 @@ _search_path=sys.path[:]
 try:
     from test_publication import fixture
     sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'labs/qemu/x86_64'))
-    from process_mm_caller_retirement_observer import PROGRAM
+    from process_mm_caller_retirement_observer import PROGRAM,boundary_program
 finally:
     sys.path[:]=_search_path
 
@@ -42,6 +42,31 @@ def encoder(value):
 
 
 class CallerHeapPoolTests(TestCase):
+    def test_boundary_composition_keeps_callbacks_and_completion_obligations(self):
+        source=boundary_program();compile(source,'<caller-boundary>','exec')
+        self.assertNotIn('class Complete(Complete):',source)
+        self.assertIn(PROGRAM.split('class Complete(Complete):')[0],source)
+        self.assertIn('def install_caller_retirement():',source)
+
+    def test_completion_refuses_pending_sample_missing_records_and_live_callbacks(self):
+        from types import SimpleNamespace
+        source='def complete_caller_retirement():'+PROGRAM.split(
+            'def complete_caller_retirement():',1)[1].split('class Complete(Complete):',1)[0]
+        for kind in ['complete','pending','missing','gateway','return']:
+            scope=dict(caller_pending=None,caller_data=dict(records=[{}],complete=False),
+                caller_gateways={'entry':SimpleNamespace(enabled=False)},
+                caller_return_points={1:SimpleNamespace(enabled=False)})
+            exec(source,scope)
+            if kind=='pending':scope['caller_pending']={}
+            elif kind=='missing':scope['caller_data']['records']=[]
+            elif kind=='gateway':scope['caller_gateways']['entry'].enabled=True
+            elif kind=='return':scope['caller_return_points'][1].enabled=True
+            if kind=='complete':
+                scope['complete_caller_retirement']();self.assertTrue(scope['caller_data']['complete'])
+            else:
+                with self.assertRaises(AssertionError):scope['complete_caller_retirement']()
+                self.assertFalse(scope['caller_data']['complete'])
+
     def test_all_qualified_refusals_set_carry_and_only_zero_is_admitted(self):
         for status in range(5):
             result_carry(status,2|int(status!=0))

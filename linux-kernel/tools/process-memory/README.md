@@ -584,3 +584,37 @@ permission and four unsupported results. Together with the earlier stat prefix,
 76 sites have selected normal-return evidence. The historical first-reach
 census remains 89/91; every-path, continuous/private-loan, fatal/exception,
 concurrent/mapping/publication, production and full initial Linux gates remain.
+
+## Interface caller normal-return observations
+
+The same `TOPAL_TEST_PROCESS_MM_CALLER_RETIREMENT=1` option also accepts the
+existing process-MM interface modes `poll,pipes,storage,serial`. Select them
+with `TOPAL_TEST_PROCESS_MM_INTERFACES` when running the existing ignored
+`systems_frame_target::root_tests::process_mm_preserves_source_built_application_interfaces`
+test through the bounded wrapper. The original native assertions and guest
+deadlines remain. The separate MM namespace installs the shared caller observer
+and checks its completion before publishing the original successful MM record.
+
+[readback_interface_callers.py](readback_interface_callers.py) takes a build
+directory and writes `interface-callers-readback.json`. It binds exact observer,
+profile, native/source/image identities and all actual C files, skips null
+optional source hashes, and requires complete C closure. It invokes the existing
+interface/MM reader and shared nineteen caller controls. The reader remains
+saved-data validation, separate from native execution.
+
+The [closed archive](results/stage-3-interface-callers/report.json) preserves
+four successful actual VMs, 735 source snapshots, the initial reader failure and
+its corrected replay/check recovery. Frozen replay passes all four readers and
+82 process-memory models and reproduces the original failed reader in isolated
+inputs; no VM is rerun for the reader fix. The [review receipt](results/stage-3-interface-callers-review.json)
+binds all artifacts and scopes, including fourteen common kernel objects and
+the adapter from each corresponding earlier interface. Its two failed review
+versions are retained. The earlier actual full 383-test compiler suite is
+referenced over unchanged inputs, not rerun; its accounting gap remains explicit.
+
+Poll/pipes/storage/serial observe 77/79/81/76 first normal returns, respectively.
+With previous selected samples, thirteen newly observed sites bring the union
+to **89/91**. This remains distinct from first-reach coverage. The two unsampled
+offsets 88,215/94,687, every argument/error/fatal/exception path, continuous/private
+loans, mode/mapping/concurrency/publication, production and original Linux gates
+remain unfinished.

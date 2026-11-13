@@ -153,12 +153,15 @@ class CallerSampleEntered(Checked):
         for point in caller_gateways.values():point.enabled=True
         return False
 
+def complete_caller_retirement():
+    assert caller_pending is None and caller_data['records']
+    assert all(not point.enabled for point in caller_gateways.values())
+    assert all(not point.enabled for point in caller_return_points.values())
+    caller_data['complete']=True
+
 class Complete(Complete):
     def observe(self):
-        assert caller_pending is None and caller_data['records']
-        assert all(not point.enabled for point in caller_gateways.values())
-        assert all(not point.enabled for point in caller_return_points.values())
-        caller_data['complete']=True
+        complete_caller_retirement()
         result=super().observe()
         assert result is True and observed['passed']
         print('CALLER_RETIREMENT_PASS',len(caller_data['records']),flush=True)
@@ -176,3 +179,14 @@ def augment(original):
     marker="try:\n    Gateway('topal_x86_frame_gateway_v1',True)"
     assert original.count(marker)==1
     return original.replace(marker,PROGRAM+"\ntry:\n    install_caller_retirement()\n    Gateway('topal_x86_frame_gateway_v1',True)")
+
+
+def boundary_program():
+    """Compose with the existing MM namespace and its own terminal checker.
+
+    The enclosing interface observer calls complete_caller_retirement before
+    publishing its original successful completion and saving the whole record.
+    """
+    start='class Complete(Complete):';end='def install_caller_retirement():'
+    assert PROGRAM.count(start)==PROGRAM.count(end)==1
+    return PROGRAM.split(start)[0]+end+PROGRAM.split(end)[1]

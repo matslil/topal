@@ -219,6 +219,17 @@ have selected normal-return evidence; historical first-reach remains 89/91.
 Every-path, continuous/private-loan/fatal, production and initial Linux acceptance
 remain unfinished.
 
+The subsequent [interface caller-return cohort](step-4-process-memory-ownership.md#normal-return-callers-in-ordinary-interface-cohorts)
+passes the existing poll, pipe, storage and serial VMs and adds thirteen sites,
+bringing selected normal-return evidence to **89/91**. Both actual outer adapter
+alignments and complete caller/private erasure are observed. The original new
+reader's null-field failure is retained and reproduced; its corrected replay
+and six supplementary checks pass, including 203 user-memory and **82**
+process-memory models, without a VM rerun. Kernel/application bytes and the
+original interface checks remain unchanged. Two review comparison errors are
+also retained. Offsets 88,215 and 94,687, every-path/lifetime/fatal/publication,
+production and full initial Linux requirements remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

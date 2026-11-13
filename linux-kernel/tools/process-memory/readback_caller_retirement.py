@@ -51,7 +51,15 @@ def readback(build):
             and qemu[qemu.index('-accel')+1].startswith('tcg,'),'caller retained VM geometry')
     raw=(work/'observations.json').read_bytes();value=json.loads(raw)
     base=process_readback(value)
-    data=value['caller_retirement'];result=checked(data,profile,kernel)
+    result=sample_readback(value['caller_retirement'],profile,kernel)
+    result.update(kernel_sha256=profile['kernel_sha256'],inventory_sha256=profile['inventory_sha256'],
+        observation_sha256=sha(raw),process_mm=base,source_files=source_facts)
+    return result
+
+
+def sample_readback(data,profile,kernel):
+    """Replay the same normal-return obligations and controls for each host."""
+    result=checked(data,profile,kernel)
     controls=[]
     def reject(name,change):
         altered=deepcopy(data);change(altered)
@@ -86,8 +94,7 @@ def readback(build):
     reject('wrong-blob-content',lambda r:r['blobs'].update(
         {first(r)['before']['active']['bytes']['sha256']:'01'}))
     reject('unused-heap-blob',lambda r:r['blobs'].update({sha(b'unused') : b'unused'.hex()}))
-    result.update(kernel_sha256=profile['kernel_sha256'],inventory_sha256=profile['inventory_sha256'],
-        observation_sha256=sha(raw),process_mm=base,controls=controls,source_files=source_facts)
+    result.update(controls=controls)
     return result
 
 

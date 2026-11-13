@@ -1271,6 +1271,87 @@ path, continuous/private-loan lifetime, concurrency/mapping/publication proof,
 production activation and the original Linux/distribution/container/VM-host
 objective remain open.
 
+## Normal-return callers in ordinary interface cohorts
+
+The existing poll, pipe, storage and serial programs now run with the same
+read-only caller observer installed in their separate MM namespace. Every
+original interface, byte-order, buffer-window, MM-owner and terminal assertion
+remains active. The caller completion gate requires no pending sample or live
+return callback before the original successful MM completion is published.
+Two new host-only tests exercise composition and refusal of incomplete cleanup;
+they do not replace native execution.
+
+All four actual VMs pass, retaining the existing 600-second per-guest deadline,
+640-MiB/two-CPU TCG geometry and host boundaries. Their selected first normal
+returns are:
+
+| Ordinary interface | Sampled helper sites | 80-byte outer adapter | 88-byte outer adapter |
+| --- | ---: | ---: | ---: |
+| Poll | 77 | 74 | 3 |
+| Pipes | 79 | 76 | 3 |
+| Storage | 81 | 78 | 3 |
+| Serial | 76 | 73 | 3 |
+
+These sets overlap. Their union with the preceding ordinary MM and pre-import
+stat samples adds **thirteen distinct sites**, bringing selected normal-return
+evidence to **89/91 sites**. The new sites cover header poll, positional and
+volatile file transfers, directory publication, pipe creation/transfers/ioctl
+and serial input. Offsets **88,215** and **94,687** remain unsampled. The historical
+89/91 first-reach census remains a separate kind of evidence.
+
+Each sample checks the real gateway request, unchanged zero-through-four native
+status/carry ABI, preserved registers and complete private/caller erasure, plus
+whole retained owner/heap/context/table observations. Zero can include an empty
+extent and grants no usable address in that case. Actual physical caller
+retirement remains 4,080/4,088 bytes, and the full stack bound remains 2,280 of
+4,096 bytes. Boundary equality does not establish continuous loan lifetime.
+
+The [interface reader](tools/process-memory/readback_interface_callers.py) binds
+the exact observer/profile, kernel, application and complete six-file C closure.
+It retains the original interface/MM reader and its controls and reuses all
+nineteen altered caller-record controls per cohort. The shared reader refactor
+also reproduces the preceding ordinary caller results exactly from saved data.
+
+The four native runs complete in one **1,553.19-second** command. The initial new
+reader then fails with `FileNotFoundError` for `pipe-cases.c`: optional source-hash
+fields can be present as `null`. Its source selection is corrected to skip those
+fields while still requiring exact closure of all actual C files. Only that
+saved-data reader changes. Corrected replay and six supplementary checks pass
+in **28.29 seconds**, without rerunning a VM: locked workspace/all-target
+checking, **203 user-memory models**, **82 process-memory models**, the default
+ABI fixture, formatting and Rust file ceiling. Each original/recovery scope
+retains its own unchanged **735-source** snapshot; their one reader difference
+is explicit. The original failed qualification remains failed.
+
+The [1,887-entry closed archive](tools/process-memory/results/stage-3-interface-callers/report.json)
+preserves all four native builds, exact inputs, commands, logs and the failed
+reader. Frozen replay passes every corrected reader and all 82 models, then
+reproduces the original refusal in isolated archived inputs. Collection/replay
+executes no VM or compiler build. The earlier actual 383-pass/25-ignored compiler
+suite is referenced over 361 unchanged relevant inputs, not rerun; its original
+accounting gap remains explicit.
+
+The [companion review](tools/process-memory/results/stage-3-interface-callers-review.json)
+verifies all seven LLVM modules per build, identical kernels and application
+images, fourteen common kernel objects, the unchanged adapter for each original
+interface, independent ELF-derived reserved spans and actual static user-stack
+bounds. Two failed review versions are retained: an incorrect seven-file C
+assumption and comparison of poll's adapter with the different ordinary MM
+adapter. Poll matches its earlier poll adapter exactly. These corrections change
+no native or security behavior. Review remains single-agent.
+
+The native batch records a **1,196,503,040 / 3,314,233,344-byte** cgroup peak/limit;
+the separate reader/check recovery records **293,593,088 / 3,346,698,240 bytes**.
+Both recorded scopes have zero swap and zero sampled memory events. Failed
+review attempts have no retained resource counters. Neither these results nor
+reader/review failures explain an earlier AI safeguard decision.
+
+This increment changes no compiler, kernel, runtime, C workload, core-language
+meaning or production selection, and does not rerun the 51-application corpus.
+Every remaining argument/error/fatal/exception path, the two unsampled sites,
+continuous/private-loan lifetime, mode/mapping/concurrency/publication proof,
+production reconstruction and the original full Linux objective remain open.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

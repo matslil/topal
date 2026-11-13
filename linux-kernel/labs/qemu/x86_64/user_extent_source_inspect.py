@@ -633,6 +633,17 @@ if __name__ == '__main__':
                 spans.append([physical,physical+memsize])
         assert spans
         process_regression_profile.update(kernel_spans=spans,kernel_sha256=hashlib.sha256(kernel).hexdigest())
+    process_regression_boundary_program = PROCESS_REGRESSION_BOUNDARY_PROGRAM
+    caller_setting=os.environ.get('TOPAL_TEST_PROCESS_MM_CALLER_RETIREMENT')
+    assert caller_setting in [None,'1']
+    if caller_setting is not None:
+        assert process_regression_profile is not None
+        assert component['mode'] in ['poll','pipes','storage','serial']
+        from process_mm_caller_retirement_observer import boundary_program,layout as caller_layout
+        caller_profile=caller_layout(build)
+        (build/'caller-retirement-layout.json').write_text(json.dumps(caller_profile,indent=2)+'\n')
+        process_regression_profile['caller_retirement_profile']=caller_profile
+        process_regression_boundary_program+=boundary_program()
     process_preparation_profile = None
     preparation_setting = os.environ.get('TOPAL_TEST_PROCESS_MM_PREPARATION')
     assert preparation_setting in [None,'metadata']
@@ -708,7 +719,7 @@ if __name__ == '__main__':
         work_name='source-user-extents',
         program_prefix=(f'component={component!r}\n'
                         f'process_regression_profile={process_regression_profile!r}\n'
-                        f'process_regression_boundary_program={PROCESS_REGRESSION_BOUNDARY_PROGRAM!r}\n'
+                        f'process_regression_boundary_program={process_regression_boundary_program!r}\n'
                         f'process_preparation_profile={process_preparation_profile!r}\n'
                         f'process_preparation_model_source={PROCESS_PREPARATION_MODEL!r}\n'
                         f'owner_profile={owner_profile!r}\n'

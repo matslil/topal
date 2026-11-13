@@ -19,12 +19,16 @@ def install_process_regression_observation():
     assert profile['process_memory'] is True
     ns=dict(component=component,token_bytes=token_bytes,kernel_spans=profile['kernel_spans'],
             observation_path=observation_path.rsplit('/',1)[0]+'/process-mm-observations.json')
+    if 'caller_retirement_profile' in profile:
+        ns['caller_retirement_profile']=profile['caller_retirement_profile']
     exec(process_regression_boundary_program,ns)
     process_regression_namespace=ns
     def complete_save():
         import os
         evidence=ns['observed']
         evidence.update(pending=ns['pending'],active_case=ns['case'],refusal_pending=ns['refusal_attempt'])
+        if 'caller_retirement_profile' in ns:
+            ns['caller_data']['pending']=ns['caller_pending']
         path=ns['observation_path']
         with open(path+'.tmp','w') as stream:stream.write(json.dumps(evidence,separators=(',',':')))
         os.replace(path+'.tmp',path)
@@ -34,6 +38,7 @@ def install_process_regression_observation():
         if ns['observed'].get('failure') or len(ns['observed']['events'])%64==0:complete_save()
     ns['save']=checkpoint
     ns['complete_save']=complete_save
+    if 'caller_retirement_profile' in profile:ns['install_caller_retirement']()
     class Returned(ns['Gateway']):
         def observe(self):
             result=super().observe()
@@ -86,6 +91,7 @@ def process_regression_observation_complete():
         actual=words(address('topal_x86_process_mm_'+suffix+'_v1'),count)
         assert actual==[0]*count
         final[suffix]=actual
+    if 'caller_retirement_profile' in ns:ns['complete_caller_retirement']()
     ns['observed'].update(passed=True,final=final,mode=component['mode'])
     ns['complete_save']()
     observed['process_memory_regression']=dict(passed=True,mode=component['mode'],
