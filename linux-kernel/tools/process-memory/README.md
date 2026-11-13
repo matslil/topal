@@ -1,5 +1,13 @@
 # Portable process memory model
 
+The subsequent [rejected child-exec cohort](results/stage-3-exec-failures.md)
+checks sixteen ordinary `ENOENT`/`EFAULT` returns followed by four successful
+execs. Heap owners/bytes, signals, TLS, registrations, selected descriptor banks
+and actual continuations survive rejection. Close-on-exec flags stay local to
+the child and take effect on successful exec. Eight new saved-record controls,
+330 models and composable frozen replay pass; production and wider exec/error
+qualification remain required.
+
 The subsequent [ordinary child-exec signal cohort](results/stage-3-exec-signals.md)
 checks inherited registrations, child-only changes, ignored-handler preservation,
 caught-handler reset, cleared action metadata and blocked-mask persistence through

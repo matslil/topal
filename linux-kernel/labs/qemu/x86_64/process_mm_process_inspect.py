@@ -20,6 +20,7 @@ def word(p):return words(p,1)[0]
 context=address('topal_bootstrap_storage')+512
 observed=dict(passed=False,cases=[],events=[],child_exec_entries=[],replacement_entries=[],terminal=[],refusals=[],child_departures=[])
 observed['signal_exec_calls']=[]
+observed['failed_exec_calls']=[]
 child_exec=component['mode']=='process-mm-exec'
 cancel_config=component.get('cancellation')
 allocation_config=component.get('allocation_profile')
@@ -32,6 +33,8 @@ observed['relationship_profile']=relationship_config
 pending=case=None
 refusal_attempt=None
 returns={}
+exec_call=None
+exec_returns={}
 callee=['rbx','rbp','r12','r13','r14','r15']
 
 def allocation(pointer,data=True):
@@ -92,6 +95,21 @@ def save():
     observed['active_case']=case
     observed['refusal_pending']=refusal_attempt
     with open(observation_path,'w') as f:json.dump(observed,f)
+
+def exec_state():
+    table=word(context+928)
+    state=words(address('topal_x86_frame_mm_state_v1'),4)
+    inactive=words(address('topal_x86_process_mm_inactive_state_v1'),4)
+    return dict(ids=words(address('topal_x86_process_mm_ids_v1'),7),state=state,
+        tokens=words(address('topal_x86_frame_mm_tokens_v1'),6),inactive_state=inactive,
+        inactive_token=words(address('topal_x86_process_mm_inactive_token_v1'),3),
+        heap_sha256=hashlib.sha256(memory(state[3],state[2]*4096)).hexdigest(),
+        inactive_heap_sha256=hashlib.sha256(memory(inactive[3],inactive[2]*4096)).hexdigest(),
+        root=reg('cr3'),fs_base=reg('fs_base'),tls=word(context+128),
+        registered_tid=word(context+152),robust=word(context+160),
+        signals=dict(blocked=word(table+32),quit=words(table+1792+2*32,4),user=words(table+1792+9*32,4)),
+        descriptors=words(table+64,32),descriptions=words(table+320,128),
+        shared_descriptions=words(table+0x3d000,128))
 
 class Checked(gdb.Breakpoint):
     def stop(self):
@@ -188,6 +206,7 @@ class CaseEntered(Checked):
 
 class ImageEntered(Checked):
     def observe(self):
+        global exec_call
         assert reg('cs')&3==3 and pending is None
         value=capture()
         if ((cancel_config is not None and cancel_config['early']) or (relationship_config is not None and relationship_config['early']) or allocation_config is not None or geometry_config is not None) and value['ids'][0]==1:
@@ -197,6 +216,10 @@ class ImageEntered(Checked):
             save()
         if value['ids'][0]<2:return False
         assert child_exec and case is not None
+        assert exec_call is not None and exec_call['before']['ids'][0]==value['ids'][0]
+        observed['signal_exec_calls'].append(dict(ids=exec_call['before']['ids'],signals=exec_call['before']['signals']))
+        exec_returns[exec_call['return_pc']].enabled=False
+        exec_call=None
         model['snapshot'](value)
         assert value['state']==[0]*4 and value['tokens']==[0]*6
         assert value['fs_base']==value['context']['tls']==0
@@ -251,13 +274,36 @@ class UserFork(Checked):
         save()
         return False
 
+class ExecReturned(Checked):
+    def observe(self):
+        global exec_call
+        self.enabled=False
+        assert exec_call is not None and pending is None and reg('cs')&3==3
+        row=exec_call
+        assert reg('rsp')==row['sp']+8 and reg('rip')==row['return_pc']
+        assert {r:reg(r) for r in callee}==row['callee']
+        result=reg('rax');result=result-(1<<64) if result>>63 else result
+        assert result in [-2,-14]
+        row.update(result=result,after=exec_state(),returned_sp=reg('rsp'),
+            returned_pc=reg('rip'),returned_cs=reg('cs'),returned_callee={r:reg(r) for r in callee})
+        assert row['before']==row['after'], 'failed exec changed retained state'
+        observed['failed_exec_calls'].append(row)
+        exec_call=None
+        save()
+        return False
+
 class UserExec(Checked):
     def observe(self):
+        global exec_call
         if reg('rdi')!=59:return False
-        value=capture()
+        value=exec_state()
         if value['ids'][0]==1:return False
-        assert child_exec and pending is None and reg('cs')&3==3
-        observed['signal_exec_calls'].append(dict(ids=value['ids'],signals=value['signals']))
+        assert child_exec and pending is None and exec_call is None and reg('cs')&3==3
+        site=word(reg('rsp'))
+        exec_call=dict(before=value,sp=reg('rsp'),return_pc=site,
+            args=[reg(r) for r in ['rsi','rdx','rcx']],callee={r:reg(r) for r in callee})
+        if site not in exec_returns:exec_returns[site]=ExecReturned('*'+hex(site),internal=True)
+        exec_returns[site].enabled=True
         save()
         return False
 
@@ -417,6 +463,7 @@ class Complete(Checked):
             assert sorted(preparations)==[34]*4+[67]*4
             assert ops.count(7)==(7 if child_exec else 3)
             assert len(observed['child_exec_entries'])==(4 if child_exec else 0)
+            if child_exec:assert exec_call is None and len(observed['failed_exec_calls'])==16
         assert words(address('topal_x86_frame_mm_tokens_v1'),6)==[0]*6
         assert words(address('topal_x86_frame_mm_state_v1'),4)==[0]*4
         observed['final']={}

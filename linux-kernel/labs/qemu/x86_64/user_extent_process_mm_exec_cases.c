@@ -40,6 +40,23 @@ static long signal_check(word phase) {
     return mask == (1UL << (phase == 0 ? 11 : 14)) ? 0 : 4;
 }
 
+static long failed_execs(word fd, word child_break, const char **argv) {
+    const word bad = ~(word)0;
+    const word names[] = {(word)"/no-such-exec",bad,(word)"/bin/busybox",(word)"/bin/busybox"};
+    for (word i = 0; i < 4; ++i) {
+        long result = topal_test_syscall3(59,names[i],i == 2 ? bad : (word)argv,i == 3 ? bad : 0);
+        if (result != (i == 0 ? -2 : -14)) return 1;
+        word tls = 0;
+        if (signal_check(1) != 0 || topal_test_syscall3(12,0,0,0) != (long)child_break ||
+            topal_test_syscall3(158,0x1003,(word)&tls,0) != 0 || tls != 0x5f7500 ||
+            topal_test_syscall3(72,fd,1,0) != 1) return 2;
+        if (*(volatile unsigned char *)(0x5f7000+34*4096+128) != 0xc1 ||
+            *(volatile unsigned char *)(0x5f7000+66*4096+64) != 0xc2 ||
+            *(volatile unsigned char *)(0x5f7000+101*4096-1) != 0xc7) return 3;
+    }
+    return 0;
+}
+
 static long end_child(word status) {
     (void)topal_test_syscall3(60, status, 0, 0);
     return 3000 + (long)status;
@@ -60,6 +77,14 @@ void topal_process_exec_entry(const word *initial_stack) {
     long pid = topal_test_syscall3(39, 0, 0, 0);
     if (pid < 2 || topal_test_syscall3(110, 0, 0, 0) != 1) { (void)end_child(51); return; }
     if (topal_test_syscall3(12, 0, 0, 0) != (long)heap) { (void)end_child(52); return; }
+    const char *descriptor = (const char *)initial_stack[2];
+    word fd = 0;
+    if (!*descriptor) { (void)end_child(64); return; }
+    while (*descriptor) {
+        if (*descriptor < '0' || *descriptor > '9' || fd > 214748364) { (void)end_child(64); return; }
+        fd = fd * 10 + (word)(*descriptor++ - '0');
+    }
+    if (topal_test_syscall3(72,fd,1,0) != -9) { (void)end_child(65); return; }
     if (signal_check(2) != 0) { (void)end_child(62); return; }
     word tls = ~(word)0;
     if (topal_test_syscall3(158,0x1003,(word)&tls,0) != 0 || tls != 0) { (void)end_child(59); return; }
@@ -96,6 +121,8 @@ long topal_process_memory_exec_cases(void) {
     *first = 0xa1; *far = 0xa2;
     word old_quit[4], old_user[4], old_mask;
     if (signal_install(0,old_quit,old_user,&old_mask) != 0 || signal_check(0) != 0) return 2016;
+    long descriptor = topal_test_syscall4(257,(word)-100,(word)"/bin/busybox",0,0);
+    if (descriptor < 0 || topal_test_syscall3(72,(word)descriptor,1,0) != 0) return 2019;
     long pid = topal_test_syscall3(57,0,0,0);
     if (pid < 0) return 2003;
     if (pid == 0) {
@@ -109,7 +136,13 @@ long topal_process_memory_exec_cases(void) {
         if (topal_test_syscall3(218,~(word)0,0,0) != self ||
             topal_test_syscall3(273,~(word)0,24,0) != 0 ||
             topal_test_syscall3(158,0x1002,0x5f7500,0) != 0) return end_child(44);
-        const char *argv[] = {"child-mm", "independent", (const char *)0};
+        if (topal_test_syscall3(72,(word)descriptor,2,1) != 0) return end_child(47);
+        char descriptor_name[24];
+        word digit = sizeof(descriptor_name)-1, number = (word)descriptor;
+        descriptor_name[digit] = 0;
+        do { descriptor_name[--digit] = (char)('0'+number%10); number /= 10; } while (number);
+        const char *argv[] = {"child-mm", descriptor_name+digit, (const char *)0};
+        if (failed_execs((word)descriptor,child_break,argv) != 0) return end_child(48);
         (void)topal_test_syscall3(59,(word)"/bin/busybox",(word)argv,0);
         return end_child(43);
     }
@@ -128,6 +161,8 @@ long topal_process_memory_exec_cases(void) {
     if (topal_test_syscall4(61,(word)pid,(word)&status,0,0) != pid || status != 17<<8) return 2012;
     if (topal_test_syscall4(61,(word)pid,0,0,0) != -10) return 2013;
     if (signal_check(0) != 0) return 2017;
+    if (topal_test_syscall3(72,(word)descriptor,1,0) != 0 ||
+        topal_test_syscall3(3,(word)descriptor,0,0) != 0) return 2020;
     if (topal_test_syscall4(13,3,(word)old_quit,0,8) != 0 ||
         topal_test_syscall4(13,10,(word)old_user,0,8) != 0 ||
         topal_test_syscall4(14,2,(word)&old_mask,0,8) != 0) return 2018;

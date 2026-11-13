@@ -7,6 +7,13 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [rejected child-exec cohort](tools/process-memory/results/stage-3-exec-failures.md)
+adds sixteen ordinary failed execs with retained child/parent state, followed
+by four successful replacements. Close-on-exec flags remain local to the child,
+survive rejection and close its descriptor only on success. Native checks,
+independent readback, eight new controls, 330 models and frozen replay pass.
+The kernel and boot image are unchanged; broad acceptance remains unfinished.
+
 The [ordinary child-exec signal cohort](tools/process-memory/results/stage-3-exec-signals.md)
 now checks fork inheritance, child-only changes, successful-exec action reset,
 blocked-mask persistence and parent restoration in four native generations.

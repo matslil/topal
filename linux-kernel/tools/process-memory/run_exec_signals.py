@@ -17,6 +17,7 @@ from run_policy_failure import hashes, watched
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--failed-exec', action='store_true', help='also check rejected exec state and continuation')
     args = parser.parse_args()
     output = args.output.resolve()
     assert output.is_relative_to(ROOT / 'linux-kernel')
@@ -59,7 +60,9 @@ def main():
         assert len(builds) == 1, builds
         build = builds[0].resolve()
         report['native_build'] = str(build.relative_to(ROOT))
-        command('readback', ['python3', ROOT / 'linux-kernel/tools/process-memory/readback_exec_signals.py',
+        reader = 'readback_exec_failures.py' if args.failed_exec else 'readback_exec_signals.py'
+        report['reader'] = reader
+        command('readback', ['python3', ROOT / 'linux-kernel/tools/process-memory' / reader,
                              build / 'process-mm-users/observations.json', output / 'readback.json'])
         for label, folder in [('process-models', 'process-memory'), ('user-models', 'user-memory')]:
             command(label, ['python3', '-m', 'unittest', 'discover', '-s', 'linux-kernel/tools/' + folder, '-p', 'test_*.py'])

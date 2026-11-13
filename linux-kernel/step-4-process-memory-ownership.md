@@ -1360,6 +1360,14 @@ ownership proof, and both unsampled helper sites remain acceptance gaps.
 
 ## Remaining stages and blockers
 
+The subsequent [rejected child-exec cohort](tools/process-memory/results/stage-3-exec-failures.md)
+checks sixteen returning precommit errors and four subsequent successful execs.
+The selected heap/owner/signal/TLS/registration/descriptor state and ordinary
+continuations survive rejection; the child's close-on-exec flag takes effect
+only on successful exec while the parent retains its original descriptor.
+Eight new record controls, all 330 models and composable frozen replay pass.
+The broader errors, paging/CPU state, lifetime and production gaps remain.
+
 The subsequent [ordinary child-exec signal cohort](tools/process-memory/results/stage-3-exec-signals.md)
 adds four native inheritance/isolation/reset cases using existing signal
 registration and mask interfaces. The corrected reader, nine altered-record
