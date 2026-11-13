@@ -262,6 +262,16 @@ kernel-state cases and remains incomplete. The corrected native component is
 unpublished; separate loader, full fatal/entry/lifetime/production and original
 Linux acceptance obligations remain open.
 
+The subsequent [saved gateway model](step-4-owned-user-extents.md#saved-pre-invocation-gateway-checks-and-retained-diagnostics)
+checks 20,504 cases over four compiled gateways against an independent selected
+pre-invocation predicate. Thirty-six weakened-guard controls and 248/82 model
+tests pass, with exact frozen replay. Retained files also establish completion
+of 36 predecessor diagnostic cases before the earlier stop, superseding the
+previously unknown reach; the full compiler command remains interrupted. This
+is fresh host interpretation and read-only inventory, with no new VM execution,
+legacy-test removal, owner authority or production activation. Other operations,
+real entry/caller/owner/lifetime and full original Linux acceptance remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

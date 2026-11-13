@@ -140,3 +140,51 @@ The native component still has no production boot-provenance record. Its
 nonfatal GDB `.debug_names` warning is retained; this stage grants no new debug
 format qualification. Separate loader support, complete entries/effects/lifetime,
 production reconstruction and full Linux acceptance remain open.
+
+## Saved gateway admission model
+
+[gateway_contract.py](gateway_contract.py) defines an independent predicate for
+the selected `brk`, exec-reset and process-completion pre-invocation checks.
+[gateway_machine.py](gateway_machine.py) interprets a strict subset of the
+actual saved gateway bytes in Python. Unsupported instructions, inaccessible
+model words and unexpected control flow raise a coverage gap. It models only
+CF/ZF and IF/DF observations; the temporary flags word is a projection, not an
+exact native stack observation. No machine code or guest runs.
+
+[inspect_gateway_admission.py](inspect_gateway_admission.py) binds the gateway,
+allocated data symbols, actual relative call/return sites, refusal marker and
+pre-save boundary to the ELF before comparing those independent descriptions.
+The report always retains `qualification_complete=false`. Source dictionaries
+and numeric matches create no owner, caller or entry authority.
+
+```sh
+rtk scripts/run_bounded.py -- python3 -B linux-kernel/tools/user-memory/inspect_gateway_admission.py KERNEL_ELF OUTPUT
+```
+
+The [composable archive](results/stage-3-gateway-admission/report.json) and
+[review](results/stage-3-gateway-admission-review.json) retain **5,126 cases per
+kernel**, across the current process-MM kernel and three retained predecessors:
+**20,504 interpretations**, with 1,173 reaching the modeled admission boundary
+and 3,953 the refusal marker in each kernel. Thirty-six Python-only weakened-
+guard controls are detected. Eighteen new counterexample tests bring the full
+suites to **248 user-memory** and **82 process-memory** tests. Frozen replay
+reproduces the four reports, controls, retained inventory and both suites.
+The pinned boot-header-correction archive is an explicit source dependency.
+
+Read-only inspection also establishes that the interrupted compiler run had
+completed all twelve diagnostic modes on each of three predecessor kernels:
+27 pre-entry refusals, six post-write fatal cases and three ordinary exhaustion
+cases. The three corresponding individual Rust tests have `... ok` lines in
+the retained partial log. Earlier reporting left their reach unestablished;
+the newly inventoried files resolve that uncertainty. These are original
+producer assertions. Complete CPU inputs and every before/after byte were not
+retained, so this is not independent replay of all native semantics or fresh
+execution on the current kernel. The full compiler command remains interrupted.
+
+No legacy test, kernel check or production gate is removed. Actual ownership,
+fresh nonwrapping entry generation, caller origin, hardware/mapping/lifetime,
+asynchronous behavior, other gateway operation classes and post-admission fatal
+effects remain separate obligations. Interpreter arithmetic/conditions follow
+the [Intel SDM](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html),
+Volume 2A (CMP/Jcc and encoding) and Volume 2B (MOV/RDMSR/PUSHFQ). This model is
+an x86 adapter observation, not a portable language rule or activation authority.

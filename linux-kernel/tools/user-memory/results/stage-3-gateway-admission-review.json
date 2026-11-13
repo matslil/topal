@@ -1,0 +1,390 @@
+{
+  "passed": true,
+  "archive_manifest": {
+    "bytes": 55679,
+    "sha256": "e26ea2527a1312f5ed54e5be325227af68577f40f24a3d44521ea38ce358a327"
+  },
+  "archive_entries": 331,
+  "base_manifest": {
+    "bytes": 168883,
+    "sha256": "243cf390588cbc17687c36fbee82abc13003ae9b17c4cd984f8f2dd82d140fe4"
+  },
+  "restored_base_inputs": 743,
+  "source_overlays": 6,
+  "frozen_commands": {
+    "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/root/linux-kernel/tools/user-memory/inspect_gateway_admission.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c.elf",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.7257608901709318
+    },
+    "8c44677abd89f174a6e43b829250aaabf75a939e1df84f4b6a3bb6e81e9e68d7": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/root/linux-kernel/tools/user-memory/inspect_gateway_admission.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/8c44677abd89f174a6e43b829250aaabf75a939e1df84f4b6a3bb6e81e9e68d7.elf",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/8c44677abd89f174a6e43b829250aaabf75a939e1df84f4b6a3bb6e81e9e68d7.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.7163010239601135
+    },
+    "f5d0848d1b41a05b3adbf4017cd1ba4bbb39a03062d9e06b4e845d4a90e096fc": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/root/linux-kernel/tools/user-memory/inspect_gateway_admission.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/f5d0848d1b41a05b3adbf4017cd1ba4bbb39a03062d9e06b4e845d4a90e096fc.elf",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/f5d0848d1b41a05b3adbf4017cd1ba4bbb39a03062d9e06b4e845d4a90e096fc.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.9389511179178953
+    },
+    "46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/root/linux-kernel/tools/user-memory/inspect_gateway_admission.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f.elf",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.7860401663929224
+    },
+    "user-memory": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/root/linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.0795088848099113
+    },
+    "process-memory": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/gateway-admission-frozen-replay/root/linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.2116287425160408
+    }
+  },
+  "totals": {
+    "kernels": 4,
+    "model_cases": 20504,
+    "guard_counterexamples": 36,
+    "retained_diagnostic_assertions": 36,
+    "user_memory_models": 248,
+    "process_memory_models": 82
+  },
+  "retained_assertions": {
+    "predecessor": {
+      "return-site": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5412,
+          "sha256": "e078b0a9e130595d21502f2cfb04ab5ea59616c2032ab195991cacdaed4ab4bb"
+        }
+      },
+      "gs-context": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5411,
+          "sha256": "33dacbcdb841352803954e7d7bd085d43ecd85394caad72a8a0b3576909a86e9"
+        }
+      },
+      "address-space": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5441,
+          "sha256": "f0abbf6c015363d2754b52f342ff7a1de3b891df75614e8f0449b30d9e648f49"
+        }
+      },
+      "entry-identity": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "74a2dc846a835531cd17486ef7da2bb7004c9ad6245de66ca5c623ce2793b06e"
+        }
+      },
+      "abi-number": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5411,
+          "sha256": "af43794abc93589a051adfcfc355233f55228b516c1e7c8c7aa4a2178f5641c8"
+        }
+      },
+      "captured-stack": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "4994080b4fa2516b27f67fd68e73615efab6eee4878b3bf3873e7adb64c7152b"
+        }
+      },
+      "request": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5408,
+          "sha256": "abca9dd55d2f3499997357f64962e826d627db1d19d57891cae1bb85c3aea445"
+        }
+      },
+      "busy": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5406,
+          "sha256": "40e581cd9640227ca864a31e26b3f8fd1b546a4141b9d75b848e667565e0dd1d"
+        }
+      },
+      "direction-flag": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "8949d9348456178dd6de914f932a6f6255d926cb97718456a8b4b7d680936e78"
+        }
+      },
+      "partial-source": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 12137,
+          "sha256": "7b672c5a11cd78a8b8721cf37e1bc49f59a97698123c3a93ac918efbdd1b2e15"
+        }
+      },
+      "published-unpin": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 12627,
+          "sha256": "5794e5222844413fb31d9333595572688cef72f6d214cddda001de1c5b63815b"
+        }
+      },
+      "no-fit": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 26585,
+          "sha256": "93bf547efc01d03314b8990db66f5a5ba9a327194870a6049d1fb2d5ca37e2fc"
+        }
+      }
+    },
+    "reconstructed": {
+      "return-site": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5412,
+          "sha256": "1593777edb7318cfe5a29931636c2b4f28f0286f37eb524fb096061bcd8b1967"
+        }
+      },
+      "gs-context": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5411,
+          "sha256": "04424d436a28e0cb10855382825e0c1c769ceea4719f6fb7b6c66e871c9665e0"
+        }
+      },
+      "address-space": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5441,
+          "sha256": "fe0e5c3431a6f517f3183976f530b42b0fc53bb18deb95a56264dff1b2349d64"
+        }
+      },
+      "entry-identity": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "941de69885790f86a06f65c2f8dd39e29813cf31b4dd63e224431a012fedc74d"
+        }
+      },
+      "abi-number": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5411,
+          "sha256": "4035e4952a22e836285ec1edc88ca94623de5408904634ba39497aae007aa0bc"
+        }
+      },
+      "captured-stack": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "8fa8ad0b25ac3bcce788ad6ebff4327ae0cf9615c9a29fb051e1b159313a1538"
+        }
+      },
+      "request": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5408,
+          "sha256": "a063ec7e452943976690e68fdf204765be66843c0efa1cb7f08a02d6d3a9a929"
+        }
+      },
+      "busy": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5406,
+          "sha256": "20f06bc0cef6e9afb0923edbbd9ee9bd369e9e23978eeed0113b32a98752ebde"
+        }
+      },
+      "direction-flag": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "9f83749a5c5bba6b264f830f02eb24f237a4670cf8b3f17623e520f6f4c1c1d5"
+        }
+      },
+      "partial-source": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 12137,
+          "sha256": "79ecd1f52d622dcd9cc1a5a8e59121ef04a3cf4aa287f05935d4df20b17e99d3"
+        }
+      },
+      "published-unpin": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 12627,
+          "sha256": "c5bc80eb49db56ff31a606e29a169b0200c7ab0c5d37c5e7d9b9843c761ffa6d"
+        }
+      },
+      "no-fit": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 26611,
+          "sha256": "8d7bbd5de42df1f7f61d4db7d93f476721a5a6135457c793bb8a9b3a28bc83b7"
+        }
+      }
+    },
+    "public-artifact": {
+      "return-site": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5412,
+          "sha256": "1593777edb7318cfe5a29931636c2b4f28f0286f37eb524fb096061bcd8b1967"
+        }
+      },
+      "gs-context": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5411,
+          "sha256": "04424d436a28e0cb10855382825e0c1c769ceea4719f6fb7b6c66e871c9665e0"
+        }
+      },
+      "address-space": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5441,
+          "sha256": "fe0e5c3431a6f517f3183976f530b42b0fc53bb18deb95a56264dff1b2349d64"
+        }
+      },
+      "entry-identity": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "941de69885790f86a06f65c2f8dd39e29813cf31b4dd63e224431a012fedc74d"
+        }
+      },
+      "abi-number": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5411,
+          "sha256": "4035e4952a22e836285ec1edc88ca94623de5408904634ba39497aae007aa0bc"
+        }
+      },
+      "captured-stack": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "8fa8ad0b25ac3bcce788ad6ebff4327ae0cf9615c9a29fb051e1b159313a1538"
+        }
+      },
+      "request": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5408,
+          "sha256": "a063ec7e452943976690e68fdf204765be66843c0efa1cb7f08a02d6d3a9a929"
+        }
+      },
+      "busy": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5406,
+          "sha256": "20f06bc0cef6e9afb0923edbbd9ee9bd369e9e23978eeed0113b32a98752ebde"
+        }
+      },
+      "direction-flag": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 5415,
+          "sha256": "9f83749a5c5bba6b264f830f02eb24f237a4670cf8b3f17623e520f6f4c1c1d5"
+        }
+      },
+      "partial-source": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 12137,
+          "sha256": "79ecd1f52d622dcd9cc1a5a8e59121ef04a3cf4aa287f05935d4df20b17e99d3"
+        }
+      },
+      "published-unpin": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 12627,
+          "sha256": "c5bc80eb49db56ff31a606e29a169b0200c7ab0c5d37c5e7d9b9843c761ffa6d"
+        }
+      },
+      "no-fit": {
+        "completed_assertions": true,
+        "observations": {
+          "bytes": 26611,
+          "sha256": "8d7bbd5de42df1f7f61d4db7d93f476721a5a6135457c793bb8a9b3a28bc83b7"
+        }
+      }
+    }
+  },
+  "predecessor_boot_records": {
+    "public-artifact": {
+      "schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/154",
+      "kernel_sha256": "46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f",
+      "boot_image": {
+        "bytes": 45230592,
+        "sha256": "cc0dadf05ae036228578caf0de08a44eb110c2f8994726197f1077f9a3adf4c3"
+      },
+      "scope": "Retained predecessor public artifact record, not activation or publication of the current owned/process-MM selection."
+    }
+  },
+  "resources": {
+    "memory.max": "3356356608",
+    "memory.swap.max": "0",
+    "memory.peak": "177393664",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "assessment": "Security-sensitive observation, with limited flag projection and explicit unsupported cases. Single-agent design/implementation/self-review, independent hand-encoded counterexamples, 36 weakened-guard controls and frozen replay; no independent human security review claimed. qualification_complete remains false.",
+  "evidence_limit": "Retained mode completion is now established for three predecessor kernels. Full CPU inputs and all before/after data were not retained, so producer assertions are not independently replayed native semantics. No new guest or debugger invocation. Full compiler command remains interrupted; its three relevant individual tests did finish.",
+  "remaining": "Other gateway operation paths, genuine owner/caller/fresh-entry/mode/lifetime/async/exception facts, post-admission fatal effects and complete original Linux acceptance remain unqualified. No legacy check/test or production gate was removed."
+}

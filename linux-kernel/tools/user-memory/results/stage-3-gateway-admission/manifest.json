@@ -1,0 +1,1326 @@
+{
+  "history/interrupted-full-suite/compiler-units.stderr.log.gz": {
+    "bytes": 190,
+    "sha256": "0ded22b366397006c139d4b189645b49b12aa1f10af667eb2d223003e97b50a3"
+  },
+  "history/interrupted-full-suite/compiler-units.stdout.log.gz": {
+    "bytes": 5261,
+    "sha256": "58ab807fdd598bccb3fd851603e1eebde49c1289bc9bf288c7bdcc5dcf2d1557"
+  },
+  "history/interrupted-full-suite/driver.py.gz": {
+    "bytes": 2330,
+    "sha256": "05419c1ddd80e3876dae38ce0b3f19458d5a852b9bd8c4c9865d7af3e5456a7f"
+  },
+  "history/interrupted-full-suite/intentional-stop.json.gz": {
+    "bytes": 346,
+    "sha256": "c07bd2afb93a505cecb1430a16b4005a6df36d2ff0b516f29a422d3c339c78df"
+  },
+  "history/interrupted-full-suite/run.json.gz": {
+    "bytes": 37161,
+    "sha256": "1bbe21d3db4cb7c5cefc76fccb91c756b7924d0277425ad06c4db10e9a385c38"
+  },
+  "inputs/linux-kernel/design/dynamic-frame-memory.md.gz": {
+    "bytes": 2181,
+    "sha256": "e23ecaf790c80fd27f535ba2d1c5415fdcd708c6bed141456e3043672794d458"
+  },
+  "inputs/linux-kernel/tools/user-memory/gateway_contract.py.gz": {
+    "bytes": 1470,
+    "sha256": "19c3b13540b5a928b226ed83752dd94e95116c534ba2bdf6c280c5925fd17e29"
+  },
+  "inputs/linux-kernel/tools/user-memory/gateway_machine.py.gz": {
+    "bytes": 3296,
+    "sha256": "17c9d80a623c9598f32471af07a5b9f1808fc441df73aa68e49df519d22ea9b7"
+  },
+  "inputs/linux-kernel/tools/user-memory/inspect_gateway_admission.py.gz": {
+    "bytes": 3584,
+    "sha256": "d7dbbd0f003878c554d8516844cfa29a9cd021cd91371e759526b3e7feff1e6c"
+  },
+  "inputs/linux-kernel/tools/user-memory/run_gateway_admission.py.gz": {
+    "bytes": 3673,
+    "sha256": "914e943d9480b4ab121a275bd9819d9903af310c8d738a2f538adbd7b55d1d89"
+  },
+  "inputs/linux-kernel/tools/user-memory/test_gateway_machine.py.gz": {
+    "bytes": 2731,
+    "sha256": "3151afadf07f8814abe09118895ea2628439c5f285ef1677113d19d3c16f9cbd"
+  },
+  "kernels/46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f.elf.gz": {
+    "bytes": 317137,
+    "sha256": "58e2483bab3c6873fb429e45e74bb33c8d73701d5025a721e44c671ce7bb16f2"
+  },
+  "kernels/8c44677abd89f174a6e43b829250aaabf75a939e1df84f4b6a3bb6e81e9e68d7.elf.gz": {
+    "bytes": 360580,
+    "sha256": "3953eb0dc2b280090904aebcaf95178bd68ebd0fed26f911e7fe147891aae762"
+  },
+  "kernels/b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c.elf.gz": {
+    "bytes": 365990,
+    "sha256": "fa4cf5d8736a8dd916a05b750fa0ba7fc1db6573cebdd1faa45b96e145ed2f68"
+  },
+  "kernels/f5d0848d1b41a05b3adbf4017cd1ba4bbb39a03062d9e06b4e845d4a90e096fc.elf.gz": {
+    "bytes": 366726,
+    "sha256": "a717c0876f8cb27ccc85f83007c7a3383c3029162e53ada4bc595f54849ac6c6"
+  },
+  "legacy/predecessor/bzImage.gz": {
+    "bytes": 323594,
+    "sha256": "15d75e0dd1ae3cff9afb5d89f4eee0fea676cb4d21361d6d8f2df2c1f2232e0f"
+  },
+  "legacy/predecessor/initramfs.cpio.gz": {
+    "bytes": 13467,
+    "sha256": "3d8f95dcfe5ac0e65a0e14712efd0ed924496f27d1534be3961044eff73997d0"
+  },
+  "legacy/predecessor/memory-abi-number/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-abi-number/gdb.stdout.log.gz": {
+    "bytes": 224,
+    "sha256": "c9b7e1e3f3a538034ebdaff69fa4bf8abae62769eabc13d3c83a59675f5c7a7a"
+  },
+  "legacy/predecessor/memory-abi-number/inspect.gdb.gz": {
+    "bytes": 3595,
+    "sha256": "c12404c9a20654a3b12b9e75510d2f7c969a247ea8e39fda056ae07448a6f8e2"
+  },
+  "legacy/predecessor/memory-abi-number/observations.json.gz": {
+    "bytes": 372,
+    "sha256": "31752e0b01cb9a83a86cdbe361e0361777620ed303de267d22e4b7cc793b7467"
+  },
+  "legacy/predecessor/memory-abi-number/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "856100343d57ecf294447a1cba70661c4d48ded4b9be685b5bbb7a4a0881cfa6"
+  },
+  "legacy/predecessor/memory-abi-number/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-abi-number/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-abi-number/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-address-space/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-address-space/gdb.stdout.log.gz": {
+    "bytes": 228,
+    "sha256": "32b9b96ea5435ccc421c068f205f586eb7a11401352c983a703a8f975f877263"
+  },
+  "legacy/predecessor/memory-address-space/inspect.gdb.gz": {
+    "bytes": 3595,
+    "sha256": "7edc4a9d09cd3b1810a38fa3a93f588e623990ba454f57d47e515532ce6bcc8f"
+  },
+  "legacy/predecessor/memory-address-space/observations.json.gz": {
+    "bytes": 386,
+    "sha256": "71f1620f8babc5117949d69ae4594936d9d67aa1214313c4d1651b68b9eba8fe"
+  },
+  "legacy/predecessor/memory-address-space/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "bf794ff514be6249f591ec3883f8a881c92195f646214f9fb12c87e84cb3022e"
+  },
+  "legacy/predecessor/memory-address-space/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-address-space/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-address-space/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-busy/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-busy/gdb.stdout.log.gz": {
+    "bytes": 220,
+    "sha256": "aa6e6f7ca126c07bbd0e593ee151bf6835b3ef3908a90e752fb8bbbebbab8e5c"
+  },
+  "legacy/predecessor/memory-busy/inspect.gdb.gz": {
+    "bytes": 3596,
+    "sha256": "aa30171c1194360161fb2c0501b433b5567cec124a6a88ba945c504e4b5db526"
+  },
+  "legacy/predecessor/memory-busy/observations.json.gz": {
+    "bytes": 370,
+    "sha256": "905ecb6151e0c5459457de085d3bd07591058924af3ca03c33add6e0c710cafc"
+  },
+  "legacy/predecessor/memory-busy/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "7e5792d1c359f1c58b62ba14059e6b6b2f493aabfcae8d82ed17b4cb6b4af7f3"
+  },
+  "legacy/predecessor/memory-busy/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-busy/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-busy/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-captured-stack/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-captured-stack/gdb.stdout.log.gz": {
+    "bytes": 226,
+    "sha256": "1480a496e6e3f169c2e312afb6b0d54589c491e9a193e8359f0c20f06871dee4"
+  },
+  "legacy/predecessor/memory-captured-stack/inspect.gdb.gz": {
+    "bytes": 3594,
+    "sha256": "97f72d0d7eae6d2b0cbc03c1ede6e44a5091659d573beb5f34907d037d1c938b"
+  },
+  "legacy/predecessor/memory-captured-stack/observations.json.gz": {
+    "bytes": 374,
+    "sha256": "92dbbbc0c3e9f472f2baac985f48d23de346210be08b74cb0f531ea3dc5031ca"
+  },
+  "legacy/predecessor/memory-captured-stack/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "2b09745b6d725cb7cde13ed3688525d949c70e96e90565ce1fd7aae5aeb44e09"
+  },
+  "legacy/predecessor/memory-captured-stack/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-captured-stack/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-captured-stack/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-direction-flag/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-direction-flag/gdb.stdout.log.gz": {
+    "bytes": 229,
+    "sha256": "f8142005a74e03e942eca124c68fd2cfcfd2e77d6c6309fbefbc6aa7dc371d55"
+  },
+  "legacy/predecessor/memory-direction-flag/inspect.gdb.gz": {
+    "bytes": 3594,
+    "sha256": "aa5cdc9d136784cbcf5cc91664022b63887fb25a776576b55161dd1d7c47059a"
+  },
+  "legacy/predecessor/memory-direction-flag/observations.json.gz": {
+    "bytes": 375,
+    "sha256": "0e757aa4cc0bd92446cea2056d08f4705069a27f3147eb17be165a1075dc29ab"
+  },
+  "legacy/predecessor/memory-direction-flag/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "50424d9c9ddec3aa6d86ddf19721f8ebc32feaafec1edaa67ea02bc044f521da"
+  },
+  "legacy/predecessor/memory-direction-flag/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-direction-flag/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-direction-flag/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-entry-identity/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-entry-identity/gdb.stdout.log.gz": {
+    "bytes": 226,
+    "sha256": "4f516d2d23bef7aa76428e21dcdc4c9a144e9a7519d532b5d3fe663b7be22efe"
+  },
+  "legacy/predecessor/memory-entry-identity/inspect.gdb.gz": {
+    "bytes": 3594,
+    "sha256": "92bc6ef2c90f0070a898179567785460dc0c7fa7e86c3fac1a99e7e12d571d35"
+  },
+  "legacy/predecessor/memory-entry-identity/observations.json.gz": {
+    "bytes": 375,
+    "sha256": "842c08e6ad0fa2e7e6c4da084835c24c2f870aa46463bf659463af767bd131ba"
+  },
+  "legacy/predecessor/memory-entry-identity/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "52caa87d4aeaf9c2d4b930eb5161237d70ac0a2e285f63bcefeb42fa8e8c5952"
+  },
+  "legacy/predecessor/memory-entry-identity/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-entry-identity/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-entry-identity/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-gs-context/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-gs-context/gdb.stdout.log.gz": {
+    "bytes": 223,
+    "sha256": "58d7b6732dcdbbdbab1b6b1a11f450884a3a033bb23789a71ba639e0357f1fcb"
+  },
+  "legacy/predecessor/memory-gs-context/inspect.gdb.gz": {
+    "bytes": 3594,
+    "sha256": "c5f5947ac98ced4273aa327e2b7232cd0be8a327934e84b07b75821d46638c41"
+  },
+  "legacy/predecessor/memory-gs-context/observations.json.gz": {
+    "bytes": 371,
+    "sha256": "8f107c6a3df385399b7d98517f6f504fd58149d4e0da2c16cf4350b0239fc7d2"
+  },
+  "legacy/predecessor/memory-gs-context/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "2b61244c5280c2e25acac363be9ec67cade60c0dad7e6d47bc50a6f9f0dbcd7e"
+  },
+  "legacy/predecessor/memory-gs-context/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-gs-context/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-gs-context/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-no-fit/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-no-fit/gdb.stdout.log.gz": {
+    "bytes": 224,
+    "sha256": "dd97a2c64a2af21cf1867d0d21d7c34f102019c19b3ca5093185d43ae7cf676f"
+  },
+  "legacy/predecessor/memory-no-fit/inspect.gdb.gz": {
+    "bytes": 3594,
+    "sha256": "74959b9a3c653a549950aea25725f60a71e8dfbf2e3b44ecada75e97298312ba"
+  },
+  "legacy/predecessor/memory-no-fit/observations.json.gz": {
+    "bytes": 3188,
+    "sha256": "38b98ab537b69f02e53929c43f01ba97d496045823da3567d67fced58905e10e"
+  },
+  "legacy/predecessor/memory-no-fit/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "f2ee76b065895148362ffcf70669d493d2c35ad8f347b48bc4afc8c812f1d75f"
+  },
+  "legacy/predecessor/memory-no-fit/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-no-fit/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-no-fit/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-partial-source/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-partial-source/gdb.stdout.log.gz": {
+    "bytes": 234,
+    "sha256": "f44ebb937067c6d823a192d59f470721dd7f81d179ada7357c870e62501644b9"
+  },
+  "legacy/predecessor/memory-partial-source/inspect.gdb.gz": {
+    "bytes": 3594,
+    "sha256": "9c8d4daf1391aa82652c070b81180d826b4c44d894dff5e7f6baf1d68cca7c76"
+  },
+  "legacy/predecessor/memory-partial-source/observations.json.gz": {
+    "bytes": 773,
+    "sha256": "383b749f885ae35fe23a6a129f13e79272f669fea0e66584b37e25ce1958d563"
+  },
+  "legacy/predecessor/memory-partial-source/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "3fb26c62c148ade1e0a01e1beae646ed260c9144209642f941baacf8a00fa2dc"
+  },
+  "legacy/predecessor/memory-partial-source/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-partial-source/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-partial-source/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-published-unpin/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-published-unpin/gdb.stdout.log.gz": {
+    "bytes": 235,
+    "sha256": "ce1e15172bf42ff58c85c3da6df05ccca6a03c9736c52e7ffa2ebf2f8d585cb3"
+  },
+  "legacy/predecessor/memory-published-unpin/inspect.gdb.gz": {
+    "bytes": 3594,
+    "sha256": "7a256793d200e10b8dd8ce0a5299b6376267f660c8552704b3e75835166a029c"
+  },
+  "legacy/predecessor/memory-published-unpin/observations.json.gz": {
+    "bytes": 1091,
+    "sha256": "eb9a4fede0a5eb27299904c4a311a636fe0cc35bde7c70065018ed8b372a8f6f"
+  },
+  "legacy/predecessor/memory-published-unpin/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "9dc7067edbe7c5980b0a5596ce0968e47a09681f9bcd4328aa7dc9e270db3eec"
+  },
+  "legacy/predecessor/memory-published-unpin/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-published-unpin/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-published-unpin/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-request/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-request/gdb.stdout.log.gz": {
+    "bytes": 221,
+    "sha256": "fb0931a952964be4e053bd0794fb271a639ce3a5d82cfa585a0ad44cf5ac2fdb"
+  },
+  "legacy/predecessor/memory-request/inspect.gdb.gz": {
+    "bytes": 3595,
+    "sha256": "ad42fa65188674f938a2a55d05c345eaa60570de4ce243c72c25c965ab66fcaf"
+  },
+  "legacy/predecessor/memory-request/observations.json.gz": {
+    "bytes": 370,
+    "sha256": "bb850b7c24e3fd8e6937ec6651c19be73b1119ea1bb6058afdaaa2d5ddc090ef"
+  },
+  "legacy/predecessor/memory-request/qemu.command.json.gz": {
+    "bytes": 625,
+    "sha256": "993a1b8b2414f51df52e48e5845d9750e829ca6b59b3b543d3804f51002918f0"
+  },
+  "legacy/predecessor/memory-request/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-request/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-request/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/memory-return-site/gdb.stderr.log.gz": {
+    "bytes": 194,
+    "sha256": "cd1ae29359f09cc2de8b6eb01442626a169bd24bab5bf8e6d952419614900619"
+  },
+  "legacy/predecessor/memory-return-site/gdb.stdout.log.gz": {
+    "bytes": 227,
+    "sha256": "63fc21c3014943efbcbdce352fecb863b1f7d1148f67f8eb8c6564ef1043fed2"
+  },
+  "legacy/predecessor/memory-return-site/inspect.gdb.gz": {
+    "bytes": 3591,
+    "sha256": "e889333f97b0ae2fa20ea061fb540f93f64aaa5769493273f508186c757b2a59"
+  },
+  "legacy/predecessor/memory-return-site/observations.json.gz": {
+    "bytes": 373,
+    "sha256": "df63696697561cdaf645f28c7a296e250b93b7933b3dc357b7a3fa63d6f64b14"
+  },
+  "legacy/predecessor/memory-return-site/qemu.command.json.gz": {
+    "bytes": 624,
+    "sha256": "186cc08e0e245b874080122ca8b717b88c58aed1076fbdbf429857cf77d0fd1f"
+  },
+  "legacy/predecessor/memory-return-site/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-return-site/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/predecessor/memory-return-site/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/predecessor/root-tokens.json.gz": {
+    "bytes": 38,
+    "sha256": "6178c64833c3865eaee3ef376ffba44c357e26c64eda70a67d4647fa435bc157"
+  },
+  "legacy/predecessor/root.t.gz": {
+    "bytes": 12137,
+    "sha256": "1d8ece8c2d89ff77eeb545a3dbf415a18c710b43a1d8c17a1b2da83251564366"
+  },
+  "legacy/predecessor/static-elf-abi-fixture.elf.gz": {
+    "bytes": 11327,
+    "sha256": "2d79dc26f3602345bbd9a0eb4d4cb022b8f542e6e2d0bb5346af6ed2e516bfdc"
+  },
+  "legacy/public-artifact/boot-provenance.json.gz": {
+    "bytes": 689,
+    "sha256": "af38262a5e1f1beac6304ace110136aa3d52a0efa3b952c2ea096d96fd2db01c"
+  },
+  "legacy/public-artifact/bzImage.gz": {
+    "bytes": 318865,
+    "sha256": "1da2108a6205390ff3aad853fbfaaba099a5813249671ecea3883f9aa3373ea2"
+  },
+  "legacy/public-artifact/initramfs.cpio.gz": {
+    "bytes": 13467,
+    "sha256": "3d8f95dcfe5ac0e65a0e14712efd0ed924496f27d1534be3961044eff73997d0"
+  },
+  "legacy/public-artifact/memory-abi-number/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-abi-number/gdb.stdout.log.gz": {
+    "bytes": 222,
+    "sha256": "242b032b693353cb467339150ed5386bc237efd9ccddd690485e6f677af908ae"
+  },
+  "legacy/public-artifact/memory-abi-number/inspect.gdb.gz": {
+    "bytes": 3607,
+    "sha256": "fa20637e8b5455bd5b48ed9fa0fa43d5a824b516e115f0b171fd0aa90c906c9f"
+  },
+  "legacy/public-artifact/memory-abi-number/observations.json.gz": {
+    "bytes": 376,
+    "sha256": "d9649cd971051e0b8e408948a92efefe85d60f49cac8c266ad6a3ba3f282d429"
+  },
+  "legacy/public-artifact/memory-abi-number/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "60072e12eed9e892efdf4fec592fd2e6692d9f4aa4c424d20b963814f3291aad"
+  },
+  "legacy/public-artifact/memory-abi-number/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-abi-number/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-abi-number/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-address-space/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-address-space/gdb.stdout.log.gz": {
+    "bytes": 225,
+    "sha256": "9da325ae70c449d42ada044a13daf66179edccd46c8e471156c5f699b5204719"
+  },
+  "legacy/public-artifact/memory-address-space/inspect.gdb.gz": {
+    "bytes": 3608,
+    "sha256": "143417cb58ac8211c06f91a1fd2b971d3dd29ca2da41c10cfd1179f8f149aa09"
+  },
+  "legacy/public-artifact/memory-address-space/observations.json.gz": {
+    "bytes": 389,
+    "sha256": "ce888b2b8eca82f910b4383fedecae3d238278a0ce9f2ca7afa14a4ecf44da15"
+  },
+  "legacy/public-artifact/memory-address-space/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "9184d957d516864f8021c2ae60f93ff974911974b0cd032262aa1f261a44a44d"
+  },
+  "legacy/public-artifact/memory-address-space/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-address-space/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-address-space/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-busy/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-busy/gdb.stdout.log.gz": {
+    "bytes": 217,
+    "sha256": "a1189acad86ee661d2a44efd8ea53377368a93507ee3928a586c22e7b4e34a8f"
+  },
+  "legacy/public-artifact/memory-busy/inspect.gdb.gz": {
+    "bytes": 3607,
+    "sha256": "8e7d162f900783f35f70c24add3260464d3a4b044b43f8937f275a3dcad87f21"
+  },
+  "legacy/public-artifact/memory-busy/observations.json.gz": {
+    "bytes": 372,
+    "sha256": "0e48fa7e829b68f909869f2e9922eb1e518c41d7e102ef44646044c713ebc97e"
+  },
+  "legacy/public-artifact/memory-busy/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "087f1b56196620b0beca1ddd98dbf29b434ca1212b04db09f5cf906f661e1d67"
+  },
+  "legacy/public-artifact/memory-busy/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-busy/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-busy/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-captured-stack/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-captured-stack/gdb.stdout.log.gz": {
+    "bytes": 224,
+    "sha256": "0c1bf2b6b26515c2f3b0c2b6bd322f4ed1a0fe2b99323f35a59a877dee7d0f3f"
+  },
+  "legacy/public-artifact/memory-captured-stack/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "eed55e1ea930747002fe7af2231f136a50d3fe902c1af4e7f4f4955ba30bdf8d"
+  },
+  "legacy/public-artifact/memory-captured-stack/observations.json.gz": {
+    "bytes": 377,
+    "sha256": "a8d3c7e022700ef049cb732e83fc5cccf953e9c8c8d9f33f13d1f06cee10aaa2"
+  },
+  "legacy/public-artifact/memory-captured-stack/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "3278de428e97e97c752ff91b5ed4071e883bc59628799583affae790bece0279"
+  },
+  "legacy/public-artifact/memory-captured-stack/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-captured-stack/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-captured-stack/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-direction-flag/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-direction-flag/gdb.stdout.log.gz": {
+    "bytes": 224,
+    "sha256": "5ae34ba5a10cbd3ab5709cf76932d96b8a3a65b83494869c9e1ab6e09013c5ec"
+  },
+  "legacy/public-artifact/memory-direction-flag/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "ec4650d47f1a0cc495c177b92338196a104920e8d9173564dfc34a443e531daa"
+  },
+  "legacy/public-artifact/memory-direction-flag/observations.json.gz": {
+    "bytes": 377,
+    "sha256": "0d49fe3d784dfa73df12f4ef2252fb0dc936bde84e16aae75bac5140fbc8fb0a"
+  },
+  "legacy/public-artifact/memory-direction-flag/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "00e678fbdc26601c974cabaa1d6d7be94c98225adfcf46f049529dede39e09ed"
+  },
+  "legacy/public-artifact/memory-direction-flag/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-direction-flag/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-direction-flag/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-entry-identity/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-entry-identity/gdb.stdout.log.gz": {
+    "bytes": 228,
+    "sha256": "ad50d64977226a713a77cb516e51145c86c71c741792edd41cd425ed19cf1493"
+  },
+  "legacy/public-artifact/memory-entry-identity/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "d4baa8215b4a704adbda97d8404d85687f4b8482aa9f3be77b2c10d2841fb07c"
+  },
+  "legacy/public-artifact/memory-entry-identity/observations.json.gz": {
+    "bytes": 377,
+    "sha256": "7d81d82ccb008687620c727ec0aa931d52a3ef0b16e20fe622f3c79f7faa70e0"
+  },
+  "legacy/public-artifact/memory-entry-identity/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "4dcfe6f81e968c91590649acca212e18f82841757f4a4fe171149406f0861f02"
+  },
+  "legacy/public-artifact/memory-entry-identity/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-entry-identity/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-entry-identity/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-gs-context/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-gs-context/gdb.stdout.log.gz": {
+    "bytes": 222,
+    "sha256": "0f3ff6507ffe78e49558cd9697fa51f3f47c1eef011ceb8186a8108b80d41475"
+  },
+  "legacy/public-artifact/memory-gs-context/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "477fd4f76a7f07e8d74fc776243e266924f29ef8027b38195c8c94643029a94b"
+  },
+  "legacy/public-artifact/memory-gs-context/observations.json.gz": {
+    "bytes": 373,
+    "sha256": "e362902622dc4e00aaaae8cc851b1cfc8c4ebed41929c775f6a40e073b785d10"
+  },
+  "legacy/public-artifact/memory-gs-context/qemu.command.json.gz": {
+    "bytes": 634,
+    "sha256": "8da9428cd3fd3da11405c4905fb4ddfd28aff473de5eb1aeb04224c82b5f7bf4"
+  },
+  "legacy/public-artifact/memory-gs-context/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-gs-context/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-gs-context/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-no-fit/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-no-fit/gdb.stdout.log.gz": {
+    "bytes": 219,
+    "sha256": "f64ecadca32c14cec136df88aef5051d5b69a62de7b6bf7c5e2ca147c44b1bc8"
+  },
+  "legacy/public-artifact/memory-no-fit/inspect.gdb.gz": {
+    "bytes": 3605,
+    "sha256": "c8e64eb778fedecdf213a8c32a4c605156bb60318ce39ca62200c59fb94b06d8"
+  },
+  "legacy/public-artifact/memory-no-fit/observations.json.gz": {
+    "bytes": 3194,
+    "sha256": "4ca6c16e6954546776eed3c90eda112d08fe397939c8e2f9b8522dab624dc199"
+  },
+  "legacy/public-artifact/memory-no-fit/qemu.command.json.gz": {
+    "bytes": 634,
+    "sha256": "c7d6aa1f80f218464d0dbed8183ef609af2565bc606f6860adbd3045aa97fe90"
+  },
+  "legacy/public-artifact/memory-no-fit/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-no-fit/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-no-fit/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-partial-source/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-partial-source/gdb.stdout.log.gz": {
+    "bytes": 231,
+    "sha256": "7d23b8e47b97ba8db94082ea67be3d9d1ddfb287a0584127ff5b770f9c34df99"
+  },
+  "legacy/public-artifact/memory-partial-source/inspect.gdb.gz": {
+    "bytes": 3604,
+    "sha256": "c57d73704d552e9c9b9c855f93aefcdb9e3791bb6b04d5bf8267bf21379697bb"
+  },
+  "legacy/public-artifact/memory-partial-source/observations.json.gz": {
+    "bytes": 773,
+    "sha256": "cfbbf26b7004ac2b9e8b4c1d1c020e283effeb2412fc4c0ca9d2ccfaa109d23d"
+  },
+  "legacy/public-artifact/memory-partial-source/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "0d263730915b9b5a55deeaf9133c8127fc02bed7ea82d12ba29830b76e4f25db"
+  },
+  "legacy/public-artifact/memory-partial-source/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-partial-source/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-partial-source/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-published-unpin/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-published-unpin/gdb.stdout.log.gz": {
+    "bytes": 232,
+    "sha256": "5803ea30747e3f44346dd01cab42781dbf0c9360749d314e3da04fb6927cead0"
+  },
+  "legacy/public-artifact/memory-published-unpin/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "097a03dfe5341dedf78027867b1f256d38bddbf622622c4e8647c862491a5103"
+  },
+  "legacy/public-artifact/memory-published-unpin/observations.json.gz": {
+    "bytes": 1092,
+    "sha256": "b0821fd932903175592ea3916e8457933ec76518e744e4569b1017915a23566f"
+  },
+  "legacy/public-artifact/memory-published-unpin/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "7b7c005ac525eb3e70a3edfc469d2d4bf23c6802c61c3bf6b63eb6a21cb6507e"
+  },
+  "legacy/public-artifact/memory-published-unpin/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-published-unpin/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-published-unpin/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-request/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-request/gdb.stdout.log.gz": {
+    "bytes": 220,
+    "sha256": "03eb7842fc22ee6f50af69bc278c199af08f151d9d892355aefa5e99d9a22505"
+  },
+  "legacy/public-artifact/memory-request/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "f1e5f3ff71bb68726c8229fbef2231dfc816c920c56981c1355a5afbbfdb9bb6"
+  },
+  "legacy/public-artifact/memory-request/observations.json.gz": {
+    "bytes": 371,
+    "sha256": "8772bf0430598dc417e55cad9c51371287753752f0f41b85b5a0951a4005277f"
+  },
+  "legacy/public-artifact/memory-request/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "7184c619fabff5ee795cf483e34ddece3dde9b881816764b958bdc3c954c91be"
+  },
+  "legacy/public-artifact/memory-request/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-request/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-request/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/memory-return-site/gdb.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-return-site/gdb.stdout.log.gz": {
+    "bytes": 226,
+    "sha256": "34ff1275e86a48efecf40b91f4dc85e855c1af0667991290c08d3a270517de90"
+  },
+  "legacy/public-artifact/memory-return-site/inspect.gdb.gz": {
+    "bytes": 3604,
+    "sha256": "817a8565b155f6deac6b4152d2146d25a5e9db7143a1a50ebd1bf62240965345"
+  },
+  "legacy/public-artifact/memory-return-site/observations.json.gz": {
+    "bytes": 375,
+    "sha256": "8de948fc7c8a8cf11f681f724f3825490bf7757e87cce13a1e37814e1b2341fe"
+  },
+  "legacy/public-artifact/memory-return-site/qemu.command.json.gz": {
+    "bytes": 635,
+    "sha256": "8479a9a89c53c89832ae9c7d0a4c2a47842e79e433cfb2abfeb405a35c4368bb"
+  },
+  "legacy/public-artifact/memory-return-site/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-return-site/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/public-artifact/memory-return-site/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/public-artifact/root-tokens.json.gz": {
+    "bytes": 38,
+    "sha256": "6178c64833c3865eaee3ef376ffba44c357e26c64eda70a67d4647fa435bc157"
+  },
+  "legacy/public-artifact/static-elf-abi-fixture.elf.gz": {
+    "bytes": 11327,
+    "sha256": "2d79dc26f3602345bbd9a0eb4d4cb022b8f542e6e2d0bb5346af6ed2e516bfdc"
+  },
+  "legacy/reconstructed/bzImage.gz": {
+    "bytes": 318872,
+    "sha256": "cd50505caf906c92cffedda65998a80ff9a5b4c67da729345feb291de28ad8ee"
+  },
+  "legacy/reconstructed/initramfs.cpio.gz": {
+    "bytes": 13467,
+    "sha256": "3d8f95dcfe5ac0e65a0e14712efd0ed924496f27d1534be3961044eff73997d0"
+  },
+  "legacy/reconstructed/memory-abi-number/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-abi-number/gdb.stdout.log.gz": {
+    "bytes": 222,
+    "sha256": "242b032b693353cb467339150ed5386bc237efd9ccddd690485e6f677af908ae"
+  },
+  "legacy/reconstructed/memory-abi-number/inspect.gdb.gz": {
+    "bytes": 3607,
+    "sha256": "00ba79f04e6df2bbf7477c437bb6d4c3b1b85c3fb6f6eb31889da991159184f7"
+  },
+  "legacy/reconstructed/memory-abi-number/observations.json.gz": {
+    "bytes": 376,
+    "sha256": "d9649cd971051e0b8e408948a92efefe85d60f49cac8c266ad6a3ba3f282d429"
+  },
+  "legacy/reconstructed/memory-abi-number/qemu.command.json.gz": {
+    "bytes": 632,
+    "sha256": "19d2e69b2a823da535ceaf25b3049273ea82730c53dc89b0489cd034ac858058"
+  },
+  "legacy/reconstructed/memory-abi-number/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-abi-number/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-abi-number/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-address-space/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-address-space/gdb.stdout.log.gz": {
+    "bytes": 225,
+    "sha256": "9da325ae70c449d42ada044a13daf66179edccd46c8e471156c5f699b5204719"
+  },
+  "legacy/reconstructed/memory-address-space/inspect.gdb.gz": {
+    "bytes": 3607,
+    "sha256": "20c8228a392c3a990b9778c32fc3b8c0d9c1a251bbf1486faca0b9823e63919c"
+  },
+  "legacy/reconstructed/memory-address-space/observations.json.gz": {
+    "bytes": 389,
+    "sha256": "ce888b2b8eca82f910b4383fedecae3d238278a0ce9f2ca7afa14a4ecf44da15"
+  },
+  "legacy/reconstructed/memory-address-space/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "6abbd74dd39ebf8bc63c0a00f9dce57c13ee6e10896f1ee7965666665468b448"
+  },
+  "legacy/reconstructed/memory-address-space/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-address-space/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-address-space/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-busy/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-busy/gdb.stdout.log.gz": {
+    "bytes": 217,
+    "sha256": "a1189acad86ee661d2a44efd8ea53377368a93507ee3928a586c22e7b4e34a8f"
+  },
+  "legacy/reconstructed/memory-busy/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "da3ed66ebb5b66f80cc5163d41e62ea61a4821b2b4759fca9a2c029b652353ab"
+  },
+  "legacy/reconstructed/memory-busy/observations.json.gz": {
+    "bytes": 372,
+    "sha256": "0e48fa7e829b68f909869f2e9922eb1e518c41d7e102ef44646044c713ebc97e"
+  },
+  "legacy/reconstructed/memory-busy/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "c44338178ffd8c09f443c204755ac526d1edcad937da9ee0c25f078fd7ede7f9"
+  },
+  "legacy/reconstructed/memory-busy/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-busy/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-busy/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-captured-stack/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-captured-stack/gdb.stdout.log.gz": {
+    "bytes": 224,
+    "sha256": "0c1bf2b6b26515c2f3b0c2b6bd322f4ed1a0fe2b99323f35a59a877dee7d0f3f"
+  },
+  "legacy/reconstructed/memory-captured-stack/inspect.gdb.gz": {
+    "bytes": 3605,
+    "sha256": "385a6207265f4a2bc4309223806e4b2931370db43c327bfed0eba3b581d4baaa"
+  },
+  "legacy/reconstructed/memory-captured-stack/observations.json.gz": {
+    "bytes": 377,
+    "sha256": "a8d3c7e022700ef049cb732e83fc5cccf953e9c8c8d9f33f13d1f06cee10aaa2"
+  },
+  "legacy/reconstructed/memory-captured-stack/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "7e93c9565718f4fdd3e56575d9ae951f202443d80c7ac4dec935a6461e687910"
+  },
+  "legacy/reconstructed/memory-captured-stack/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-captured-stack/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-captured-stack/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-direction-flag/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-direction-flag/gdb.stdout.log.gz": {
+    "bytes": 224,
+    "sha256": "5ae34ba5a10cbd3ab5709cf76932d96b8a3a65b83494869c9e1ab6e09013c5ec"
+  },
+  "legacy/reconstructed/memory-direction-flag/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "f4ff6bc44c95d0d02ca118dc62696ba00f7b3f0acaec8b6a6912fab2dcefd35b"
+  },
+  "legacy/reconstructed/memory-direction-flag/observations.json.gz": {
+    "bytes": 377,
+    "sha256": "0d49fe3d784dfa73df12f4ef2252fb0dc936bde84e16aae75bac5140fbc8fb0a"
+  },
+  "legacy/reconstructed/memory-direction-flag/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "303234cbad7aeaeadaf672d082706b953e336f3a5588004ad8969ab2a8edfa06"
+  },
+  "legacy/reconstructed/memory-direction-flag/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-direction-flag/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-direction-flag/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-entry-identity/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-entry-identity/gdb.stdout.log.gz": {
+    "bytes": 228,
+    "sha256": "ad50d64977226a713a77cb516e51145c86c71c741792edd41cd425ed19cf1493"
+  },
+  "legacy/reconstructed/memory-entry-identity/inspect.gdb.gz": {
+    "bytes": 3605,
+    "sha256": "ba2b00ab6e9b25ed5154ccd255dbab11c3cff0ccf3014df9bfd7d95963ba6ede"
+  },
+  "legacy/reconstructed/memory-entry-identity/observations.json.gz": {
+    "bytes": 377,
+    "sha256": "7d81d82ccb008687620c727ec0aa931d52a3ef0b16e20fe622f3c79f7faa70e0"
+  },
+  "legacy/reconstructed/memory-entry-identity/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "a4dbf1ed27cf9ccacb2cb417ce8b815d6c6e5c8c210c4b541f5ccc8941fd89d0"
+  },
+  "legacy/reconstructed/memory-entry-identity/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-entry-identity/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-entry-identity/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-gs-context/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-gs-context/gdb.stdout.log.gz": {
+    "bytes": 222,
+    "sha256": "0f3ff6507ffe78e49558cd9697fa51f3f47c1eef011ceb8186a8108b80d41475"
+  },
+  "legacy/reconstructed/memory-gs-context/inspect.gdb.gz": {
+    "bytes": 3606,
+    "sha256": "91b920d03ebb7691e07f26f24f160cfd06bbf781dfb65317c03c9bd43e035d80"
+  },
+  "legacy/reconstructed/memory-gs-context/observations.json.gz": {
+    "bytes": 373,
+    "sha256": "e362902622dc4e00aaaae8cc851b1cfc8c4ebed41929c775f6a40e073b785d10"
+  },
+  "legacy/reconstructed/memory-gs-context/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "2e94a30589b3cd1d5193b01e25fcddb4b719697e83d35f119d801b6d34b100a1"
+  },
+  "legacy/reconstructed/memory-gs-context/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-gs-context/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-gs-context/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-no-fit/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-no-fit/gdb.stdout.log.gz": {
+    "bytes": 219,
+    "sha256": "f64ecadca32c14cec136df88aef5051d5b69a62de7b6bf7c5e2ca147c44b1bc8"
+  },
+  "legacy/reconstructed/memory-no-fit/inspect.gdb.gz": {
+    "bytes": 3605,
+    "sha256": "76ff8ed8710fa6e49da3d615d5712eadbe4f3c00f994086be566fb52f84f515d"
+  },
+  "legacy/reconstructed/memory-no-fit/observations.json.gz": {
+    "bytes": 3194,
+    "sha256": "4ca6c16e6954546776eed3c90eda112d08fe397939c8e2f9b8522dab624dc199"
+  },
+  "legacy/reconstructed/memory-no-fit/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "f15d31b740a624ac2bedfab52dbd6816d4c8ee1f64f9cc570e42d82b2000bc29"
+  },
+  "legacy/reconstructed/memory-no-fit/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-no-fit/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-no-fit/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-partial-source/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-partial-source/gdb.stdout.log.gz": {
+    "bytes": 231,
+    "sha256": "7d23b8e47b97ba8db94082ea67be3d9d1ddfb287a0584127ff5b770f9c34df99"
+  },
+  "legacy/reconstructed/memory-partial-source/inspect.gdb.gz": {
+    "bytes": 3605,
+    "sha256": "51fc63488be083721b50555eec55093bfcb88909dcaad4931fe2d6c108a3efde"
+  },
+  "legacy/reconstructed/memory-partial-source/observations.json.gz": {
+    "bytes": 773,
+    "sha256": "cfbbf26b7004ac2b9e8b4c1d1c020e283effeb2412fc4c0ca9d2ccfaa109d23d"
+  },
+  "legacy/reconstructed/memory-partial-source/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "2f6e812021062825e911056679ee6cf4e4f310fbdf2b12afff0be6406444f562"
+  },
+  "legacy/reconstructed/memory-partial-source/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-partial-source/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-partial-source/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-published-unpin/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-published-unpin/gdb.stdout.log.gz": {
+    "bytes": 232,
+    "sha256": "5803ea30747e3f44346dd01cab42781dbf0c9360749d314e3da04fb6927cead0"
+  },
+  "legacy/reconstructed/memory-published-unpin/inspect.gdb.gz": {
+    "bytes": 3607,
+    "sha256": "b8b1776f7350d2f836b90f599ef5a93d4a69f81abc331bcc3537ff7cbeb7c371"
+  },
+  "legacy/reconstructed/memory-published-unpin/observations.json.gz": {
+    "bytes": 1092,
+    "sha256": "b0821fd932903175592ea3916e8457933ec76518e744e4569b1017915a23566f"
+  },
+  "legacy/reconstructed/memory-published-unpin/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "54300c36ac870ad1268a6fd2ecf827fb5d7ce2646988861fce3fcd2cf25b05e8"
+  },
+  "legacy/reconstructed/memory-published-unpin/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-published-unpin/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-published-unpin/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-request/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-request/gdb.stdout.log.gz": {
+    "bytes": 220,
+    "sha256": "03eb7842fc22ee6f50af69bc278c199af08f151d9d892355aefa5e99d9a22505"
+  },
+  "legacy/reconstructed/memory-request/inspect.gdb.gz": {
+    "bytes": 3604,
+    "sha256": "8f3d4b5daa196271f35bbe633a6bcfc03536bee36118b1c0b9edae1d0055348d"
+  },
+  "legacy/reconstructed/memory-request/observations.json.gz": {
+    "bytes": 371,
+    "sha256": "8772bf0430598dc417e55cad9c51371287753752f0f41b85b5a0951a4005277f"
+  },
+  "legacy/reconstructed/memory-request/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "15f30824f41d7488959727ad7186efc9a11a7982772c40ce9cfed281deab0841"
+  },
+  "legacy/reconstructed/memory-request/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-request/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-request/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/memory-return-site/gdb.stderr.log.gz": {
+    "bytes": 203,
+    "sha256": "22dfbe61309ddd3cf5a228eafe529d82cb7312e60b98a91d8d5f067b097dddd2"
+  },
+  "legacy/reconstructed/memory-return-site/gdb.stdout.log.gz": {
+    "bytes": 226,
+    "sha256": "34ff1275e86a48efecf40b91f4dc85e855c1af0667991290c08d3a270517de90"
+  },
+  "legacy/reconstructed/memory-return-site/inspect.gdb.gz": {
+    "bytes": 3602,
+    "sha256": "9a2aa836187a9a250f14b3354d9143ec0c6494014e9da47e6757974e1e65f2b0"
+  },
+  "legacy/reconstructed/memory-return-site/observations.json.gz": {
+    "bytes": 375,
+    "sha256": "8de948fc7c8a8cf11f681f724f3825490bf7757e87cce13a1e37814e1b2341fe"
+  },
+  "legacy/reconstructed/memory-return-site/qemu.command.json.gz": {
+    "bytes": 631,
+    "sha256": "df1afc15b823ab99d2d0b38b1211521ed8b7a756badec0661d559c3f36c37329"
+  },
+  "legacy/reconstructed/memory-return-site/qemu.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-return-site/qemu.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "legacy/reconstructed/memory-return-site/serial.log.gz": {
+    "bytes": 475,
+    "sha256": "79ad5019c483697b4295356f99dd9430ef921dbdd25c8f83aa1a9121f0148297"
+  },
+  "legacy/reconstructed/root-tokens.json.gz": {
+    "bytes": 38,
+    "sha256": "6178c64833c3865eaee3ef376ffba44c357e26c64eda70a67d4647fa435bc157"
+  },
+  "legacy/reconstructed/static-elf-abi-fixture.elf.gz": {
+    "bytes": 11327,
+    "sha256": "2d79dc26f3602345bbd9a0eb4d4cb022b8f542e6e2d0bb5346af6ed2e516bfdc"
+  },
+  "methods/collector.py.gz": {
+    "bytes": 2238,
+    "sha256": "119d0c0e16a43a2a353e1b8e8dce96f6647c2df569879ff955bf176e6cd9b982"
+  },
+  "methods/reviewer.py.gz": {
+    "bytes": 3205,
+    "sha256": "cb7cbe9e55c3423d103c652fb2d75bb7883fb4bdd167029da96b39f0d1519c19"
+  },
+  "qualification/46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f.json.gz": {
+    "bytes": 17330,
+    "sha256": "d9488819ece833c67d7d5ee24bae76e4eb357cb7e4f4b6d41de95bfe8543947f"
+  },
+  "qualification/8c44677abd89f174a6e43b829250aaabf75a939e1df84f4b6a3bb6e81e9e68d7.json.gz": {
+    "bytes": 17325,
+    "sha256": "a1c6eaef2c7df6c08c7c1e86a50034da7c383e2c473e7cd8528acd6038ab9033"
+  },
+  "qualification/b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c.json.gz": {
+    "bytes": 17867,
+    "sha256": "9b25b4db149a51ecbd00698a1d5b72095c7d687bca5def9bda3a445e083fbb0e"
+  },
+  "qualification/driver.py.gz": {
+    "bytes": 3673,
+    "sha256": "914e943d9480b4ab121a275bd9819d9903af310c8d738a2f538adbd7b55d1d89"
+  },
+  "qualification/f5d0848d1b41a05b3adbf4017cd1ba4bbb39a03062d9e06b4e845d4a90e096fc.json.gz": {
+    "bytes": 17332,
+    "sha256": "39c06abafd2b97455471eaa9ed440a6b73aeaebf6f86a62037862aec937e5e8a"
+  },
+  "qualification/process-memory.stderr.log.gz": {
+    "bytes": 56,
+    "sha256": "70464ffa48cb675ad743f39e6173716990a767f20f7b127a5d2bb0e193396bcb"
+  },
+  "qualification/process-memory.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "qualification/run.json.gz": {
+    "bytes": 25378,
+    "sha256": "ee74ad2c244197b72be1e22965dddcdad1b9c6290a66143c09a40901be8c87b8"
+  },
+  "qualification/user-memory.stderr.log.gz": {
+    "bytes": 57,
+    "sha256": "bac0fd1ce5a0ddecce437d8f64b0eefcf161cf6adba948929b4955f55ce1b563"
+  },
+  "qualification/user-memory.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "references/base-manifest.json": {
+    "bytes": 168883,
+    "sha256": "243cf390588cbc17687c36fbee82abc13003ae9b17c4cd984f8f2dd82d140fe4"
+  },
+  "report.json": {
+    "bytes": 122441,
+    "sha256": "950db77bb51e64c26fc8805f1383794fc1252f54e7e5abf2891bff641c43ee5b"
+  }
+}

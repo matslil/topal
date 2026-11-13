@@ -1204,3 +1204,59 @@ source tree. It reruns no Cargo command or VM. The existing nonfatal GDB
 `.debug_names` warning is preserved; no new debug-format qualification is claimed.
 Complete entry/effect/lifetime/ownership, independent loader support, production
 reconstruction and full initial Linux acceptance remain unfinished.
+
+## Saved pre-invocation gateway checks and retained diagnostics
+
+The [gateway model stage](tools/user-memory/results/stage-3-gateway-admission/report.json)
+adds an independent predicate and strict byte interpreter for selected checks
+under `TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001`. It binds actual ELF gateway/data
+symbols, the three encoded caller return sites and the pre-save/refusal markers.
+It compares `brk`, exec-reset and completion paths without running code in a VM
+or changing registers, memory, tests or production selection.
+
+Each of four distinct saved kernels passes **5,126 cases**: **1,173** reach the
+modeled admission boundary and **3,953** reach refusal. The total is **20,504**
+interpretations. The matrix covers complete-word and independent-bit changes,
+stack limits/alignment, CPL/IF/DF, both GS/root routes, self/entry/ABI/captured
+request bindings and every recovery word. It explicitly includes the nine
+legacy pre-entry modes. Thirty-six Python-only guard mutations change each
+selected refusal edge to fall through; the independent predicate detects all
+of them. Eighteen new unit counterexamples include high-word comparisons,
+metadata and real call binding, initial flags, zero-count shifts, MSR halves,
+unmodeled reads and control flow. **248 user-memory / 82 process-memory tests**
+pass, with all **147 watched inputs** unchanged over **6.42 seconds**. Recorded
+peak/limit are **55,812,096 / 3,352,653,824 bytes**, swap/events zero in that scope.
+
+The current process-MM prefix contains 295 decoded instructions; these selected
+paths interpret 125 of them. Each predecessor prefix contains 120 instructions,
+of which 117 are visited. Unvisited instructions remain listed. The model does
+not qualify other operation classes. Its flags and scratch word are projections;
+it does not model CPU faults, translation, asynchronous entry or native stack
+bytes. Geometry and matching numeric values do not establish actual owners,
+legitimate caller origin or fresh nonwrapping entry generation. The report
+retains `qualification_complete=false` and all those external obligations.
+
+Read-only inventory of the interrupted compiler run now finds completed records
+for all twelve diagnostic modes on three retained predecessor kernels: **27
+pre-entry refusals**, **six post-write fatal/retirement assertions** and **three
+ordinary no-fit assertions**. Each mode has its original observation, GDB
+script/logs and VM command; the partial compiler log records the three relevant
+individual Rust tests as passed. The earlier statement that reach was
+unestablished is therefore superseded by this evidence. The compiler command
+itself still ended 241 and has no full-suite result. These records cannot
+explain any model/provider safeguard decision.
+
+Retained producer assertions are narrower than complete saved-state replay:
+not every CPU input or before/after byte is available. They establish past mode
+completion on those predecessor kernels, not fresh injected execution or complete
+fatal/ownership qualification of the current selection. The retained public
+artifact also has matching revision-154 boot provenance; it belongs to the
+predecessor profile, not current owned/process-MM publication.
+
+The [self-review](tools/user-memory/results/stage-3-gateway-admission-review.json)
+replays all four model reports, weakened-guard controls, retained-file assertions
+and both suites from frozen sources. The archive explicitly depends on the
+pinned boot-header-correction source archive. No compiler, VM or debugger is
+invoked in this stage; no historical check/test or activation gate is removed.
+Full compiler completion, other entry/effect/lifetime/native-fatal paths,
+production reconstruction and original Linux acceptance remain unfinished.
