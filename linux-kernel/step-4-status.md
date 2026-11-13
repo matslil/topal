@@ -230,6 +230,16 @@ original interface checks remain unchanged. Two review comparison errors are
 also retained. Offsets 88,215 and 94,687, every-path/lifetime/fatal/publication,
 production and full initial Linux requirements remain open.
 
+The subsequent [conditional callee graph](step-4-owned-user-extents.md#stage-3-conditional-linked-callee-graph)
+checks 71,457 linked instructions, six registered callback sites and six guarded
+jump tables with 98 entries. Its selected edge set closes under explicit
+entry/stability/call-return assumptions, with `qualification_complete=false`.
+All 219 user-memory and 82 process-memory models and eleven altered native-record
+controls pass; frozen replay preserves the graph and reproduces the retained
+recovery-reader failure. No VM or kernel rebuild runs. Helpers 88,215/94,687,
+global entry/lifetime/effect/return proofs, production and initial Linux acceptance
+remain unfinished; native selected return coverage stays 89/91.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

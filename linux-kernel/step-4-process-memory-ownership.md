@@ -1352,6 +1352,12 @@ Every remaining argument/error/fatal/exception path, the two unsampled sites,
 continuous/private-loan lifetime, mode/mapping/concurrency/publication proof,
 production reconstruction and the original full Linux objective remain open.
 
+The subsequent [conditional linked callee graph](step-4-owned-user-extents.md#stage-3-conditional-linked-callee-graph)
+checks 71,457 saved instructions across declared starts, direct callees, six
+registered callback calls and six guarded tables. Its four entry/mutation/return
+assumptions remain explicit. It supplies no global unreachability or runtime
+ownership proof, and both unsampled helper sites remain acceptance gaps.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

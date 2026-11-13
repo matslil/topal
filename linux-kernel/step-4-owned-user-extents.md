@@ -1034,3 +1034,76 @@ unchanged. Other editors, all-entry/callee effects, AP/DMA/asynchronous exclusio
 continuous mode/lifetime, remaining callers/private loans, native gaps, fallback
 and clean production qualification remain required. Stage 3, initial Step 4 and
 the full Linux/distribution/container/VM-host goal remain unfinished.
+
+## Stage 3 conditional linked callee graph
+
+The [callee inspector](tools/user-memory/inspect_callee_graph.py) extends the
+selected process's direct graph into linked callees. It rederives fourteen
+declared starts, including the actual LSTAR setup, and checks the six indirect
+callback sites against native root argument pushes and process registration
+loads/stores. The existing five root-supplied targets remain conditional on
+their separately required writer/lifecycle stability.
+
+Fresh LLVM/GNU listings of the unchanged kernel and two targeted decoder windows
+produce **71,457 reached instructions / 386,870 bytes**, spanning **842 function
+symbol identities**. Distinct local `p.copy` and `p.bank` definitions retain their
+actual addresses. Two split-prefix instructions are coalesced by complete byte
+agreement; 801 ordinary mnemonic aliases receive control-class comparison, not
+a complete instruction-effect proof. Supported direct destinations are checked
+against encoded displacements and both decoder operands.
+
+The six remaining nested indirect jumps use linked tables with **98 entries**:
+three RDI-indexed tables, one R14-indexed table and two saved-EAX tables. The
+reader checks exact compare/subtract, unsigned-above guard, saved/reloaded index,
+table bytes and in-function destinations, and rejects declared-entry or graph
+edge bypasses of the guard. ELF nonwritable/nonexecutable data flags bind the
+selected table representation; they do not prove hardware permissions or
+runtime immutability. The saved-EAX form preserves the zero-extended original
+index while its subtraction supplies guard flags. These checks use the
+[Intel SDM's 32-bit result rules](https://cdrdv2.intel.com/v1/dl/getContent/671436#page=77)
+and [CMP/Jcc semantics](https://cdrdv2.intel.com/v1/dl/getContent/671199).
+
+The selected edge set has no remaining reader frontier **under four explicit
+assumptions**: the listed starts cover the selected execution; callback slots
+remain registered; code/table/local saved-index bytes stay stable; calls return
+at their encoded continuations. Complete kernel entries, interrupts/exceptions,
+AP/boot/DMA behavior, mutation exclusion, return ownership, machine-state/effect
+and continuous loan proofs remain separate. The report always retains
+`qualification_complete=false`. Offset **88,215** is outside this conditional
+graph and **94,687** is inside it; neither result resolves global unreachability
+or path feasibility. Native first-reach and selected normal-return coverage
+remain **89/91**, with both sites still unsampled.
+
+Six fresh surrounding checks pass, including **219 user-memory models** and
+**82 process-memory models**. Sixteen new host-only counterexample tests cover
+transfer-class/destination corruption, prefix fragments, guarded table forms,
+bypasses, table storage and decoder windows. Eleven altered root/callback
+records reject. All **738 watched sources** remain unchanged during the
+21.19-second qualification. The preceding actual 383-pass/25-ignored compiler
+suite is referenced over 361 unchanged relevant inputs, not rerun; its original
+accounting gap remains explicit. No VM or kernel rebuild occurs in this stage.
+
+The [833-entry closed archive](tools/user-memory/results/stage-3-callee-graph/report.json)
+preserves complete selected source/native bytes, fresh decoder versions/output,
+commands, controls and failure history. Frozen Python-only replay reproduces
+the exact graph and both full model suites. Earlier pilots exposed an empty
+prefix-token parser and a restrictive transfer parser. Their available notices
+and sources are retained; complete stderr/resource counters were not saved for
+those pilots. A subsequent recovery-reader failure retains full stderr and
+pre-fix sources and is reproduced in isolation: the decoder stop address can
+truncate a final prefix. Recovery now leaves a fifteen-byte stop-tail unapplied
+rather than replacing complete full-listing rows. Strict byte checks remain.
+
+The [companion review](tools/user-memory/results/stage-3-callee-graph-review.json)
+binds archive closure, root/registration/table slices, symbol scopes, exact
+replay and unchanged native artifacts. Qualification records a cgroup peak of
+**767,516,672 / 3,336,110,080 bytes**, with zero swap and sampled memory events;
+collection/review retain separate successful scopes. No zero-event claim applies
+to the earlier method failures. Review is single-agent, without an independent
+human security assessment.
+
+This adds saved-code evidence only. Kernel/compiler/C/core-language meaning,
+public behavior and production selection remain unchanged. Full entry/callee
+effects, callback/table/stack stability, every caller/path/fatal/exception,
+continuous/private-loan/mapping/concurrent access, production reconstruction and
+the original Linux/distribution/container/VM-host objective remain unfinished.
