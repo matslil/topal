@@ -7,6 +7,13 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [calendar-data audit](tools/user-memory/results/stage-3-calendar-data.md)
+identifies the selected decoder discrepancy as the low byte of a Gregorian
+day-count table entry. Exact table/consumer bytes, source reconstruction and
+conditional graph checks pass, together with 337 host tests and frozen replay.
+The differing linear listings remain retained. This does not prove complete
+entry exclusion, hardware NX, runtime immutability or production qualification.
+
 The [rejected child-exec cohort](tools/process-memory/results/stage-3-exec-failures.md)
 adds sixteen ordinary failed execs with retained child/parent state, followed
 by four successful replacements. Close-on-exec flags remain local to the child,
@@ -51,8 +58,9 @@ unqualified.
 The [linked paging-control inventory](tools/user-memory/results/stage-3-paging-controls/README.md)
 retains 847 selected sites, ten control-register writes and 29 invalidation sites
 across two full executable-section listings. Nine targeted tests and exact
-frozen replay pass. Unknown/overlapping rows, one decoder disagreement and an
-embedded opcode candidate remain unresolved; no new guest or mode proof runs.
+frozen replay pass. The subsequent calendar audit explains the selected decoder
+discrepancy's data context. Other unknown/overlapping rows and the embedded opcode
+candidate retain entry questions; no new guest or mode proof runs.
 The subsequent [image-publication checkpoint](tools/user-memory/results/stage-3-image-publication/README.md)
 observes four RELRO edits, three exec restorations and all 86 image invalidation
 states, retaining the previous heap/owner/metadata checks. The complete ordinary

@@ -1152,8 +1152,9 @@ The archive explicitly depends on the two pinned predecessor archives. The
 restores their source closure, overlays the exact current readers and reproduces
 the boot/graph bytes, controls and both suites. This is saved-data evidence;
 there is no new VM, decoder process, compiler test run, kernel or C change.
-The unmatched control at **45,861,106** is outside the enlarged graph and remains
-unresolved. Helpers **88,215 / 94,687** remain natively unsampled; selected native
+The unmatched control at **45,861,106** is outside the enlarged graph. Its data
+context is identified by the subsequent calendar audit below; complete entry
+exclusion remains required. Helpers **88,215 / 94,687** remain natively unsampled; selected native
 first-reach/normal-return coverage remains **89/91**. Full runtime/effect/lifetime,
 production reconstruction and the original Linux acceptance remain unfinished.
 
@@ -1260,3 +1261,29 @@ pinned boot-header-correction source archive. No compiler, VM or debugger is
 invoked in this stage; no historical check/test or activation gate is removed.
 Full compiler completion, other entry/effect/lifetime/native-fatal paths,
 production reconstruction and original Linux acceptance remain unfinished.
+
+## Calendar data and the retained decoder discrepancy
+
+The [calendar audit](tools/user-memory/results/stage-3-calendar-data.md) identifies
+the selected historical/current `CF` bytes as the low byte of day count 38,351
+for 2075-01-01. Both saved functions contain an independently reconstructed
+4,864-byte Gregorian year/month payload. Encoded references and the selected
+year bounds/index/two-qword reads agree with it. The current process function
+reconstructs completely through 24 object relocations, and emission metadata
+identifies the calendar producer.
+
+The existing nineteen-root graph's 206,533 instruction bytes match and do not
+overlap that data. Its ten year-lookup instructions and nine inner edges have
+no declared guard bypass. Those are conditional graph observations, not proof
+of a complete entry set. The constants remain in an executable section; hardware
+NX and runtime immutability are not established. The raw differing decoder rows,
+candidate and all existing activation gates remain retained.
+
+Four fresh explicit-start decoder commands confirm the alternate interpretation
+at the selected byte. No VM or generated code executes. Seven new tests, four
+Python-only changed-byte/graph controls, all 337 host tests and frozen replay
+pass over exact sources and pinned predecessor artifacts. The replay also
+reproduces two earlier reader errors: legacy-manifest schema selection and
+callback collection shape. Their failed sources and notice summaries remain.
+Kernel/boot bytes, language meaning, production selection, native helper coverage
+and the original Linux acceptance obligations are unchanged.

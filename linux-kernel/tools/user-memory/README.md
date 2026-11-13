@@ -105,8 +105,10 @@ Initial supervisor writable identity mappings do not prove runtime W^X,
 ownership or lifetime. The 252 zero IDT slots do not prove those events excluded
 or safely handled. Real-mode/loader/CPU prerequisites, complete handler effects,
 TSS/stack switching, runtime entry/mutation, AP/DMA and production reconstruction
-remain open. Decoder disagreement 45,861,106 is outside this graph and remains
-unresolved; native helper gaps 88,215/94,687 and 89/91 coverage are unchanged.
+remain open. Decoder disagreement 45,861,106 is outside this graph. The subsequent
+[calendar-data audit](results/stage-3-calendar-data.md) identifies its data/consumer
+context while retaining the differing listings and alternate-entry obligations.
+Native helper gaps 88,215/94,687 and 89/91 coverage are unchanged.
 
 ## Boot-header advertisement correction
 
