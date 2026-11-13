@@ -397,3 +397,49 @@ replay passes the new and retained records plus the 203/59 model suites; its
 component. All remaining caller/loan/writer, continuous lifetime,
 AP/DMA/asynchronous, fatal and public activation gates remain acceptance
 obligations.
+
+## Source-built process policy failures
+
+[run_policy_failure.py](run_policy_failure.py) runs the unchanged ordinary
+process cohort and two diagnostic Topal policies with the unmodified fork/resize
+C fixture. [policy_failure.py](policy_failure.py) checks retained effects/owners,
+poison and declared invocation retirement. The read-only observer preserves the
+ordinary MM and publication assertions. [readback_policy_failure.py](readback_policy_failure.py)
+binds the complete observer, source/controller/application/kernel/VM inputs,
+whole registry, source deltas, mappings, raw CPU logs and physical retirement.
+Its 12 allocation and 15 release controls alter saved records only.
+
+The release failure remains incomplete after publication, unpin and erasure;
+neither its retained token nor the comparison snapshot may be treated as a
+successful release or rollback. The direct-MM gateway retires 4,000 caller bytes.
+The separate outer adapter and other fatal/lifetime paths remain acceptance work.
+Completed local publication readback is shared with the ordinary cohort, whose
+full completion and terminal-root checks remain mandatory.
+
+```sh
+rtk proxy mkdir -p linux-kernel/.cache/x86_64/VALIDATION-TMP
+rtk proxy env TMPDIR=/absolute/repository/linux-kernel/.cache/x86_64/VALIDATION-TMP RUST_TEST_THREADS=2 RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/run_policy_failure.py linux-kernel/.cache/x86_64/NEW-MATRIX
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/archive_policy_failure.py collect linux-kernel/.cache/x86_64/NEW-MATRIX linux-kernel/.cache/x86_64/NEW-ARCHIVE
+rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/archive_policy_failure.py replay linux-kernel/.cache/x86_64/NEW-ARCHIVE linux-kernel/.cache/x86_64/NEW-REPLAY
+```
+
+The [three-VM archive](results/stage-3-process-policy-failure/report.json)
+preserves the source-frozen matrix, fresh validation logs, exact diagnostic
+policies, native/boot artifacts and CPU records. Collection verifies all seven
+LLVM modules per build. Frozen replay repeats the three saved-record readers and
+their controls; it runs no VM, rebuild or model suite. The separate
+[review receipt](results/stage-3-process-policy-failure-review.json) binds actual
+bounded resources, final descriptive statuses, unchanged surrounding objects and
+linked terminal instructions. Its scope does not establish canonical allocator
+qualification, every fatal/outer-caller/lifetime path or public activation.
+
+The original three native/readback cohorts passed, but the broader compiler
+suite encountered explicit temporary-filesystem quota errors. Its failed batch
+and all logs remain archived. Separate fresh qualification uses disk-backed
+task scratch and two test threads under the unchanged bounded memory policy.
+Collection can bind that separately successful `--validation` directory to the
+exact original matrix bytes. An explicit `--original-collector` is required for
+the sole post-native collector repair: original/new collector bytes and hashes
+are preserved. No compiler, policy, application, observer or reader source
+change is permitted through that mechanism. Future fresh runs need neither
+recovery option when their complete matrix succeeds.

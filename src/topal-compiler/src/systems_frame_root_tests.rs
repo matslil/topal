@@ -2,6 +2,9 @@ use crate::systems_tail_owner::run_tail_native_fixture as run;
 use object::{Object, ObjectSection, ObjectSymbol, RelocationTarget};
 use std::{fs, process::Command};
 
+#[path = "systems_process_mm_fault_tests.rs"]
+mod policy_failure;
+
 const ROOT: &str = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
 const FRAME: &str = "  frame-allocator-library is lang systems source-library (\n    source is \"memory/frame-metadata.t\",\n    export is frame-policy,\n    interface is physical-frame-policy-tail-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
 pub(crate) fn root() -> String {
@@ -48,6 +51,7 @@ fn process_mm_preserves_pinned_busybox_workloads() {
             user_extents: true,
             owned_callers: true,
             process_memory: true,
+            policy_failure: None,
         },
         Some(CallerFocus::Application),
     );
@@ -185,6 +189,7 @@ fn process_mm_preserves_source_built_application_interfaces() {
                 user_extents: true,
                 owned_callers: true,
                 process_memory: true,
+                policy_failure: None,
             },
             Some(focus),
         );
@@ -342,6 +347,7 @@ fn execute_selected(
             user_extents,
             owned_callers,
             process_memory: process_memory_focus(focus),
+            policy_failure: None,
         },
         focus,
     )
@@ -353,6 +359,7 @@ struct KernelProfile {
     user_extents: bool,
     owned_callers: bool,
     process_memory: bool,
+    policy_failure: Option<policy_failure::Failure>,
 }
 
 fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::path::PathBuf {
@@ -361,11 +368,17 @@ fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::
         user_extents,
         owned_callers,
         process_memory,
+        ..
     } = profile;
     // TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001: complete existing boot IR, not
     // a smaller constant probe. Canonical publication remains unqualified.
     let root = root();
-    let input = input();
+    let mut input = input();
+    if let Some(failure) = profile.policy_failure {
+        assert!(memory && user_extents && owned_callers && process_memory);
+        assert!(focus == Some(CallerFocus::SourceProcessOwners));
+        failure.prepare(&mut input);
+    }
     let checked = crate::systems_frame_policy_binding::check(&root, &input).unwrap();
     let (bytes, owners) = if user_extents {
         let (bytes, owners) =
@@ -505,6 +518,9 @@ fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::
     eprintln!("actual frame source root: {}", work.display());
     fs::write(work.join("root.t"), root).unwrap();
     fs::write(work.join("root.o"), &bytes).unwrap();
+    if let Some(failure) = profile.policy_failure {
+        failure.record(&work, &input);
+    }
     if let Some(owners) = &owners {
         fs::write(
             work.join("user-owners.json"),
@@ -578,6 +594,7 @@ fn build_guest(
         user_extents,
         owned_callers,
         process_memory,
+        ..
     } = profile;
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
@@ -1258,7 +1275,9 @@ fn build_guest(
         "guest",
         Command::new("python3")
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-                if process_memory && focus == Some(CallerFocus::Application) {
+                if profile.policy_failure.is_some() {
+                    "../../linux-kernel/labs/qemu/x86_64/process_mm_policy_failure_inspect.py"
+                } else if process_memory && focus == Some(CallerFocus::Application) {
                     "../../linux-kernel/labs/qemu/x86_64/process_mm_application_inspect.py"
                 } else if process_memory_focus(focus) {
                     "../../linux-kernel/labs/qemu/x86_64/process_mm_process_inspect.py"

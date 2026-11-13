@@ -75,18 +75,14 @@ def cohort_complete(value,mode):
             'publication source case completion')
 
 
-def check_saved(value,binding,elf,work):
-    cohort_complete(value,binding['component']['mode'])
-    native=value['process_publication'];profile=binding['profile']
-    require(native['passed'] and native['profile']==profile and 'failure' not in native,
-            'publication profile/native completion')
-    records=native['records'];switches=native['root_switches']
-    require(records and len(switches)==1,'publication records and terminal root handoff')
-    for row in switches:
-        require(row['comparison']==check_switch(row)
-                and row['before_site']==profile['root_switch_sites']['before']
-                and row['after_site']==profile['root_switch_sites']['after']
-                and row['source_register']==row['before']['context']['bootstrap'],'publication observed root switch')
+def check_publications(native,binding,elf,work):
+    """Read back every completed local publication, including a fatal prefix.
+
+    This function makes no whole-cohort or terminal-root completion claim.
+    Its caller must establish the corresponding outcome and request binding.
+    """
+    profile=binding['profile'];records=native['records']
+    require(native['profile']==profile and 'failure' not in native,'publication profile binding')
     segments={};results=[]
     callers={5:'topal_frame_memory_request_v1',6:'topal_frame_memory_request_v1',7:'topal_frame_memory_request_v1',
              10:'p.commit',11:'p.switch',12:'p.child_exit'}
@@ -120,6 +116,22 @@ def check_saved(value,binding,elf,work):
         raw=path.read_bytes();actual=parse(raw,profile['sites']['invalidated'])
         saved=sum(len(parse(raw[a:b],profile['sites']['invalidated'])) for a,b in segments.get(path.name,[]))
         require(len(actual)==saved,'unattributed publication CPU headers')
+    return results
+
+
+def check_saved(value,binding,elf,work):
+    cohort_complete(value,binding['component']['mode'])
+    native=value['process_publication'];profile=binding['profile']
+    require(native['passed'] and native['profile']==profile and 'failure' not in native,
+            'publication profile/native completion')
+    records=native['records'];switches=native['root_switches']
+    require(records and len(switches)==1,'publication records and terminal root handoff')
+    for row in switches:
+        require(row['comparison']==check_switch(row)
+                and row['before_site']==profile['root_switch_sites']['before']
+                and row['after_site']==profile['root_switch_sites']['after']
+                and row['source_register']==row['before']['context']['bootstrap'],'publication observed root switch')
+    results=check_publications(native,binding,elf,work)
     used=[];retired=[]
     for event in value['events']:
         indices=event['publication_indices'];operation=event['operation']

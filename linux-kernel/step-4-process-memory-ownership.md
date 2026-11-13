@@ -904,6 +904,79 @@ component.
 The review maps current evidence to the existing requirements. It adds no new
 language design or relaxation of the process/MM or owned-extent contracts.
 
+## Source-built process policy failure diagnostics
+
+The approved fatal contract preserves performed effects and held identities,
+poisons the memory/allocator owner, retires invocation temporaries and never
+resumes either process. Two diagnostic Topal policies now exercise this contract
+through the existing ordinary fork/resize C program in QEMU. They use the normal
+checked source binding and retain every controller/admission/delta guard. The
+canonical allocator source and normal kernel behavior are unchanged. The
+observer only reads guest state; it injects no register, data or instruction
+changes. These deliberately incorrect policies are test inputs, not qualified
+functional allocator implementations or public selections.
+
+| Source failure | Actual prefix and terminal evidence |
+| --- | --- |
+| Allocate 101 pages with incorrect cell identities | Detected before replacement publication or issuance. The active child and inactive parent retain their complete 67-page heaps, handles and pins. All 101 performed source writes remain visible; the failed candidate is never issued. |
+| Release the old 67-page child heap with incorrect cell identities | The copied 101-page candidate is pinned, published and invalidated before old-backing unpin/erasure. The invalid release leaves the old live unpinned record/token, the pinned candidate and the pinned parent accounted for. All 67 performed source writes and already-issued identities remain visible; release is explicitly incomplete. |
+
+The full initial catalog, complete registry reconstruction, comparison snapshot,
+process bytes and publication/CPU records bind those observations. Both terminal
+paths preserve the original callee registers/stack, poison owners and erase the
+declared private/source/output/recovery domains and **4,000 bytes** of direct-MM
+gateway caller storage. That is the 3,952-byte inner window plus 48 saved-register
+bytes. The conditional outer 88-byte user-extent adapter is a separate route;
+these cases do not qualify it or every possible fatal path.
+
+The [archive](tools/process-memory/results/stage-3-process-policy-failure/report.json)
+retains **three fresh targeted VMs**: the complete unchanged ordinary cohort and
+both diagnostics. The ordinary kernel reproduces SHA-256
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+The diagnostic policies have distinct source/kernel identities. Their readers
+check four and five completed prefix publications, respectively, and reject
+**27 altered-record controls**. Those controls are host checks, not additional
+guest executions.
+The ordinary cohort retains its full original checks and completion obligations.
+
+Fresh locked workspace/all-target checking, **383 compiler tests** (22 ignored),
+**203 user-memory and 59 process-memory tests**, the default ABI generator fixture, formatting and
+the Rust file ceiling pass. All seven LLVM modules verify for each build. The
+complete source-derived caller bound remains **2,280/4,096 bytes**; the complete
+physical profile remains **4,088/4,096 bytes**, with the direct-MM route distinguished
+above. All **722 watched inputs** remained unchanged during the original
+three-VM/readback batch. Its subsequent broader compiler validation failed with
+explicit disk-quota errors in all 89 failed cases (294 passed, 22 ignored); the
+original overall failure and logs remain preserved. No memory-limit or OOM
+events occurred. A fresh seven-command qualification uses disk-backed task
+scratch under `linux-kernel/.cache` and two Rust test threads, retaining host
+protections, the original tmpfs quota and the bounded memory policy. It completes
+in **3570.12 seconds**, with unchanged source hashes. Its cumulative cgroup sample
+records **1,765,232,640 / 2,712,424,448 bytes**, zero swap and zero
+memory events; this is not an independent per-VM peak measurement. The compiler
+suite includes existing native/VM integration tests, separately logged rather
+than added to the targeted three-VM count.
+
+After the native phase, source review corrected the collector's comparison of
+Python integer keys with JSON string keys. The archive explicitly preserves that
+original collector, its original watched identity and the repaired collector's
+identity. Every compiler, allocator, application, observer and reader input
+remains unchanged. Collection requires the separate successful qualification;
+it does not relabel the original failed batch as successful.
+
+Frozen replay repeats all three saved-record readers and raw CPU-log checks; it
+does not execute a VM, rebuild a kernel or rerun the model suites. The
+[review receipt](tools/process-memory/results/stage-3-process-policy-failure-review.json)
+adds complete archive/native-byte checks, 15 unchanged surrounding objects per
+build and the linked terminal halt instructions. Review follows the existing
+docs/se/spec/tool requirements. Risk remains high for false acceptance of owner
+retention or cleanup. This is single-agent review, not independent human security
+review or a complete formal proof. Partial source writes, failure inside the
+publication loop, other failure/resource/identity-width shapes, all caller/
+private-loan and mapping lifetimes, AP/DMA/asynchronous access, cold
+public reconstruction and the complete Linux/distribution/container/VM-host
+objective remain open. No AI safeguard explanation follows from these results.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

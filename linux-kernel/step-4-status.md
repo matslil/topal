@@ -163,6 +163,19 @@ and cold public reconstruction remain open. This completes the local observation
 component, not initial Step 4 or the complete Linux/distribution/container/VM-host
 objective.
 
+The subsequent [source-built failure diagnostics](step-4-process-memory-ownership.md#source-built-process-policy-failure-diagnostics)
+pass one fresh ordinary process VM and two diagnostic VMs. They check retained
+performed effects, held child/parent/candidate identities, poison and declared
+4,000-byte direct-MM caller retirement before and after replacement publication.
+All 27 diagnostic altered-record controls reject; frozen saved-record replay,
+fresh compiler/workspace/model checks and seven LLVM modules per build pass.
+The broader suite's original temporary-filesystem quota failure is retained;
+fresh qualification uses task-owned disk scratch with unchanged host protections.
+The ordinary kernel remains byte-identical; deliberately incorrect diagnostic
+policies have separate source/kernel identities. These selected failures do not
+qualify every fatal path, the outer caller, continuous lifetime or public
+activation. Initial Step 4 and the original full Linux objective remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,
