@@ -472,7 +472,7 @@ refuses other tracked compiler/dependency/design changes, runs six fresh checks
 (including workspace/all targets, both model suites and the default ABI fixture),
 and requires all five native cases with byte-identical historical kernels.
 The report explicitly records that the earlier 383-test suite was not rerun.
-`test_policy_failure_profile.py` supplies four model-level reuse/refusal controls.
+`test_policy_failure_profile.py` supplies five model-level reuse/refusal controls.
 Use the default full profile for a compiler/runtime/dependency/design change.
 Neither profile qualifies every fatal path, outer caller, continuous lifetime,
 other-CPU/DMA/asynchronous access or public kernel activation.
@@ -506,3 +506,39 @@ archive identity, frozen replay, source checks and all 73 process-memory tests.
 Offsets 88,215, 94,687 and 101,781 remain unsampled. This does not prove their
 unreachability or complete caller/loan/access/lifetime qualification. Initial
 Step 4, public activation and the full Linux objective remain unfinished.
+
+## Native pre-import missing-stat prefix
+
+The compiler's ignored test
+`systems_frame_target::root_tests::process_mm_prelude_missing_stat_executes_owned_read_and_retires_caller`
+builds an ordinary first-party C prefix and uses the read-only
+[observer](../../labs/qemu/x86_64/process_mm_prelude_stat_inspect.py). It issues
+`newfstatat` for `/missing` before descriptor import, observes the real helper
+at offset 101,781 and stops at its userspace result marker. It does not claim
+completion of the surrounding ABI witness or terminal VM cleanup.
+
+[readback_prelude_stat.py](readback_prelude_stat.py) binds source/kernel/image
+identities, the actual syscall/helper/gateway calls, full retained MM state and
+observed private/stack retirement. Twelve altered saved-record controls reject.
+The selected normal route erases 4,000 inner plus 80 outer bytes; alternate
+88-byte outer and fatal routes retain separate coverage obligations. Invoke
+the native test and reader through the repository's bounded wrapper; the reader
+takes the build directory and writes `process-mm-prelude-stat/readback.json`.
+
+The [archive](results/stage-3-prelude-stat/report.json) retains two fresh targeted
+VMs: this prefix and the complete ordinary process/MM regression with its twenty
+controls. A fresh full compiler suite, both model suites, locked workspace
+checking, unchanged default ABI fixture, format and file-ceiling validation pass.
+Frozen source replay repeats both saved-data readers without a VM or rebuild.
+The [review receipt](results/stage-3-prelude-stat-review.json) binds the complete
+archive and qualification and records the unchanged kernel and fifteen objects.
+The original driver exception occurred after its workspace/full-compiler
+commands passed. Five remaining checks run separately over the same source
+bytes. Exact original cgroup accounting is unavailable; the rounded journal
+peak and complete supplementary-check counters retain their distinct scopes.
+
+Combining the original historical census with this one new helper path gives
+89/91 sampled sites. Offsets 88,215 and 94,687 remain unsampled. First reach,
+selected return/cleanup and recorded boundaries do not qualify every caller/path,
+continuous lifetime, global unreachability, production activation or the full
+initial Linux objective.

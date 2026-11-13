@@ -12,8 +12,14 @@ import run_policy_failure as driver
 class QualificationProfileTests(TestCase):
     def test_published_suite_can_only_cover_the_explicit_private_test_increment(self):
         private=b'src/topal-compiler/src/systems_process_mm_fault_tests.rs\n'
+        path=driver.ROOT/'linux-kernel/tools/process-memory/results/stage-3-process-policy-failure-review.json'
+        archived=json.loads(path.read_bytes())['qualification']['source_hashes_before']
+        # Model the successful reference state. The current workspace may
+        # legitimately have a later fixture/compiler change requiring full QA.
+        def reference_hashes(paths):return {name:archived[name] for name in paths}
         with patch.object(driver.subprocess,'check_output',return_value=private):
-            reference=driver.observer_reference()
+            with patch.object(driver,'hashes',side_effect=reference_hashes):
+                reference=driver.observer_reference()
         self.assertEqual(reference['commit'],driver.REFERENCE_COMMIT)
         self.assertGreater(reference['unchanged_compiler_inputs'],100)
         self.assertIn('compiler-units',driver.validation_commands('full'))
@@ -21,6 +27,11 @@ class QualificationProfileTests(TestCase):
 
     def test_production_change_cannot_use_observer_qualification(self):
         changed=b'src/topal-compiler/src/runtime/kernel_frame_memory.ll\n'
+        with patch.object(driver.subprocess,'check_output',return_value=changed):
+            with self.assertRaises(AssertionError):driver.observer_reference()
+
+    def test_another_private_fixture_change_also_requires_full_qualification(self):
+        changed=b'src/topal-compiler/src/systems_user_source_fixture.rs\n'
         with patch.object(driver.subprocess,'check_output',return_value=changed):
             with self.assertRaises(AssertionError):driver.observer_reference()
 

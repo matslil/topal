@@ -1110,6 +1110,90 @@ requires qualification. The three gaps, complete caller/access/mapping lifetime,
 fatal/concurrency/publication requirements and the full initial Linux objective
 remain open. This bookkeeping component does not authorize production activation.
 
+## Native pre-import missing-stat caller
+
+The separate [source-built prefix](labs/qemu/x86_64/user_extent_prelude_stat_cases.c)
+executes ordinary `newfstatat(AT_FDCWD, "/missing", UINT64_MAX, 0)` before
+descriptor import. The missing lookup returns native `-ENOENT` without using its
+metadata destination. The [read-only observer](labs/qemu/x86_64/process_mm_prelude_stat_inspect.py)
+records the real userspace syscall arguments, helper call and gateway operation 8,
+successful admission and return, private-domain erasure and actual caller stack.
+Its userspace marker stops this focused prefix; the surrounding ABI application
+and terminal VM cleanup are not claimed complete by this test.
+
+This reaches the previously unsampled helper at linked offset **101,781**, using
+the actual candidate **5,709,920**, length **9** and startup phase **29**. The
+syscall advances the startup observation to phase 30 and the entry epoch from
+`[323, 12]` to `[324, 262]`. At the recorded boundaries the complete 34-page held
+heap, active/inactive/prepared owners, identities, allocator, actual context and
+paging controls remain unchanged; table comparison permits only hardware A/D
+updates. These boundary observations do not establish continuous loan lifetime.
+
+The helper physically retires **4,000 inner caller bytes plus its actual 80-byte
+outer adapter**, giving **4,080 bytes**. The conservative complete profile remains
+4,088 physical bytes and a 2,280-byte stack bound within the original 4,096-byte
+reserve. The selected prefix does not execute the alternate 88-byte outer route
+or every fatal path. The [saved-record reader](tools/process-memory/readback_prelude_stat.py)
+binds the actual linked call, complete observer program, source/image identities,
+VM geometry and observed erasure domains. All twelve altered-record controls
+reject; they alter saved observations only.
+
+Two fresh targeted VMs pass: this focused prefix and a separate **complete
+ordinary process/MM regression**, including its twenty saved-record controls.
+Both reproduce kernel
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+All fifteen selected surrounding objects match the preceding ordinary build;
+each fresh build preserves its complete six-file first-party C source closure.
+The prefix's conservative user-stack cost is **1,784 of 2,048 bytes**, including
+the wrapper, original command function, marker and every return word; the separate
+ordinary process component costs 1,208 bytes. These are distinct from the owning
+kernel caller's 4,096-byte reserve.
+No pinned third-party executable, production kernel/runtime or core-language
+meaning changes. This batch does not rerun the 51-workload application corpus.
+
+Fresh full qualification passes **383 compiler unit tests**, with **25 ignored
+native tests** reported separately, locked workspace/all-target checking,
+**203 user-memory models**, **74 process-memory models**, the unchanged default
+ABI fixture, formatting and the Rust file ceiling. All **730 watched source
+files** are byte-identical before and after the batch. The observer-only reuse
+profile cannot cover the shared private fixture changes; this full suite was
+actually rerun. Its profile tests now model the archived reference explicitly
+and include refusal of another private fixture change; the reuse guard itself
+is unchanged.
+
+The [closed archive](tools/process-memory/results/stage-3-prelude-stat/report.json)
+contains 1,120 manifested entries with complete selected source/native
+build bytes and exact command/log identities. Frozen replay restores the archived
+readers and repeats both saved-data readbacks; it executes no VM or rebuild.
+The two targeted native tests take **157.87** and
+**176.75 seconds**; the full compiler command takes
+**3687.10 seconds** and returns zero with all 383 tests passed.
+
+The original driver then stops with the journal notice `detected unhandled
+Python exception in 'linux-kernel/.cache/x86_64/run-prelude-stat-stage.py'`.
+Its cause and exit code are not established; the final compiler summary and
+completed-command receipt are retained. The journal reports a rounded **1.9G**
+peak, but the original cgroup's exact limit and event counters are unavailable.
+No zero-event claim is made for that original batch. All original sources and
+both frozen tools remain unchanged. Five remaining checks finish in a separate
+bounded recovery in **5.27 seconds**, peaking at **257,875,968 / 3,363,155,968 bytes**,
+with zero swap and zero events in that recovery only. Original progress, the
+exact journal notice, recovery source/commands/logs and the distinction between
+these accounting scopes are archived. No VM or full compiler suite is repeated
+by the recovery.
+The [companion review](tools/process-memory/results/stage-3-prelude-stat-review.json)
+binds archive closure, fresh qualification, frozen replay, unchanged surrounding
+objects and the historical caller census. Review remains single-agent; no
+independent human security review is claimed.
+
+The original 88/91 historical census remains unchanged. Combining it with this
+one new actual helper path gives **89/91 sampled sites** on the same kernel and
+inventory. Offsets **88,215** and **94,687** remain unsampled; their absence proves
+neither unreachability nor safety. Other caller/argument/fatal paths, continuous
+loan/mapping lifetime, concurrency/publication obligations, production activation
+and the full Linux/distribution/container/VM-host objective remain unfinished.
+These results establish no cause for an earlier model/provider safeguard.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

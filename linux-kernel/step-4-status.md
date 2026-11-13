@@ -197,6 +197,16 @@ This runs no new VM or compiler build. The three unsampled legacy branches
 remain explicit gaps; samples do not establish admission, every path, private
 loans or continuous lifetime. Step 4 and public activation remain unfinished.
 
+The subsequent [pre-import missing-stat prefix](step-4-process-memory-ownership.md#native-pre-import-missing-stat-caller)
+reaches helper 101,781 through an ordinary source-built syscall and observes
+successful admission/return and all 4,080 actual caller bytes retired. A separate
+fresh ordinary process/MM VM completes. Both native runs and frozen saved-data
+readers pass, alongside a fresh full 383-test compiler suite, 203 user-memory
+models and 74 process-memory models. The same-kernel union now samples 89/91
+helper sites; offsets 88,215 and 94,687 remain unsampled. The prefix itself stops
+at its userspace marker. Other caller/loan/fatal/continuous-lifetime, production
+and full initial Linux acceptance remain required.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

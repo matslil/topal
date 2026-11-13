@@ -293,6 +293,10 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     build_configured(work, tools, mode, None, None)
 }
 
+pub(crate) fn build_prelude_stat(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, "prelude-stat")
+}
+
 fn build_configured(
     work: &Path,
     tools: &crate::LlvmTools,
@@ -362,7 +366,7 @@ fn build_configured(
             Some(("storage", "storage-cases")),
         ),
         "pipes" => ("topal_user_extent_pipe_cases", Some(("pipe", "pipe-cases"))),
-        "transfers" => ("topal_user_extent_source_cases", None),
+        "transfers" | "prelude-stat" => ("topal_user_extent_source_cases", None),
         "exec" => ("topal_user_extent_exec_cases", Some(("exec", "exec-cases"))),
         "signals" => (
             "topal_user_extent_signal_cases",
@@ -393,7 +397,16 @@ fn build_configured(
         inputs.push((extra_name.as_deref().unwrap(), stem));
     }
     for (input, stem) in &inputs {
-        fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
+        if mode == "prelude-stat" && *stem == "command-cases" {
+            fs::copy(lab.join(input), work.join("command-original.c")).unwrap();
+            fs::copy(
+                lab.join("user_extent_prelude_stat_cases.c"),
+                work.join(format!("{stem}.c")),
+            )
+            .unwrap();
+        } else {
+            fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
+        }
         let defines = if *stem == "process-mm-relationship-cases" {
             let (early, group, zombie) = relationship.unwrap();
             vec![
@@ -440,11 +453,13 @@ fn build_configured(
                     "-c",
                 ])
                 .args(&defines)
-                .arg(if mode == "transfers" && *stem == "source-cases" {
-                    "-DTOPAL_PROBE_CONSOLE=1"
-                } else {
-                    "-DTOPAL_PROBE_CONSOLE=0"
-                })
+                .arg(
+                    if matches!(mode, "transfers" | "prelude-stat") && *stem == "source-cases" {
+                        "-DTOPAL_PROBE_CONSOLE=1"
+                    } else {
+                        "-DTOPAL_PROBE_CONSOLE=0"
+                    },
+                )
                 .arg(work.join(format!("{stem}.c")))
                 .arg("-o")
                 .arg(work.join(format!("{stem}.o"))),
@@ -583,6 +598,12 @@ fn build_configured(
         "startup": source_startup.address(), "startup_call": startup.address(),
         "syscall4": syscall4.address(),
         "mode": mode,
+        "prelude_stat": if mode == "prelude-stat" { Some(serde_json::json!({
+            "source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_prelude_stat_cases.c")).unwrap())),
+            "entry": elf.symbol_by_name("topal_prelude_stat_completed").unwrap().address(),
+            "path": elf.symbol_by_name("topal_prelude_stat_path").unwrap().address(),
+            "scope": "Ordinary missing-path syscall after directory-command delivery; prefix stops at user marker, not whole ABI/VM completion",
+        })) } else { None },
         "image_entry": image_entry,
         "relationship_profile": relationship.map(|(early, group, zombie)| serde_json::json!({
             "early": early, "syscall": if group { 231 } else { 60 },

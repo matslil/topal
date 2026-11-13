@@ -120,6 +120,13 @@ fn process_mm_fork_handoff_and_exit_preserve_independent_heap_owners() {
 }
 
 #[test]
+#[ignore = "requires the bounded QEMU/GDB pre-import caller prefix"]
+fn process_mm_prelude_missing_stat_executes_owned_read_and_retires_caller() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001 / TOPAL-SYSTEMS-PROCESS-MM-001.
+    execute_selected(true, true, true, Some(CallerFocus::SourcePreludeStat));
+}
+
+#[test]
 #[ignore = "requires the bounded QEMU/GDB child-exec process-MM cohort"]
 fn process_mm_child_exec_preserves_inactive_parent_and_fresh_child_heap() {
     // TOPAL-SYSTEMS-PROCESS-MM-001: ordinary exec/startup/yield/wait.
@@ -307,6 +314,7 @@ enum CallerFocus {
     SourceMetadata,
     SourceProcessMemory,
     SourceProcessOwners,
+    SourcePreludeStat,
     SourceProcessExec,
     SourceProcessAllocation,
     SourceProcessGeometry(bool),
@@ -326,6 +334,7 @@ fn process_memory_focus(focus: Option<CallerFocus>) -> bool {
         focus,
         Some(
             CallerFocus::SourceProcessOwners
+                | CallerFocus::SourcePreludeStat
                 | CallerFocus::SourceProcessExec
                 | CallerFocus::SourceProcessAllocation
                 | CallerFocus::SourceProcessGeometry(..)
@@ -443,6 +452,8 @@ fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::
         "process-mm-child-exec"
     } else if focus == Some(CallerFocus::SourceProcessOwners) {
         "process-mm-owners"
+    } else if focus == Some(CallerFocus::SourcePreludeStat) {
+        "process-mm-prelude-stat"
     } else if focus == Some(CallerFocus::SourceProcessMemory) {
         "process-mm-preparation"
     } else if focus == Some(CallerFocus::SourceMetadata) {
@@ -497,6 +508,7 @@ fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::
                 | CallerFocus::SourceMetadata
                 | CallerFocus::SourceProcessMemory
                 | CallerFocus::SourceProcessOwners
+                | CallerFocus::SourcePreludeStat
                 | CallerFocus::SourceProcessExec
                 | CallerFocus::SourceProcessAllocation
                 | CallerFocus::SourceProcessGeometry(..)
@@ -618,6 +630,8 @@ fn build_guest(
         crate::systems_user_extent::source_fixture::build_process_memory_exec(work, tools)
     } else if focus == Some(CallerFocus::SourceProcessOwners) {
         crate::systems_user_extent::source_fixture::build_process_memory(work, tools)
+    } else if focus == Some(CallerFocus::SourcePreludeStat) {
+        crate::systems_user_extent::source_fixture::build_prelude_stat(work, tools)
     } else if matches!(
         focus,
         Some(CallerFocus::SourceMetadata | CallerFocus::SourceProcessMemory)
@@ -1277,6 +1291,8 @@ fn build_guest(
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
                 if profile.policy_failure.is_some() {
                     "../../linux-kernel/labs/qemu/x86_64/process_mm_policy_failure_inspect.py"
+                } else if focus == Some(CallerFocus::SourcePreludeStat) {
+                    "../../linux-kernel/labs/qemu/x86_64/process_mm_prelude_stat_inspect.py"
                 } else if process_memory && focus == Some(CallerFocus::Application) {
                     "../../linux-kernel/labs/qemu/x86_64/process_mm_application_inspect.py"
                 } else if process_memory_focus(focus) {
