@@ -108,7 +108,7 @@ def callbacks(elf,bindings,graph,process,body,llvm,gnu):
     return result
 
 
-def inspect(build,llvm_text,gnu_text,recoveries=()):
+def inspect(build,llvm_text,gnu_text,recoveries=(),boot_image=None):
     elf=Elf(build/'kernel.elf');require(elf.kind==2,'callee linked executable')
     executable=[(i,s) for i,s in enumerate(elf.sections) if s[2]&4 and s[5]]
     require(len(executable)==1,'qualify multiple executable sections before extending this reader')
@@ -129,6 +129,12 @@ def inspect(build,llvm_text,gnu_text,recoveries=()):
     require(binding['process_graph_sha256']==digest(graph_raw),'callee callback/graph identity')
     process,body=elf.function(graph['function'])
     roots=entries(elf,graph,process,body);bound=callbacks(elf,binding,graph,process,body,llvm,gnu)
+    boot=None
+    if boot_image is not None:
+        from inspect_boot_entries import inspect as inspect_boot
+        boot=inspect_boot(build/'kernel.elf',boot_image)
+        require(boot['kernel_sha256']==digest(elf.data),'callee boot/ELF identity')
+        roots+=boot['roots']
     pending=[row['address'] for row in roots];seen={};attempted=set();occupied={};edges=[];frontiers=[];tables={};terminals=[]
     while pending:
         address=pending.pop()
@@ -193,6 +199,7 @@ def inspect(build,llvm_text,gnu_text,recoveries=()):
         process_graph_sha256=digest(graph_raw),callback_binding_sha256=digest(binding_raw),
         llvm_listing_sha256=digest(llvm_text),gnu_listing_sha256=digest(gnu_text),
         recovery_windows=recovery_records,
+        boot_entries=boot,
         executable_section=dict(index=section_index,address=start,bytes=len(code),sha256=digest(code)),
         roots=roots,callbacks=bound,guarded_tables=[tables[at] for at in sorted(tables)],
         reached_instructions=len(seen),reached_bytes=len(occupied),functions=functions,
@@ -201,21 +208,23 @@ def inspect(build,llvm_text,gnu_text,recoveries=()):
         frontiers=frontiers,selected_edge_set_closed=not frontiers,terminals=terminals,
         instructions=[seen[at] for at in reached],edges=edges,
         process_helpers={str(offset):process['value']+offset in seen for offset in [88215,94687]},
-        assumptions=['Listed selected process entries only; external, interrupt, exception, AP/boot and arbitrary interior entries remain separate.',
+        assumptions=['Listed selected process entries'+(' plus saved protected boot handoff/four initial IDT targets' if boot else '')+' only; other loader, runtime, exception, AP and arbitrary interior entries remain separate.',
             'Previously bound callback slots remain the registered root targets; complete writer/lifecycle stability is not established here.',
             'Executable code, linked tables and local saved-index slots stay unchanged during use; ELF flags alone do not establish hardware permissions.',
             'Calls may return at their encoded continuations; return-stack ownership, exception behavior and whole callee effects remain separate.'],
         qualification_complete=False,
-        scope='Consistent two-decoder saved-code traversal of declared process roots, direct callees, registered callbacks and selected guarded jump tables under explicit assumptions. Passing or selected_edge_set_closed does not establish complete kernel entries/CFI, runtime lifetime/immutability, memory authority, native instruction coverage, production activation or global unreachability.')
+        scope='Consistent two-decoder saved-code traversal of declared roots, direct callees, registered callbacks and selected guarded jump tables under explicit assumptions. Optional boot roots are rederived from saved image/ELF bytes, not accepted from a supplied target list. Passing or selected_edge_set_closed does not establish complete kernel entries/CFI, runtime lifetime/immutability, memory authority, native instruction coverage, production activation or global unreachability.')
 
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ['build','llvm','gnu','output']:parser.add_argument(name,type=Path)
     parser.add_argument('--recovery',nargs=3,action='append',default=[],metavar=('ADDRESS','LLVM','GNU'))
+    parser.add_argument('--boot-image',type=Path,help='Rebind the saved protected handoff and initial IDT roots from this image and the actual ELF.')
     args=parser.parse_args();recoveries=[(int(at,0),Path(first).read_bytes(),Path(second).read_bytes())
         for at,first,second in args.recovery]
-    result=inspect(args.build.resolve(),args.llvm.read_bytes(),args.gnu.read_bytes(),recoveries)
+    result=inspect(args.build.resolve(),args.llvm.read_bytes(),args.gnu.read_bytes(),recoveries,
+        args.boot_image.read_bytes() if args.boot_image else None)
     args.output.write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
     print(json.dumps({key:result[key] for key in ['passed','reached_instructions','reached_bytes',
         'coalesced_prefix_instructions','ordinary_decoder_aliases','selected_edge_set_closed','frontiers','process_helpers','qualification_complete']}))

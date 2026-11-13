@@ -1,0 +1,1 @@
+The first driver selected the end of the first PT_LOAD file range and called it BSS. That segment had no BSS, so the mutation landed in an unchecked payload gap and correctly did not reject. The final driver selects an actual memsz>filesz segment. This was an observer-fixture failure, not a guest or AI safeguard failure. No kernel check was changed.

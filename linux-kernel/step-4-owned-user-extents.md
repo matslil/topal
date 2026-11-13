@@ -1107,3 +1107,52 @@ public behavior and production selection remain unchanged. Full entry/callee
 effects, callback/table/stack stability, every caller/path/fatal/exception,
 continuous/private-loan/mapping/concurrent access, production reconstruction and
 the original Linux/distribution/container/VM-host objective remain unfinished.
+
+## Saved boot and initial interrupt-entry binding
+
+The [boot-entry readback](tools/user-memory/results/stage-3-boot-entries/report.json)
+extends `TOPAL-SYSTEMS-USER-EXTENT-001` observation to the saved private image's
+protected boot handoff and four initial IDT gates. The adapter emits its `LIDT`
+and transition bytes outside `kernel.elf`'s executable section, explaining their
+absence from the earlier section inventory. The reader checks actual load-file
+bytes, zero BSS, the selected 32-to-64 transition and its register masks, GDT,
+IDTR, complete initial IDT, handler symbols and initial paging tables.
+
+Adding the linked boot entry and four bound handlers yields **nineteen roots**,
+**206,533 reached instructions / 1,230,917 bytes**, and **995 exact function
+identities**. The conditional edge set closes with the same six guarded tables
+and 98 entries. The prior callback, code/table/stack stability and encoded
+call-return assumptions remain. Initial gate installation does not establish
+complete runtime entries, handler effects, TSS/stack switching or event exclusion.
+The 252 zero IDT slots remain an obligation, not evidence of impossible events.
+The initial broad writable supervisor identity map is not runtime W^X or ownership
+evidence. The report retains `qualification_complete=false`.
+
+This inspection finds an actual boot-interface defect: the header advertises
+`XLF_KERNEL_64`, but the Linux-defined independent entry at protected payload
+offset **0x200** starts **3,584 zero bytes**. The working internal long-mode
+destination is offset **0x40**, reached from the protected transition. The
+[Linux boot protocol](https://docs.kernel.org/arch/x86/boot.html)
+defines the independent entry. Repairing or ceasing to advertise the absent
+route is the next adapter action under the approved systems-only authority.
+The saved test image has no `boot-provenance.json`; no production publication
+authority is inferred from its successful component VM history.
+
+Fresh qualification passes **thirteen offline actual-image controls**, **229
+user-memory models** and **82 process-memory models**, including ten new structure
+counterexample tests. All **130 watched reader/model sources** remain stable.
+The first driver mislabeled the gap after a file-only segment as BSS; the
+corrected driver chooses an actual `memsz > filesz` segment. Its failed run and
+method are retained. No kernel check was weakened. Qualification takes **23.16
+seconds**, with cgroup peak/limit **839,798,784 / 3,298,422,784 bytes**, zero swap
+and zero sampled events in that scope.
+
+The archive explicitly depends on the two pinned predecessor archives. The
+[single-agent review](tools/user-memory/results/stage-3-boot-entries-review.json)
+restores their source closure, overlays the exact current readers and reproduces
+the boot/graph bytes, controls and both suites. This is saved-data evidence;
+there is no new VM, decoder process, compiler test run, kernel or C change.
+The unmatched control at **45,861,106** is outside the enlarged graph and remains
+unresolved. Helpers **88,215 / 94,687** remain natively unsampled; selected native
+first-reach/normal-return coverage remains **89/91**. Full runtime/effect/lifetime,
+production reconstruction and the original Linux acceptance remain unfinished.

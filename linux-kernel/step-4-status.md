@@ -240,6 +240,17 @@ recovery-reader failure. No VM or kernel rebuild runs. Helpers 88,215/94,687,
 global entry/lifetime/effect/return proofs, production and initial Linux acceptance
 remain unfinished; native selected return coverage stays 89/91.
 
+The subsequent [saved boot/IDT binding](step-4-owned-user-extents.md#saved-boot-and-initial-interrupt-entry-binding)
+checks the private packaged image against its ELF loads, BSS, transition,
+initial descriptors and tables. Five additional bound entries expand the
+conditional graph to 206,533 instructions and 995 function identities. Thirteen
+offline image controls, 229 user-memory models, 82 process-memory models and
+exact frozen replay pass. It also finds an advertised independent 64-bit boot
+entry pointing into zero-filled payload, which requires an adapter correction.
+This adds no native execution or production provenance. Actual loader/CPU state,
+complete asynchronous effects, runtime entries/lifetime and the original Linux
+acceptance remain open; the 89/91 native helper coverage is unchanged.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

@@ -1,0 +1,69 @@
+{
+  "passed": true,
+  "archive_manifest": {
+    "bytes": 26655,
+    "sha256": "60aff8277ed4c9f2cac318a46a845a1a1ea30f628c9aa26c18f4d8bda36a5c6d"
+  },
+  "archive_entries": 153,
+  "upstream_manifests": [
+    {
+      "bytes": 149132,
+      "sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    {
+      "bytes": 312963,
+      "sha256": "0d5697ba20e1ceddf5c12187daaa82b21f34872e1e04325edc5df020224cf7ea"
+    }
+  ],
+  "restored_upstream_inputs": 738,
+  "current_source_overlays": 130,
+  "frozen_replay": {
+    "argv": [
+      "rtk",
+      "proxy",
+      "python3",
+      "-B",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-entry-frozen-replay/root/linux-kernel/tools/user-memory/run_boot_entry_stage.py",
+      "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-entry-frozen-replay/root/linux-kernel/.cache/replay"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 23.598031520843506,
+    "results": {
+      "boot": {
+        "bytes": 12695,
+        "sha256": "5a14377cb7aaf7d786a48bb4c73554479f603867b83dbb311496ee64aab4cbdb"
+      },
+      "graph": {
+        "bytes": 83945132,
+        "sha256": "60e2a98f587049d480a1f0f78dc8ef82994ca6976831a7215d0fc17d9baf8ce3"
+      },
+      "reached_instructions": 206533,
+      "reached_bytes": 1230917,
+      "roots": 19,
+      "functions": 995,
+      "tables": 6,
+      "table_entries": 98,
+      "helpers": {
+        "88215": false,
+        "94687": true
+      },
+      "previously_unmatched_control_reached": false,
+      "qualification_complete": false
+    },
+    "source_hashes_stable": true
+  },
+  "offline_image_counterexamples": 13,
+  "models": {
+    "user-memory": 229,
+    "process-memory": 82
+  },
+  "historical_driver_failure_preserved": true,
+  "resources": {
+    "memory.max": "3339558912",
+    "memory.swap.max": "0",
+    "memory.peak": "899506176",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "assessment": "Single-agent observation-only self-review. Structural checks and frozen results reproduce; no independent human security assessment. Complete effects/entries/lifetime/publication remain unqualified.",
+  "next_action": "Repair or stop advertising the absent independent 64-bit boot route using the approved systems-only authority. Preserve the validated setup/protected route and verify real guest boot separately. The 45861106 decoder disagreement and 88215/94687 native gaps remain unresolved."
+}
