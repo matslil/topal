@@ -476,3 +476,33 @@ The report explicitly records that the earlier 383-test suite was not rerun.
 Use the default full profile for a compiler/runtime/dependency/design change.
 Neither profile qualifies every fatal path, outer caller, continuous lifetime,
 other-CPU/DMA/asynchronous access or public kernel activation.
+
+## Combined first-reach caller census
+
+[caller_coverage.py](caller_coverage.py) combines earlier native samples against
+one linked helper inventory without treating site reach as successful admission,
+return, every path or stable ownership. It preserves each cohort's arguments and
+lists unsampled sites. Successful old observations without coverage fields are
+excluded explicitly. [test_caller_coverage.py](test_caller_coverage.py) supplies
+ten model tests for incomplete/mixed evidence, closure, widths and provenance.
+
+[archive_caller_coverage.py](archive_caller_coverage.py) collects the previous
+51 BusyBox and nine ordinary-interface observations, reconstructs the application
+aggregate, checks original manifest/report/observation identities and verifies
+the exact calls in the kernel ELF and provider object. Replay restores all four
+frozen Python inputs and repeats the reader and ten tests. Both operations are
+saved-data work and execute no VM or compiler. Use fresh output directories:
+
+```sh
+rtk proxy env PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/archive_caller_coverage.py collect linux-kernel/.cache/x86_64/NEW-CALLER-CENSUS
+rtk proxy env PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/archive_caller_coverage.py replay linux-kernel/tools/process-memory/results/stage-3-caller-site-union linux-kernel/.cache/x86_64/NEW-CALLER-REPLAY
+```
+
+The [76-entry archive](results/stage-3-caller-site-union/report.json) records
+88/91 sampled sites from 60 identified earlier native executions, with two
+interface observations excluded because their coverage fields are absent.
+The [review receipt](results/stage-3-caller-site-union-review.json) binds complete
+archive identity, frozen replay, source checks and all 73 process-memory tests.
+Offsets 88,215, 94,687 and 101,781 remain unsampled. This does not prove their
+unreachability or complete caller/loan/access/lifetime qualification. Initial
+Step 4, public activation and the full Linux objective remain unfinished.

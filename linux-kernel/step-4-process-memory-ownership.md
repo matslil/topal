@@ -1056,6 +1056,60 @@ lifetime, AP/DMA/asynchronous access, public reconstruction and initial Step 4's
 full Linux/distribution/container/VM-host acceptance remain unfinished. These
 results establish no explanation of an earlier AI safeguard interruption.
 
+## Combined first-reach caller census
+
+The [saved caller census](tools/process-memory/results/stage-3-caller-site-union/report.json)
+combines the identified previous 51 unchanged BusyBox runs with the nine ordinary
+interface cohorts on kernel
+`b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c`.
+These are **60 earlier native executions**, with **zero new VMs** in this stage.
+The application corpus alone reached 66 of the 91 listed owned-memory helper
+sites. The combined records contain first-reach samples for **88 of 91 sites**.
+Two older exec/signal interface observations have no first-reach field; they
+are explicitly excluded from this census rather than counted as coverage.
+
+| Unsampled offset in the linked process function | Retained source label |
+| --- | --- |
+| 88,215 | `static-process-shell-named-root-condition-write-profile-ready` |
+| 94,687 | `static-process-execve-signal-number-ready` |
+| 101,781 | `static-process-shell-root-directory-stat-profile-ready` |
+
+The [reader](tools/process-memory/caller_coverage.py) retains each contributing
+cohort's actual candidate, length and startup phase; it does not replace them
+with one representative argument. It checks kernel/inventory identity, unique
+known offsets, exact helper targets, native widths and each available missing-site
+list. The [collector/replay tool](tools/process-memory/archive_caller_coverage.py)
+reconstructs the earlier application aggregate from all 51 individual records.
+It binds every selected compressed observation and report to its original
+archive manifest and binds the helper call instructions to both the kernel ELF
+and provider object. All four directly consumed Python sources remain unchanged
+during collection and are frozen with the 76 manifested evidence files.
+The original closed archives and production implementation remain unchanged.
+
+Ten model tests reject duplicate or unknown sites, changed targets/identities,
+invalid widths, inconsistent missing lists, changed reports under original
+manifests and archive paths escaping their input root. They also retain explicit
+missing coverage and different arguments at the same site. Frozen replay repeats
+the saved-record/native-byte checks and all ten tests using those frozen sources.
+Fresh surrounding process-memory validation passes **73 tests**. No compiler
+build, full compiler suite or fresh application/VM execution is claimed.
+
+Collection takes **1.77 seconds**, with a cumulative cgroup peak of
+**410,062,848 / 3,081,953,280 bytes**, zero swap and zero memory events. The
+[companion review](tools/process-memory/results/stage-3-caller-site-union-review.json)
+checks the complete new archive, original-archive preservation, frozen replay,
+unchanged source identities and surrounding models. Review is single-agent
+authority/source/artifact review; false acceptance of a mixed or incomplete
+census remains a high risk, not an independently reviewed security proof.
+
+A first-reach sample stops before helper invocation. It does not prove admission,
+return, every argument/error path, later accesses or private-loan lifetime. Missing
+samples do not prove a site unreachable. Newer dispatchers precede the legacy
+branches containing these sites, but the actual branch/state feasibility still
+requires qualification. The three gaps, complete caller/access/mapping lifetime,
+fatal/concurrency/publication requirements and the full initial Linux objective
+remain open. This bookkeeping component does not authorize production activation.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

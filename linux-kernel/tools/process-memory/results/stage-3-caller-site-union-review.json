@@ -1,0 +1,55 @@
+{
+  "archive_manifest": {
+    "bytes": 13058,
+    "sha256": "8e851cf2386e65faebf59495e03fbeecef16a36fbcb91336f673c122e6df3c7b"
+  },
+  "audit_source": "\"\"\"Audit the closed census bundle and validate surrounding process models.\"\"\"\nimport hashlib\nimport json\nfrom pathlib import Path\nimport subprocess\nimport time\n\nroot=Path.cwd();cache=root/'linux-kernel/.cache/x86_64'\narchive=root/'linux-kernel/tools/process-memory/results/stage-3-caller-site-union'\nreplay=cache/'caller-site-union-frozen-replay'\nstart=time.monotonic()\ndef fact(raw):return dict(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest())\nmanifest=json.loads((archive/'manifest.json').read_bytes())\nassert set(manifest)|{'manifest.json'}=={p.relative_to(archive).as_posix() for p in archive.rglob('*') if p.is_file()}\nfor name,value in manifest.items():assert fact((archive/name).read_bytes())==value\nreport=json.loads((archive/'report.json').read_bytes())\nassert report['passed'] and report['reached_sites']==88 and report['total_sites']==91\nassert not report['all_sites_sampled'] and report['native_executions_in_this_stage']==0\nassert [row['offset'] for row in report['missing']]==[88215,94687,101781]\nassert len(report['cohorts'])==58 and report['excluded_without_coverage']==['interface/1','interface/2']\nassert report['previous_native_executions']==60 and report['application_aggregate_reached']==66\nfor name,expected in report['sources'].items():assert fact((root/name).read_bytes())==expected\nassert (archive/'tests.stderr.log').read_text().rstrip().endswith('OK')\nassert 'Ran 10 tests in ' in (archive/'tests.stderr.log').read_text()\nfrozen=json.loads((replay/'replayed.json').read_bytes())\nassert frozen['passed'] and frozen['native_executions']==0\nassert frozen['archive_manifest']==fact((archive/'manifest.json').read_bytes())\nassert 'Ran 10 tests in ' in (replay/'tests.stderr.log').read_text()\nassert (replay/'tests.stderr.log').read_text().rstrip().endswith('OK')\ncommand=['rtk','proxy','python3','-m','unittest','discover','-s','linux-kernel/tools/process-memory','-p','test_*.py']\nresult=subprocess.run(command,cwd=root,capture_output=True,text=True)\nassert result.returncode==0,result.stderr[-4000:]\nassert 'Ran 73 tests in ' in result.stderr and result.stderr.rstrip().endswith('OK')\nsubprocess.run(['rtk','proxy','git','diff','--quiet','cebecfbc4aac6b096dbc6c4fa7a4532c56dc7cba','--',\n    'src','docs','se','spec','Cargo.toml','Cargo.lock','linux-kernel/kernel',\n    'linux-kernel/labs','linux-kernel/design','linux-kernel/tools/process-memory/results/stage-3-application-corpus',\n    'linux-kernel/tools/process-memory/results/stage-3-interface-regressions',\n    'linux-kernel/tools/process-memory/results/stage-3-process-partial-source'],cwd=root,check=True)\ngroup=next(line.split(':',2)[2] for line in Path('/proc/self/cgroup').read_text().splitlines() if line.startswith('0::'))\ndirectory=Path('/sys/fs/cgroup')/group.lstrip('/')\nassert 'topal-bounded-' in group\nresources={name:(directory/name).read_text().strip() for name in ['memory.max','memory.swap.max','memory.peak','memory.events']}\nfor values in [report['resources'],resources]:\n    assert values['memory.swap.max']=='0' and 0<int(values['memory.peak'])<=int(values['memory.max'])\n    assert all(int(line.split()[1])==0 for line in values['memory.events'].splitlines())\nreceipt=dict(passed=True,archive_manifest=fact((archive/'manifest.json').read_bytes()),\n    frozen_replay=fact((replay/'replayed.json').read_bytes()),validation=dict(argv=command,exit_code=0,\n        stdout=result.stdout,stderr=result.stderr),elapsed_seconds=time.monotonic()-start,resources=resources,\n    audit_source=Path(__file__).read_text(),source_inputs=report['sources'],\n    scope='Single-agent source/authority and complete archive-byte review, actual instruction binding, frozen reader and10models, fresh73process models. No new VM, compiler build or full compiler suite; production/native implementation and closed original archives unchanged.88first-reach sites do not establish admission, returns, every path, unreachability or lifetime.')\ntarget=root/'linux-kernel/tools/process-memory/results/stage-3-caller-site-union-review.json'\ntarget.write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\\n')\nprint(json.dumps(dict(passed=True,archive_entries=len(manifest),models=73,receipt=str(target))))\n",
+  "elapsed_seconds": 1.2290203589946032,
+  "frozen_replay": {
+    "bytes": 322,
+    "sha256": "d3de191573efdf1eedf10ae032afec80f3ab14688d92605903a466e723d01e2b"
+  },
+  "passed": true,
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3072737280",
+    "memory.peak": "43098112",
+    "memory.swap.max": "0"
+  },
+  "scope": "Single-agent source/authority and complete archive-byte review, actual instruction binding, frozen reader and10models, fresh73process models. No new VM, compiler build or full compiler suite; production/native implementation and closed original archives unchanged.88first-reach sites do not establish admission, returns, every path, unreachability or lifetime.",
+  "source_inputs": {
+    "linux-kernel/tools/process-memory/archive_caller_coverage.py": {
+      "bytes": 12923,
+      "sha256": "31d2ab738d8b908a3d5db71a45f50edd6bd5fde7b82b09371b96c8e1d687661f"
+    },
+    "linux-kernel/tools/process-memory/caller_coverage.py": {
+      "bytes": 3469,
+      "sha256": "c86957c2db1208484634a2c2f4a4479ec0423328f51f372cbd48d67d9909c7fb"
+    },
+    "linux-kernel/tools/process-memory/test_caller_coverage.py": {
+      "bytes": 5444,
+      "sha256": "c5c7e39e66867bebd02f2bcd86e2d0d69dd081deb19c2e19c49e7053fb784d45"
+    },
+    "linux-kernel/tools/user-memory/inspect_call_inventory.py": {
+      "bytes": 8733,
+      "sha256": "bbf287ba1ebf072c4031267d58bff8be0dfb876d98ea17a309420cd58e649b7f"
+    }
+  },
+  "validation": {
+    "argv": [
+      "rtk",
+      "proxy",
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "linux-kernel/tools/process-memory",
+      "-p",
+      "test_*.py"
+    ],
+    "exit_code": 0,
+    "stderr": ".........................................................................\n----------------------------------------------------------------------\nRan 73 tests in 0.880s\n\nOK\n",
+    "stdout": ""
+  }
+}

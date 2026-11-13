@@ -1,0 +1,24 @@
+{
+  "applications": {
+    "manifest": {
+      "bytes": 274250,
+      "sha256": "7417bbd62b5dc322bc987e890c1e70f8d4efac6cb1b288a7d0a875808eb065d1"
+    },
+    "path": "linux-kernel/tools/process-memory/results/stage-3-application-corpus",
+    "report": {
+      "bytes": 438853,
+      "sha256": "4141f73cb30fe064c7e578b0f98fe078a6cf2d7e9a2077d19b0d8feae23366f2"
+    }
+  },
+  "interfaces": {
+    "manifest": {
+      "bytes": 501449,
+      "sha256": "03ef0c4e56356b2277987fef9c3085f4cd681e999abba535adb2ddcafd2337bb"
+    },
+    "path": "linux-kernel/tools/process-memory/results/stage-3-interface-regressions",
+    "report": {
+      "bytes": 308177,
+      "sha256": "ae7d3e23e90e7f27a43bf0bf854a1dc06b455b54898071f9a8f7d94218d921bd"
+    }
+  }
+}

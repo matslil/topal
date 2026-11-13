@@ -188,6 +188,15 @@ rerun for this private-test/observer increment. The older three kernel identitie
 remain unchanged. Other fatal paths, caller/loan/mapping lifetimes, asynchronous
 access and public/full Linux qualification remain open.
 
+The subsequent [combined caller census](step-4-process-memory-ownership.md#combined-first-reach-caller-census)
+reconstructs first-reach evidence for 88 of 91 helper sites from the earlier
+51 application and nine interface runs. Two old interface records lacking
+first-reach fields are explicitly excluded. All ten census models, frozen
+saved-data/native-byte replay and 73 surrounding process-memory tests pass.
+This runs no new VM or compiler build. The three unsampled legacy branches
+remain explicit gaps; samples do not establish admission, every path, private
+loans or continuous lifetime. Step 4 and public activation remain unfinished.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,
