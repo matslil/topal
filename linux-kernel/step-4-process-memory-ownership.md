@@ -1194,6 +1194,83 @@ loan/mapping lifetime, concurrency/publication obligations, production activatio
 and the full Linux/distribution/container/VM-host objective remain unfinished.
 These results establish no cause for an earlier model/provider safeguard.
 
+## Normal-return caller retirement across ordinary process/MM
+
+The optional read-only [caller observer](labs/qemu/x86_64/process_mm_caller_retirement_observer.py)
+now samples the first completed normal return at each helper site reached by
+the unchanged complete ordinary process/MM workload. It verifies all 91 linked
+call/erase sequences against the provider and kernel before installing its
+breakpoints. The existing process observer and complete-VM checks remain active.
+No kernel, compiler, runtime, C workload or core-language meaning changes.
+
+All three actual VM attempts complete the four ordinary MM cases and sample
+**75 distinct normal-return sites**. Each observes the actual operation-8 gateway
+request, helper result/carry, preserved registers and stack, eight erased private
+domains and physical caller retirement. There are **72 samples with an 80-byte
+outer adapter and three with an 88-byte adapter**. These retire **4,080 and 4,088
+bytes**, respectively, including all 4,000 inner caller bytes. The conservative
+stack bound remains **2,280 of 4,096 bytes**; the unchanged userspace component
+costs **1,208 of 2,048 bytes**.
+
+The native status counts are 67 zero, two range refusals, one absent translation,
+one permission refusal and four unsupported cases. Zero includes empty-range
+no-touch behavior; it does not automatically mean a nonempty range was admitted.
+Only zero clears carry. The original helper vocabulary and security checks are
+unchanged. Complete before/after MM snapshots retain owner identities, syscall
+epochs, context, allocator state, heap contents and table topology/permissions;
+only monotonic hardware A/D updates are permitted in table comparison. The byte
+pool retains **25 complete contents totaling 3,211,264 bytes**, sharing identical
+captures by checked digest. Every observation reads the guest anew.
+
+The [saved-record reader](tools/process-memory/readback_caller_retirement.py)
+binds the complete observer/profile, actual linked instructions, source/image
+identities, six first-party C files and unchanged VM geometry. Its nineteen
+altered-record controls reject missing completion, inconsistent registers/status,
+dirty or incomplete retirement, stale MM state and missing/changed heap bytes.
+The original full-MM reader and all twenty controls also pass. These controls
+alter saved observations, never the guest.
+
+The first attempt's native VM passes but its new reader incorrectly assumes
+only statuses zero and one; the exact failure is `ValueError: caller
+admission/result carry`. The reader is corrected to the existing native zero
+through four vocabulary. The second native VM and corrected reader pass, but
+full process-model discovery exposes a new test fixture's leaked import path:
+`ImportError: 'test_model' module incorrectly imported`. Test setup now restores
+the import path. Both original source versions, command failures and complete
+native observations are retained. Frozen replay reproduces both failures from
+their respective inputs, and separately passes the corrected reader and all
+80 process-memory models. Earlier failed qualification attempts remain failed.
+
+A third fresh VM, corrected readback and all six surrounding checks pass:
+locked workspace/all-target checking, **203 user-memory models**, **80
+process-memory models**, default ABI fixture, formatting and the Rust file
+ceiling. All **734 watched source files** remain unchanged during each attempt.
+This observation/readback-only increment references the preceding actual
+**383-pass, 25-ignored compiler suite**, checking 361 relevant unchanged inputs;
+it does not rerun that full suite or erase its documented original accounting
+gap. The final complete batch takes **273.10 seconds**, including a **263.96-second**
+native command. Its recorded cgroup peak is **755,228,672 / 3,344,101,376 bytes**,
+with zero swap and zero sampled memory events. The two earlier attempts and
+collection/review scopes retain their own resource records.
+
+The [closed archive](tools/process-memory/results/stage-3-caller-retirement/report.json)
+contains **1,340 manifested entries**, complete selected source/native bytes and
+all three attempt histories. Frozen replay executes saved-data readers/models,
+not another VM or compiler build. The [companion review](tools/process-memory/results/stage-3-caller-retirement-review.json)
+verifies archive closure, actual reader bindings, all seven LLVM modules per
+build, fifteen unchanged surrounding objects and identical application/kernel
+bytes against the preceding ordinary build. Review remains single-agent; it is
+not an independent human security assessment.
+
+Combining these 75 normal-return sites with the preceding pre-import stat
+sample gives **76 sites with selected normal-return evidence**. This is distinct
+from the unchanged historical **89/91 first-reach census**. Offsets 88,215 and
+94,687 still have no native first-reach sample; absence establishes neither
+unreachability nor safety. Every remaining caller/argument/error/fatal/exception
+path, continuous/private-loan lifetime, concurrency/mapping/publication proof,
+production activation and the original Linux/distribution/container/VM-host
+objective remain open.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

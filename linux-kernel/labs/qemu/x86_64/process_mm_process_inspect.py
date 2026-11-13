@@ -485,6 +485,15 @@ if __name__ == '__main__':
         publication_prefix=f'publication_profile={publication_profile!r}\n'
         trace_sites=(publication_profile['sites']['invalidated'],)
         harness.GDB_PROGRAM=augment(PROGRAM)
+    caller_setting=os.environ.get('TOPAL_TEST_PROCESS_MM_CALLER_RETIREMENT')
+    assert caller_setting in [None,'1']
+    if caller_setting is not None:
+        assert component['mode']=='process-mm' and publication_setting is None
+        from process_mm_caller_retirement_observer import augment as caller_augment,layout as caller_layout
+        caller_profile=caller_layout(build)
+        (build/'caller-retirement-layout.json').write_text(json.dumps(caller_profile,indent=2)+'\n')
+        publication_prefix+=f'caller_retirement_profile={caller_profile!r}\n'
+        harness.GDB_PROGRAM=caller_augment(harness.GDB_PROGRAM)
     harness.main(work_name=work_name,
         program_prefix=f'component={component!r}\nkernel_spans={spans!r}\nnative_halt={invariant_halt(build / "kernel.elf")["halt"]!r}\n'+publication_prefix,
         input_scope='source-built ordinary fork/yield/resize/wait and real MM owners',

@@ -207,6 +207,18 @@ helper sites; offsets 88,215 and 94,687 remain unsampled. The prefix itself stop
 at its userspace marker. Other caller/loan/fatal/continuous-lifetime, production
 and full initial Linux acceptance remain required.
 
+The subsequent [ordinary caller-retirement cohort](step-4-process-memory-ownership.md#normal-return-caller-retirement-across-ordinary-processmm)
+observes 75 distinct normal returns, with 72 actual 80-byte and three 88-byte
+outer adapters, complete caller/private erasure and retained whole MM bytes.
+All three native VMs pass; the final fresh qualification and frozen replay pass
+203 user-memory and 80 process-memory models. Two earlier reader/test-discovery
+failures are preserved and reproduced. The preceding full 383-test compiler
+suite is referenced over unchanged inputs, not rerun. The kernel, C workload
+and application bytes remain unchanged. With the prior stat prefix, 76 sites
+have selected normal-return evidence; historical first-reach remains 89/91.
+Every-path, continuous/private-loan/fatal, production and initial Linux acceptance
+remain unfinished.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

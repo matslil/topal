@@ -542,3 +542,45 @@ Combining the original historical census with this one new helper path gives
 selected return/cleanup and recorded boundaries do not qualify every caller/path,
 continuous lifetime, global unreachability, production activation or the full
 initial Linux objective.
+
+## Ordinary caller normal-return observations
+
+Set `TOPAL_TEST_PROCESS_MM_CALLER_RETIREMENT=1` when running the existing ignored
+`systems_frame_target::root_tests::process_mm_fork_handoff_and_exit_preserve_independent_heap_owners`
+test through the bounded wrapper. The option accepts only ordinary `process-mm`
+mode and cannot combine with the publication observer. The default observer
+program and workload are unchanged.
+[process_mm_caller_retirement_observer.py](../../labs/qemu/x86_64/process_mm_caller_retirement_observer.py)
+checks the linked inventory and captures first normal returns, actual gateway
+requests/results, registers, all private/caller retirement and complete retained
+MM bytes. Identical heap captures share checked raw-byte blobs; live reads are
+never cached.
+
+[readback_caller_retirement.py](readback_caller_retirement.py) takes the build
+directory and writes `process-mm-users/caller-retirement-readback.json`. It binds
+the complete observer/profile and native/source/image identities, replays the
+original full process/MM reader and twenty controls, and rejects nineteen new
+altered-record controls. [caller_retirement.py](caller_retirement.py) reconstructs
+whole snapshots and checks the existing zero-through-four status/carry ABI.
+[test_caller_retirement.py](test_caller_retirement.py) adds six host-only models;
+these are separate from native observations.
+
+The [closed archive](results/stage-3-caller-retirement/report.json) preserves
+three complete native runs, all 734 selected source files and both original
+reader/test-discovery failures. Frozen replay reproduces those failures and
+separately passes the corrected reader and all 80 process-memory models.
+The [review receipt](results/stage-3-caller-retirement-review.json) records all
+bindings, fifteen unchanged objects, unchanged application/kernel bytes, both
+actual outer adapters, bounds and resource scopes. The final fresh batch also
+passes 203 user-memory models, workspace/all-target checking, ABI, formatting
+and Rust file size checks. The earlier actual full 383-pass compiler suite is
+referenced over unchanged inputs, not rerun here; its original accounting gap
+remains explicit.
+
+The cohort records 75 normal-return sites: 72 with an 80-byte outer adapter and
+three with 88 bytes, retiring 4,080/4,088 physical caller bytes. There are 67
+zero statuses (including possible empty extents), two range, one absent, one
+permission and four unsupported results. Together with the earlier stat prefix,
+76 sites have selected normal-return evidence. The historical first-reach
+census remains 89/91; every-path, continuous/private-loan, fatal/exception,
+concurrent/mapping/publication, production and full initial Linux gates remain.
