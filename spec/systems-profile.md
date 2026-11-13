@@ -9049,6 +9049,12 @@ artifact digest. A fatal disposition SHALL enter a nonreturning provider whose
 minimal path requires no general allocation, blocking lock, scheduler,
 filesystem, or userspace service.
 
+The initial x86 Linux boot-protocol adapter SHALL advertise only its implemented
+setup/protected entry route and SHALL set `xloadflags` to zero. Its internal
+transition to long mode SHALL NOT constitute qualification of the independent
+64-bit loader entry at protected payload offset `0x200`. Qualification of that
+separate route SHALL remain an independent boot-adapter obligation.
+
 ### TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001 — Extended native operation vocabulary
 
 The optional dispatch slot MAY select `static-linux-dispatch-v2` with the same

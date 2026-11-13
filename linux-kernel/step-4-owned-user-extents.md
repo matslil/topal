@@ -1156,3 +1156,51 @@ The unmatched control at **45,861,106** is outside the enlarged graph and remain
 unresolved. Helpers **88,215 / 94,687** remain natively unsampled; selected native
 first-reach/normal-return coverage remains **89/91**. Full runtime/effect/lifetime,
 production reconstruction and the original Linux acceptance remain unfinished.
+
+## Boot-header advertisement correction
+
+The [adapter correction](tools/user-memory/results/stage-3-boot-header-correction/report.json)
+implements the boot-entry finding under the standing systems-only authority.
+Adapter revision **154** sets `xloadflags` to zero, advertising its implemented
+setup/protected route without claiming the absent independent 64-bit loader
+entry. The initial [adapter contract](design/x86-boot-adapter.md), compiler
+requirements and `TOPAL-SYSTEMS-ARTIFACT-001` now state that distinction. No core
+language, memory-protection check, kernel instruction or user ABI is changed.
+Independent 64-bit loader support remains unfinished.
+
+A fresh source-built ordinary process-MM Q35 regression passes, including its
+fork/handoff/resize/wait and retirement assertions. The complete kernel is
+byte-identical to `b8212e5e...`. The **45,243,376-byte** boot image differs from
+the pinned predecessor only at file offset **0x236**, changing one to zero.
+The corrected image SHA-256 is
+`6efb7d19f9bab3b2576cf6dfc173e734f6de9a0f7db9d3cfdf1950392b2371b2`.
+This is the unpublished native component image; there is no production
+`boot-provenance.json` or production-reconstruction claim.
+
+Fresh generated-header and deterministic atomic-publication compiler tests each
+pass their selected case. **230 user-memory tests**, **82 process-memory tests**,
+workspace/all-target checking, the default ABI fixture, formatting and the Rust
+file ceiling pass. All **743 watched inputs** remain stable over the **562.37
+second** matrix; its native command takes **505.76 seconds**. Recorded peak/limit
+are **1,147,973,632 / 3,369,381,888 bytes**, with zero swap and sampled events in
+that successful scope.
+
+The initial full compiler run was intentionally stopped after inspection found
+legacy native debugger-injected inconsistent kernel-state cases. Its wrapper
+ends **241**, not success; exact driver, partial output and the pre-stop resource
+snapshot are retained. Some individual tests pass, but the **full suite remains
+incomplete**. Whether individual injected cases reached before stopping is not
+established. This is a test-selection correction, not an AI safeguard notice,
+build defect or OOM. The pre-stop snapshot records peak/limit
+**2,916,757,504 / 3,327,926,272 bytes** and `sock_throttled=78`, so no all-events-zero
+claim applies. The replacement selection uses actual ordinary syscall programs
+and read-only native observation; inconsistent-state/fatal coverage remains an
+explicit qualification gap.
+
+The [companion self-review](tools/user-memory/results/stage-3-boot-header-correction-review.json)
+checks complete archive bytes, exact old/new image comparison, fresh saved
+owner/publication readback, corrected boot readback and both suites in a frozen
+source tree. It reruns no Cargo command or VM. The existing nonfatal GDB
+`.debug_names` warning is preserved; no new debug-format qualification is claimed.
+Complete entry/effect/lifetime/ownership, independent loader support, production
+reconstruction and full initial Linux acceptance remain unfinished.

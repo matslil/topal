@@ -93,7 +93,7 @@ compiler or disassembler. Ten new structure counterexample tests live in
 rtk scripts/run_bounded.py -- python3 -B linux-kernel/tools/user-memory/run_boot_entry_stage.py linux-kernel/.cache/x86_64/NEW_OUTPUT
 ```
 
-The saved header advertises `XLF_KERNEL_64`, whose independent entry is at
+The saved pre-correction header advertises `XLF_KERNEL_64`, whose independent entry is at
 payload offset `0x200`. That location instead starts 3,584 zero bytes. It is
 distinct from the internal transition destination at offset `0x40`. This is a
 boot-interface defect to repair; the reader does not qualify that route.
@@ -107,3 +107,36 @@ or safely handled. Real-mode/loader/CPU prerequisites, complete handler effects,
 TSS/stack switching, runtime entry/mutation, AP/DMA and production reconstruction
 remain open. Decoder disagreement 45,861,106 is outside this graph and remains
 unresolved; native helper gaps 88,215/94,687 and 89/91 coverage are unchanged.
+
+## Boot-header advertisement correction
+
+Adapter revision **154** clears that unsupported entry flag. Its implemented
+setup/protected route still enters the same x86-64 kernel. This follows
+`TOPAL-SYSTEMS-ARTIFACT-001`, `TOPAL-COMP-SYSTEMS-ARTIFACT-001` and
+`LK-X64-BOOT-001`; it does not implement the separate 64-bit loader route.
+
+The [correction archive](results/stage-3-boot-header-correction/report.json) and
+[review](results/stage-3-boot-header-correction-review.json) retain one fresh
+source-built process-MM Q35 regression, two targeted compiler tests, 230
+user-memory tests, 82 process-memory tests and the workspace/ABI/format/size
+checks. The 743 watched inputs stay stable. The kernel remains byte-identical
+(`b8212e5e...`); the entire 45,243,376-byte image changes only at file offset
+`0x236`, from one to zero. Saved readback and frozen replay check the actual
+owner/publication history and reproduce the corrected boot report.
+
+The initial full compiler run was intentionally stopped after review identified
+legacy debugger-injected inconsistent kernel-state cases in
+[systems_frame_memory_tests.rs](../../../src/topal-compiler/src/systems_frame_memory_tests.rs)
+and its fault inspector. Its exact driver, partial results and pre-stop counters
+are retained. This was a validation-selection correction, with no AI safeguard
+notice; the reach of individual injected cases before stopping is unestablished.
+The full suite is **incomplete**, not passed. The selected native regression
+uses ordinary source-built syscalls and read-only state observation. Model-level
+counterexamples and that regression do not discharge all remaining native fatal,
+exception or inconsistent-state obligations. Future qualification must account
+for those gaps explicitly.
+
+The native component still has no production boot-provenance record. Its
+nonfatal GDB `.debug_names` warning is retained; this stage grants no new debug
+format qualification. Separate loader support, complete entries/effects/lifetime,
+production reconstruction and full Linux acceptance remain open.

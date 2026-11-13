@@ -6,6 +6,7 @@ import struct
 import unittest
 
 from boot_layout import BASE, GATES, IDT, IDTR, bind_loads, gdt, idt, load_segments, paging, take
+from inspect_boot_entries import header
 
 
 def saved_idt():
@@ -34,6 +35,27 @@ def saved_elf():
 
 
 class BootLayoutTests(unittest.TestCase):
+    def test_header_distinguishes_payload_mode_from_loader_advertisement(self):
+        image = bytearray(2560 + 4096)
+        image[0x1f1] = 4
+        struct.pack_into('<I', image, 0x1f4, 4096 // 16)
+        struct.pack_into('<H', image, 0x1fe, 0xaa55)
+        image[0x200:0x202] = b'\xeb\x6a'
+        image[0x202:0x206] = b'HdrS'
+        struct.pack_into('<H', image, 0x206, 0x20f)
+        image[0x211] = 0x81
+        struct.pack_into('<I', image, 0x214, BASE)
+        struct.pack_into('<Q', image, 0x258, BASE)
+        struct.pack_into('<I', image, 0x260, 4096)
+        # Both historical and corrected images have a 64-bit payload. Only
+        # the historical header makes the independent-entry promise.
+        for flags in [0, 1]:
+            struct.pack_into('<H', image, 0x236, flags)
+            self.assertEqual(header(image)['xloadflags'], flags)
+        struct.pack_into('<H', image, 0x236, 2)
+        with self.assertRaisesRegex(ValueError, 'extended boot flags'):
+            header(image)
+
     def test_complete_64bit_idt_target_is_reconstructed(self):
         payload, targets = saved_idt()
         value = idt(payload, targets)

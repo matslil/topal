@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/153";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/154";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -980,7 +980,10 @@ fn build_setup_header(syssize: u32, protected_size: u32) -> Result<Vec<u8>, Comp
     write_u32(&mut setup, 0x230, 4096);
     setup[0x234] = 0;
     setup[0x235] = 12;
-    write_u16(&mut setup, 0x236, 1);
+    // XLF_KERNEL_64 advertises a separate loader entry at payload + 0x200.
+    // This adapter enters long mode through its setup/protected transition;
+    // it must not advertise the absent independent 64-bit loader route.
+    write_u16(&mut setup, 0x236, 0);
     write_u32(&mut setup, 0x238, 2048);
     write_u64(&mut setup, 0x258, X86_PROTECTED_PAYLOAD_ADDRESS);
     write_u32(&mut setup, 0x260, protected_size);
@@ -1807,7 +1810,8 @@ mod tests {
         );
         assert_eq!(
             u16::from_le_bytes(generated.bytes[0x236..0x238].try_into().unwrap()),
-            1
+            0,
+            "TOPAL-SYSTEMS-ARTIFACT-001: internal long-mode transition does not advertise an independent 64-bit loader entry"
         );
         let protected = &generated.bytes[SETUP_BYTES..];
         assert!(

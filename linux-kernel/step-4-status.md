@@ -251,6 +251,17 @@ This adds no native execution or production provenance. Actual loader/CPU state,
 complete asynchronous effects, runtime entries/lifetime and the original Linux
 acceptance remain open; the 89/91 native helper coverage is unchanged.
 
+The subsequent [boot-header correction](step-4-owned-user-extents.md#boot-header-advertisement-correction)
+clears the unimplemented independent 64-bit entry advertisement in adapter
+revision 154. A fresh source-built process-MM Q35 regression passes; its kernel
+is byte-identical and its complete image changes only at header byte `0x236`.
+Two targeted compiler tests, 230 user-memory tests, 82 process-memory tests and
+the surrounding checks pass, with exact saved-data replay. The initial full
+compiler run was intentionally stopped after identifying legacy debugger-injected
+kernel-state cases and remains incomplete. The corrected native component is
+unpublished; separate loader, full fatal/entry/lifetime/production and original
+Linux acceptance obligations remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

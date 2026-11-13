@@ -3202,6 +3202,12 @@ publish only the boot image and canonical adapter provenance. Structural
 packaging alone shall not executable-qualify the systems target; qualification
 requires separate execution under the pinned QEMU board and CPU.
 
+The initial adapter shall advertise only its implemented setup/protected boot
+route. Its `xloadflags` shall be zero: the internal transition into long mode
+does not implement Linux's independent 64-bit loader entry at payload offset
+`0x200`. This does not qualify that separate boot interface or remove it from
+the broader kernel objective.
+
 The initial user-image publication increment shall add exactly one canonical
 ELF image to the atomic systems-artifact directory and bind its filename and
 digest in artifact provenance. The boot adapter shall read that published

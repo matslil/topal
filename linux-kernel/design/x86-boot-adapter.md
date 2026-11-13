@@ -65,8 +65,8 @@ zero-filled in the protected payload.
 
 ## Boot header and evidence
 
-The generated setup header records a high-loaded, non-relocatable 64-bit
-kernel, `code32_start = 0x0010_0000`, 4 KiB kernel alignment, the protected
+The generated setup header records a high-loaded, non-relocatable payload,
+`code32_start = 0x0010_0000`, 4 KiB kernel alignment, the protected
 payload size, and no embedded initramfs. The boot publication may include the
 separate deterministic resource selected by the
 [initial boot-resource contract](initial-boot-resource.md); QEMU supplies it
@@ -74,6 +74,16 @@ through the Linux ramdisk handoff. QEMU remains responsible for the command-line
 pointer and other bootloader-written fields. The adapter preserves the
 boot-parameter address, supplies the BIOS E820 portion needed by the
 boot-memory provider, and does not consume the command line.
+
+The initial adapter advertises only the setup/protected entry route implemented
+above. Its `xloadflags` is zero. `XLF_KERNEL_64` does not merely identify the
+payload's eventual execution mode: it advertises an independent 64-bit loader
+entry at protected payload offset `0x200`. The internal long-mode destination
+at offset `0x40` does not implement that interface. The initial adapter must not
+advertise that absent entry. Independent 64-bit loader support remains part of
+broader boot qualification, not a capability established by this correction.
+This systems-only clarification follows the standing authorization and the
+[saved-image finding](../step-4-owned-user-extents.md#saved-boot-and-initial-interrupt-entry-binding).
 
 Packaging publishes the `bzImage`, the initial resource, and canonical adapter
 provenance together. The record includes the exact protocol/header identity,

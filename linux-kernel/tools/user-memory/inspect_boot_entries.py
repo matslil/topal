@@ -78,7 +78,7 @@ def header(image):
     require(protected > 0 and protected % 16 == 0 and protected == number(image, 0x260, 4)
             and protected == number(image, 0x1f4, 4) * 16, 'boot payload length fields')
     flags = number(image, 0x236, 2)
-    require(flags == 1, 'unsupported private extended boot flags')
+    require(flags in [0, 1], 'unsupported private extended boot flags')
     require(number(image, 0x200, 1) == 0xeb, 'real-mode setup jump')
     real_entry = 0x202 + int.from_bytes(take(image, 0x201, 1), 'little', signed=True)
     require(0x26c <= real_entry < setup, 'real-mode setup entry extent')
@@ -118,12 +118,13 @@ def inspect(kernel, image):
     return dict(passed=True, schema='topal.saved-boot-entries/1', kernel_sha256=digest(elf.data),
                 boot_image_sha256=digest(image), header=boot, load_segments=segments, symbols=symbols,
                 transition=handoff, gdt=gdt(payload), idt=gates, paging=paging(payload), roots=roots,
-                advertised_64bit_entry=dict(address=legacy64, file_offset=boot['setup_bytes'] + 0x200,
+                advertised_64bit_entry=dict(advertised=bool(boot['xloadflags'] & 1),
+                    address=legacy64, file_offset=boot['setup_bytes'] + 0x200,
                     first_bytes=take(payload, 0x200, 16).hex(), zero_bytes_before_next_nonzero=zero_end - 0x200,
-                    qualified=False, blocker='XLF_KERNEL_64 advertises payload+0x200; that route is not the internal long-mode handoff and has no qualified implementation in this inspection.'),
+                    qualified=False, blocker=('XLF_KERNEL_64 advertises payload+0x200; that route is not the internal long-mode handoff and has no qualified implementation in this inspection.' if boot['xloadflags'] & 1 else None)),
                 qualification_complete=False,
                 remaining=['Real-mode setup/BIOS/GDT loading and actual loader route/CPU prerequisites.',
-                           'Advertised independent 64-bit entry and other boot interfaces.',
+                           'Independent 64-bit entry and other boot interfaces.',
                            'Complete handler effects, TSS/stack switching, empty-vector behavior and asynchronous nesting.',
                            'Runtime entry/table/code mutation, AP, DMA, mapping lifetime and continuation ownership.',
                            'Production provenance/reconstruction and full Linux/application/container/VM-host acceptance.'],
