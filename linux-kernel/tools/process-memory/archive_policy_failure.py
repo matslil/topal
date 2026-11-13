@@ -18,7 +18,7 @@ def fact(raw):
 
 
 def collect(matrix,output,validation=None,original_collector=None):
-    from run_policy_failure import ROOT,CASES,VALIDATIONS,hashes
+    from run_policy_failure import ROOT,CASES,hashes,observer_reference,validation_commands
     from readback_policy_failure import readback as failure_readback
     from readback_publication import readback as ordinary_readback
     run=json.loads((matrix/'run.json').read_text())
@@ -46,16 +46,20 @@ def collect(matrix,output,validation=None,original_collector=None):
     else:
         assert not changed
     assert qualification['passed'] and qualification['exit_code']==0
-    assert set(qualification['validation'])==set(VALIDATIONS)
+    profile=qualification.get('validation_profile','full')
+    assert set(qualification['validation'])==set(validation_commands(profile))
     assert all(v['exit_code']==0 for v in qualification['validation'].values())
+    if profile=='observer':
+        assert qualification['compiler_reference']==observer_reference()
     output.mkdir(parents=True,exist_ok=False)
     manifest={}
     def save(name,raw):
         path=output/name;path.parent.mkdir(parents=True,exist_ok=True)
         path.write_bytes(raw);manifest[name]=fact(raw)
     def compressed(name,raw):save(name+'.gz',gzip.compress(raw,mtime=0))
-    report=dict(passed=True,schema='topal-process-mm-source-policy-failure-v1',
-        sources={},cohorts={},scope='One ordinary positive VM and two source-built fatal diagnostics; frozen replay is saved-data evidence. Every other fatal path, complete caller/lifetime qualification and public activation remain open.')
+    report=dict(passed=True,schema='topal-process-mm-source-policy-failure-v2',
+        validation_profile=profile,compiler_reference=qualification.get('compiler_reference'),
+        sources={},cohorts={},scope='One ordinary positive VM and four source-built fatal diagnostics, including partial allocation/release stores; frozen replay is saved-data evidence. Other fatal paths, complete caller/lifetime qualification and public activation remain open.')
     report['native_phase_sources']=run['source_hashes_before']
     report['post_native_collector_repair']=None
     if original is not None:
@@ -104,8 +108,11 @@ def replay(archive,output):
         path=(archive/name).resolve();assert path.is_relative_to(archive)
         assert fact(path.read_bytes())==expected
     report=json.loads((archive/'report.json').read_text())
-    assert report['passed'] and report['schema']=='topal-process-mm-source-policy-failure-v1'
-    assert set(report['cohorts'])=={'ordinary','allocate','release'}
+    assert report['passed'] and report['schema'] in ['topal-process-mm-source-policy-failure-v1',
+                                                   'topal-process-mm-source-policy-failure-v2']
+    expected={'ordinary','allocate','release'}
+    if report['schema'].endswith('-v2'):expected|={'partial-allocate','partial-release'}
+    assert set(report['cohorts'])==expected
     output.mkdir(parents=True,exist_ok=False)
     def restore(target,name,expected):
         assert target.resolve().is_relative_to(output)

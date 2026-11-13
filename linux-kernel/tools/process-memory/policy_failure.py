@@ -22,7 +22,7 @@ def tables(first,last):
                 'failure unexpected mapping change')
 
 
-def unchanged(first,last,poison=False,cell_tag=None):
+def unchanged(first,last,poison=False,cell_tag=None,cell_count=None):
     require(set(first)==set(last),'failure snapshot closure')
     for name,value in first.items():
         if name=='tables':tables(value,last[name])
@@ -35,7 +35,8 @@ def unchanged(first,last,poison=False,cell_tag=None):
         elif name=='details' and poison:require(last[name]==[0]*4,'failure details retirement')
         elif name=='active' and cell_tag is not None:
             expected=dict(value)
-            expected['cells']=[v for i,word in enumerate(value['cells']) for v in [cell_tag if i%3==0 else word]]
+            expected['cells']=value['cells'][:]
+            for i in range(cell_count):expected['cells'][i*3]=cell_tag
             require(last[name]==expected,'failure retained active owner and source delta')
         else:require(last[name]==value,'failure changed '+name)
 
@@ -53,7 +54,9 @@ def first_fit(catalog,count):
 
 
 def check(value):
-    kind=value['kind'];require(kind in ['allocate-metadata','release-metadata'],'source failure kind')
+    kind=value['kind'];require(kind in ['allocate-metadata','release-metadata',
+        'allocate-partial-status','release-partial-status'],'source failure kind')
+    allocating=kind.startswith('allocate-');partial=kind.endswith('-partial-status')
     request=value['request'];before=request['before'];snapshot(before)
     require(request['operation']==5 and request['request']==0x5f7000+101*4096-11
             and before['ids'][0]>=2 and before['ids'][3]==1
@@ -69,11 +72,12 @@ def check(value):
             'failure retained whole registry')
     require(effects['snapshot_catalog_sha256']==terminal['snapshot_catalog_sha256']==source['catalog_sha256'],
             'failure comparison snapshot identity')
-    count=101 if kind=='allocate-metadata' else 67
-    if kind=='allocate-metadata':
+    count=101 if allocating else 67
+    performed=13 if partial else count
+    if allocating:
         require(a['candidate']['token']==[0]*3,'failure unpublished candidate token')
         start=first_fit(catalog,count);identity=a['allocator'][2];provenance=0;initial=0
-        tag=identity+1
+        tag=identity if partial else identity+1
         require(a['active']==before['active'] and a['inactive']==before['inactive'],'failure prepublication process bytes')
         tables(before['tables'],a['tables'])
         require(request['publication_indices']==[] and value['open_retirement'] is None,
@@ -87,25 +91,37 @@ def check(value):
         old=bytes.fromhex(before['active']['bytes'])
         require(bytes.fromhex(a['candidate']['bytes'])==old+bytes(34*4096),'failure copied candidate bytes')
         require(a['inactive']==before['inactive'],'failure retained parent bytes')
-        start=active['record'][2];identity=active['token'][1];provenance=active['record'][5];initial=start;tag=1
+        start=active['record'][2];identity=active['token'][1];provenance=active['record'][5];initial=start
+        tag=0 if partial else 1
         require(len(request['publication_indices'])==1 and value['open_retirement'] is not None,
                 'failure publication/retirement prefix')
-        partial=value['open_retirement']
-        require(partial['unpin_succeeded'] and partial['erase'] is not None and partial['release'] is not None
-                and not partial['release_succeeded'],'failure release must remain incomplete')
+        retirement=value['open_retirement']
+        require(retirement['unpin_succeeded'] and retirement['erase'] is not None and retirement['release'] is not None
+                and not retirement['release_succeeded'],'failure release must remain incomplete')
     expected=catalog[:]
-    for i in range(start,start+count):expected[i*3]=tag
+    for i in range(start,start+performed):expected[i*3]=tag
     expected_sha=sha_words(expected)
     require(expected_sha!=source['catalog_sha256']
             and effects['catalog_sha256']==terminal['catalog_sha256']==expected_sha,
             'failure performed source effects retained without rollback')
     header=source['header'][:]
-    header[1:12]=[count,0,identity,provenance,0 if kind=='allocate-metadata' else 2,initial,initial,0,0,0,0]
+    header[1:12]=[count,0,identity,provenance,0 if allocating else 2,initial,initial,0,0,0,0]
     require(effects['snapshot_header']==terminal['snapshot_header']==header,'failure actual comparison header')
-    header[5:12]=[4,start+count,start,count,catalog[start*3+1] if kind=='allocate-metadata' else 0,
+    processed=performed-1 if partial else count
+    phase=(1 if allocating else 3) if partial else 4
+    header[5:12]=[phase,start+processed,start,processed,catalog[start*3+1] if allocating else 0,
                   catalog[(start+count-1)*3+2],start+1]
-    require(effects['header']==terminal['header']==header,'failure actual source completion')
-    unchanged(a,b,cell_tag=tag if kind=='release-metadata' else None)
+    require(effects['header']==terminal['header']==header,'failure actual source progress/completion')
+    returned=(1<<64)-1 if partial else start+1
+    boxed=[0,2 if returned>0xffffffff else 1,returned,0,0,0,2]
+    result=value['source_result']
+    require(source['output_words']==[0]*7 and terminal['output_words']==[0]*7,
+            'failure source output initial/final retirement')
+    require(result['output_words']==effects['output_words']==boxed,
+            'failure actual source natural/protocol result')
+    require(result['allocator']==b['allocator'] and result['history']==effects['history']
+            and result['history'][3:5]==[0,0],'failure source returned before controller rejection')
+    unchanged(a,b,cell_tag=tag if not allocating else None,cell_count=performed)
     unchanged(b,c,poison=True)
     history=effects['history'][:];history[3:5]=[0,1]
     require(terminal['history']==history,'failure source history retention and poison')
@@ -119,7 +135,8 @@ def check(value):
         row=terminal['retired'][name]
         require(row['bytes']==size and row['sha256']==hashlib.sha256(bytes(size)).hexdigest(),
                 'failure incomplete physical retirement: '+name)
-    return dict(passed=True,kind=kind,source_cells=count,source_identity=identity,
-        active_pid=before['ids'][0],inactive_pid=before['ids'][3],retained_extents=2+int(kind=='release-metadata'),
+    return dict(passed=True,kind=kind,source_cells=count,performed_source_cells=performed,
+        source_identity=identity,source_outcome='invalid-protocol-after-prefix' if partial else 'completed-invalid-delta',
+        active_pid=before['ids'][0],inactive_pid=before['ids'][3],retained_extents=2+int(not allocating),
         caller_retired_bytes=4000,
         scope='Selected source-built invalid delta, retained actual process owners/effects and declared gateway retirement; not every fatal path, outer caller, lifetime, AP/DMA/async or public activation')

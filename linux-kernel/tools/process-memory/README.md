@@ -400,14 +400,16 @@ obligations.
 
 ## Source-built process policy failures
 
-[run_policy_failure.py](run_policy_failure.py) runs the unchanged ordinary
-process cohort and two diagnostic Topal policies with the unmodified fork/resize
-C fixture. [policy_failure.py](policy_failure.py) checks retained effects/owners,
+The first completed-delta stage ran the unchanged ordinary process cohort
+and two diagnostic Topal policies with the unmodified fork/resize C fixture.
+The current [run_policy_failure.py](run_policy_failure.py) adds the two partial
+source-status cases described below. [policy_failure.py](policy_failure.py) checks retained effects/owners,
 poison and declared invocation retirement. The read-only observer preserves the
 ordinary MM and publication assertions. [readback_policy_failure.py](readback_policy_failure.py)
 binds the complete observer, source/controller/application/kernel/VM inputs,
 whole registry, source deltas, mappings, raw CPU logs and physical retirement.
-Its 12 allocation and 15 release controls alter saved records only.
+The original archived reader used 12 allocation and 15 release controls,
+which altered saved records only; current readers add source-result/call checks.
 
 The release failure remains incomplete after publication, unpin and erasure;
 neither its retained token nor the comparison snapshot may be treated as a
@@ -443,3 +445,34 @@ the sole post-native collector repair: original/new collector bytes and hashes
 are preserved. No compiler, policy, application, observer or reader source
 change is permitted through that mechanism. Future fresh runs need neither
 recovery option when their complete matrix succeeds.
+
+### Partial source-status diagnostics and current five-case driver
+
+The current driver runs one complete ordinary cohort plus completed allocation/
+release delta failures and partial allocation/release status failures. Each new
+partial producer performs 13 stores before returning invalid protocol; its
+progress header retains twelve completed advances. The reader binds the actual
+boxed source result, decoder and fatal call sites, full retained effects and
+held identities through nonreturning cleanup. Current diagnostic reader counts
+are 15/18/17/20 controls, respectively. These saved-data controls execute no VM.
+
+The [five-VM archive](results/stage-3-process-partial-source/report.json) and
+[review receipt](results/stage-3-process-partial-source-review.json) retain fresh
+native executions, all seven verified LLVM modules per build and frozen-reader
+replay. Fourteen surrounding objects remain byte-identical. The boundary object
+differs only in its source-derived history-field displacement (1,272 to 1,360);
+the receipt binds the generated LLVM field, exact operand, linked instruction
+and equality of every other byte. The earlier three-VM archive remains unchanged.
+
+`run_policy_failure.py` defaults to full validation. The optional
+`--validation-profile observer` is restricted to this private-test/observation
+increment from commit `9c84c21a305f502a29aaa0cce974ba85fc879c59`. It verifies the
+earlier successful full compiler-suite receipt and unchanged compiler hashes,
+refuses other tracked compiler/dependency/design changes, runs six fresh checks
+(including workspace/all targets, both model suites and the default ABI fixture),
+and requires all five native cases with byte-identical historical kernels.
+The report explicitly records that the earlier 383-test suite was not rerun.
+`test_policy_failure_profile.py` supplies four model-level reuse/refusal controls.
+Use the default full profile for a compiler/runtime/dependency/design change.
+Neither profile qualifies every fatal path, outer caller, continuous lifetime,
+other-CPU/DMA/asynchronous access or public kernel activation.

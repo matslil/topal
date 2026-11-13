@@ -20,6 +20,7 @@ PROGRAM = ("failure_model=dict(model)\nexec(" + repr(MODEL) + ",failure_model)\n
 fault_request=None
 fault_source=None
 fault_effects=None
+fault_result=None
 
 def failure_capture(initial=False):
     value=capture();allocator=value['allocator'];n=allocator[3]
@@ -29,7 +30,7 @@ def failure_capture(initial=False):
     result=dict(snapshot=value,header=words(table,16),
         catalog_sha256=hashlib.sha256(raw).hexdigest(),
         registry_sha256=hashlib.sha256(memory(registry,n*64)).hexdigest(),
-        history=words(allocator[7],5))
+        history=words(allocator[7],5),output_words=words(allocator[11],7))
     if initial:result['catalog']=list(struct.unpack('<'+'Q'*(n*3),raw))
     else:
         result.update(snapshot_header=words(comparison,16),
@@ -57,23 +58,39 @@ class SourceEntered(Checked):
         global fault_source
         if fault_request is None:return False
         assert pending is fault_request
-        if fault_kind=='allocate-metadata':
+        if fault_kind.startswith('allocate-'):
             if reg('rsi')!=101:return False
             assert reg('rdx')==1 and reg('rcx')==address('topal_x86_frame_mm_tokens_v1')+24
         else:
             assert reg('rsi')==address('topal_x86_frame_mm_tokens_v1')
         assert reg('rdi')==address('topal_x86_frame_context_v1') and fault_source is None
         fault_source=failure_capture(True)
+        fault_source.update(entry_pc=reg('rip'),entry_sp=reg('rsp'),return_pc=word(reg('rsp')),
+            arguments={r:reg(r) for r in ['rdi','rsi','rdx','rcx']})
         observed['policy_failure']=dict(kind=fault_kind,request=fault_request,source_before=fault_source)
         print('PROCESS_MM_DIAGNOSTIC_SOURCE_ENTER',fault_kind,flush=True)
+        return False
+
+class SourceResult(Checked):
+    def observe(self):
+        global fault_result
+        if fault_source is None:return False
+        assert pending is fault_request and fault_result is None
+        allocator=words(address('topal_x86_frame_context_v1'),16)
+        assert reg('rdi')==address('topal_x86_frame_context_v1') and reg('rsi')==allocator[11]
+        fault_result=dict(entry_pc=reg('rip'),entry_sp=reg('rsp'),return_pc=word(reg('rsp')),
+            allocator=allocator,output_pointer=reg('rsi'),output_words=words(allocator[11],7),
+            history=words(allocator[7],5))
+        observed['policy_failure']['source_result']=fault_result
         return False
 
 class FailureEntered(Checked):
     def observe(self):
         global fault_effects
-        assert fault_source is not None and fault_effects is None and pending is fault_request
+        assert fault_source is not None and fault_result is not None and fault_effects is None and pending is fault_request
         assert reg('rdi')==address('topal_x86_frame_context_v1')
         fault_effects=failure_capture()
+        fault_effects.update(entry_pc=reg('rip'),entry_sp=reg('rsp'),return_pc=word(reg('rsp')))
         observed['policy_failure']['effects']=fault_effects
         print('PROCESS_MM_DIAGNOSTIC_EFFECTS_RETAINED',fault_kind,flush=True)
         return False
@@ -106,7 +123,8 @@ class FailureRetired(Checked):
         return True
 
 def install_policy_failure():
-    SourceEntered('topal_frame_allocator_'+('allocate' if fault_kind=='allocate-metadata' else 'release')+'_v1')
+    SourceEntered('topal_frame_allocator_'+('allocate' if fault_kind.startswith('allocate-') else 'release')+'_v1')
+    SourceResult("*'f.result'",internal=True)
     FailureEntered("*'f.fatal'",internal=True)
     FailureRetired("*'topal_x86_frame_gateway_fatal_reclaimed_v1'",internal=True)
 ''')
@@ -125,7 +143,8 @@ def main():
     diagnostic = json.loads((build / 'process-mm-policy-failure.json').read_text())
     assert component['mode'] == 'process-mm'
     assert diagnostic['schema'] == 'topal-process-mm-source-policy-failure-v1'
-    assert diagnostic['kind'] in ['allocate-metadata', 'release-metadata']
+    assert diagnostic['kind'] in ['allocate-metadata', 'release-metadata',
+                                  'allocate-partial-status', 'release-partial-status']
     assert hashlib.sha256((build / 'diagnostic-policy.t').read_bytes()).hexdigest() == diagnostic['source_sha256']
     source = Path(__file__).with_name('user_extent_process_mm_cases.c')
     assert hashlib.sha256(source.read_bytes()).hexdigest() == component['process_mm_source_sha256']

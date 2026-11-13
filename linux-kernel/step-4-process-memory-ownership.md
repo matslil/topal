@@ -977,6 +977,85 @@ private-loan and mapping lifetimes, AP/DMA/asynchronous access, cold
 public reconstruction and the complete Linux/distribution/container/VM-host
 objective remain open. No AI safeguard explanation follows from these results.
 
+## Partial source-status failures after performed stores
+
+Two additional compiled Topal diagnostic policies return an invalid source
+status after **13 actual metadata stores**, through the unchanged ordinary
+fork/resize C fixture. They leave the canonical allocator, controller checks,
+runtime implementation and core language unchanged. The producer returns false after
+the thirteenth store, before advancing the progress header: the retained header
+therefore records twelve processed cells and the actual allocation/release
+phase. This diagnostic contract deliberately exercises an incomplete source
+operation; it does not authorize partial success or a functional allocator.
+
+| Diagnostic | Preserved effects and held owners |
+| --- | --- |
+| Allocation of 101 pages stops after 13 stores | Thirteen cells contain the pending identity, while the issuance counter remains unconsumed and no candidate is published. The child and parent retain their complete pinned 67-page heaps. |
+| Release of the old 67-page child heap stops after 13 stores | The copied 101-page replacement is already pinned, published and invalidated; the old backing is unpinned and erased. Thirteen source identities are cleared, while the old whole token/live record, pinned candidate and pinned parent remain accounted for. Release is incomplete. |
+
+The read-only observer now captures the real source-result decoder entry and
+boxed `Nat` output. Both partial failures return `2^64 - 1`, decoded as invalid
+protocol. ELF-bound native call sites distinguish that rejection in `f.invoke`
+from the older completed-but-invalid-delta rejection in allocate/release. Full
+initial catalog, whole registry reconstruction, comparison snapshot, retained
+process bytes and issuance are checked through terminal cleanup. The decoder
+output is erased on the fatal route. No guest registers, data or instructions
+are injected by the debugger, and no third-party application is patched.
+
+The [five-VM archive](tools/process-memory/results/stage-3-process-partial-source/report.json)
+retains a fresh ordinary cohort and all four diagnostics. Ordinary, completed
+allocation-failure and completed release-failure kernels reproduce their exact
+previous SHA-256 identities; only the two new diagnostic source/kernel identities
+differ. All **70 diagnostic saved-record controls** reject: 15 completed
+allocation, 18 completed release, 17 partial allocation and 20 partial release.
+They include changed returned values/native call sites, pretended completion
+and lost performed stores. These are reader controls, not additional VMs.
+The complete ordinary cohort retains its original checks and completion gates.
+
+Fresh locked workspace/all-target checking, **203 user-memory tests**, **63
+process-memory tests**, the default ABI fixture, formatting and the Rust file
+ceiling pass. This increment changes only a private Rust diagnostic-test module
+and observation/evidence tools. Its explicit observer validation profile binds
+the previous full **383-passed / 22-ignored compiler suite** at commit
+`9c84c21a305f502a29aaa0cce974ba85fc879c59`; it does **not** claim a new full-suite
+run. The guard verifies 308 other compiler input hashes and rejects
+production/dependency/higher-authority tracked changes. Four host-only controls
+check successful reuse and refusal of changed source or failed reference tests.
+The default full validation profile still runs the entire compiler suite.
+
+All **724 watched inputs** remain unchanged throughout the matrix, which
+completes in **904.11 seconds**. Its cumulative bounded cgroup sample is
+**1,121,366,016 / 3,274,924,032 bytes**, with zero swap and zero memory events.
+This is not a per-VM peak. Collection verifies all seven LLVM modules per build;
+frozen replay repeats all five saved-record readers, CPU-log checks and controls
+without a VM, kernel rebuild or model-suite rerun. The original three-VM archive,
+its quota-failure history and successful recovery remain unchanged.
+
+The [review receipt](tools/process-memory/results/stage-3-process-partial-source-review.json)
+checks complete archive/native byte identity, 14 unchanged surrounding objects
+per build, unchanged application sources and linked fatal halt instructions.
+The first companion audit rejected a fifteenth object's equality: `boundary.o`
+encodes the private history-pointer field at displacement 1,272 in the original
+policies and 1,360 in the partial policies. The additional source helper changes
+the recovery depth from 13 to 14 frames. The revised audit binds that operand to
+the generated runtime's history field plus its 64-byte header, checks the linked
+instruction and requires every other object byte to remain equal. No object or
+guest bytes are modified. The failed audit remains recorded in the receipt;
+the source-frozen native/archive/replay results remain unchanged.
+Complete caller/physical bounds remain **2,280/4,096** and **4,088/4,096 bytes**.
+These direct-MM fatal cases physically retire **4,000 bytes** (3,952 inner plus
+48 saved-register bytes); they do not qualify the separate outer 88-byte adapter.
+
+Risk remains high for false acceptance of partial effects, held identities or
+cleanup. Review follows the existing docs/se/tool/spec authority chain and full
+source/artifact checks; this is single-agent review, not independent human
+security review or complete formal proof. Selected source-status and completed
+delta failures are covered. Failure inside publication, other fatal/resource/
+identity-width shapes, every caller/private loan and mapping writer, continuous
+lifetime, AP/DMA/asynchronous access, public reconstruction and initial Step 4's
+full Linux/distribution/container/VM-host acceptance remain unfinished. These
+results establish no explanation of an earlier AI safeguard interruption.
+
 ## Remaining stages and blockers
 
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss

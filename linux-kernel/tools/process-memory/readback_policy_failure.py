@@ -26,7 +26,7 @@ def source_entry(fault):
     """Reconstruct the exact prefix before the deliberately invalid source delta."""
     before=fault['request']['before'];source=fault['source_before'];actual=source['snapshot']
     expected=deepcopy(before)
-    if fault['kind']=='release-metadata':
+    if fault['kind'].startswith('release-'):
         candidate=actual['candidate']
         require(candidate['token'][1]==before['allocator'][2], 'diagnostic candidate issuance')
         expected['allocator'][2]+=1
@@ -63,6 +63,29 @@ def checked(value,binding,elf,work):
     source_entry(fault)
     result=check(fault)
     require(result==fault['comparison'],'diagnostic comparison differs')
+    allocating=fault['kind'].startswith('allocate-');partial=fault['kind'].endswith('-partial-status')
+    symbols=elf.symbols
+    entry_name='topal_frame_allocator_'+('allocate' if allocating else 'release')+'_v1'
+    initial=fault['source_before'];arguments=initial['arguments']
+    require(initial['entry_pc']==symbols[entry_name]['value']
+            and arguments['rdi']==symbols['topal_x86_frame_context_v1']['value'],
+            'diagnostic actual allocator call entry')
+    if allocating:
+        require(arguments['rsi']==101 and arguments['rdx']==1
+                and arguments['rcx']==symbols['topal_x86_frame_mm_tokens_v1']['value']+24,
+                'diagnostic actual allocation arguments')
+    else:
+        require(arguments['rsi']==symbols['topal_x86_frame_mm_tokens_v1']['value'],
+                'diagnostic actual release argument')
+    call(elf,initial['return_pc'],symbols[entry_name]['value'],'topal_frame_memory_request_v1')
+    returned=fault['source_result']
+    require(returned['entry_pc']==symbols['f.result']['value']
+            and returned['output_pointer']==symbols['topal_x86_frame_output_v1']['value'],
+            'diagnostic actual source decoder entry')
+    call(elf,returned['return_pc'],symbols['f.result']['value'],'f.invoke')
+    effects=fault['effects']
+    require(effects['entry_pc']==symbols['f.fatal']['value'],'diagnostic actual controller fatal entry')
+    call(elf,effects['return_pc'],symbols['f.fatal']['value'],'f.invoke' if partial else entry_name)
     native=value['process_publication'];records=native['records'];profile=binding['profile']
     require(not native['passed'] and native['root_switches']==[],
             'diagnostic claimed ordinary cohort completion')
@@ -100,7 +123,7 @@ def checked(value,binding,elf,work):
     indices=request['publication_indices']
     require(indices==list(range(len(used),len(records))) and request['publication_retirements']==[],
             'diagnostic pending publication sequence')
-    if fault['kind']=='release-metadata':
+    if not allocating:
         pub=records[indices[0]];partial=fault['open_retirement']
         require(pub['operation']==5 and pub['request_sp']==request['sp']
                 and (pub['old_count'],pub['new_count'])==(67,101),'diagnostic failed resize binding')
@@ -126,9 +149,13 @@ def checked(value,binding,elf,work):
         mappings(source,67,source['active']['cells'][2]*4096)
     for row in [request['before'],source,fault['effects']['snapshot'],fault['terminal']['snapshot']]:
         require(row['kernel_spans']==binding['kernel_spans'], 'diagnostic linked kernel spans')
-    terminal=fault['terminal'];symbols=elf.symbols
+    terminal=fault['terminal']
     require(terminal['rip']==symbols['topal_x86_frame_gateway_fatal_reclaimed_v1']['value'],
             'diagnostic terminal marker')
+    abort,body=elf.function('topal_x86_frame_gateway_abort_v1')
+    offset=terminal['rip']-abort['value']
+    require(0<=offset and body[offset:offset+4]==bytes.fromhex('fa f4 eb fd'),
+            'diagnostic linked nonreturning halt loop')
     frame=json.loads((work.parent/'frame-inspection.json').read_text())
     require(frame['syscall_adapter']['physical_retirement_bytes']==4000,
             'diagnostic actual caller profile')
@@ -195,7 +222,13 @@ def readback(build):
     reject('false-ordinary-completion',lambda v:v['process_publication'].update(passed=True))
     reject('lost-post-INVLPG-state',lambda v:v['process_publication']['records'][0]['invalidations'].pop())
     reject('lost-terminal-request',lambda v:v.update(pending=None))
-    if diagnostic['kind']=='release-metadata':
+    reject('wrong-source-natural-result',lambda v:fault(v)['source_result']['output_words'].__setitem__(2,0))
+    reject('wrong-native-source-decoder-call',lambda v:fault(v)['source_result'].__setitem__('return_pc',fault(v)['source_result']['return_pc']+1))
+    reject('wrong-native-fatal-call',lambda v:fault(v)['effects'].__setitem__('return_pc',fault(v)['effects']['return_pc']+1))
+    if diagnostic['kind'].endswith('-partial-status'):
+        reject('pretended-source-completion',lambda v:fault(v)['effects']['header'].__setitem__(5,4))
+        reject('lost-performed-prefix',lambda v:fault(v)['effects'].update(catalog_sha256=fault(v)['source_before']['catalog_sha256']))
+    if diagnostic['kind'].startswith('release-'):
         reject('false-release-consumption',lambda v:fault(v)['open_retirement'].update(release_succeeded=True))
         reject('release-before-unpin',lambda v:fault(v)['open_retirement'].update(unpin_succeeded=False))
         reject('missing-replacement-publication',lambda v:fault(v)['request']['publication_indices'].clear())

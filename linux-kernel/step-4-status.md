@@ -176,6 +176,18 @@ policies have separate source/kernel identities. These selected failures do not
 qualify every fatal path, the outer caller, continuous lifetime or public
 activation. Initial Step 4 and the original full Linux objective remain open.
 
+The subsequent [partial-source failure cohort](step-4-process-memory-ownership.md#partial-source-status-failures-after-performed-stores)
+passes five fresh VMs: the ordinary cohort, both completed-invalid-delta
+diagnostics and two source-status failures after 13 stores. Actual source-result
+decoding and native fatal call sites bind retained metadata/issuance, every held
+heap identity, poison and declared 4,000-byte direct-MM invocation retirement.
+All 70 diagnostic saved-record controls, five-reader frozen replay, six fresh
+validation commands and seven LLVM modules per build pass. A guarded reference
+to the earlier full 383-test compiler suite is explicit; that suite is not newly
+rerun for this private-test/observer increment. The older three kernel identities
+remain unchanged. Other fatal paths, caller/loan/mapping lifetimes, asynchronous
+access and public/full Linux qualification remain open.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

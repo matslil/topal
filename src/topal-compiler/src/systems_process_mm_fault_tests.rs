@@ -7,6 +7,8 @@ use std::{fs, path::Path};
 pub(super) enum Failure {
     Allocate,
     Release,
+    PartialAllocate,
+    PartialRelease,
 }
 
 impl Failure {
@@ -14,6 +16,8 @@ impl Failure {
         match self {
             Self::Allocate => "allocate-metadata",
             Self::Release => "release-metadata",
+            Self::PartialAllocate => "allocate-partial-status",
+            Self::PartialRelease => "release-partial-status",
         }
     }
 
@@ -21,9 +25,18 @@ impl Failure {
         // The ordinary program forks a 67-page heap, then the child grows to
         // 101 pages. Only the diagnostic source producer changes. Every
         // controller, admission, delta and fatal guard remains enabled.
+        match self {
+            Self::Allocate | Self::Release => self.prepare_delta(input),
+            Self::PartialAllocate | Self::PartialRelease => self.prepare_prefix(input),
+        }
+        input.source_name = format!("diagnostic/{}/frame-metadata.t", self.name());
+    }
+
+    fn prepare_delta(self, input: &mut crate::SystemsSourceLibraryInput) {
         let (count, condition) = match self {
             Self::Allocate => (101, "identity > 0"),
             Self::Release => (67, "identity = 0"),
+            _ => unreachable!(),
         };
         let original = "  write (region, cell cursor, identity)\n";
         assert_eq!(input.text.matches(original).count(), 1);
@@ -37,7 +50,27 @@ diagnostic-identity is fn ((region : KernelByteRegion, identity : Nat)) -> Nat\n
 selected is both ((word (region, 8)) = {count}, {condition})\n  \
 selected\n    true then identity + 1\n    false then identity\n"
         ));
-        input.source_name = format!("diagnostic/{}/frame-metadata.t", self.name());
+    }
+
+    fn prepare_prefix(self, input: &mut crate::SystemsSourceLibraryInput) {
+        let (count, phase) = match self {
+            Self::PartialAllocate => (101, 1),
+            Self::PartialRelease => (67, 3),
+            _ => unreachable!(),
+        };
+        let original = "    true then advance-commit (region, cursor, word (region, 64))\n";
+        assert_eq!(input.text.matches(original).count(), 1);
+        input.text = input.text.replace(
+            original,
+            "    true then diagnostic-advance (region, cursor, word (region, 64))\n",
+        );
+        input.text.push_str(&format!(
+            "\n# Diagnostic producer only: retain thirteen stores and return invalid status.\n\
+diagnostic-advance is fn ((region : KernelByteRegion, cursor : Nat, processed : Nat)) -> Boolean\n  \
+selected is both ((word (region, 8)) = {count}, (word (region, 40)) = {phase})\n  \
+stop is both (selected, processed = 12)\n  \
+stop\n    true then false\n    false then advance-commit (region, cursor, processed)\n"
+        ));
     }
 
     pub(super) fn record(self, work: &Path, input: &crate::SystemsSourceLibraryInput) {
@@ -82,4 +115,16 @@ fn allocation_source_failure_retains_real_process_owners_and_performed_effects()
 #[ignore = "requires the bounded QEMU/GDB source-built process-MM failure cohort"]
 fn release_source_failure_retains_published_candidate_and_performed_effects() {
     execute(Failure::Release);
+}
+
+#[test]
+#[ignore = "requires the bounded QEMU/GDB source-built partial process-MM failure cohort"]
+fn partial_allocation_source_status_retains_written_prefix_and_process_owners() {
+    execute(Failure::PartialAllocate);
+}
+
+#[test]
+#[ignore = "requires the bounded QEMU/GDB source-built partial process-MM failure cohort"]
+fn partial_release_source_status_retains_published_candidate_and_written_prefix() {
+    execute(Failure::PartialRelease);
 }
