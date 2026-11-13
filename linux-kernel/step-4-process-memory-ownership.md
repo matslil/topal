@@ -1360,6 +1360,14 @@ ownership proof, and both unsampled helper sites remain acceptance gaps.
 
 ## Remaining stages and blockers
 
+The subsequent [ordinary child-exec signal cohort](tools/process-memory/results/stage-3-exec-signals.md)
+adds four native inheritance/isolation/reset cases using existing signal
+registration and mask interfaces. The corrected reader, nine altered-record
+controls and all 330 process/user-memory models pass; frozen replay retains
+the earlier observation-boundary failure. Kernel and boot-image bytes are
+unchanged. This covers the selected signal registration lifetime across child
+exec, while the broader obligations below remain required.
+
 2. Complete all caller/loan exclusion, identity-width and remaining allocation-miss
    behavior, and native fatal partial-effect retirement. The first integrated
    cohort does not complete native owner qualification. Queries and within-page

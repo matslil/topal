@@ -1,5 +1,13 @@
 # Portable process memory model
 
+The subsequent [ordinary child-exec signal cohort](results/stage-3-exec-signals.md)
+checks inherited registrations, child-only changes, ignored-handler preservation,
+caught-handler reset, cleared action metadata and blocked-mask persistence through
+four child execs and yields. The parent verifies isolation and restores its
+original state. Read-only native observations, independent record checks, nine
+altered-record controls and frozen replay retain the earlier reader failure.
+Signal delivery and complete Linux/production qualification remain unfinished.
+
 This is the stage-1 reference foundation for `TK-DEC-284` and
 `TOPAL-SYSTEMS-PROCESS-MM-001`. It executes no privileged instructions, guest,
 compiler or application binary. Its Python objects and frame numbers do not

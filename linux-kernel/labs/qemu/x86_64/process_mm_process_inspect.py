@@ -19,6 +19,7 @@ def words(p,n):return list(struct.unpack('<'+'Q'*n,memory(p,n*8)))
 def word(p):return words(p,1)[0]
 context=address('topal_bootstrap_storage')+512
 observed=dict(passed=False,cases=[],events=[],child_exec_entries=[],replacement_entries=[],terminal=[],refusals=[],child_departures=[])
+observed['signal_exec_calls']=[]
 child_exec=component['mode']=='process-mm-exec'
 cancel_config=component.get('cancellation')
 allocation_config=component.get('allocation_profile')
@@ -81,6 +82,9 @@ def capture():
     if identity_config is not None:
         policy=result['context']['policy_store']
         result['identity_store']=memory(policy,identity_config['identity_storage_bytes']).hex() if policy else ''
+    if child_exec:
+        result['signals']=dict(blocked=word(table+32),
+            quit=words(table+1792+2*32,4),user=words(table+1792+9*32,4))
     return result
 
 def save():
@@ -153,6 +157,7 @@ class CaseReturned(Checked):
             raise AssertionError(('source case failed',reg('rax'),value['context'],value['ids']))
         assert reg('rsp')==case['sp']+8 and {r:reg(r) for r in callee}==case['callee']
         after=capture();model['snapshot'](after)
+        if child_exec:assert after['signals']==case['before']['signals'], 'parent signal state not restored'
         case['returned']=dict(result=reg('rax'),sp=reg('rsp'),callee={r:reg(r) for r in callee},cs=reg('cs'))
         assert after['ids'][:3]==case['before']['ids'][:3] and after['ids'][3:6]==[0]*3
         assert after['ids'][6]==case['before']['ids'][6]+(2 if child_exec else 1)
@@ -199,6 +204,7 @@ class ImageEntered(Checked):
         assert value['ids'][3:6]==case['before']['ids'][:3]
         assert value['ids'][2]==case['before']['ids'][2]+1
         assert value['inactive_state'][2]==67
+        assert value['signals']==dict(blocked=1<<14,quit=[1,0,0,0],user=[0]*4)
         last=observed['events'][-1]
         assert last['operation']==7 and last['before']['ids'][0]==value['ids'][0]
         assert last['after']['ids']==value['ids']
@@ -242,6 +248,16 @@ class UserFork(Checked):
         refusal_attempt=dict(before=before,sp=reg('rsp'),callee={r:reg(r) for r in callee},return_pc=word(reg('rsp')),
             storage=memory(before['context']['table'],allocation_config['process_storage_bytes']).hex())
         RefusalReturned('*'+hex(word(reg('rsp'))),internal=True)
+        save()
+        return False
+
+class UserExec(Checked):
+    def observe(self):
+        if reg('rdi')!=59:return False
+        value=capture()
+        if value['ids'][0]==1:return False
+        assert child_exec and pending is None and reg('cs')&3==3
+        observed['signal_exec_calls'].append(dict(ids=value['ids'],signals=value['signals']))
         save()
         return False
 
@@ -417,6 +433,7 @@ try:
     Gateway('topal_x86_frame_gateway_v1',True)
     Gateway('topal_x86_frame_gateway_return_reclaimed_v1',False)
     CaseEntered('*'+hex(component['entry']),internal=True)
+    if child_exec:UserExec('*'+hex(component['syscall']),internal=True)
     if child_exec or allocation_config is not None or geometry_config is not None or (cancel_config is not None and cancel_config['early']) or (relationship_config is not None and relationship_config['early']):
         ImageEntered('*'+hex(component['image_entry']),internal=True)
     if cancel_config is not None:

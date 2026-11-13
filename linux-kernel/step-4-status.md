@@ -7,6 +7,13 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [ordinary child-exec signal cohort](tools/process-memory/results/stage-3-exec-signals.md)
+now checks fork inheritance, child-only changes, successful-exec action reset,
+blocked-mask persistence and parent restoration in four native generations.
+The kernel and boot image are unchanged. Independent saved-record checks and
+frozen replay preserve the initial reader failure; signal delivery, production
+activation and the original distribution/container/VM-host target remain open.
+
 The experimental [owned user-memory work](step-4-owned-user-extents.md) now
 includes [selected clock/random stack retirement](tools/user-memory/results/stage-3-stack-retirement/README.md).
 Thirteen normal-return cleanup blocks preserve registers/flags and the existing

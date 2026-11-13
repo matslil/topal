@@ -6,6 +6,40 @@ typedef unsigned long word;
 extern long topal_test_syscall3(word, word, word, word);
 extern long topal_test_syscall4(word, word, word, word, word);
 
+/* TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-{ACTION,MASK}-001. No delivery is
+ * requested: these are ordinary registration/query calls across fork/exec.
+ * SIGCHLD is left alone so the test does not change Linux wait semantics.
+ */
+static void signal_handler(void) {}
+
+static void signal_action(word action[4], word signal, word phase) {
+    action[0] = signal == 3 ? 1 : (phase == 2 ? 0 : (word)signal_handler);
+    action[1] = phase == 2 ? 0 : 0x04000000;
+    action[2] = phase == 2 ? 0 : (word)signal_handler;
+    action[3] = phase == 2 ? 0 : (1UL << (phase == 0 ? 11 : 14));
+}
+
+static long signal_install(word phase, word old_quit[4], word old_user[4], word *old_mask) {
+    word action[4], mask = 1UL << (phase == 0 ? 11 : 14);
+    signal_action(action, 3, phase);
+    if (topal_test_syscall4(13,3,(word)action,(word)old_quit,8) != 0) return 1;
+    signal_action(action, 10, phase);
+    if (topal_test_syscall4(13,10,(word)action,(word)old_user,8) != 0) return 2;
+    if (topal_test_syscall4(14,2,(word)&mask,(word)old_mask,8) != 0) return 3;
+    return 0;
+}
+
+static long signal_check(word phase) {
+    word actual[4], expected[4], mask = 0;
+    for (word signal = 3; signal <= 10; signal += 7) {
+        signal_action(expected, signal, phase);
+        if (topal_test_syscall4(13,signal,0,(word)actual,8) != 0) return 1;
+        for (word i = 0; i < 4; ++i) if (actual[i] != expected[i]) return 2;
+    }
+    if (topal_test_syscall4(14,2,0,(word)&mask,8) != 0) return 3;
+    return mask == (1UL << (phase == 0 ? 11 : 14)) ? 0 : 4;
+}
+
 static long end_child(word status) {
     (void)topal_test_syscall3(60, status, 0, 0);
     return 3000 + (long)status;
@@ -26,6 +60,7 @@ void topal_process_exec_entry(const word *initial_stack) {
     long pid = topal_test_syscall3(39, 0, 0, 0);
     if (pid < 2 || topal_test_syscall3(110, 0, 0, 0) != 1) { (void)end_child(51); return; }
     if (topal_test_syscall3(12, 0, 0, 0) != (long)heap) { (void)end_child(52); return; }
+    if (signal_check(2) != 0) { (void)end_child(62); return; }
     word tls = ~(word)0;
     if (topal_test_syscall3(158,0x1003,(word)&tls,0) != 0 || tls != 0) { (void)end_child(59); return; }
     word registration = 0;
@@ -46,6 +81,7 @@ void topal_process_exec_entry(const word *initial_stack) {
         bytes[34 * page + 128] != 0xe1 || bytes[66 * page + 64] != 0xe2 ||
         bytes[101 * page - 1] != 0xe7) { (void)end_child(58); return; }
     if (topal_test_syscall3(158,0x1003,(word)&tls,0) != 0 || tls != heap+2*page) { (void)end_child(61); return; }
+    if (signal_check(2) != 0) { (void)end_child(63); return; }
     (void)end_child(17);
 }
 
@@ -58,9 +94,13 @@ long topal_process_memory_exec_cases(void) {
     if (original != 0x619000 || topal_test_syscall3(39,0,0,0) != 1) return 2001;
     if (topal_test_syscall3(12,parent_break,0,0) != (long)parent_break) return 2002;
     *first = 0xa1; *far = 0xa2;
+    word old_quit[4], old_user[4], old_mask;
+    if (signal_install(0,old_quit,old_user,&old_mask) != 0 || signal_check(0) != 0) return 2016;
     long pid = topal_test_syscall3(57,0,0,0);
     if (pid < 0) return 2003;
     if (pid == 0) {
+        if (signal_check(0) != 0) return end_child(45);
+        if (signal_install(1,0,0,0) != 0 || signal_check(1) != 0) return end_child(46);
         if (*first != 0xa1 || *far != 0xa2) return end_child(41);
         *first = 0xc1; *far = 0xc2;
         if (topal_test_syscall3(12,child_break,0,0) != (long)child_break) return end_child(42);
@@ -87,6 +127,10 @@ long topal_process_memory_exec_cases(void) {
     int status=0;
     if (topal_test_syscall4(61,(word)pid,(word)&status,0,0) != pid || status != 17<<8) return 2012;
     if (topal_test_syscall4(61,(word)pid,0,0,0) != -10) return 2013;
+    if (signal_check(0) != 0) return 2017;
+    if (topal_test_syscall4(13,3,(word)old_quit,0,8) != 0 ||
+        topal_test_syscall4(13,10,(word)old_user,0,8) != 0 ||
+        topal_test_syscall4(14,2,(word)&old_mask,0,8) != 0) return 2018;
     if (topal_test_syscall3(12,(word)original,0,0) != original) return 2014;
     return 0;
 }
