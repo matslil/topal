@@ -146,7 +146,15 @@ impl RootEncoder {
         self.bytes.push(0xba); // edx = frame count
         self.bytes.extend_from_slice(&frame_count.to_le_bytes());
         if self.frame_policy.is_some() {
-            self.frame_allocate_source(u64::from(frame_count), alignment_frames)?;
+            use crate::systems_frame_ownership::Purpose as P;
+            let purpose = if nested_static_elf_hierarchy {
+                P::StaticImageHierarchy
+            } else if nested_static_elf_stack_backing {
+                P::StaticImageStack
+            } else {
+                P::SourceExtent
+            };
+            self.frame_allocate_source(u64::from(frame_count), alignment_frames, purpose)?;
         } else {
             self.call(ProviderSymbol::AllocatePhysicalFrames);
         }

@@ -123,7 +123,22 @@ impl Prepared {
         self.directory.join(name)
     }
 
-    pub(super) fn inspect(self, work: &Path, kernel: &[u8]) {
+    pub(super) fn inspect(
+        self,
+        work: &Path,
+        kernel: &[u8],
+        owners: &crate::systems_user_extent::Owners,
+    ) {
+        let root_sha = self
+            .originals
+            .iter()
+            .find(|(path, _)| path.file_name().unwrap() == "root.o")
+            .map(|(_, sha)| sha)
+            .unwrap();
+        assert_eq!(
+            &owners.root_object_sha256, root_sha,
+            "owner descriptors must come from the exact fresh root object"
+        );
         let original_inputs = self
             .originals
             .iter()
@@ -138,8 +153,10 @@ impl Prepared {
             .zip(&self.records)
             .map(|(bytes, record)| (bytes.as_slice(), record.sections.as_slice()))
             .collect::<Vec<_>>();
-        let mut result =
-            crate::systems_frame_publication::inspect_private_inputs(kernel, &objects).unwrap();
+        let mut result = crate::systems_frame_publication::inspect_private_owned_inputs(
+            kernel, &objects, owners,
+        )
+        .unwrap();
         result["original_inputs"] = serde_json::json!(original_inputs);
         let file = object::File::parse(kernel).unwrap();
         assert!(
@@ -197,6 +214,33 @@ impl Prepared {
         let omitted = &objects[..objects.len() - 1];
         assert!(crate::systems_frame_publication::inspect_private_inputs(kernel, omitted).is_err());
         controls.push("omitted-library");
+        // These are altered compiler-descriptor counterexamples, never
+        // runtime token mutation or injected guest states.
+        for case in 0..3 {
+            let mut changed = owners.clone();
+            let name = match case {
+                0 => {
+                    std::mem::swap(&mut changed.bootstrap, &mut changed.roles[0]);
+                    "swapped-equal-size-root-purposes"
+                }
+                1 => {
+                    changed.bootstrap.slot = changed.roles[0].slot;
+                    "aliased-bootstrap-owner-slot"
+                }
+                2 => {
+                    changed.token_bytes += 24;
+                    "changed-linked-token-bank-size"
+                }
+                _ => unreachable!(),
+            };
+            assert!(
+                crate::systems_frame_publication::inspect_private_owned_inputs(
+                    kernel, &objects, &changed
+                )
+                .is_err()
+            );
+            controls.push(name);
+        }
         fs::write(
             work.join("private-image-controls.json"),
             serde_json::to_vec_pretty(&controls).unwrap(),

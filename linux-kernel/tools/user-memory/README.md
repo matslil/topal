@@ -1,5 +1,10 @@
 # Owned user-memory model
 
+The [whole-root backing stage](../../step-4-root-backing-owners.md) adds compiler
+allocation purposes, the separately retained bootstrap owner and fresh-image
+requirements comparison. `run_hierarchy_backing.py --profile root-owners`
+validates that path while preserving the existing native USER-table geometry.
+
 The [provider-selected hierarchy stage](../../step-4-provider-hierarchy-backing.md)
 adds a purpose-specific source/IR request resolved by the current x86 provider
 to its existing five-page backing. `run_hierarchy_backing.py` checks source and

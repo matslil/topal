@@ -11,6 +11,10 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [whole-root backing stage](step-4-root-backing-owners.md) connects distinct
+bootstrap/process compiler-owner descriptors to fresh image requirements.
+Larger native allocations and effective protection remain required.
+
 The [provider-selected backing stage](step-4-provider-hierarchy-backing.md)
 preserves static-hierarchy purpose through checking and lowering, while the
 current x86 provider retains its exact five-page ownership lifecycle. Actual

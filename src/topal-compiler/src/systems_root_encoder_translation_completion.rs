@@ -145,7 +145,8 @@ impl RootEncoder {
             ));
         }
         if self.frame_policy.is_some() {
-            self.frame_internal_allocate(5, "bootstrap-translation")?;
+            self.frame_internal_allocate(5, "bootstrap-translation",
+                crate::systems_frame_ownership::Purpose::BootstrapHierarchy)?;
         } else {
             self.call(ProviderSymbol::BeginTranslation);
         }
@@ -197,7 +198,8 @@ impl RootEncoder {
                 self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // boot params in rsi
                 self.bytes.extend_from_slice(&[0x31, 0xd2]); // map kind
                 if self.frame_policy.is_some() {
-                    self.frame_internal_allocate(2, "translation-edit")?;
+                    self.frame_internal_allocate(2, "translation-edit",
+                        crate::systems_frame_ownership::Purpose::TranslationEdit)?;
                 } else {
                     self.call(ProviderSymbol::BeginTranslationEdit);
                 }

@@ -1,0 +1,426 @@
+{
+  "active_image_protection": false,
+  "canonical_layout_tests": 5,
+  "changed_code_inputs": {
+    "linux-kernel/tools/user-memory/run_hierarchy_backing.py": "955d51799583e0dad212fcbd4decb8cb9f6159a312af174159a21d2594877caa",
+    "src/topal-compiler/src/lib.rs": "bc04468925145063cb3ba766de060260f663b763661e372c0572a9877b06efcb",
+    "src/topal-compiler/src/systems_artifact_root_object.rs": "cdbb93c1c7090cb2e3077d4875fac50f420346ff1bfca9815b8dd942f489f3cd",
+    "src/topal-compiler/src/systems_frame_ownership.rs": "172478168a09ba7bac8dd77340ee5cf41dc531d4e9189e5bf623b53f652e0dd2",
+    "src/topal-compiler/src/systems_frame_ownership_tests.rs": "c9f794193c759bb61895d6dec599ccfda5537bf3c4c54b1e6621951f7fb8b614",
+    "src/topal-compiler/src/systems_frame_publication.rs": "25c4c7c5d7155d8d0301e03869a3d053bd7df76478bb1e467f74d1c8cc6de2e5",
+    "src/topal-compiler/src/systems_frame_root_link_tests.rs": "88cdd8c1cbde262723b898e243aaa83037ae7ea7aeb58f6d4d70dc1c69bbda8c",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "890b6d0ada184f92f1bbbd0fe158061c7c8c3db82a118b4b53abdbcac5f0c790",
+    "src/topal-compiler/src/systems_kernel_image_layout.rs": "1f80ef22135e890a48c2800fbfd546a558daf8b7d47cc055690fd5e37928b64a",
+    "src/topal-compiler/src/systems_root_encoder_frames.rs": "3dbada80389455a1cd20491d8f2d9afc005c5772821ece0fde72a58d67980227",
+    "src/topal-compiler/src/systems_root_encoder_memory.rs": "0382cd1aa0b1934fc7f2cef1f53fdd09c0115b59bdb71c0e82021340241ac383",
+    "src/topal-compiler/src/systems_root_encoder_translation_completion.rs": "830fe73d40766c91f296e129a830a8aa63f843e375865ca0b8e5f199760ca345",
+    "src/topal-compiler/src/systems_user_extent.rs": "c817ab3cd40a051ba8378131fe5e08654ff513135f0be09ee50003aee1d7e003"
+  },
+  "closed_source_archive": false,
+  "commands": {
+    "Rust-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.6780592612922192,
+      "state": "finished"
+    },
+    "default-ABI": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "exit_code": 0,
+      "seconds": 0.2131603006273508,
+      "state": "finished"
+    },
+    "format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 1.1969334902241826,
+      "state": "finished"
+    },
+    "image-layout": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_kernel_image_layout::tests",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 85.53997264802456,
+      "state": "finished"
+    },
+    "legacy-owner-guards": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "user_extent_owners_come_from_the_checked_root_without_changing_its_bytes",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 1.0921182669699192,
+      "state": "finished"
+    },
+    "legacy-private-build": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::process_mm_closed_link_reconstructs_complete_private_image",
+        "--",
+        "--exact",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 21.930953135713935,
+      "state": "finished"
+    },
+    "native-lowering": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::hierarchy_backing",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 4.12802651617676,
+      "state": "finished"
+    },
+    "ordinary-guest": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "provider_selected_hierarchy_runs_ordinary_guest_and_exec_lifetimes",
+        "--",
+        "--ignored",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 73.02542490046471,
+      "state": "finished"
+    },
+    "process-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.0051714787259698,
+      "state": "finished"
+    },
+    "user-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 2.029760718345642,
+      "state": "finished"
+    },
+    "whole-root-owners": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_ownership::tests",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 30.136340121738613,
+      "state": "finished"
+    },
+    "workspace": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "seconds": 18.313422229140997,
+      "state": "finished"
+    }
+  },
+  "compiler_descriptor_controls": [
+    "code",
+    "immutable",
+    "zero",
+    "omitted-library",
+    "swapped-equal-size-root-purposes",
+    "aliased-bootstrap-owner-slot",
+    "changed-linked-token-bank-size"
+  ],
+  "full_compiler_suite_complete": false,
+  "hierarchy_backing_requirements": {
+    "banks": [
+      {
+        "current_owner": {
+          "alignment": 1,
+          "count": 5,
+          "pins": 1,
+          "purpose": "bootstrap-hierarchy",
+          "slot": 1
+        },
+        "current_template": "bootstrap-equivalent",
+        "domain": "bootstrap",
+        "required_alignment_frames": 1,
+        "required_bytes": 32768,
+        "required_frame_count": 8,
+        "whole_extent_size_matches": false
+      },
+      {
+        "current_owner": {
+          "alignment": 1,
+          "count": 5,
+          "pins": 1,
+          "purpose": "static-image-hierarchy",
+          "slot": 7
+        },
+        "current_template": "bootstrap-equivalent",
+        "domain": "process",
+        "required_alignment_frames": 1,
+        "required_bytes": 32768,
+        "required_frame_count": 8,
+        "whole_extent_size_matches": false
+      }
+    ],
+    "geometry_template": "draft-x86-image-role-subdivision/1",
+    "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+    "native_selection_available": false,
+    "process_low_leaf": {
+      "alignment": 1,
+      "count": 1,
+      "pins": 1,
+      "purpose": "static-image-leaf",
+      "slot": 6
+    },
+    "production_qualified": false,
+    "protected_context": false,
+    "root_object_sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8",
+    "root_token_bytes": 336,
+    "runtime_ownership_qualified": false,
+    "schema": "topal.compiler-image-hierarchy-backing-requirements/1",
+    "scope": "Fresh image geometry compared to compiler-derived whole allocation purposes and live entry pins; no runtime owner, mapping, mode, publication or activation proof"
+  },
+  "legacy_owner_guard_tests": 1,
+  "legacy_private_build": {
+    "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+    "native_execution": false
+  },
+  "local_run": "linux-kernel/.cache/x86_64/root-backing-owners-stage-1/run.json",
+  "local_run_sha256": "377202c9c4476f191da9378a830776d9b782a8948125251f574f6300f21dfb97",
+  "lowering_tests": 2,
+  "native": {
+    "boot_image_sha256": "5b775ff7391f018d0a357dffc0563165d7de4576c6f50a0f97242a7f1ad59cf0",
+    "completed_calls": 4,
+    "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+    "native_execution": true,
+    "native_execution_attempted": true,
+    "passed": true,
+    "private_binding_sha256": "d1a42838119f3e2325c8c7a733fe025cf4942623836faa90c260897b22649f9a",
+    "protected_context": false,
+    "qemu_version": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+    "refused_requests": 92,
+    "resources": {
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.max": "3410771968",
+      "memory.peak": "1687928832",
+      "memory.swap.max": "0"
+    },
+    "scope": "Ordinary user-mode execution of an inactive byte initializer; no live page tables, owner authority, publication or effective hardware protection",
+    "serial_sha256": "7146afd3883051e4befa514cd3c27956772c37745cee7704b1b54e4a9415620b",
+    "source": {
+      "conservative_stack_bytes": 1376,
+      "image_sha256": "0e21513326aac17d392c304de48da34d7731def33f9e510062f1d3eab28219b5",
+      "linked_sha256": "a1afadb5e7870c43ff66fd9c30e220018237523844f1248c6ac3de289f009234",
+      "llvm_sha256": "57a3d6b729fa1877623367920de7eae4054e4998106eb713ccdafe1eca92f141",
+      "object_sha256": "65114bb2483c3219b6a162cdd13ab339bb9cc4adc2f4cd30da6149073a3e499b",
+      "protected_context": false,
+      "refused_requests_per_call": 23,
+      "scope": "Ordinary user-mode execution of inactive byte preparation; numeric physical arguments create no owners or active translations",
+      "source_sha256": "e1bda842b89fd301f9743dc77eb5dd096e2ea13f446a75de31d5bad97c6710e2",
+      "text_bytes": 36744,
+      "valid_requests_per_call": 4
+    },
+    "valid_requests": 16
+  },
+  "native_binding": {
+    "contributions": 862,
+    "layout": {
+      "address_limit": 1073741824,
+      "image_leaf_storage_bytes": 12288,
+      "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+      "large_granule": 2097152,
+      "minimum_granule": 4096,
+      "schema": "topal.kernel-image-layout.x86_64/1",
+      "spans": [
+        {
+          "end": 2101248,
+          "role": "immutable",
+          "start": 2097152
+        },
+        {
+          "end": 44974080,
+          "role": "mutable",
+          "start": 8388608
+        },
+        {
+          "end": 45006848,
+          "role": "immutable",
+          "start": 44974080
+        },
+        {
+          "end": 46272512,
+          "role": "code",
+          "start": 45006848
+        },
+        {
+          "end": 46276608,
+          "role": "immutable",
+          "start": 46272512
+        }
+      ],
+      "subdivided_regions": [
+        2097152,
+        44040192,
+        46137344
+      ]
+    },
+    "production_qualified": false,
+    "protected_context": false
+  },
+  "native_build": "linux-kernel/.cache/x86_64/process-mm-interface-regression-2634134-1794636258031741274",
+  "ordinary_vm_cases": 1,
+  "owner_tests": 4,
+  "passed": true,
+  "post_validation_descriptive_updates": [
+    {
+      "current_sha256": "2cd857023e57ea3440ef3df3cdcfb6f7e771e3d868703cfe0c656001759bebfc",
+      "file": "linux-kernel/step-4-status.md",
+      "validated_sha256": "94b7a34389e8adb0a74f801bc5b948d4ba6d7245d6699c221b8f0035012b8c89"
+    }
+  ],
+  "predecessor_native_corpus_rerun": false,
+  "process_models": 83,
+  "production_qualified": false,
+  "protected_context": false,
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3410771968",
+    "memory.peak": "1985568768",
+    "memory.swap.max": "0"
+  },
+  "runtime_backing_reallocated": false,
+  "runtime_ownership_qualified": false,
+  "schema": "topal.compiler-root-backing-owners/1",
+  "scope": "Compiler-derived bootstrap/process whole-owner purposes, exact root-object binding and fresh-image backing requirements; ordinary native regression preserves existing mapping and runtime validators. No larger native bank or protected context is qualified.",
+  "seconds": 239.4374715005979,
+  "source_hash_manifest_encoding": "UTF-8 JSON, sorted keys, compact separators, no terminal newline",
+  "source_hash_manifest_sha256": "a6e9744a79758bd3d38959d7251e6b517b52cefdcfb0c8ea097cd294fd48dd43",
+  "source_hashes_unchanged_during_validation": true,
+  "source_inputs": 950,
+  "unchanged_predecessor_inputs": {
+    "build": "linux-kernel/.cache/x86_64/process-mm-interface-regression-2629628-1794634910047855526",
+    "commit": "d59dc7bd0eb6557966c3abaafa18806493f49e7c",
+    "files": {
+      "kernel.elf": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+      "root.o": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8",
+      "target.ll": "ff6e28be1dde5cdf89f0079c98ed38dc4d488646d9a0d8075c230f4db275a706",
+      "user-owners.json": "15c924bc1d1829ba690333e21aa96216b82e84606472648cdd9480e30c24bf6c"
+    }
+  },
+  "user_models": 271
+}

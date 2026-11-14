@@ -7,6 +7,16 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [whole-root backing stage](step-4-root-backing-owners.md) retains distinct
+bootstrap/process allocation purposes and compiler-derived whole owners, tied
+to the actual root object and freshly reconstructed image. Its requirements
+comparison exposes the remaining storage mismatch without granting native
+selection or runtime ownership. All twelve commands pass over 950 stable inputs,
+including four new owner tests, seven image/descriptor refusal controls and the
+ordinary four-execution VM case. Kernel bytes remain unchanged. Actual
+image-bound allocation, construction, effective protection and production
+qualification remain unfinished.
+
 The [provider-selected backing stage](step-4-provider-hierarchy-backing.md)
 retains hierarchy purpose in source, checked IR, model transitions and provider
 provenance. The current x86 realization uses its exact existing five-page owner

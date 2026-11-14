@@ -5,16 +5,22 @@ use crate::CompileError;
 #[path = "systems_user_extent_clean.rs"]
 mod private_clean;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 pub(crate) struct Owner {
     pub slot: u64,
     pub count: u64,
+    pub alignment: u64,
     pub pins: u64,
+    pub purpose: crate::systems_frame_ownership::Purpose,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub(crate) struct Owners {
+    pub root_object_sha256: String,
     pub token_bytes: u64,
+    // The separately retained restorable bootstrap hierarchy is not a USER
+    // table role. Recording it cannot expand table admission.
+    pub bootstrap: Owner,
     // Static hierarchy, independent low leaf, resident image, retained stack.
     pub roles: [Owner; 4],
 }
@@ -23,13 +29,33 @@ impl Owners {
     pub(crate) fn validate(&self) -> Result<(), CompileError> {
         let invalid =
             || CompileError::Tool("E-SYSTEMS-USER-EXTENT: incomplete checked root owners".into());
-        if self.token_bytes == 0 || self.token_bytes % 24 != 0 {
+        if self.root_object_sha256.len() != 64
+            || !self
+                .root_object_sha256
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            || self.token_bytes == 0
+            || self.token_bytes % 24 != 0
+        {
             return Err(invalid());
         }
         let mut slots = std::collections::BTreeSet::new();
-        for (owner, (count, pins)) in self.roles.iter().zip([(5, 1), (1, 1), (503, 1), (2, 2)]) {
+        use crate::systems_frame_ownership::Purpose as P;
+        let expected = [
+            (5, 1, P::BootstrapHierarchy),
+            (5, 1, P::StaticImageHierarchy),
+            (1, 1, P::StaticImageLeaf),
+            (503, 1, P::StaticImagePayload),
+            (2, 2, P::StaticImageStack),
+        ];
+        for (owner, (count, pins, purpose)) in std::iter::once(&self.bootstrap)
+            .chain(self.roles.iter())
+            .zip(expected)
+        {
             if owner.count != count
+                || owner.alignment != 1
                 || owner.pins != pins
+                || owner.purpose != purpose
                 || owner.slot >= self.token_bytes / 24
                 || !slots.insert(owner.slot)
             {

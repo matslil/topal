@@ -16,6 +16,7 @@ mod systems_boot_image;
 mod systems_boot_resource;
 mod systems_file_region_boot;
 mod systems_frame_controller;
+mod systems_frame_ownership;
 mod systems_frame_policy_binding;
 mod systems_frame_publication;
 mod systems_kernel_image_layout;

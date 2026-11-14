@@ -17,6 +17,46 @@ const LIMIT: u64 = 1024 * 1024 * 1024;
 #[path = "systems_kernel_translation_tables.rs"]
 mod translation_tables;
 
+/// Compare freshly reconstructed image requirements with compiler-derived
+/// whole owners of both roots. This reports the rebuild obligation; it does
+/// not turn numeric geometry or descriptors into runtime backing authority.
+#[cfg(test)]
+pub(crate) fn backing_requirements(
+    layout: &SystemsKernelImageLayout,
+    owners: &crate::systems_user_extent::Owners,
+) -> Result<serde_json::Value, CompileError> {
+    owners.validate()?;
+    let tables = translation_tables::TranslationTables::new(layout)?;
+    let banks = [
+        ("bootstrap", owners.bootstrap),
+        ("process", owners.roles[0]),
+    ]
+    .map(|(domain, owner)| {
+        serde_json::json!({
+            "domain": domain, "current_owner": owner,
+            "current_template": "bootstrap-equivalent",
+            "required_frame_count": tables.pages(),
+            "required_alignment_frames": 1,
+            "required_bytes": tables.bytes(),
+            "whole_extent_size_matches": owner.count == tables.pages() && owner.alignment == 1,
+        })
+    });
+    Ok(serde_json::json!({
+        "schema": "topal.compiler-image-hierarchy-backing-requirements/1",
+        "kernel_sha256": layout.kernel_sha256,
+        "root_object_sha256": owners.root_object_sha256,
+        "geometry_template": "draft-x86-image-role-subdivision/1",
+        "native_selection_available": false,
+        "root_token_bytes": owners.token_bytes,
+        "banks": banks,
+        "process_low_leaf": owners.roles[1],
+        "runtime_ownership_qualified": false,
+        "protected_context": false,
+        "production_qualified": false,
+        "scope": "Fresh image geometry compared to compiler-derived whole allocation purposes and live entry pins; no runtime owner, mapping, mode, publication or activation proof",
+    }))
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SystemsKernelImageRole {

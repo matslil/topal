@@ -625,6 +625,11 @@ fn execute_profiled_input(
     }
     if let Some(owners) = &owners {
         fs::write(
+            work.join("root-backing-owners.json"),
+            serde_json::to_vec_pretty(owners).unwrap(),
+        )
+        .unwrap();
+        fs::write(
             work.join("user-owners.json"),
             serde_json::to_vec_pretty(&serde_json::json!({
             "token_bytes":owners.token_bytes,"roles":owners.roles.map(|o| serde_json::json!({
@@ -688,6 +693,7 @@ fn execute_profiled_input(
         focus,
         native,
         user_fixture,
+        owners.as_ref(),
     );
     work
 }
@@ -700,6 +706,7 @@ fn build_guest(
     focus: Option<CallerFocus>,
     native: bool,
     user_fixture: Option<(&[u8], &std::path::Path)>,
+    owner_bindings: Option<&crate::systems_user_extent::Owners>,
 ) {
     let KernelProfile {
         memory,
@@ -1232,7 +1239,7 @@ fn build_guest(
     }
     let kernel = fs::read(work.join("kernel.elf")).unwrap();
     if let Some(prepared) = prepared {
-        prepared.inspect(work, &kernel);
+        prepared.inspect(work, &kernel, owner_bindings.unwrap());
     }
     if access_audit_selected {
         run(

@@ -403,6 +403,13 @@ and deterministic physical execution without admitting a general loader.
 
 ## Kernel-image protection design and models
 
+The [whole-root backing stage](step-4-root-backing-owners.md) retains allocation
+purpose and both bootstrap/process whole-owner descriptors from fresh root
+generation, binds the exact raw object and linked token bank, and compares them
+with fresh reconstructed image requirements. This advances the plan/owners
+rules below without creating runtime authority or protected selection. Existing
+native USER-table admission and whole-owner validators remain unchanged.
+
 `TK-DEC-286` extends the same goals through
 `TOPAL-SYSTEMS-STATIC-ELF-PROVIDER-BACKING-001` and the
 [provider-selected reservation stage](step-4-provider-hierarchy-backing.md).

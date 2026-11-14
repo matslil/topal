@@ -7,8 +7,8 @@ struct RootFramePolicy {
     current: Option<u64>,
     payload: Option<u64>,
     owners: std::collections::BTreeMap<&'static str, u64>,
-    allocations: std::collections::BTreeMap<u64, (u64, u64)>,
-    user_owners: Vec<Option<[crate::systems_user_extent::Owner; 4]>>,
+    allocations: std::collections::BTreeMap<u64, crate::systems_frame_ownership::Allocation>,
+    user_owners: Vec<Option<crate::systems_frame_ownership::EntryOwners>>,
 }
 impl RootEncoder {
     fn frame_address(&mut self, opcode: &[u8], symbol: &'static str, offset: u64) {
@@ -60,13 +60,20 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
         self.jump_to_fatal_if(0x84)
     }
-    fn frame_new_allocation(&mut self, count: u64, alignment: u64) -> Result<u64, CompileError> {
+    fn frame_new_allocation(
+        &mut self,
+        count: u64,
+        alignment: u64,
+        purpose: crate::systems_frame_ownership::Purpose,
+    ) -> Result<u64, CompileError> {
         let policy = self.frame_policy.as_mut().unwrap();
         let slot = policy.next_slot;
         policy.next_slot = slot
             .checked_add(1)
             .ok_or_else(|| CompileError::Tool("frame token count overflow".into()))?;
-        policy.allocations.insert(slot, (count, alignment));
+        policy.allocations.insert(slot, crate::systems_frame_ownership::Allocation {
+            count, alignment, purpose,
+        });
         self.frame_call(1, Some(count), alignment, Some(slot), false)?;
         self.frame_call(4, Some(0), 0, Some(slot), true)?;
         self.frame_address(&[0x4c, 0x8d, 0x1d], "topal_x86_frame_details_v1", 0);
@@ -81,7 +88,12 @@ impl RootEncoder {
         }
         Ok(slot)
     }
-    fn frame_allocate_source(&mut self, count: u64, alignment: u64) -> Result<(), CompileError> {
+    fn frame_allocate_source(
+        &mut self,
+        count: u64,
+        alignment: u64,
+        purpose: crate::systems_frame_ownership::Purpose,
+    ) -> Result<(), CompileError> {
         let old = self.frame_policy.as_mut().unwrap().current.take();
         if let Some(old) = old {
             if self.physical_frame_count != Some(503)
@@ -95,7 +107,7 @@ impl RootEncoder {
             }
             self.frame_policy.as_mut().unwrap().payload = Some(old);
         }
-        let slot = self.frame_new_allocation(count, alignment)?;
+        let slot = self.frame_new_allocation(count, alignment, purpose)?;
         self.frame_policy.as_mut().unwrap().current = Some(slot);
         Ok(())
     }
@@ -158,8 +170,9 @@ impl RootEncoder {
         &mut self,
         count: u64,
         owner: &'static str,
+        purpose: crate::systems_frame_ownership::Purpose,
     ) -> Result<(), CompileError> {
-        let slot = self.frame_new_allocation(count, 1)?;
+        let slot = self.frame_new_allocation(count, 1, purpose)?;
         self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // retain physical base in r12
         self.frame_hold(owner, slot)?;
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe0]);
@@ -194,6 +207,11 @@ impl RootEncoder {
                 self.frame_call(2, Some(0), 0, Some(metadata), false)?;
             }
             O::PrepareStaticImageConstruction { .. } => {
+                let frame = self.frame_policy.as_mut().unwrap();
+                let metadata = frame.current.ok_or_else(|| CompileError::Tool("missing construction metadata".into()))?;
+                frame.allocations.get_mut(&metadata)
+                    .ok_or_else(|| CompileError::Tool("missing metadata allocation binding".into()))?
+                    .refine_construction(crate::systems_frame_ownership::Purpose::StaticImageLeaf)?;
                 self.frame_move("construction-metadata")?;
                 let payload = self
                     .frame_policy
@@ -202,6 +220,9 @@ impl RootEncoder {
                     .payload
                     .take()
                     .ok_or_else(|| CompileError::Tool("missing construction payload".into()))?;
+                self.frame_policy.as_mut().unwrap().allocations.get_mut(&payload)
+                    .ok_or_else(|| CompileError::Tool("missing payload allocation binding".into()))?
+                    .refine_construction(crate::systems_frame_ownership::Purpose::StaticImagePayload)?;
                 self.frame_hold("construction-payload", payload)?;
             }
             O::RevokeStaticImageConstructionMetadata => {
@@ -234,6 +255,17 @@ impl RootEncoder {
                 // call, before their later restoration/release. This records
                 // no runtime address and changes no emitted root instruction.
                 let frame = self.frame_policy.as_mut().unwrap();
+                let capture = |name| {
+                    let slot = *frame.owners.get(name)?;
+                    let allocation = *frame.allocations.get(&slot)?;
+                    Some(crate::systems_user_extent::Owner {
+                        slot,
+                        count: allocation.count,
+                        alignment: allocation.alignment,
+                        purpose: allocation.purpose,
+                        pins: frame.owners.values().filter(|&&owner| owner == slot).count() as u64,
+                    })
+                };
                 let roles = [
                     "construction-hierarchy",
                     "construction-metadata",
@@ -241,22 +273,12 @@ impl RootEncoder {
                     "prepared-stack",
                 ]
                 .into_iter()
-                .map(|name| {
-                    let slot = *frame.owners.get(name)?;
-                    let (count, alignment) = *frame.allocations.get(&slot)?;
-                    (alignment == 1).then(|| crate::systems_user_extent::Owner {
-                        slot,
-                        count,
-                        pins: frame
-                            .owners
-                            .values()
-                            .filter(|&&owner| owner == slot)
-                            .count() as u64,
-                    })
-                })
+                .map(capture)
                 .collect::<Option<Vec<_>>>()
                 .and_then(|roles| roles.try_into().ok());
-                frame.user_owners.push(roles);
+                let captured = capture("bootstrap-translation").zip(roles).map(|(bootstrap, process)|
+                    crate::systems_frame_ownership::EntryOwners { bootstrap, process });
+                frame.user_owners.push(captured);
             }
             O::PrepareUserAddressSpace => self.frame_move("user-address-space")?,
             O::ReclaimUserAddressSpace => self.frame_return("user-address-space")?,

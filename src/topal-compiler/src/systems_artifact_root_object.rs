@@ -50,9 +50,10 @@ pub(crate) fn generate_frame_user_extent_root(
 ) -> Result<(Vec<u8>, crate::systems_user_extent::Owners), CompileError> {
     let mut owners = None;
     let bytes = generate_root_object_selected(&checked.program, Some(checked), Some(&mut owners))?;
-    let owners = owners.ok_or_else(|| {
+    let mut owners = owners.ok_or_else(|| {
         CompileError::Tool("E-SYSTEMS-USER-EXTENT: missing root owner binding".into())
     })?;
+    owners.root_object_sha256 = sha256(&bytes);
     owners.validate()?;
     Ok((bytes, owners))
 }
@@ -913,15 +914,17 @@ fn generate_root_object_selected(
                     .into(),
             ));
         }
-        let roles = frame.user_owners[0].ok_or_else(|| {
+        let entry = frame.user_owners[0].ok_or_else(|| {
             CompileError::Tool("E-SYSTEMS-USER-EXTENT: incomplete live process owners".into())
         })?;
         *output = Some(crate::systems_user_extent::Owners {
+            root_object_sha256: String::new(),
             token_bytes: frame
                 .next_slot
                 .checked_mul(24)
                 .ok_or_else(|| CompileError::Tool("frame owner size overflow".into()))?,
-            roles,
+            bootstrap: entry.bootstrap,
+            roles: entry.process,
         });
     }
     if let Some(frame) = &bootstrap.frame_policy {

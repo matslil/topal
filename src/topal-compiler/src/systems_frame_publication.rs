@@ -76,6 +76,38 @@ pub(crate) fn inspect_private_inputs(
     kernel: &[u8],
     objects: &[(&[u8], &[linked::Section])],
 ) -> Result<serde_json::Value, CompileError> {
+    inspect_private_input_details(kernel, objects).map(|(record, _)| record)
+}
+
+#[cfg(test)]
+pub(crate) fn inspect_private_owned_inputs(
+    kernel: &[u8],
+    objects: &[(&[u8], &[linked::Section])],
+    owners: &crate::systems_user_extent::Owners,
+) -> Result<serde_json::Value, CompileError> {
+    // Only the fresh producer's compiler-derived descriptors enter here;
+    // serialized owner snapshots are never accepted as allocation authority.
+    owners.validate()?;
+    let (mut record, layout) = inspect_private_input_details(kernel, objects)?;
+    let file = object::File::parse(kernel).map_err(invalid)?;
+    let tokens = file
+        .symbol_by_name("topal_x86_frame_root_tokens_v1")
+        .ok_or_else(|| invalid("missing root token allocation"))?;
+    if tokens.size() != owners.token_bytes {
+        return Err(invalid(
+            "compiled owner descriptors differ from linked root token bank",
+        ));
+    }
+    record["hierarchy_backing_requirements"] =
+        crate::systems_kernel_image_layout::backing_requirements(&layout, owners)?;
+    Ok(record)
+}
+
+#[cfg(test)]
+fn inspect_private_input_details(
+    kernel: &[u8],
+    objects: &[(&[u8], &[linked::Section])],
+) -> Result<(serde_json::Value, crate::SystemsKernelImageLayout), CompileError> {
     // The private VM producer supplies its freshly generated objects here,
     // never a candidate manifest. This closes image bytes/layout only; the
     // separate private ownership/context/publication gates remain in force.
@@ -84,11 +116,12 @@ pub(crate) fn inspect_private_inputs(
     let padding = coverage::validate(kernel, &placements)?;
     let layout =
         crate::systems_kernel_image_layout::from_reconstructed(kernel, &placements, &padding)?;
-    Ok(serde_json::json!({
+    let record = serde_json::json!({
         "scope": "fresh private-producer object/link/allocation/image-layout reconstruction; no canonical publication or protected context",
         "placements": placements, "linker_padding": padding, "layout": layout,
         "production_qualified": false, "protected_context": false,
-    }))
+    });
+    Ok((record, layout))
 }
 
 pub(crate) fn library_sources(
