@@ -399,6 +399,36 @@ fn execute_profiled_mode(
     focus: Option<CallerFocus>,
     native: bool,
 ) -> std::path::PathBuf {
+    execute_profiled_input(profile, focus, native, None)
+}
+
+/// Compile a fresh ordinary source image with the existing private owning-MM
+/// kernel. The caller separately executes its serial-only guest test; this
+/// builder supplies neither production publication nor a protected context.
+pub(crate) fn prepare_owned_source_fixture(
+    image: &[u8],
+    source_work: &std::path::Path,
+) -> std::path::PathBuf {
+    execute_profiled_input(
+        KernelProfile {
+            memory: true,
+            user_extents: true,
+            owned_callers: true,
+            process_memory: true,
+            policy_failure: None,
+        },
+        Some(CallerFocus::SourceBoundary),
+        false,
+        Some((image, source_work)),
+    )
+}
+
+fn execute_profiled_input(
+    profile: KernelProfile,
+    focus: Option<CallerFocus>,
+    native: bool,
+    user_fixture: Option<(&[u8], &std::path::Path)>,
+) -> std::path::PathBuf {
     let KernelProfile {
         memory,
         user_extents,
@@ -625,7 +655,15 @@ fn execute_profiled_mode(
             .args(["-passes=verify", "-disable-output"])
             .arg(work.join("target.ll")),
     );
-    build_guest(&work, &checked, &tools, profile, focus, native);
+    build_guest(
+        &work,
+        &checked,
+        &tools,
+        profile,
+        focus,
+        native,
+        user_fixture,
+    );
     work
 }
 
@@ -636,6 +674,7 @@ fn build_guest(
     profile: KernelProfile,
     focus: Option<CallerFocus>,
     native: bool,
+    user_fixture: Option<(&[u8], &std::path::Path)>,
 ) {
     let KernelProfile {
         memory,
@@ -646,9 +685,15 @@ fn build_guest(
     } = profile;
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if let Some(CallerFocus::SourceProcessRelationship(early, group, zombie)) =
-        focus
-    {
+    let fixture_bytes = if let Some((image, source_work)) = user_fixture {
+        assert!(process_memory && owned_callers && !native && profile.policy_failure.is_none());
+        assert!(focus == Some(CallerFocus::SourceBoundary));
+        let source = fs::read(source_work.join("source-component.json")).unwrap();
+        let record: serde_json::Value = serde_json::from_slice(&source).unwrap();
+        assert_eq!(record["image_sha256"], crate::artifact::sha256(image));
+        fs::write(work.join("source-component.json"), source).unwrap();
+        image.to_vec()
+    } else if let Some(CallerFocus::SourceProcessRelationship(early, group, zombie)) = focus {
         crate::systems_user_extent::source_fixture::build_process_memory_relationship(
             work, tools, early, group, zombie,
         )

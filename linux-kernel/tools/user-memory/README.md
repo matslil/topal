@@ -1,5 +1,13 @@
 # Owned user-memory model
 
+The [inactive table-data component](../../step-4-inactive-image-tables.md)
+adds private bank geometry, a closed LLVM initializer, independent byte oracles
+and a source-built ordinary guest program. Its
+[bounded driver](run_image_table_data.py) runs seven static cases, one serial-only
+VM case, existing compiler/model checks and an unchanged-profile rebuild.
+Initializer output remains application data; no active table authority or
+kernel image protection is granted.
+
 The [compiler image-layout component](../../step-4-compiler-image-layout.md)
 rebuilds complete source/native inputs before deriving image roles and additional
 x86 leaf storage. Its bounded compiler/model matrix is available through

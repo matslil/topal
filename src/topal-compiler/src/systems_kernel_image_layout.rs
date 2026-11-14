@@ -13,6 +13,10 @@ const PAGE: u64 = 4096;
 const BLOCK: u64 = 2 * 1024 * 1024;
 const LIMIT: u64 = 1024 * 1024 * 1024;
 
+#[cfg(test)]
+#[path = "systems_kernel_translation_tables.rs"]
+mod translation_tables;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SystemsKernelImageRole {

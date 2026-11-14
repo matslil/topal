@@ -433,6 +433,14 @@ exec, all 51 pinned workloads and independent saved-record readback pass.
 This supplies descriptive image geometry and regression evidence; complete
 native root/owner/publication/lifetime and production gates remain open.
 
+The [inactive table-data component](step-4-inactive-image-tables.md) adds private
+provider geometry and a bounded native byte initializer as preparation under
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PLAN-001`. Independent static walks and an ordinary
+source-built VM program check output words, exclusions and refusal before writes.
+The caller-owned application loan supplies no live table or protected-context
+authority. Complete source/image/root/backing binding and the owner/publication/
+lifetime rules remain unimplemented for this component.
+
 ## Calendar provider data placement
 
 The existing realtime/artifact contracts also trace through the

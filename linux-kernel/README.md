@@ -11,7 +11,12 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest [private image reconstruction stage](step-4-closed-private-image.md)
+The latest [inactive table-data component](step-4-inactive-image-tables.md)
+checks bank geometry and native buffer preparation with a source-built ordinary
+VM program. Its output remains application data; full source/backing integration
+and active image protection remain unfinished.
+
+The preceding [private image reconstruction stage](step-4-closed-private-image.md)
 closes static/local compilation and complete allocated-image checks for the
 experimental process-MM producer. The fresh ordinary child-exec case and all
 51 unchanged pinned BusyBox workloads pass independent readback. Complete native

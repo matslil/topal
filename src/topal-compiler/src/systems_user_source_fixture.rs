@@ -10,7 +10,7 @@ use std::{fs, path::Path, process::Command};
 const BASE: u64 = 0x570000;
 const PREDECESSOR_SHA256: &str = "41a3dcd7b7e42a2f77ad995e6259e43ef84f7abf95e2dfd36cff7bea187c9fda";
 
-fn syscall_adapter(target_name: &[u8], image_entry: bool) -> Vec<u8> {
+pub(crate) fn syscall_adapter(target_name: &[u8], image_entry: bool) -> Vec<u8> {
     use object::write::{Object, Symbol, SymbolSection};
     use object::{
         Architecture, BinaryFormat, Endianness, SectionKind, SymbolFlags, SymbolKind, SymbolScope,

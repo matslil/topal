@@ -7,7 +7,16 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
-The [closed private image stage](step-4-closed-private-image.md) now reuses
+The [inactive table-data component](step-4-inactive-image-tables.md) now derives
+draft x86 bank geometry and emits an initializer exercised as ordinary user
+data. Seven static cases and one VM case pass; four program executions complete
+16 valid and 92 refused requests. All nine validation commands and 354 host
+models pass over 773 stable inputs. The running kernel and original-profile
+rebuild retain the preceding image identity. Actual table ownership, effective
+image protection, complete source integration and production qualification
+remain unfinished.
+
+The [closed private image stage](step-4-closed-private-image.md) reuses
 canonical static/local compilation and source retention for the experimental
 process-MM producer. It reconstructs all 23 objects and 862 allocated
 contributions while preserving original audit inputs. All 51 unchanged pinned
