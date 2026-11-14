@@ -117,6 +117,28 @@ impl BootstrapAuthorityState {
                     }
                 };
             }
+            SystemsOperation::ReserveStaticImageHierarchy { .. } => {
+                if !self.allocator_created
+                    || self.memory_ownership
+                        != BootstrapMemoryOwnership::StaticElfConstructionSealed
+                    || !matches!(
+                        self.translation,
+                        BootstrapTranslationState::BootstrapActive
+                            | BootstrapTranslationState::ReplacementActive
+                            | BootstrapTranslationState::RemovedActive
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-FRAMES",
+                        "provider-selected hierarchy backing requires the exact sealed construction, allocator and available translation context",
+                    ));
+                }
+                // The initial provider has one qualified bootstrap-equivalent
+                // topology. Keep purpose in the transition rather than treating
+                // a source integer as backing authority.
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy;
+            }
             SystemsOperation::ReleasePhysicalFrames => {
                 if matches!(
                     self.memory_ownership,

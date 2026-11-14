@@ -122,6 +122,31 @@ Primary sources: [Intel SDM, current Volume 3A, paging](https://cdrdv2.intel.com
 (translation granules and maintenance), and [RISC-V supervisor specification](https://docs.riscv.org/reference/isa/v20260120/priv/supervisor.html)
 (address translation, Sv39/Sv48/Sv57 and synchronization).
 
+## Provider-selected static hierarchy request
+
+`TK-DEC-286` is a systems-only interface increment adopted under the standing
+chat authorization. Static construction accepts `backing is provider-selected`
+beside its exact sealed owner, keeping a purpose-specific reservation in checked
+IR and provider provenance. The old explicit count/alignment request remains
+compatible; mixing the forms is invalid. This removes target geometry from new
+source requests without erasing the resource's purpose into a generic allocation.
+
+The current x86 bootstrap-equivalent provider resolves the request to its exact
+five unit-aligned frames, using the existing actual allocator and complete
+attachment/restoration/reclaim/release path. Its exact owner, exclusion and
+user-table checks remain unchanged. No larger bank or new protection mode is
+enabled. The later protected provider must instead bind its complete requirement
+to the actual qualified image and all owned roots; missing qualification cannot
+fall back to the legacy shape. The source interface is portable, while each
+provider's native realization remains independently qualified. Core semantics
+are unchanged.
+
+Alternatives: synthesizing a generic five-frame allocation during parsing loses
+the purpose needed for future image-derived resolution; accepting a source
+count such as eight exposes target geometry and supplies no owner binding.
+Keeping the request opaque and resolving it at the provider preserves both
+portability and the existing security obligations.
+
 ## Security review and qualification gates
 
 Before replacing any current check or enabling native selection, review the

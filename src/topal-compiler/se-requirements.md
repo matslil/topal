@@ -3178,6 +3178,17 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+The checker shall retain a distinct provider-selected static-hierarchy
+reservation operation instead of synthesizing a generic source frame count.
+The current qualified x86 provider shall resolve it to exactly five frames
+aligned to one frame and reuse the complete existing allocator/owner and
+static-construction lifetime checks. Reject wrong owners, duplicate or mixed
+parameters, unsealed or repeated reservations and unavailable translation
+states. Preserve the legacy explicit request and its trace. New checked traces
+shall retain the reservation purpose; equivalent legacy and provider-selected
+requests shall construct the same current target hierarchy. Neither this
+interface nor an unsupported protected mode shall bypass image/owner binding.
+
 Any selected kernel-image protection provider shall realize `TK-DEC-285` and
 `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001`. Bind the actual publisher/boot image identity,
 semantic roles, target mode and complete root/alias set to provider-selected

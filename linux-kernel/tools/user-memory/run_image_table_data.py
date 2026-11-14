@@ -69,7 +69,8 @@ def main():
     try:
         command('table-data', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1',
                               'systems_kernel_image_layout::translation_tables::tests', '--',
-                              '--include-ignored', '--test-threads=1', '--nocapture'])
+                              '--include-ignored', '--skip', 'provider_selected_hierarchy',
+                              '--test-threads=1', '--nocapture'])
         text = (output / 'table-data.stdout.log').read_text()
         assert '8 passed; 0 failed; 0 ignored' in text
         native = build('table-data')

@@ -403,6 +403,15 @@ and deterministic physical execution without admitting a general loader.
 
 ## Kernel-image protection design and models
 
+`TK-DEC-286` extends the same goals through
+`TOPAL-SYSTEMS-STATIC-ELF-PROVIDER-BACKING-001` and the
+[provider-selected reservation stage](step-4-provider-hierarchy-backing.md).
+Source, checked IR, transitions, provenance and x86 lowering preserve the
+hierarchy purpose without source-selected geometry. The initial provider keeps
+its exact five-page owner and complete lifecycle. Source/IR refusal controls,
+legacy root/owner equivalence and ordinary guest/exec validation are distinct
+from future image-derived backing and protected-context qualification.
+
 `TK-DEC-285`, `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
 `TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` trace through the
 [design](design/kernel-image-protection.md) to

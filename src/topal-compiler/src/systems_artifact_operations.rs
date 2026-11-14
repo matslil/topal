@@ -13,6 +13,9 @@ fn encode_operations(
             CompilerSystemsOperation::AllocatePhysicalFrames { request, .. } => {
                 encoder.allocate_physical_frames(request.frame_count, request.alignment_frames)?;
             }
+            CompilerSystemsOperation::ReserveStaticImageHierarchy { .. } => {
+                encoder.reserve_static_image_hierarchy()?;
+            }
             CompilerSystemsOperation::ReleasePhysicalFrames => {
                 encoder.release_physical_frames()?;
             }

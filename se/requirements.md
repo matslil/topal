@@ -1981,6 +1981,15 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+The static-image systems interface shall admit provider-selected hierarchy
+backing tied to the exact sealed construction without source counts or native
+geometry. Preserve that purpose in checked operations and provenance, and
+retain allocation, attachment, restoration, reclaim and whole-release ownership.
+The existing qualified x86 provider shall resolve this request to its exact
+five-frame, unit-aligned bootstrap-equivalent requirement; the legacy explicit
+request shall remain compatible. Mixed requests and unsupported modes shall
+fail closed. This interface alone shall grant no protected-image context.
+
 A separately selected systems refinement shall bind the actual qualified
 kernel image and semantic placement to effective supervisor-only code, immutable
 data and mutable-data rights. Supported granules, required subdivision and

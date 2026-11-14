@@ -596,6 +596,37 @@ rule SHALL NOT initialize a page-table level, link the existing leaf table,
 attach or activate an address space, initialize TLS or a stack, publish an
 entry, retain the hierarchy extent, or execute the static image.
 
+### TOPAL-SYSTEMS-STATIC-ELF-PROVIDER-BACKING-001 — Purpose-preserving hierarchy backing
+
+The systems profile SHALL additionally admit
+`static image construction reserve hierarchy (owner is sealed-construction,
+backing is provider-selected)`, binding one affine hierarchy extent. The owner
+SHALL name the exact live sealed construction. Parameters SHALL occur exactly
+once. The `backing` form SHALL NOT include `frame-count`, `alignment-frames`,
+addresses, table formats or native permission selectors.
+
+The checked operation and semantic transition SHALL retain the distinct
+`topal.systems.static-image.construction.reserve-hierarchy/1` identity without
+synthesizing a generic numeric frame request. The selected qualified provider
+SHALL derive the complete count and alignment before allocation. The existing
+x86 bootstrap-equivalent provider SHALL derive exactly five unit-aligned frames
+and preserve every allocation, exclusion, identity, pin, attachment, activation,
+restoration, reclaim and whole-release obligation in
+`TOPAL-SYSTEMS-STATIC-ELF-HIERARCHY-EXTENT-001` and its consuming refinements.
+Allocation failure SHALL follow the existing fatal edge. A repeated or
+unsealed reservation, wrong owner, mixed request, unsupported provider or
+unavailable translation state SHALL be invalid. No request field supplies
+memory access or protected-image authority.
+
+The original explicit five-frame request and its generic allocation transition
+SHALL retain their exact meaning. No arbitrary larger explicit request SHALL
+become valid. A separately qualified protected-image provider SHALL bind the
+requirement and complete backing to its actual image, domain and topology under
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PLAN-001` and
+`TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001`; it SHALL NOT substitute the old five-frame
+requirement when that qualification is absent. The request alone SHALL NOT
+activate or qualify that provider.
+
 ### TOPAL-SYSTEMS-STATIC-ELF-ADDRESS-SPACE-001 — Verified inactive attachment and detach
 
 `static image construction attach address space` SHALL consume the exact live

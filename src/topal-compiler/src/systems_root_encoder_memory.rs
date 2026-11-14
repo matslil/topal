@@ -18,6 +18,25 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn reserve_static_image_hierarchy(&mut self) -> Result<(), CompileError> {
+        // This provider supports only the qualified bootstrap-equivalent
+        // topology. A future image-protected provider must derive a different
+        // requirement from its actual image/owner binding, not widen this path.
+        if self.static_image != RootStaticImageState::Sealed
+            || !matches!(
+                self.translation,
+                RootTranslationState::BootstrapActive
+                    | RootTranslationState::ReplacementActive
+                    | RootTranslationState::RemovedActive
+            )
+        {
+            return Err(CompileError::Tool(
+                "provider-selected hierarchy backing requires a sealed construction and qualified translation context".into(),
+            ));
+        }
+        self.allocate_physical_frames(5, 1)
+    }
+
     fn allocate_physical_frames(
         &mut self,
         frame_count: u64,

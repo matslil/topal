@@ -303,6 +303,9 @@ pub(crate) fn semantic_trace(
                     "{identity}:frames={}:alignment={}",
                     request.frame_count, request.alignment_frames
                 ),
+                CompilerSystemsTransition::ReserveStaticImageHierarchy => {
+                    format!("{identity}:backing=provider-selected")
+                }
                 CompilerSystemsTransition::MapKernelFrames { .. } => {
                     format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
                 }

@@ -1,0 +1,342 @@
+{
+  "active_image_protection": false,
+  "canonical_layout_tests": 5,
+  "changed_code_inputs": {
+    "linux-kernel/tools/user-memory/run_hierarchy_backing.py": "0d322097f5f50dd3d0920f5afa4fbabb0d9c6fa9a2e705c49e2cb8ee1980bbf6",
+    "linux-kernel/tools/user-memory/run_image_table_data.py": "5875c41c6d2b08240add9b1536039ba3a0393943722def91b59ad0ea4e62cfd6",
+    "src/topal-compiler/src/systems_artifact.rs": "f4208ada91e75dbe76d79bc08dc96ddfabc41e1e00a2e8baa59d1e368d653387",
+    "src/topal-compiler/src/systems_artifact_linked_outputs.rs": "18811948417a6251b4a1db105df9920fbc24b8f7a577e6a28c380b9d7fa4be16",
+    "src/topal-compiler/src/systems_artifact_operations.rs": "fc11efc7502f461b3a97cfd3c93d2de1aa9d2bdcf5e58a0591f5a4bf52034e21",
+    "src/topal-compiler/src/systems_artifact_trace.rs": "a65c71963c3111297c1330dcf283be1d8a191de97eb679a8a6c3be0ac9c0064a",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "d5a52d90dfcd3d700a87fb322024488d17483a87fcb774a82b4d286781d3b898",
+    "src/topal-compiler/src/systems_hierarchy_backing_tests.rs": "77c67078b0c570de354e161eff71a032e13fa4bcf52e8d2303d62fbf700c7d31",
+    "src/topal-compiler/src/systems_kernel_translation_guest_tests.rs": "56f6835199c8c3bdba9635e609cbe7ffb5c1ad22a124028b263d6a54f2ba582b",
+    "src/topal-compiler/src/systems_provider.rs": "db92c898dd58a1f2b6c45af6ce7a47e6fcfe689f65d6053d09c3954c9cff73e1",
+    "src/topal-compiler/src/systems_root_encoder_memory.rs": "99a4144e09102f74efad898752d06a1b177445a99b28a27582afe31786b54e41",
+    "src/topal-language/src/systems.rs": "514c454a1bab945f2d0432f5865fdba1513fa413b1a2168b8c364c0f86456f30",
+    "src/topal-language/src/systems_source_tests_hierarchy_backing.rs": "57584e30264d7d7345bd131a754382bae0cef10b29175ca78e1092f3bab7676c",
+    "src/topal-language/src/systems_translation_image_requests.rs": "50b9de67eeacbb94715ca60ffb8a2571ae4245079f5afa9384570368da18a485",
+    "src/topal-language/src/systems_translation_static_image.rs": "19cd1edc24d24b4f045ed9282ecdf569e49be0f455c215b51b2045126ff1d5b9",
+    "src/topal-semantics/src/systems.rs": "8dfbd2a5e381014d157f167438e12c3bd04719a3f67e53498daca7d261a6d1e3",
+    "src/topal-semantics/src/systems_frames.rs": "a69fd4a0255efff0fca6dd4723eefdf9041cfcc567ca9168687f34d850a9dda3",
+    "src/topal-semantics/src/systems_model_authority.rs": "749ecb6100d8899d39297afb84e8560fd5b34d8c6691e6686c6f2c98f452cfba",
+    "src/topal-semantics/src/systems_model_program.rs": "84bf8e3ce85e9050038f27d4356006c0da67f340ba04e197ed1eb1507c34f16a",
+    "src/topal-semantics/src/systems_model_storage_transitions.rs": "f42664b007b070f8323cfc14cf3fca94a8f2762e7e0c9d168763a512301b459c",
+    "src/topal-semantics/src/systems_model_tests_hierarchy_backing.rs": "4d62637654ec1fe1453f8412729b4997bf7a9ba009b79ee7b065b9febdfc5aec",
+    "src/topal-semantics/src/systems_model_transitions.rs": "e792969c0531f27b0301e50b113d19d8b06b7192ff997759779c7cdf0ed608cf"
+  },
+  "closed_source_archive": false,
+  "commands": {
+    "Rust-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.39295283798128366,
+      "state": "finished"
+    },
+    "default-ABI": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "exit_code": 0,
+      "seconds": 0.18579026684165,
+      "state": "finished"
+    },
+    "format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 1.223528335802257,
+      "state": "finished"
+    },
+    "image-layout": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_kernel_image_layout::tests",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 85.56161545682698,
+      "state": "finished"
+    },
+    "legacy-private-build": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::process_mm_closed_link_reconstructs_complete_private_image",
+        "--",
+        "--exact",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 21.53155461512506,
+      "state": "finished"
+    },
+    "native-lowering": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::hierarchy_backing",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 12.576794383116066,
+      "state": "finished"
+    },
+    "ordinary-guest": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "provider_selected_hierarchy_runs_ordinary_guest_and_exec_lifetimes",
+        "--",
+        "--ignored",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 73.87304874043912,
+      "state": "finished"
+    },
+    "process-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.0056467177346349,
+      "state": "finished"
+    },
+    "source-and-model": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-language",
+        "-p",
+        "topal-semantics",
+        "--lib",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "seconds": 152.29699837882072,
+      "state": "finished"
+    },
+    "user-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 2.034904479049146,
+      "state": "finished"
+    },
+    "workspace": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "seconds": 14.943592755123973,
+      "state": "finished"
+    }
+  },
+  "frontend_tests": 651,
+  "full_compiler_suite_complete": false,
+  "legacy_private_build": {
+    "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+    "native_execution": false
+  },
+  "local_run": "linux-kernel/.cache/x86_64/provider-hierarchy-backing-stage-1/run.json",
+  "local_run_sha256": "c99a5bf56bbf5785fe421a9c10baac8f41209d4a42bfb7403fe8e179e13c82c7",
+  "lowering_tests": 2,
+  "native": {
+    "boot_image_sha256": "5b775ff7391f018d0a357dffc0563165d7de4576c6f50a0f97242a7f1ad59cf0",
+    "completed_calls": 4,
+    "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+    "native_execution": true,
+    "native_execution_attempted": true,
+    "passed": true,
+    "private_binding_sha256": "5885f2f9fdf5d59fc6aad996e9ec3fde4810bb5ead5198d2c284e747502651aa",
+    "protected_context": false,
+    "qemu_version": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+    "refused_requests": 92,
+    "resources": {
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.max": "3274539008",
+      "memory.peak": "2025324544",
+      "memory.swap.max": "0"
+    },
+    "scope": "Ordinary user-mode execution of an inactive byte initializer; no live page tables, owner authority, publication or effective hardware protection",
+    "serial_sha256": "7146afd3883051e4befa514cd3c27956772c37745cee7704b1b54e4a9415620b",
+    "source": {
+      "conservative_stack_bytes": 1376,
+      "image_sha256": "0e21513326aac17d392c304de48da34d7731def33f9e510062f1d3eab28219b5",
+      "linked_sha256": "7f9a43ef74fbbe8e03978bb61b704e9e2bc56939cb35f1c936fd35d1d331e58c",
+      "llvm_sha256": "57a3d6b729fa1877623367920de7eae4054e4998106eb713ccdafe1eca92f141",
+      "object_sha256": "65114bb2483c3219b6a162cdd13ab339bb9cc4adc2f4cd30da6149073a3e499b",
+      "protected_context": false,
+      "refused_requests_per_call": 23,
+      "scope": "Ordinary user-mode execution of inactive byte preparation; numeric physical arguments create no owners or active translations",
+      "source_sha256": "e1bda842b89fd301f9743dc77eb5dd096e2ea13f446a75de31d5bad97c6710e2",
+      "text_bytes": 36744,
+      "valid_requests_per_call": 4
+    },
+    "valid_requests": 16
+  },
+  "native_binding": {
+    "contributions": 862,
+    "layout": {
+      "address_limit": 1073741824,
+      "image_leaf_storage_bytes": 12288,
+      "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+      "large_granule": 2097152,
+      "minimum_granule": 4096,
+      "schema": "topal.kernel-image-layout.x86_64/1",
+      "spans": [
+        {
+          "end": 2101248,
+          "role": "immutable",
+          "start": 2097152
+        },
+        {
+          "end": 44974080,
+          "role": "mutable",
+          "start": 8388608
+        },
+        {
+          "end": 45006848,
+          "role": "immutable",
+          "start": 44974080
+        },
+        {
+          "end": 46272512,
+          "role": "code",
+          "start": 45006848
+        },
+        {
+          "end": 46276608,
+          "role": "immutable",
+          "start": 46272512
+        }
+      ],
+      "subdivided_regions": [
+        2097152,
+        44040192,
+        46137344
+      ]
+    },
+    "production_qualified": false,
+    "protected_context": false
+  },
+  "native_build": "linux-kernel/.cache/x86_64/process-mm-interface-regression-2629628-1794634910047855526",
+  "ordinary_vm_cases": 1,
+  "passed": true,
+  "post_validation_descriptive_updates": [
+    {
+      "current_sha256": "dcf8c926bdf1b6f6d6a30857e1a14e849be53d0f387d8eebd7ed1754b47127e0",
+      "file": "linux-kernel/step-4-status.md",
+      "validated_sha256": "0e7888b5d700cb95c01b22d025e96ba82cd1789cc1406934c07acd51d91f924b"
+    }
+  ],
+  "predecessor_native_corpus_rerun": false,
+  "process_models": 83,
+  "production_qualified": false,
+  "protected_context": false,
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3274539008",
+    "memory.peak": "2204266496",
+    "memory.swap.max": "0"
+  },
+  "schema": "topal.provider-selected-hierarchy-backing/1",
+  "scope": "Provider-selected static-hierarchy request, checked IR/provenance, exact legacy five-page backing and ordinary source-built guest/exec lifetimes; no image-protected provider or production qualification",
+  "seconds": 365.76518009323627,
+  "selected_root_sha256": "92cf16c976f1e44eb283368a62375e08ab670d08a4df269ad39d8eb4202c4cbd",
+  "semantics_tests": 255,
+  "source_hash_manifest_encoding": "UTF-8 JSON, sorted keys, compact separators, no terminal newline",
+  "source_hash_manifest_sha256": "6af5baacc659f9a56f5e07b267b554aadbee910a904d2e860be53ae9d78d58b8",
+  "source_hashes_unchanged_during_validation": true,
+  "source_inputs": 948,
+  "user_models": 271
+}

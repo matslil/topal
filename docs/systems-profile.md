@@ -2287,6 +2287,24 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+Static-image construction may request opaque translation backing with
+`static image construction reserve hierarchy (owner is sealed-construction,
+backing is provider-selected)`. The owner is the exact live sealed construction.
+This purpose remains explicit through checking and lowering; source does not
+choose a page count or alignment. The selected qualified provider derives the
+complete requirement and obtains one affine extent from the allocator. The
+existing attachment, restoration, reclaim and whole-release obligations apply.
+
+For the existing x86 bootstrap-equivalent provider this resolves to its exact
+five unit-aligned frames and preserves every existing check. The older explicit
+`frame-count is 5, alignment-frames is 1` form retains its meaning. Combining
+the opaque and explicit forms is invalid. This request does not select image
+protection: an unsupported provider or protection mode must refuse it rather
+than substitute the bootstrap-equivalent shape. A future protected provider
+must derive its backing from the actual qualified image and retain its complete
+owner binding. See `TOPAL-SYSTEMS-STATIC-ELF-PROVIDER-BACKING-001` and
+[TK-DEC-286](../linux-kernel/design/kernel-image-protection.md#provider-selected-static-hierarchy-request).
+
 A separately qualified systems refinement may combine semantic kernel-image
 placement with actual translation/backing ownership. It makes kernel code
 readable/executable, immutable data readable/non-executable, and mutable data

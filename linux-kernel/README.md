@@ -11,7 +11,12 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest [inactive table-data component](step-4-inactive-image-tables.md)
+The [provider-selected backing stage](step-4-provider-hierarchy-backing.md)
+preserves static-hierarchy purpose through checking and lowering, while the
+current x86 provider retains its exact five-page ownership lifecycle. Actual
+image-derived backing and protected-context qualification remain required.
+
+The [inactive table-data component](step-4-inactive-image-tables.md)
 checks bank geometry and native buffer preparation with a source-built ordinary
 VM program. Its output remains application data; full source/backing integration
 and active image protection remain unfinished.

@@ -109,6 +109,7 @@ fn model_bootstrap_storage_operation(
         }
         SystemsOperation::CreateFrameAllocator { .. }
         | SystemsOperation::AllocatePhysicalFrames { .. }
+        | SystemsOperation::ReserveStaticImageHierarchy { .. }
         | SystemsOperation::ReleasePhysicalFrames
         | SystemsOperation::PrepareStaticImageConstruction { .. }
         | SystemsOperation::ZeroStaticImageConstructionPayload

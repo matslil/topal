@@ -12,6 +12,8 @@ use crate::{BootMemoryClass, BootMemoryProvenance, MemoryDescribedContext};
 
 pub const SYSTEMS_FRAME_ALLOCATOR_CREATE: &str = "topal.systems.memory.create-frame-allocator/1";
 pub const SYSTEMS_FRAMES_ALLOCATE: &str = "topal.systems.frames.allocate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY: &str =
+    "topal.systems.static-image.construction.reserve-hierarchy/1";
 pub const SYSTEMS_FRAMES_RELEASE: &str = "topal.systems.frames.release/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE: &str =
     "topal.systems.static-image.construction.prepare/1";

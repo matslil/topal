@@ -157,6 +157,19 @@ fn ordinary_guest_program_links_without_execution() {
 #[test]
 #[ignore = "requires a C compiler and the bounded authorized QEMU VM"]
 fn ordinary_guest_checks_inactive_buffer_preparation() {
+    execute_guest(false);
+}
+
+#[test]
+#[ignore = "requires a C compiler and the bounded authorized QEMU VM"]
+fn provider_selected_hierarchy_runs_ordinary_guest_and_exec_lifetimes() {
+    // TOPAL-SYSTEMS-STATIC-ELF-PROVIDER-BACKING-001. Existing initializer
+    // workload plus full serial contract exercises the new source request,
+    // actual five-page owner, process entry and three ordinary execs.
+    execute_guest(true);
+}
+
+fn execute_guest(provider_selected: bool) {
     let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -175,8 +188,13 @@ fn ordinary_guest_checks_inactive_buffer_preparation() {
     // Use the existing owning-MM kernel: its normal brk implementation admits
     // this independent heap loan. The legacy public fixture profile accepts
     // only its original fixed brk/caller sequence and cannot run this program.
-    let guest =
-        crate::systems_frame_target::root_tests::prepare_owned_source_fixture(&image, &work);
+    let guest = if provider_selected {
+        crate::systems_frame_target::root_tests::prepare_provider_backing_source_fixture(
+            &image, &work,
+        )
+    } else {
+        crate::systems_frame_target::root_tests::prepare_owned_source_fixture(&image, &work)
+    };
     fs::write(work.join("guest-build.json"), serde_json::to_vec_pretty(&serde_json::json!({
         "build": guest, "production_qualified": false,
         "scope": "Fresh complete private owning-MM kernel; serial-only ordinary application execution is separate from compile-only preparation",

@@ -139,6 +139,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
@@ -1937,5 +1938,6 @@ mod tests {
     include!("systems_source_tests_frame_policy.rs");
     include!("systems_source_tests_device_lifecycles.rs");
     include!("systems_source_tests_memory_and_image.rs");
+    include!("systems_source_tests_hierarchy_backing.rs");
     include!("systems_source_tests_image_completion.rs");
 }

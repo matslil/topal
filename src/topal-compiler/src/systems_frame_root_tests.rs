@@ -4,6 +4,8 @@ use std::{fs, process::Command};
 
 #[path = "systems_frame_root_link_tests.rs"]
 mod closed_link;
+#[path = "systems_hierarchy_backing_tests.rs"]
+mod hierarchy_backing;
 #[path = "systems_process_mm_fault_tests.rs"]
 mod policy_failure;
 
@@ -399,7 +401,7 @@ fn execute_profiled_mode(
     focus: Option<CallerFocus>,
     native: bool,
 ) -> std::path::PathBuf {
-    execute_profiled_input(profile, focus, native, None)
+    execute_profiled_input(profile, focus, native, None, None)
 }
 
 /// Compile a fresh ordinary source image with the existing private owning-MM
@@ -420,6 +422,28 @@ pub(crate) fn prepare_owned_source_fixture(
         Some(CallerFocus::SourceBoundary),
         false,
         Some((image, source_work)),
+        None,
+    )
+}
+
+/// Same complete private producer with an explicit purpose-preserving source
+/// request; compilation remains separate from ordinary serial-only execution.
+pub(crate) fn prepare_provider_backing_source_fixture(
+    image: &[u8],
+    source_work: &std::path::Path,
+) -> std::path::PathBuf {
+    execute_profiled_input(
+        KernelProfile {
+            memory: true,
+            user_extents: true,
+            owned_callers: true,
+            process_memory: true,
+            policy_failure: None,
+        },
+        Some(CallerFocus::SourceBoundary),
+        false,
+        Some((image, source_work)),
+        Some(&hierarchy_backing::selected_root()),
     )
 }
 
@@ -428,6 +452,7 @@ fn execute_profiled_input(
     focus: Option<CallerFocus>,
     native: bool,
     user_fixture: Option<(&[u8], &std::path::Path)>,
+    selected_root: Option<&str>,
 ) -> std::path::PathBuf {
     let KernelProfile {
         memory,
@@ -438,7 +463,7 @@ fn execute_profiled_input(
     } = profile;
     // TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001: complete existing boot IR, not
     // a smaller constant probe. Canonical publication remains unqualified.
-    let root = root();
+    let root = selected_root.map(str::to_owned).unwrap_or_else(root);
     let mut input = input();
     if let Some(failure) = profile.policy_failure {
         assert!(memory && user_extents && owned_callers && process_memory);

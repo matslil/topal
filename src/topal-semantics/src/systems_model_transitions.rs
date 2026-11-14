@@ -1170,6 +1170,9 @@ fn model_bootstrap_operation(
         SystemsOperation::AllocatePhysicalFrames { request, .. } => {
             transitions.push(SystemsTransition::AllocatePhysicalFrames { request: *request });
         }
+        SystemsOperation::ReserveStaticImageHierarchy { .. } => {
+            transitions.push(SystemsTransition::ReserveStaticImageHierarchy);
+        }
         SystemsOperation::ReleasePhysicalFrames => {
             transitions.push(SystemsTransition::ReleasePhysicalFrames);
         }

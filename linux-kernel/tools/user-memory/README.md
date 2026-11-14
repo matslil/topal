@@ -1,5 +1,11 @@
 # Owned user-memory model
 
+The [provider-selected hierarchy stage](../../step-4-provider-hierarchy-backing.md)
+adds a purpose-specific source/IR request resolved by the current x86 provider
+to its existing five-page backing. `run_hierarchy_backing.py` checks source and
+model refusals, native root/owner equivalence and ordinary serial-only guest
+execution. Image-derived extra backing and effective protection remain open.
+
 The [inactive table-data component](../../step-4-inactive-image-tables.md)
 adds private bank geometry, a closed LLVM initializer, independent byte oracles
 and a source-built ordinary guest program. Its

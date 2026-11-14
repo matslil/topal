@@ -82,6 +82,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
@@ -1224,6 +1225,9 @@ pub enum SystemsOperation {
         request: PhysicalFrameRequest,
         failure_message: String,
     },
+    ReserveStaticImageHierarchy {
+        failure_message: String,
+    },
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction {
         failure_message: String,
@@ -1497,6 +1501,9 @@ impl SystemsOperation {
             Self::DescribeBootMemory { .. } => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             Self::CreateFrameAllocator { .. } => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
+            Self::ReserveStaticImageHierarchy { .. } => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY
+            }
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
             Self::PrepareStaticImageConstruction { .. } => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE
@@ -1807,4 +1814,5 @@ include!("systems_model_storage_transitions.rs");
 mod tests {
     include!("systems_model_tests_regions_and_contexts.rs");
     include!("systems_model_tests_memory_and_protocols.rs");
+    include!("systems_model_tests_hierarchy_backing.rs");
 }

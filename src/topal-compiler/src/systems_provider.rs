@@ -84,6 +84,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
@@ -130,6 +131,7 @@ pub enum X86SystemsLowering {
     LinuxBootParamsE820,
     RetainedE820FrameAuthority,
     E820StaticFrameExtentSelect,
+    ReserveStaticImageHierarchy,
     ConsumePhysicalFrameExtent,
     ConstructInitialStaticImageLeaves,
     ZeroStaticImagePayload,
@@ -297,6 +299,9 @@ impl X86SystemsLowering {
             }
             Self::E820StaticFrameExtentSelect => {
                 "topal.provider.x86_64.frames.select-static-e820-extent/1"
+            }
+            Self::ReserveStaticImageHierarchy => {
+                "topal.provider.x86_64.static-image.reserve-bootstrap-equivalent-hierarchy/1"
             }
             Self::ConsumePhysicalFrameExtent => "topal.provider.x86_64.frames.consume-extent/1",
             Self::ConstructInitialStaticImageLeaves => {
@@ -902,6 +907,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_BOOT_MEMORY_DESCRIBE => X86SystemsLowering::LinuxBootParamsE820,
         SYSTEMS_FRAME_ALLOCATOR_CREATE => X86SystemsLowering::RetainedE820FrameAuthority,
         SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820StaticFrameExtentSelect,
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY => {
+            X86SystemsLowering::ReserveStaticImageHierarchy
+        }
         SYSTEMS_FRAMES_RELEASE => X86SystemsLowering::ConsumePhysicalFrameExtent,
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE => {
             X86SystemsLowering::ConstructInitialStaticImageLeaves
@@ -1236,6 +1244,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::LinuxBootParamsE820 => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             X86SystemsLowering::RetainedE820FrameAuthority => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             X86SystemsLowering::E820StaticFrameExtentSelect => SYSTEMS_FRAMES_ALLOCATE,
+            X86SystemsLowering::ReserveStaticImageHierarchy => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY
+            }
             X86SystemsLowering::ConsumePhysicalFrameExtent => SYSTEMS_FRAMES_RELEASE,
             X86SystemsLowering::ConstructInitialStaticImageLeaves => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE

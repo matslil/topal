@@ -1,9 +1,15 @@
+#[derive(Clone, Copy)]
+enum StaticImageHierarchyBacking {
+    ExplicitInitial,
+    ProviderSelected,
+}
+
 fn parse_static_image_hierarchy_reservation(
     source: &SourceText,
     statement: &Statement,
     context_name: &str,
     construction_name: &str,
-) -> Result<String, Diagnostic> {
+) -> Result<(String, StaticImageHierarchyBacking), Diagnostic> {
     let (name, items, span) = match statement {
         Statement::Implementation {
             name,
@@ -46,7 +52,7 @@ fn parse_static_image_hierarchy_reservation(
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image hierarchy reservation requires its exact owner and five-frame shape",
+            "static-image hierarchy reservation requires its exact owner and backing request",
         ));
     };
     if !identifier_is(source, receiver, context_name)
@@ -55,17 +61,18 @@ fn parse_static_image_hierarchy_reservation(
         || !identifier_is(source, construction, "construction")
         || !identifier_is(source, reserve, "reserve")
         || !identifier_is(source, hierarchy, "hierarchy")
-        || fields.len() != 3
+        || !matches!(fields.len(), 2 | 3)
     {
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image hierarchy reservation requires its exact owner and five-frame shape",
+            "static-image hierarchy reservation requires its exact owner and backing request",
         ));
     }
     let mut owner = None;
     let mut frame_count = None;
     let mut alignment_frames = None;
+    let mut provider_selected = false;
     for field in fields {
         let Some(label) = field.label else {
             return Err(translation_edit_diagnostic(
@@ -75,7 +82,7 @@ fn parse_static_image_hierarchy_reservation(
             ));
         };
         match source.slice(label) {
-            "owner" => {
+            "owner" if owner.is_none() => {
                 let Expression::Identifier(value) = field.value else {
                     return Err(translation_edit_diagnostic(
                         source,
@@ -85,27 +92,50 @@ fn parse_static_image_hierarchy_reservation(
                 };
                 owner = Some(source.slice(value));
             }
-            "frame-count" => frame_count = Some(parse_storage_natural(source, &field.value)?),
-            "alignment-frames" => {
+            "frame-count" if frame_count.is_none() => {
+                frame_count = Some(parse_storage_natural(source, &field.value)?);
+            }
+            "alignment-frames" if alignment_frames.is_none() => {
                 alignment_frames = Some(parse_storage_natural(source, &field.value)?);
+            }
+            "backing" if !provider_selected => {
+                if !identifier_is(source, &field.value, "provider-selected") {
+                    return Err(translation_edit_diagnostic(
+                        source,
+                        field.value.span(),
+                        "static-image hierarchy backing must be provider-selected",
+                    ));
+                }
+                provider_selected = true;
             }
             _ => {
                 return Err(translation_edit_diagnostic(
                     source,
                     label,
-                    "unknown static-image hierarchy-reservation parameter",
+                    "unknown or duplicate static-image hierarchy-reservation parameter",
                 ));
             }
         }
     }
-    if owner != Some(construction_name) || frame_count != Some(5) || alignment_frames != Some(1) {
+    let backing = match (provider_selected, frame_count, alignment_frames) {
+        (true, None, None) => StaticImageHierarchyBacking::ProviderSelected,
+        (false, Some(5), Some(1)) => StaticImageHierarchyBacking::ExplicitInitial,
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                span,
+                "static-image hierarchy requires provider-selected backing or exactly five unit-aligned frames, without mixing forms",
+            ));
+        }
+    };
+    if owner != Some(construction_name) {
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image hierarchy reservation requires the exact sealed construction and five unit-aligned frames",
+            "static-image hierarchy reservation requires the exact sealed construction",
         ));
     }
-    Ok(source.slice(name).to_owned())
+    Ok((source.slice(name).to_owned(), backing))
 }
 
 fn parse_static_image_address_space_attach(

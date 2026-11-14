@@ -158,6 +158,7 @@ pub enum SystemsTransition {
     AllocatePhysicalFrames {
         request: PhysicalFrameRequest,
     },
+    ReserveStaticImageHierarchy,
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction,
     ZeroStaticImageConstructionPayload,
@@ -649,6 +650,7 @@ impl SystemsTransition {
             Self::DescribeBootMemory => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             Self::CreateFrameAllocator => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
+            Self::ReserveStaticImageHierarchy => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
             Self::PrepareStaticImageConstruction => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
             Self::ZeroStaticImageConstructionPayload => {
@@ -1297,6 +1299,7 @@ fn validate_entry(
                 SystemsOperation::DescribeBootMemory { .. }
                     | SystemsOperation::CreateFrameAllocator { .. }
                     | SystemsOperation::AllocatePhysicalFrames { .. }
+                    | SystemsOperation::ReserveStaticImageHierarchy { .. }
                     | SystemsOperation::ReleasePhysicalFrames
                     | SystemsOperation::PrepareStaticImageConstruction { .. }
                     | SystemsOperation::ZeroStaticImageConstructionPayload

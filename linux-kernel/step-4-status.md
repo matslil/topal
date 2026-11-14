@@ -7,6 +7,14 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [provider-selected backing stage](step-4-provider-hierarchy-backing.md)
+retains hierarchy purpose in source, checked IR, model transitions and provider
+provenance. The current x86 realization uses its exact existing five-page owner
+and lifecycle. All eleven commands pass over 948 stable inputs, including 651
+frontend and 255 semantics tests, native owner/root equivalence and four
+ordinary guest executions. Complete image-derived storage, effective protection
+and production remain unfinished.
+
 The [inactive table-data component](step-4-inactive-image-tables.md) now derives
 draft x86 bank geometry and emits an initializer exercised as ordinary user
 data. Seven static cases and one VM case pass; four program executions complete

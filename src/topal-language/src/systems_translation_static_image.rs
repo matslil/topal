@@ -389,7 +389,7 @@ fn analyze_static_elf_frame_sequence(
         "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK",
         "static ELF permission sealing must publish its exact marker before revocation",
     )?;
-    let hierarchy_name = parse_static_image_hierarchy_reservation(
+    let (hierarchy_name, hierarchy_backing) = parse_static_image_hierarchy_reservation(
         source,
         hierarchy_reserve,
         allocator_context,
@@ -1519,12 +1519,21 @@ fn analyze_static_elf_frame_sequence(
         copy_marker,
         CompilerSystemsOperation::SealStaticImageConstructionPermissions,
         seal_marker,
-        CompilerSystemsOperation::AllocatePhysicalFrames {
-            request: CompilerPhysicalFrameRequest {
-                frame_count: 5,
-                alignment_frames: 1,
+        match hierarchy_backing {
+            StaticImageHierarchyBacking::ExplicitInitial => {
+                CompilerSystemsOperation::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 5,
+                        alignment_frames: 1,
+                    },
+                    failure_message: "static ELF hierarchy frame reservation failed".into(),
+                }
             },
-            failure_message: "static ELF hierarchy frame reservation failed".into(),
+            StaticImageHierarchyBacking::ProviderSelected => {
+                CompilerSystemsOperation::ReserveStaticImageHierarchy {
+                    failure_message: "static ELF hierarchy frame reservation failed".into(),
+                }
+            }
         },
         hierarchy_marker,
         CompilerSystemsOperation::AttachStaticImageAddressSpace,
