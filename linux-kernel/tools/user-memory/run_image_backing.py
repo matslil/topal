@@ -19,7 +19,11 @@ from run_compiler_image_layout import COMMANDS
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', type=Path)
-    output = parser.parse_args().output.resolve()
+    parser.add_argument('--tables', action='store_true', help='Construct and verify both inactive table banks and the separate low USER leaf')
+    args = parser.parse_args()
+    output = args.output.resolve()
+    tables = args.tables
+    role = 'image-tables' if tables else 'image-backing'
     assert output.is_relative_to(ROOT / 'linux-kernel')
     group = next(line.split(':', 2)[2] for line in Path('/proc/self/cgroup').read_text().splitlines()
                  if line.startswith('0::'))
@@ -37,6 +41,7 @@ def main():
                       'src/topal-compiler/se-requirements.md',
                       'linux-kernel/design/kernel-image-protection.md',
                       'linux-kernel/design/kernel-image-backing-preparation.md',
+                      'linux-kernel/design/inactive-image-table-construction.md',
                       'linux-kernel/design/decision-register.md',
                       'linux-kernel/tools/user-memory/image_backing_source.rs'])
         return sorted(paths)
@@ -48,6 +53,8 @@ def main():
                        PYTHONDONTWRITEBYTECODE='1', TMPDIR=str(temporary))
     report = dict(passed=False, commands={}, source_hashes_before=before,
                   scope='Actual final-image-sized whole owned inactive banks, native initialization/zero/erase/release and ordinary guest application completion; no active protected hierarchy or production qualification')
+    if tables:
+        report['scope'] = 'Exact final-image-partition-bound inactive bootstrap/process table construction, separate zero low USER leaf, whole erase/release, ordinary native guest and previous backing-only regression; no activation or production qualification'
     began = time.monotonic()
 
     def save():
@@ -82,29 +89,34 @@ def main():
         command('source-and-model', ['cargo', 'test', '-p', 'topal-language', '-p', 'topal-semantics',
                                     '--lib', '--locked', '-j1'])
         command('backing-component', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1',
-                                     'systems_image_backing::tests', '--', '--test-threads=1', '--nocapture'])
+                                     'systems_image_backing::', '--', '--test-threads=1', '--nocapture'])
         command('ordinary-guest', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1',
-                                  'kernel_image_backing_allocates_and_discards_actual_image_sized_banks',
+                                  ('image_tables_construct_and_discard_both_final_image_banks_with_separate_low_leaf' if tables else
+                                   'kernel_image_backing_allocates_and_discards_actual_image_sized_banks'),
                                   '--', '--ignored', '--test-threads=1', '--nocapture'])
-        native = build('ordinary-guest', 'final image-backing preparation candidate')
+        native = build('ordinary-guest', 'final inactive image tables candidate' if tables else 'final image-backing preparation candidate')
         command('native-readback', ['python3', '-B',
+                                  'linux-kernel/tools/user-memory/readback_image_tables.py' if tables else
                                   'linux-kernel/tools/user-memory/readback_image_backing.py', str(native)])
-        observations = json.loads((native / 'image-backing-observations.json').read_text())
+        observations = json.loads((native / (role+'-observations.json')).read_text())
         binding = json.loads((native / 'private-image-binding.json').read_text())
-        plan = json.loads((native / 'image-backing-plan-binding.json').read_text())
-        component = json.loads((native / 'image-backing-component.json').read_text())
+        plan = json.loads((native / (role+'-plan-binding.json')).read_text())
+        component = json.loads((native / (role+'-component.json')).read_text())
         identity = hashlib.sha256((native / 'kernel.elf').read_bytes()).hexdigest()
         assert observations['passed'] and observations['native_execution']
         assert observations['native_execution_attempted'] and observations['banks'] == 2
         assert identity == observations['kernel_sha256'] == plan['kernel_sha256'] == binding['layout']['kernel_sha256']
-        assert plan['layout'] == binding['layout'] and plan['preparation_sizing_matched']
+        assert plan['layout'] == binding['layout'] and plan['matched_final_partition_and_template' if tables else 'preparation_sizing_matched']
         required = 5 + binding['layout']['image_leaf_storage_bytes'] // 4096
+        if tables:
+            from inactive_image_tables import page_count
+            required = page_count(binding['layout'])
         assert observations['pages_per_bank'] == required > 5
-        assert observations['zeroed_bytes'] == observations['discarded_bytes'] == required * 4096 * 2
+        assert observations['zeroed_bytes'] == observations['discarded_bytes'] == (required*2+int(tables))*4096
         assert all(item['protected_context'] is False and item['production_qualified'] is False
                    for item in [observations, binding, plan, component])
         report.update(native=observations, native_build=str(native.relative_to(ROOT)),
-                      readback=json.loads((native / 'image-backing-readback.json').read_text()),
+                      readback=json.loads((native / (role+'-readback.json')).read_text()),
                       image_layout=binding['layout'], component=component,
                       original_inputs=binding['original_inputs'], contributions=len(binding['placements']))
         for name, argv in COMMANDS.items():
@@ -119,6 +131,16 @@ def main():
         assert legacy_identity == '28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1'
         assert json.loads((legacy / 'build-only.json').read_text())['native_execution'] is False
         report['legacy_private_build'] = dict(kernel_sha256=legacy_identity, native_execution=False)
+        if tables:
+            command('backing-regression', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1',
+                    'kernel_image_backing_allocates_and_discards_actual_image_sized_banks',
+                    '--', '--ignored', '--test-threads=1', '--nocapture'])
+            backing = build('backing-regression','final image-backing preparation candidate')
+            saved = json.loads((backing/'image-backing-observations.json').read_text())
+            assert saved['passed'] and saved['native_execution']
+            assert saved['kernel_sha256'] == '064058b5c8fb800137cf055b971dbc1cf258ab3729ba93cfda005bc4ea805b19'
+            command('backing-readback', ['python3','-B','linux-kernel/tools/user-memory/readback_image_backing.py',str(backing)])
+            report['backing_regression'] = saved
         report['passed'] = True
     except BaseException:
         report['failure'] = traceback.format_exc()

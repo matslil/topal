@@ -1179,6 +1179,12 @@ fn model_bootstrap_operation(
         SystemsOperation::DiscardKernelImageBacking => {
             transitions.push(SystemsTransition::DiscardKernelImageBacking);
         }
+        SystemsOperation::PrepareKernelImageTables { .. } => {
+            transitions.push(SystemsTransition::PrepareKernelImageTables);
+        }
+        SystemsOperation::DiscardKernelImageTables => {
+            transitions.push(SystemsTransition::DiscardKernelImageTables);
+        }
         SystemsOperation::ReleasePhysicalFrames => {
             transitions.push(SystemsTransition::ReleasePhysicalFrames);
         }

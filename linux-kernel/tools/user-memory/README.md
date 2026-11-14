@@ -1,5 +1,13 @@
 # Owned user-memory model
 
+The [inactive table-construction stage](../../step-4-inactive-image-table-construction.md)
+uses `run_image_backing.py --tables` to validate actual image-bound bootstrap/
+process tables, their separately owned zero low USER leaf, whole erase/release,
+ordinary application completion and the prior backing-only native protocol.
+The [independent byte oracle](inactive_image_tables.py) and
+[offline reader](readback_image_tables.py) check all native table bytes and
+22 altered-record/rehash controls. No new bank is activated.
+
 The [inactive image-backing stage](../../step-4-image-backing-preparation.md)
 uses source-bound whole owners to prepare and discard two final-image-sized
 banks. Its [bounded driver](run_image_backing.py) checks frontend/model/backend

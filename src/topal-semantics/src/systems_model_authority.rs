@@ -46,18 +46,23 @@ impl BootstrapAuthorityState {
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
         if self.image_backing_live {
+            let marker = if self.image_tables { "TOPAL_KERNEL_IMAGE_TABLES_PREPARED" }
+                         else { "TOPAL_KERNEL_IMAGE_BACKING_RESERVED" };
             match operation {
                 SystemsOperation::ConsoleWrite { text }
-                    if text == "TOPAL_KERNEL_IMAGE_BACKING_RESERVED" && !self.image_backing_observed => {
+                    if text == marker && !self.image_backing_observed => {
                         self.image_backing_observed = true;
                         return Ok(true);
                     }
-                SystemsOperation::DiscardKernelImageBacking if self.image_backing_observed => {}
+                SystemsOperation::DiscardKernelImageBacking if self.image_backing_observed && !self.image_tables => {}
+                SystemsOperation::DiscardKernelImageTables if self.image_backing_observed && self.image_tables => {}
                 _ => return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image backing requires one reservation observation then consuming discard before other boot work")),
             }
         } else if self.image_backing_discarded && !self.image_backing_discard_observed {
+            let marker = if self.image_tables { "TOPAL_KERNEL_IMAGE_TABLES_DISCARDED" }
+                         else { "TOPAL_KERNEL_IMAGE_BACKING_DISCARDED" };
             if let SystemsOperation::ConsoleWrite { text } = operation
-                && text == "TOPAL_KERNEL_IMAGE_BACKING_DISCARDED"
+                && text == marker
             {
                 self.image_backing_discard_observed = true;
                 return Ok(true);
@@ -136,7 +141,7 @@ impl BootstrapAuthorityState {
                     }
                 };
             }
-            SystemsOperation::ReserveKernelImageBacking { .. } => {
+            SystemsOperation::ReserveKernelImageBacking { .. } | SystemsOperation::PrepareKernelImageTables { .. } => {
                 if !self.allocator_created || self.image_backing_live || self.image_backing_discarded
                     || self.memory_ownership != BootstrapMemoryOwnership::None
                     || self.translation != BootstrapTranslationState::BootstrapActive
@@ -144,9 +149,10 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image backing requires the unborrowed initial allocator and one current-image preparation"));
                 }
                 self.image_backing_live = true;
+                self.image_tables = matches!(operation, SystemsOperation::PrepareKernelImageTables { .. });
             }
-            SystemsOperation::DiscardKernelImageBacking => {
-                if !self.image_backing_live {
+            SystemsOperation::DiscardKernelImageBacking | SystemsOperation::DiscardKernelImageTables => {
+                if !self.image_backing_live || self.image_tables != matches!(operation, SystemsOperation::DiscardKernelImageTables) {
                     return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image-backing discard requires its exact live preparation"));
                 }
                 self.image_backing_live = false;

@@ -457,9 +457,16 @@ pub(crate) fn prepare_image_backing_fixture(
     source_work: &std::path::Path,
     plan: Option<&crate::systems_image_backing::Plan>,
 ) -> (std::path::PathBuf, crate::SystemsKernelImageLayout) {
-    let selected = plan.map(|_| {
-        crate::systems_image_backing::with_image_preparation(&hierarchy_backing::selected_root())
-    });
+    let selected =
+        plan.map(|plan| {
+            if plan.is_tables() {
+                crate::systems_image_backing::with_image_tables(&hierarchy_backing::selected_root())
+            } else {
+                crate::systems_image_backing::with_image_preparation(
+                    &hierarchy_backing::selected_root(),
+                )
+            }
+        });
     let mut layout = None;
     let work = execute_profiled_input(
         KernelProfile {
@@ -1204,11 +1211,28 @@ fn build_guest(
     }
     if let Some((plan, bindings)) = image_backing {
         let text = crate::systems_image_backing::llvm(plan, bindings).unwrap();
-        crate::systems_frame_publication::compile("image-backing", &text, tools, work).unwrap();
+        crate::systems_frame_publication::compile(
+            if plan.is_tables() {
+                "image-tables"
+            } else {
+                "image-backing"
+            },
+            &text,
+            tools,
+            work,
+        )
+        .unwrap();
     }
+    let image_component = image_backing.map(|(plan, _)| {
+        if plan.is_tables() {
+            "image-tables"
+        } else {
+            "image-backing"
+        }
+    });
     let legacy = &baseline.directory;
     let prepared = process_memory
-        .then(|| closed_link::prepare(work, tools, legacy, owned_callers, image_backing.is_some()));
+        .then(|| closed_link::prepare(work, tools, legacy, owned_callers, image_component));
     let objects = [
         "namespace-library.o",
         "inode-mode-library.o",
@@ -1285,8 +1309,8 @@ fn build_guest(
             assert!(path.is_file(), "missing {}", path.display());
             link.arg(path);
         }
-        if image_backing.is_some() {
-            link.arg(prepared.as_ref().unwrap().path("image-backing.o"));
+        if let Some(role) = image_component {
+            link.arg(prepared.as_ref().unwrap().path(&format!("{role}.o")));
         }
         link.arg("-o").arg(work.join("kernel.elf"));
         run(work, label, &mut link);

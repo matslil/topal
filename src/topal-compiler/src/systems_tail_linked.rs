@@ -124,6 +124,7 @@ pub(crate) fn prepare(
         && !(cfg!(test)
             && [
                 "image-backing",
+                "image-tables",
                 "frame-extent",
                 "frame-extent-callers",
                 "frame-extent-bridge",

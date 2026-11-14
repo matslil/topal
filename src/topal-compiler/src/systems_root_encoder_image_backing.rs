@@ -7,10 +7,11 @@ impl RootEncoder {
         self.jump_to_fatal_if(0x84)
     }
 
-    fn reserve_kernel_image_backing(&mut self) -> Result<(), CompileError> {
+    fn reserve_kernel_image_backing(&mut self, tables: bool) -> Result<(), CompileError> {
         let plan = self.image_backing_plan.as_ref().ok_or_else(|| CompileError::Tool(
             "E-SYSTEMS-KERNEL-IMAGE: native preparation requires complete current-image sizing and source binding".into()))?;
         let pages = plan.pages();
+        if plan.is_tables() != tables { return Err(CompileError::Tool("image preparation resource and native plan differ".into())); }
         if !self.frame_allocator_created || self.frame_policy.is_none() || self.image_backing_live
             || self.physical_frame_count.is_some() || self.kernel_mapping_live
             || self.translation != RootTranslationState::BootstrapActive
@@ -21,6 +22,7 @@ impl RootEncoder {
         use crate::systems_frame_ownership::Purpose as P;
         self.frame_internal_allocate(pages, "prepared-image-bootstrap", P::PreparedImageBootstrap)?;
         self.frame_internal_allocate(pages, "prepared-image-process", P::PreparedImageProcess)?;
+        if tables { self.frame_internal_allocate(1, "prepared-image-low-leaf", P::PreparedImageLowUserLeaf)?; }
         let frame = self.frame_policy.as_mut().unwrap();
         let banks = ["prepared-image-bootstrap", "prepared-image-process"].map(|name|
             frame.capture_owner(name).ok_or_else(|| CompileError::Tool("missing whole image-preparation owner".into())));
@@ -28,22 +30,25 @@ impl RootEncoder {
         frame.image_preparation = Some(crate::systems_image_backing::Bindings {
             root_object_sha256: String::new(), token_bytes: 0,
             banks: [bootstrap?, process?],
+            low_user_leaf: if tables { Some(frame.capture_owner("prepared-image-low-leaf").ok_or_else(|| CompileError::Tool("missing low leaf owner".into()))?) } else { None },
         });
-        self.image_backing_call(crate::systems_image_backing::PREPARE)?;
+        self.image_backing_call(if tables { crate::systems_image_backing::TABLE_PREPARE } else { crate::systems_image_backing::PREPARE })?;
         self.image_backing_live = true;
         Ok(())
     }
 
-    fn discard_kernel_image_backing(&mut self) -> Result<(), CompileError> {
-        if !self.image_backing_live {
+    fn discard_kernel_image_backing(&mut self, tables: bool) -> Result<(), CompileError> {
+        if !self.image_backing_live || self.image_backing_plan.as_ref().is_none_or(|plan| plan.is_tables() != tables) {
             return Err(CompileError::Tool("image-backing discard requires its live preparation".into()));
         }
-        self.image_backing_call(crate::systems_image_backing::DISCARD)?;
-        for owner in ["prepared-image-bootstrap", "prepared-image-process"] {
+        self.image_backing_call(if tables { crate::systems_image_backing::TABLE_DISCARD } else { crate::systems_image_backing::DISCARD })?;
+        let mut owners = vec!["prepared-image-bootstrap", "prepared-image-process"];
+        if tables { owners.push("prepared-image-low-leaf"); }
+        for owner in owners {
             self.frame_return(owner)?;
             self.frame_release_source()?;
         }
-        self.image_backing_call(crate::systems_image_backing::RELEASED)?;
+        self.image_backing_call(if tables { crate::systems_image_backing::TABLE_RELEASED } else { crate::systems_image_backing::RELEASED })?;
         self.image_backing_live = false;
         Ok(())
     }

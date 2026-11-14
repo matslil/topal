@@ -161,6 +161,8 @@ pub enum SystemsTransition {
     ReserveStaticImageHierarchy,
     ReserveKernelImageBacking,
     DiscardKernelImageBacking,
+    PrepareKernelImageTables,
+    DiscardKernelImageTables,
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction,
     ZeroStaticImageConstructionPayload,
@@ -654,6 +656,8 @@ impl SystemsTransition {
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
             Self::ReserveKernelImageBacking => SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING,
             Self::DiscardKernelImageBacking => SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING,
+            Self::PrepareKernelImageTables => SYSTEMS_KERNEL_IMAGE_PREPARE_TABLES,
+            Self::DiscardKernelImageTables => SYSTEMS_KERNEL_IMAGE_DISCARD_TABLES,
             Self::ReserveStaticImageHierarchy => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
             Self::PrepareStaticImageConstruction => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -1305,6 +1309,8 @@ fn validate_entry(
                     | SystemsOperation::AllocatePhysicalFrames { .. }
                     | SystemsOperation::ReserveKernelImageBacking { .. }
                     | SystemsOperation::DiscardKernelImageBacking
+                    | SystemsOperation::PrepareKernelImageTables { .. }
+                    | SystemsOperation::DiscardKernelImageTables
                     | SystemsOperation::ReserveStaticImageHierarchy { .. }
                     | SystemsOperation::ReleasePhysicalFrames
                     | SystemsOperation::PrepareStaticImageConstruction { .. }
@@ -1698,6 +1704,7 @@ fn validate_kernel_thread_handler(
 #[derive(Default)]
 struct BootstrapAuthorityState {
     image_backing_live: bool,
+    image_tables: bool,
     image_backing_observed: bool,
     image_backing_discarded: bool,
     image_backing_discard_observed: bool,

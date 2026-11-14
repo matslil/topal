@@ -17,10 +17,16 @@ fn encode_operations(
                 encoder.reserve_static_image_hierarchy()?;
             }
             CompilerSystemsOperation::ReserveKernelImageBacking { .. } => {
-                encoder.reserve_kernel_image_backing()?;
+                encoder.reserve_kernel_image_backing(false)?;
             }
             CompilerSystemsOperation::DiscardKernelImageBacking => {
-                encoder.discard_kernel_image_backing()?;
+                encoder.discard_kernel_image_backing(false)?;
+            }
+            CompilerSystemsOperation::PrepareKernelImageTables { .. } => {
+                encoder.reserve_kernel_image_backing(true)?;
+            }
+            CompilerSystemsOperation::DiscardKernelImageTables => {
+                encoder.discard_kernel_image_backing(true)?;
             }
             CompilerSystemsOperation::ReleasePhysicalFrames => {
                 encoder.release_physical_frames()?;

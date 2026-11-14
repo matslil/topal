@@ -1981,6 +1981,14 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+Inactive table preparation shall own every complete bank and separately required
+user-table extent, construct and verify the actual final image's exact primary
+views, and retain all pins until complete discard/erase/release. Matching only
+the number of pages shall not qualify a different image partition or template.
+Source shall receive one affine inactive resource without geometry, byte access,
+activation or protected-context authority. Non-image roles and active/writer/
+mode/publication/lifetime obligations shall remain independently qualified.
+
 The initial preparation interface shall reserve and zero complete image-derived
 backing under the boot allocator and expose only one affine preparation owner.
 The native provider shall preserve exact issuer, generation, whole size,

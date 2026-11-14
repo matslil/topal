@@ -27,6 +27,7 @@ pub(super) enum BankKind {
 /// Provider-specific plan for the whole bank, including its fixed levels and
 /// reserved high user table. The separate low user table is not bank storage.
 /// Private fields prevent changing a count independently of the actual shape.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct TranslationTables {
     image: Vec<SystemsKernelImageSpan>,
     complete: Vec<SystemsKernelImageSpan>,
@@ -56,6 +57,12 @@ fn append(
 }
 
 impl TranslationTables {
+    pub(super) fn matches_layout(
+        &self,
+        layout: &SystemsKernelImageLayout,
+    ) -> Result<bool, CompileError> {
+        Ok(*self == Self::new(layout)?)
+    }
     /// The input is descriptive, even when obtained through fresh compilation.
     /// This constructor establishes geometry only; it cannot establish owners.
     pub(super) fn new(layout: &SystemsKernelImageLayout) -> Result<Self, CompileError> {
@@ -224,6 +231,9 @@ impl TranslationTables {
 
 #[path = "systems_kernel_translation_prepare.rs"]
 mod prepare;
+
+#[path = "systems_kernel_translation_verify.rs"]
+mod verify;
 
 #[cfg(test)]
 #[path = "systems_kernel_translation_tables_tests.rs"]

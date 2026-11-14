@@ -4,6 +4,9 @@ use super::*;
 
 pub(crate) fn llvm(plan: &Plan, bindings: &Bindings) -> Result<String, CompileError> {
     bindings.validate(plan)?;
+    if plan.is_tables() {
+        return super::tables_native::llvm(plan, bindings);
+    }
     let original = include_str!("runtime/kernel_user_extent_target.ll");
     let start = original.find("define internal i64 @u.owner(").unwrap();
     let end = original[start..]

@@ -9123,6 +9123,46 @@ asynchronous writers or any active/restorable protected root. Existing
 bootstrap-equivalent contracts and native USER-table admission SHALL retain
 their exact meaning.
 
+### TOPAL-SYSTEMS-KERNEL-IMAGE-TABLES-001 — Owned inactive primary-view construction
+
+Before initial translation construction, the unborrowed boot allocator MAY
+request `kernel image prepare tables (image is current-kernel, page-policy is
+provider-selected)`. Each named parameter SHALL occur exactly once. Success
+SHALL return one affine `InactiveKernelImageTables` owning every complete
+provider-selected bank and separately required user-table extent. Source SHALL
+NOT supply numeric geometry, physical addresses, permission bits or table
+formats. This resource and `ZeroedKernelImageBacking` SHALL NOT substitute for
+one another.
+
+The provider SHALL preserve every reservation, whole-owner, pin, provenance,
+exclusion, disjointness and inactivity obligation of
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PREPARE-001`. It SHALL construct and read back every
+word of both the bootstrap and future-process primary-view banks. Separately
+required user-table storage SHALL have its own complete owner, remain zeroed
+until a separately qualified user-mapping operation, and SHALL NOT alias either
+bank or the actual image. Additional kernel-only tables SHALL NOT become
+admissible to the USER walker merely through whole-bank ownership.
+
+Native loading SHALL require fresh final source/object/link/load reconstruction
+to reproduce the exact image partition, role-dependent template and whole
+storage requirement used by the constructor. An equal page count alone SHALL
+NOT suffice. Sizing/template feedback SHALL converge before loading; failed or
+non-convergent proposals SHALL remain non-executable by the producer.
+
+The initial consumer SHALL admit only its ordered preparation observation,
+`kernel image discard tables` for the exact live resource, and discard
+observation before ordinary boot resumes. Discard SHALL revalidate the same
+whole owners, pins, inactive roots and constructed words, erase and read back
+every byte of every extent, then unpin and release each whole owner through its
+issuer while preserving issued-identity history. Wrong-resource, duplicate,
+interleaved or partial ordinary disposition SHALL be invalid. Partial failure
+SHALL be fatal/poisoned without an ordinary success witness.
+
+Constructed bytes SHALL NOT qualify activation, effective permissions, non-image
+roles, device memory attributes, asynchronous writers, saved/restorable roots,
+publication or continuous lifetime. Existing bootstrap-equivalent producers
+and native USER-table admission SHALL retain their exact contracts.
+
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
 
 Preparation SHALL retain exact actual image, root and table/backing ownership,

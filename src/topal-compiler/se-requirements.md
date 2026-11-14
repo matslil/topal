@@ -3178,6 +3178,15 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+Inactive table preparation shall retain distinct prepare/discard operations
+and reject use of a backing-only plan or owner in that protocol. Fresh final
+reconstruction shall match the complete image partition and generated template,
+including feedback from the initializer's own allocated contributions. The
+provider shall derive complete banks and any separate user-table owner, validate
+all whole owners before writes, verify every constructed word, and erase/read
+back all storage before whole release. Keep activation and existing USER-table
+admission gated independently of this inactive construction.
+
 Image-backing preparation shall have distinct checked reserve/discard operations
 and one affine live resource before initial translation construction. Reject
 interleaved work, wrong owner, duplicate/disordered transitions and live

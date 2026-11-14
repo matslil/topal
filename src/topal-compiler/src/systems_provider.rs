@@ -24,7 +24,8 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
     SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
     SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING, SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING, SYSTEMS_KERNEL_IMAGE_DISCARD_TABLES,
+    SYSTEMS_KERNEL_IMAGE_PREPARE_TABLES, SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING, SYSTEMS_KERNEL_MAP,
     SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -135,6 +136,8 @@ pub enum X86SystemsLowering {
     ReserveStaticImageHierarchy,
     ReserveKernelImageBacking,
     DiscardKernelImageBacking,
+    PrepareKernelImageTables,
+    DiscardKernelImageTables,
     ConsumePhysicalFrameExtent,
     ConstructInitialStaticImageLeaves,
     ZeroStaticImagePayload,
@@ -311,6 +314,12 @@ impl X86SystemsLowering {
             }
             Self::DiscardKernelImageBacking => {
                 "topal.provider.x86_64.kernel-image.discard-inactive-backing/1"
+            }
+            Self::PrepareKernelImageTables => {
+                "topal.provider.x86_64.kernel-image.prepare-inactive-tables/1"
+            }
+            Self::DiscardKernelImageTables => {
+                "topal.provider.x86_64.kernel-image.discard-inactive-tables/1"
             }
             Self::ConsumePhysicalFrameExtent => "topal.provider.x86_64.frames.consume-extent/1",
             Self::ConstructInitialStaticImageLeaves => {
@@ -824,6 +833,8 @@ fn plan_provider_selected(
                 op,
                 topal_language::compiler::CompilerSystemsOperation::ReserveKernelImageBacking { .. }
                     | topal_language::compiler::CompilerSystemsOperation::DiscardKernelImageBacking
+                    | topal_language::compiler::CompilerSystemsOperation::PrepareKernelImageTables { .. }
+                    | topal_language::compiler::CompilerSystemsOperation::DiscardKernelImageTables
             )
         })
     {
@@ -932,6 +943,8 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820StaticFrameExtentSelect,
         SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING => X86SystemsLowering::ReserveKernelImageBacking,
         SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING => X86SystemsLowering::DiscardKernelImageBacking,
+        SYSTEMS_KERNEL_IMAGE_PREPARE_TABLES => X86SystemsLowering::PrepareKernelImageTables,
+        SYSTEMS_KERNEL_IMAGE_DISCARD_TABLES => X86SystemsLowering::DiscardKernelImageTables,
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY => {
             X86SystemsLowering::ReserveStaticImageHierarchy
         }
@@ -1271,6 +1284,8 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::E820StaticFrameExtentSelect => SYSTEMS_FRAMES_ALLOCATE,
             X86SystemsLowering::ReserveKernelImageBacking => SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING,
             X86SystemsLowering::DiscardKernelImageBacking => SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING,
+            X86SystemsLowering::PrepareKernelImageTables => SYSTEMS_KERNEL_IMAGE_PREPARE_TABLES,
+            X86SystemsLowering::DiscardKernelImageTables => SYSTEMS_KERNEL_IMAGE_DISCARD_TABLES,
             X86SystemsLowering::ReserveStaticImageHierarchy => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY
             }

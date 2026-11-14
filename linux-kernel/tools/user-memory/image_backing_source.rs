@@ -1,4 +1,24 @@
 //! Shared full-root test transformation; the resulting source is checked.
+pub(crate) fn with_image_tables(root: &str) -> String {
+    with_image_preparation(root)
+        .replace(
+            "kernel image reserve backing",
+            "kernel image prepare tables",
+        )
+        .replace(
+            "kernel image discard backing",
+            "kernel image discard tables",
+        )
+        .replace(
+            "TOPAL_KERNEL_IMAGE_BACKING_RESERVED",
+            "TOPAL_KERNEL_IMAGE_TABLES_PREPARED",
+        )
+        .replace(
+            "TOPAL_KERNEL_IMAGE_BACKING_DISCARDED",
+            "TOPAL_KERNEL_IMAGE_TABLES_DISCARDED",
+        )
+}
+
 pub(crate) fn with_image_preparation(root: &str) -> String {
     let start = root
         .find("                      memory translation begin (\n")

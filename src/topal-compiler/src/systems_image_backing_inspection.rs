@@ -4,6 +4,13 @@ use object::{Object, ObjectSymbol, SymbolKind};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) fn inspect(bytes: &[u8]) -> Result<serde_json::Value, CompileError> {
+    inspect_selected(bytes, false)
+}
+
+pub(crate) fn inspect_selected(
+    bytes: &[u8],
+    tables: bool,
+) -> Result<serde_json::Value, CompileError> {
     let invalid =
         || CompileError::Tool("incomplete image-backing component closure or stack bound".into());
     let file = object::File::parse(bytes).map_err(|_| invalid())?;
@@ -77,10 +84,16 @@ pub(crate) fn inspect(bytes: &[u8]) -> Result<serde_json::Value, CompileError> {
         .checked_add(4096)
         .filter(|n| *n <= 8192)
         .ok_or_else(invalid)?;
-    if ![super::PREPARE, super::DISCARD, super::RELEASED]
-        .iter()
-        .all(|s| names.contains(*s))
-    {
+    let roots = if tables {
+        [
+            super::TABLE_PREPARE,
+            super::TABLE_DISCARD,
+            super::TABLE_RELEASED,
+        ]
+    } else {
+        [super::PREPARE, super::DISCARD, super::RELEASED]
+    };
+    if !roots.iter().all(|s| names.contains(*s)) {
         return Err(invalid());
     }
     Ok(serde_json::json!({
@@ -90,5 +103,6 @@ pub(crate) fn inspect(bytes: &[u8]) -> Result<serde_json::Value, CompileError> {
         "conservative_helper_stack_bytes": helper, "gateway_window_bytes": 4096,
         "combined_boot_stack_bytes": combined, "boot_stack_allowance_bytes": 8192,
         "protected_context": false, "production_qualified": false,
+        "inactive_tables": tables,
     }))
 }

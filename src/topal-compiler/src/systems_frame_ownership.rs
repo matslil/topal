@@ -9,6 +9,7 @@ pub(crate) enum Purpose {
     SourceExtent,
     PreparedImageBootstrap,
     PreparedImageProcess,
+    PreparedImageLowUserLeaf,
     BootstrapHierarchy,
     TranslationEdit,
     StaticImagePayload,

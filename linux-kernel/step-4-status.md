@@ -7,6 +7,18 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [inactive table-construction stage](step-4-inactive-image-table-construction.md)
+constructs and verifies complete bootstrap/process primary-view banks and a
+distinct zero low USER leaf. Final reconstruction must match the full image
+partition/template, not only its eight-page bank count. Five native snapshots
+verify all three whole owners, 65,536 table bytes and complete 69,632-byte
+erase/release. Independent replay rejects 22 altered-record/rehash controls.
+All fifteen commands pass over 974 stable inputs, including 654 frontend,
+257 semantics and 358 memory-model tests. The previous backing-only VM and
+original-profile rebuild retain their kernel identities. Effective controls,
+complete root/alias/writer/lifetime integration, activation and production
+qualification remain unfinished.
+
 The [inactive image-backing stage](step-4-image-backing-preparation.md) adds
 source-bound reservation and affine discard of two actual image-sized banks.
 The final reconstructed image determines both whole eight-page allocations;

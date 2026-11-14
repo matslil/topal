@@ -5,10 +5,16 @@ use crate::{CompileError, systems_user_extent::Owner};
 pub(crate) const PREPARE: &str = "topal_x86_image_backing_prepare_v1";
 pub(crate) const DISCARD: &str = "topal_x86_image_backing_discard_v1";
 pub(crate) const RELEASED: &str = "topal_x86_image_backing_released_v1";
+pub(crate) const TABLE_PREPARE: &str = "topal_x86_image_tables_prepare_v1";
+pub(crate) const TABLE_DISCARD: &str = "topal_x86_image_tables_discard_v1";
+pub(crate) const TABLE_RELEASED: &str = "topal_x86_image_tables_released_v1";
 
 #[derive(Clone, Debug)]
 pub(crate) struct Plan {
     pages: u64,
+    tables: bool,
+    #[cfg(test)]
+    table_plan: Option<crate::systems_kernel_image_layout::InactiveTablePlan>,
 }
 
 impl Plan {
@@ -18,7 +24,34 @@ impl Plan {
     ) -> Result<Self, CompileError> {
         Ok(Self {
             pages: crate::systems_kernel_image_layout::preparation_pages(layout)?,
+            tables: false,
+            table_plan: None,
         })
+    }
+    #[cfg(test)]
+    pub(crate) fn for_tables(
+        layout: &crate::SystemsKernelImageLayout,
+    ) -> Result<Self, CompileError> {
+        let table_plan = crate::systems_kernel_image_layout::InactiveTablePlan::new(layout)?;
+        Ok(Self {
+            pages: table_plan.pages(),
+            tables: true,
+            table_plan: Some(table_plan),
+        })
+    }
+    pub(crate) fn is_tables(&self) -> bool {
+        self.tables
+    }
+    #[cfg(test)]
+    pub(crate) fn table_plan(
+        &self,
+    ) -> Result<&crate::systems_kernel_image_layout::InactiveTablePlan, CompileError> {
+        self.table_plan
+            .as_ref()
+            .filter(|_| self.tables)
+            .ok_or_else(|| {
+                CompileError::Tool("table preparation requires its exact image template".into())
+            })
     }
     pub(crate) fn pages(&self) -> u64 {
         self.pages
@@ -28,7 +61,10 @@ impl Plan {
         &self,
         layout: &crate::SystemsKernelImageLayout,
     ) -> Result<bool, CompileError> {
-        Ok(self.pages == crate::systems_kernel_image_layout::preparation_pages(layout)?)
+        Ok(
+            self.pages == crate::systems_kernel_image_layout::preparation_pages(layout)?
+                && (!self.tables || self.table_plan()?.matches(layout)?),
+        )
     }
 }
 
@@ -37,6 +73,8 @@ pub(crate) struct Bindings {
     pub root_object_sha256: String,
     pub token_bytes: u64,
     pub banks: [Owner; 2],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub low_user_leaf: Option<Owner>,
 }
 
 impl Bindings {
@@ -67,6 +105,24 @@ impl Bindings {
                 ));
             }
         }
+        if plan.is_tables() != self.low_user_leaf.is_some() {
+            return Err(CompileError::Tool(
+                "table preparation requires its separate low leaf owner".into(),
+            ));
+        }
+        if let Some(owner) = self.low_user_leaf {
+            if owner.count != 1
+                || owner.alignment != 1
+                || owner.pins != 1
+                || owner.purpose != P::PreparedImageLowUserLeaf
+                || owner.slot >= self.token_bytes / 24
+                || self.banks.iter().any(|bank| bank.slot == owner.slot)
+            {
+                return Err(CompileError::Tool(
+                    "invalid whole low USER leaf owner".into(),
+                ));
+            }
+        }
         Ok(())
     }
 }
@@ -76,6 +132,10 @@ impl Bindings {
 mod native;
 
 #[cfg(test)]
+#[path = "systems_image_tables_native.rs"]
+mod tables_native;
+
+#[cfg(test)]
 pub(crate) use native::{inspect_instructions, llvm};
 
 #[cfg(test)]
@@ -83,12 +143,18 @@ pub(crate) use native::{inspect_instructions, llvm};
 mod inspection;
 #[cfg(test)]
 pub(crate) use inspection::inspect;
+#[cfg(test)]
+pub(crate) use inspection::inspect_selected;
 
 #[cfg(test)]
 #[path = "../../../linux-kernel/tools/user-memory/image_backing_source.rs"]
 mod source;
 #[cfg(test)]
-pub(crate) use source::with_image_preparation;
+pub(crate) use source::{with_image_preparation, with_image_tables};
 #[cfg(test)]
 #[path = "systems_image_backing_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "systems_image_tables_tests.rs"]
+mod table_tests;

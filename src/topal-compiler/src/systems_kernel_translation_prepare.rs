@@ -4,7 +4,7 @@
 use super::*;
 
 impl TranslationTables {
-    pub(super) fn llvm(&self) -> String {
+    pub(crate) fn llvm(&self) -> String {
         let (words, fixes) = self.template();
         let fixed = fixes
             .iter()

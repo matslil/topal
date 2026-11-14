@@ -541,16 +541,17 @@ pub(crate) fn compile(
         )?;
     }
     #[cfg(test)]
-    if role == "image-backing" {
+    if role == "image-backing" || role == "image-tables" {
         crate::systems_image_backing::inspect_instructions(
-            &fs::read_to_string(work.join("image-backing-disassembly.stdout.log"))
+            &fs::read_to_string(work.join(format!("{role}-disassembly.stdout.log")))
                 .map_err(invalid)?,
         )?;
-        let inspection = crate::systems_image_backing::inspect(
-            &fs::read(work.join("image-backing.o")).map_err(invalid)?,
+        let inspection = crate::systems_image_backing::inspect_selected(
+            &fs::read(work.join(format!("{role}.o"))).map_err(invalid)?,
+            role == "image-tables",
         )?;
         fs::write(
-            work.join("image-backing-component.json"),
+            work.join(format!("{role}-component.json")),
             serde_json::to_vec_pretty(&inspection).map_err(invalid)?,
         )
         .map_err(invalid)?;

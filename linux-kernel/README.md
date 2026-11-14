@@ -11,6 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [inactive table-construction stage](step-4-inactive-image-table-construction.md)
+now builds and verifies both image-sized table banks plus a separately owned
+zero low USER leaf. All fifteen commands pass over 974 stable inputs, including
+both native preparation protocols, independent table-byte replay and unchanged
+predecessor kernel identities. The new tables remain inactive; effective
+protection and complete production/kernel-replacement acceptance remain open.
+
 The [inactive image-backing stage](step-4-image-backing-preparation.md) now
 allocates, initializes, zeroes, erases and releases two actual image-sized
 whole banks through the Topal allocator. All thirteen validation commands pass

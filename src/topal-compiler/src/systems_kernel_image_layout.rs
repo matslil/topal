@@ -18,6 +18,12 @@ const LIMIT: u64 = 1024 * 1024 * 1024;
 mod translation_tables;
 
 #[cfg(test)]
+#[path = "systems_kernel_image_inactive_plan.rs"]
+mod inactive_plan;
+#[cfg(test)]
+pub(crate) use inactive_plan::InactiveTablePlan;
+
+#[cfg(test)]
 pub(crate) fn preparation_pages(layout: &SystemsKernelImageLayout) -> Result<u64, CompileError> {
     Ok(translation_tables::TranslationTables::new(layout)?.pages())
 }

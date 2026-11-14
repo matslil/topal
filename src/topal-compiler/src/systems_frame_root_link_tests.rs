@@ -39,7 +39,7 @@ pub(super) fn prepare(
     tools: &LlvmTools,
     baseline: &Path,
     owned: bool,
-    image_backing: bool,
+    image_component: Option<&str>,
 ) -> Prepared {
     let mut inputs = vec![
         ("root", "root"),
@@ -60,8 +60,8 @@ pub(super) fn prepare(
     } else {
         ("frame-extent-probe", "extent-probe")
     });
-    if image_backing {
-        inputs.push(("image-backing", "image-backing"));
+    if let Some(role) = image_component {
+        inputs.push((role, role));
     }
     for name in [
         "kernel",

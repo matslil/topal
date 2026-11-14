@@ -310,6 +310,10 @@ pub(crate) fn semantic_trace(
                     "{identity}:image=current-kernel:page-policy=provider-selected:inactive-only"),
                 CompilerSystemsTransition::DiscardKernelImageBacking => format!(
                     "{identity}:whole-erase-and-release"),
+                CompilerSystemsTransition::PrepareKernelImageTables => format!(
+                    "{identity}:image=current-kernel:page-policy=provider-selected:owned-inactive-tables"),
+                CompilerSystemsTransition::DiscardKernelImageTables => format!(
+                    "{identity}:verify-tables:whole-erase-and-release"),
                 CompilerSystemsTransition::MapKernelFrames { .. } => {
                     format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
                 }

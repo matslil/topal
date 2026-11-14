@@ -2287,6 +2287,19 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+A qualified boot allocator may instead request `kernel image prepare tables
+(image is current-kernel, page-policy is provider-selected)`. Success returns
+one affine `InactiveKernelImageTables` resource. The provider reserves complete
+backing, zeroes it, constructs the actual image's inactive primary views and
+reads back every table word. All separately required user-table storage remains
+separately owned; a bank subextent cannot stand in for it. Source observes
+preparation, consumes the resource with `kernel image discard tables`, observes
+discard, then resumes ordinary boot. Preparation grants no activation or
+protected-context authority. Final reconstruction must reproduce the exact
+image partition and template, as well as storage size, before loading. See
+`TOPAL-SYSTEMS-KERNEL-IMAGE-TABLES-001` and
+[TK-DEC-288](../linux-kernel/design/inactive-image-table-construction.md).
+
 Before initial translation construction, a qualified boot allocator context may
 request `kernel image reserve backing (image is current-kernel, page-policy is
 provider-selected)`. Success returns one affine `ZeroedKernelImageBacking`
