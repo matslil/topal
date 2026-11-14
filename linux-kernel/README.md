@@ -11,6 +11,11 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [boot-participant arrival stage](step-4-boot-participant-arrival.md) specifies
+and models the target-local entry and acknowledgment needed to account for all
+CPUs. All 401 memory-model checks pass, including 22 new arrival tests. It grants
+no protected activation; source lowering and native CPU startup remain open.
+
 The [scoped table-retention stage](step-4-retained-image-tables.md) keeps exact
 pinned inactive owners through ordinary execution and root restoration, then
 revalidates and releases them completely. All seventeen leaf commands pass over

@@ -2287,6 +2287,18 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+Boot-participant initialization uses a complete boot inventory, a fresh session
+and a provider-selected typed entry. Every expected CPU remains pending until
+its own validated entry publishes a matching arrival acknowledgment. A startup
+request or firmware status does not acknowledge arrival. Entry code, translation,
+stack, mailbox and exception storage remain owned throughout the domain's
+lifetime; after entry is armed, a timeout or partial failure retains/poisons
+that storage because a target may arrive late. Arrival facts alone grant no
+protected-image activation or continuous exclusion. This systems-only contract
+is specified and modeled; source syntax and native startup remain unimplemented.
+See `TOPAL-SYSTEMS-BOOT-PARTICIPANT-ARRIVAL-001` and
+[TK-DEC-293](../linux-kernel/design/boot-participant-arrival.md).
+
 After the preparation observation, `context kernel image retain tables tables
 during { ... }` consumes the exact inactive resource into a scoped
 `RetainedKernelImageTables` owner. The checked boot continuation may allocate,

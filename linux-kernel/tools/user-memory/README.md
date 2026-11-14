@@ -1,5 +1,13 @@
 # Owned user-memory model
 
+The [boot-participant arrival stage](../../step-4-boot-participant-arrival.md)
+adds [an explicit session/entry model](boot_participants.py), independent
+event-order oracles and whole-owner failure controls in
+[test_boot_participants.py](test_boot_participants.py). The bounded
+[runner](run_boot_participants.py) executes both memory-model suites and records
+input hashes and resource use. The model supplies no native arrival, protected
+context or reclamation authority.
+
 The [inactive table-construction stage](../../step-4-inactive-image-table-construction.md)
 uses `run_image_backing.py --tables` to validate actual image-bound bootstrap/
 process tables, their separately owned zero low USER leaf, whole erase/release,

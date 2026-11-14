@@ -7,6 +7,14 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [boot-participant arrival stage](step-4-boot-participant-arrival.md) defines
+and models an explicit target-local entry/acknowledgment protocol. Its 22 new
+tests include exhaustive event-order oracles and retained-owner failure checks;
+all 401 memory-model regressions pass over 345 stable watched inputs. Dispatch
+completion and arrival remain distinct, including arrival before startup return.
+Source lowering, native CPU entry and continuous exclusion remain unimplemented;
+the unchanged two-CPU VM and protected-root acceptance obligations stay in scope.
+
 The [scoped table-retention stage](step-4-retained-image-tables.md) retains exact
 whole inactive banks/low leaf through the checked boot continuation. Native
 checks and independent replay preserve IDs/generations/pins across allocator

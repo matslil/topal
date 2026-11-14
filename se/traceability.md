@@ -1,5 +1,17 @@
 # Traceability
 
+The boot-participant arrival refinement (`TK-DEC-293`) connects
+`TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
+[systems design](../linux-kernel/design/boot-participant-arrival.md) and
+`TOPAL-SYSTEMS-BOOT-PARTICIPANT-ARRIVAL-001` to the
+[portable protocol](../linux-kernel/tools/user-memory/boot_participants.py),
+[independent event oracles](../linux-kernel/tools/user-memory/test_boot_participants.py)
+and [401-test model receipt](../linux-kernel/tools/user-memory/results/stage-4-boot-participant-arrival.json).
+The [stage report](../linux-kernel/step-4-boot-participant-arrival.md) separates
+that evidence from unimplemented source lowering/native startup and the
+remaining all-root/CPU protection and full kernel acceptance obligations.
+
 The extended data-transfer requirements trace through the approved
 [architecture](data-transfers.md) and [implementation
 plan](data-transfer-standard-library-plan.md) to normative package rules

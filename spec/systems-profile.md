@@ -9284,6 +9284,53 @@ identities independently. The activation and lifetime obligations of
 `TOPAL-SYSTEMS-KERNEL-IMAGE-PUBLISH-001` and
 `TOPAL-SYSTEMS-KERNEL-IMAGE-LIFETIME-001` SHALL remain mandatory.
 
+### TOPAL-SYSTEMS-BOOT-PARTICIPANT-ARRIVAL-001 — Qualified boot entry and arrival
+
+Explicit boot-participant initialization SHALL bind the exact provider, boot
+domain, qualified image, fresh non-reused epoch and complete relevant inventory,
+including the bootstrap participant. Unsupported runtime-enableable participants
+SHALL be refused before effects unless their admission is independently
+qualified. Numeric identities, firmware status, dispatch success, controller
+delivery completion and debugger observations SHALL NOT acknowledge arrival.
+
+Before arming possible entry, the provider SHALL retain complete live pinned
+owners for entry code, translation roots, stacks, mailboxes and exception state.
+Issuer, identity, generation, extent and role SHALL remain exact. Shared entry
+code/roots SHALL require an explicit compatible sharing contract; each stack,
+mailbox and exception owner SHALL be participant-private. Complete table/image
+validity and exclusion obligations SHALL remain independently required.
+
+Every participant SHALL become pending before the first possible entry effect.
+Secondary entry SHALL require its matching dispatched startup request; bootstrap
+entry SHALL use its qualified current-context route. Actual typed entry SHALL
+validate the same session and participant, target-local supported mode and exact
+entry/root/stack/mailbox/exception bindings. Only that participant's subsequent
+matching acknowledgment, published and observed through the qualified memory
+ordering/completion protocol, SHALL discharge its pending obligation. Duplicate,
+unsolicited, foreign or stale entry/acknowledgment SHALL NOT supply success.
+
+Target entry/acknowledgment MAY precede return of its startup request. Dispatch
+completion SHALL remain separate; failed or missing completion SHALL NOT be
+overridden by arrival. Completion SHALL require all participants acknowledged,
+all dispatched requests successfully completed and unchanged retained owners/
+inventory. It SHALL report arrival only. It SHALL NOT grant protected
+activation, continuous CPU exclusion, scheduling, hotplug or reclamation.
+Preparation MAY cancel only before arming. After arming, failed dispatch, bounded
+deadline expiration, protocol failure, membership change or entry/later fault
+SHALL retain/poison the affected domain and enter its qualified fatal path.
+No ordinary success continuation, reuse or reclamation SHALL follow that
+failure; a late target SHALL NOT revive the session or consume another epoch.
+This initial protocol SHALL retain supporting storage for the domain lifetime.
+
+Native startup SHALL use a qualified bounded dispatch/arrival deadline. The
+provider SHALL separately qualify asynchronous/exception/fatal entries, firmware
+and device/DMA assumptions, later startup/root writers, all active/restorable
+roots, effective modes and publication/maintenance before protected execution.
+Masked interrupts, a halt loop or an arrival snapshot SHALL NOT discharge those
+obligations. Existing profiles SHALL NOT implicitly start processors. This rule
+defines a systems protocol, not a core-language change or a claim that its
+source interface or native implementation is already available.
+
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
 
 Preparation SHALL retain exact actual image, root and table/backing ownership,

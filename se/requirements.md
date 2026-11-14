@@ -1981,6 +1981,16 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+An explicitly selected boot-participant initialization shall bind the complete
+inventory, provider/domain/image and fresh session to actual target-local typed
+entry and acknowledgment. Requests, delivery completion and firmware status
+shall not discharge pending participants. Whole entry/root/stack/mailbox/
+exception owners shall remain exact and pinned; after arming, partial failure,
+timeout, stale entry or membership change shall retain/poison affected storage
+without successful continuation or unsafe reclamation. Arrival shall grant no
+activation, continuous exclusion or independent lifetime qualification. This
+systems-only increment shall not implicitly start CPUs in existing profiles.
+
 An explicit scoped retention consumer shall carry exact complete inactive table
 owners across the checked boot continuation, including userspace and root
 restoration, without granting activation. It shall finish the initial binding's

@@ -3178,6 +3178,17 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+The future explicit boot-participant producer shall bind the complete retained
+inventory and fresh provider/domain/image session to target-local typed entry
+and acknowledgment. Keep dispatch distinct from arrival, retain complete exact
+entry/root/stack/mailbox/exception owners after arming, and preserve them on
+timeout, partial failure or late entry. Arrival shall not qualify activation
+or continuous exclusion. Existing table preparation/retention shall not start
+CPUs implicitly. Native entry, memory ordering, bounded deadlines, asynchronous
+paths and later writers remain qualification obligations under
+`TOPAL-SYSTEMS-BOOT-PARTICIPANT-ARRIVAL-001`; its portable model alone shall not
+authorize source lowering or native selection.
+
 The private provider shall discover the initial firmware processor inventory
 through the actual supported boot path, with bounded physical reads, retained
 firmware provenance, complete relevant checksums and processor records. Bind
