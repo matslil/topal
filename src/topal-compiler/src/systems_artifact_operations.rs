@@ -4,6 +4,10 @@ fn encode_operations(
 ) -> Result<(), CompileError> {
     for operation in operations {
         match operation {
+            CompilerSystemsOperation::InitializeBootParticipants { .. }
+            | CompilerSystemsOperation::RetainBootParticipantsForKernelLifetime => {
+                return Err(CompileError::Tool("E-SYSTEMS-BOOT-PARTICIPANTS: native participant entry and retained lifetime are not yet qualified".into()));
+            }
             CompilerSystemsOperation::DescribeBootMemory { .. } => {
                 encoder.describe_boot_memory()?;
             }

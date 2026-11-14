@@ -107,7 +107,11 @@ fn analyze_kernel_image_retention(
         return Err(translation_diagnostic(source,*span,"retention requires observation and an ordinary boot continuation"));
     };
     let marker=parse_static_image_marker(source,marker,context,"TOPAL_KERNEL_IMAGE_TABLES_RETAINED","retention requires its exact observation")?;
-    let mut checked=analyze_translation_sequence(source,continuation,context,storage)?;
+    let mut checked=if begins_boot_participant_initialization(source,continuation) {
+        analyze_boot_participant_initialization(source,continuation,context,storage)?
+    } else {
+        analyze_translation_sequence(source,continuation,context,storage)?
+    };
     checked.operations.splice(0..0,[
         CompilerSystemsOperation::PrepareKernelImageTables { failure_message },prepared,
         CompilerSystemsOperation::RetainKernelImageTables,marker,

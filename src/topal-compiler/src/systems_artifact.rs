@@ -1743,4 +1743,5 @@ mod tests {
     include!("systems_artifact_tests_plans.rs");
 
     include!("systems_artifact_tests_publication.rs");
+    include!("systems_artifact_tests_boot_participants.rs");
 }

@@ -833,6 +833,12 @@ fn plan_provider_selected(
 ) -> Result<X86SystemsProviderPlan, CompileError> {
     validate_systems_program(program)
         .map_err(|error| CompileError::Tool(format!("invalid systems program: {error}")))?;
+    if program.bootstrap.handler.operations.iter().any(|operation| matches!(operation,
+        topal_language::compiler::CompilerSystemsOperation::InitializeBootParticipants { .. }
+        | topal_language::compiler::CompilerSystemsOperation::RetainBootParticipantsForKernelLifetime))
+    {
+        return Err(CompileError::Tool("E-SYSTEMS-BOOT-PARTICIPANTS: native participant entry and retained lifetime are not yet qualified".into()));
+    }
     if program.frame_allocator_library.is_some() != frame_source_checked {
         return Err(CompileError::Tool("E-SYSTEMS-FRAME-POLICY-BINDING: native provider planning requires complete source/allocator/caller binding".into()));
     }

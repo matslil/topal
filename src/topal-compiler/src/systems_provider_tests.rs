@@ -12,6 +12,21 @@ fn program() -> CompilerSystemsProgram {
     .unwrap()
 }
 
+#[path = "../../../linux-kernel/tools/user-memory/boot_participant_source.rs"]
+mod boot_participant_source;
+
+#[test]
+fn boot_participant_native_planning_requires_actual_entry_qualification() {
+    // TOPAL-SYSTEMS-BOOT-PARTICIPANT-SOURCE-001: source acceptance is not native authority.
+    let source=boot_participant_source::with_boot_participants(SOURCE);
+    let program=analyze_systems_for_compiler(&source,&CompilerSystemsTargetSelection::initial_x86_64_qemu()).unwrap();
+    validate_systems_program(&program).unwrap();
+    for source_bound in [false,true] {
+        let error=plan_provider_selected(&program,source_bound).unwrap_err().to_string();
+        assert!(error.contains("E-SYSTEMS-BOOT-PARTICIPANTS"),"{error}");
+    }
+}
+
 #[test]
 fn plans_the_complete_sealed_initial_provider_mapping() {
     // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-MACHINE-001.

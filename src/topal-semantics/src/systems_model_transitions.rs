@@ -1191,6 +1191,12 @@ fn model_bootstrap_operation(
         SystemsOperation::DiscardRetainedKernelImageTables => {
             transitions.push(SystemsTransition::DiscardRetainedKernelImageTables);
         }
+        SystemsOperation::InitializeBootParticipants { entry, .. } => {
+            transitions.push(SystemsTransition::RequireBootParticipantArrivals { entry: *entry });
+        }
+        SystemsOperation::RetainBootParticipantsForKernelLifetime => {
+            transitions.push(SystemsTransition::RetainBootParticipantDomain);
+        }
         SystemsOperation::ReleasePhysicalFrames => {
             transitions.push(SystemsTransition::ReleasePhysicalFrames);
         }

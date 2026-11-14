@@ -3178,6 +3178,13 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+Checked source/IR shall preserve explicit participant initialization, its typed
+provider-selected entry descriptor/failure disposition and exact kernel-lifetime
+retention consumer. Traces shall express actual-arrival obligations without
+inventing CPU execution. Both native planning and operation emission shall
+refuse unqualified selection; no marker or omitted operation may substitute for
+native initialization. See `TOPAL-SYSTEMS-BOOT-PARTICIPANT-SOURCE-001`.
+
 The future explicit boot-participant producer shall bind the complete retained
 inventory and fresh provider/domain/image session to target-local typed entry
 and acknowledgment. Keep dispatch distinct from arrival, retain complete exact

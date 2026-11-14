@@ -165,6 +165,10 @@ pub enum SystemsTransition {
     DiscardKernelImageTables,
     RetainKernelImageTables,
     DiscardRetainedKernelImageTables,
+    RequireBootParticipantArrivals {
+        entry: BootParticipantEntry,
+    },
+    RetainBootParticipantDomain,
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction,
     ZeroStaticImageConstructionPayload,
@@ -662,6 +666,8 @@ impl SystemsTransition {
             Self::DiscardKernelImageTables => SYSTEMS_KERNEL_IMAGE_DISCARD_TABLES,
             Self::RetainKernelImageTables => SYSTEMS_KERNEL_IMAGE_RETAIN_TABLES,
             Self::DiscardRetainedKernelImageTables => SYSTEMS_KERNEL_IMAGE_DISCARD_RETAINED,
+            Self::RequireBootParticipantArrivals { .. } => SYSTEMS_BOOT_PARTICIPANTS_INITIALIZE,
+            Self::RetainBootParticipantDomain => SYSTEMS_BOOT_PARTICIPANTS_RETAIN,
             Self::ReserveStaticImageHierarchy => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
             Self::PrepareStaticImageConstruction => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -1317,6 +1323,8 @@ fn validate_entry(
                     | SystemsOperation::DiscardKernelImageTables
                     | SystemsOperation::RetainKernelImageTables
                     | SystemsOperation::DiscardRetainedKernelImageTables
+                    | SystemsOperation::InitializeBootParticipants { .. }
+                    | SystemsOperation::RetainBootParticipantsForKernelLifetime
                     | SystemsOperation::ReserveStaticImageHierarchy { .. }
                     | SystemsOperation::ReleasePhysicalFrames
                     | SystemsOperation::PrepareStaticImageConstruction { .. }
@@ -1709,6 +1717,8 @@ fn validate_kernel_thread_handler(
 
 #[derive(Default)]
 struct BootstrapAuthorityState {
+    boot_participant_window: bool,
+    boot_participants: BootParticipantRetentionState,
     image_backing_live: bool,
     image_tables_retained: bool,
     image_retention_observed: bool,

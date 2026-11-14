@@ -1,5 +1,18 @@
 # Traceability
 
+The boot-participant source refinement (`TK-DEC-294`) connects
+`TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
+[source design](../linux-kernel/design/boot-participant-source.md) and
+`TOPAL-SYSTEMS-BOOT-PARTICIPANT-SOURCE-001` to the
+[frontend](../src/topal-language/src/systems_boot_participants.rs),
+[semantic lifetime checks](../src/topal-semantics/src/systems_boot_participants_model.rs),
+typed operations/trace requirements and native planning/emission refusals.
+The [stage report](../linux-kernel/step-4-boot-participant-source.md) and
+[fourteen-command receipt](../linux-kernel/tools/user-memory/results/stage-4-boot-participant-source.json)
+record checked source/IR and unchanged legacy output. Actual CPU entry,
+asynchronous/lifetime qualification and full kernel acceptance remain open.
+
 The boot-participant arrival refinement (`TK-DEC-293`) connects
 `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
 `TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the

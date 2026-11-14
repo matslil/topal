@@ -318,6 +318,10 @@ pub(crate) fn semantic_trace(
                     "{identity}:scoped-inactive-ownership:historical-boot-observations"),
                 CompilerSystemsTransition::DiscardRetainedKernelImageTables => format!(
                     "{identity}:same-owners-generations-tables:whole-erase-and-release"),
+                CompilerSystemsTransition::RequireBootParticipantArrivals { entry } => format!(
+                    "{identity}:entry={}:requires-native-arrival:no-predicted-participants",entry.semantic_identity()),
+                CompilerSystemsTransition::RetainBootParticipantDomain => format!(
+                    "{identity}:whole-entry-owners:kernel-lifetime:no-reclamation:no-activation"),
                 CompilerSystemsTransition::MapKernelFrames { .. } => {
                     format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
                 }

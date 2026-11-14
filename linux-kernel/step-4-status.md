@@ -7,6 +7,14 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [boot-participant source stage](step-4-boot-participant-source.md) adds an
+explicit initialization request, typed provider entry and exact affine lifetime
+consumer to the checked source/IR pipeline. All fourteen commands pass over
+1,002 stable watched inputs, including 661 frontend, 263 semantics and 401
+memory-model tests. Native planning/emission refuse unqualified startup; the
+legacy kernel rebuild remains byte-identical. Actual entry and all-root/CPU
+protection still require implementation and native qualification.
+
 The [boot-participant arrival stage](step-4-boot-participant-arrival.md) defines
 and models an explicit target-local entry/acknowledgment protocol. Its 22 new
 tests include exhaustive event-order oracles and retained-owner failure checks;

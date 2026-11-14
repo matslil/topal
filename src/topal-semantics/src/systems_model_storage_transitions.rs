@@ -116,6 +116,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::DiscardKernelImageTables
         | SystemsOperation::RetainKernelImageTables
         | SystemsOperation::DiscardRetainedKernelImageTables
+        | SystemsOperation::InitializeBootParticipants { .. }
+        | SystemsOperation::RetainBootParticipantsForKernelLifetime
         | SystemsOperation::ReleasePhysicalFrames
         | SystemsOperation::PrepareStaticImageConstruction { .. }
         | SystemsOperation::ZeroStaticImageConstructionPayload

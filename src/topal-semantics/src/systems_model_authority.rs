@@ -79,9 +79,13 @@ impl BootstrapAuthorityState {
                 && text == "TOPAL_KERNEL_IMAGE_TABLES_RETAINED"
             {
                 self.image_retention_observed = true;
+                self.boot_participant_window = true;
                 return Ok(true);
             }
             return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "retention requires its exact observation before ordinary boot"));
+        }
+        if self.observe_boot_participants(operation)? {
+            return Ok(true);
         }
         if self.observe_critical(operation)? {
             return Ok(true);

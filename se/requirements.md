@@ -1981,6 +1981,15 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+The initial source request shall select a typed provider participant entry and
+return one affine arrival resource under the retained initial boot binding.
+Its exact consumer shall retain the supporting domain for kernel lifetime
+before observation and ordinary continuation. The checker and semantic model
+shall reject late/repeated initialization, interleaving and resource/context
+substitution. Traces shall record obligations rather than predicted CPU facts;
+the compiler shall refuse native publication until the entry protocol is
+qualified. Existing profiles and inactive table retirement shall remain valid.
+
 An explicitly selected boot-participant initialization shall bind the complete
 inventory, provider/domain/image and fresh session to actual target-local typed
 entry and acknowledgment. Requests, delivery completion and firmware status

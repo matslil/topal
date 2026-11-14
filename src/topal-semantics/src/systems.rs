@@ -163,6 +163,24 @@ pub const SYSTEMS_PCI_REGION_WRITE: &str = "topal.systems.device.pci-region.writ
 pub const SYSTEMS_DEBUG_BREAK: &str = "topal.systems.machine.debug-break/1";
 pub const SYSTEMS_RESUME_DEBUG_BREAK: &str = "topal.systems.disposition.resume-debug-break/1";
 pub const SYSTEMS_FATAL: &str = "topal.systems.disposition.fatal/1";
+pub const SYSTEMS_BOOT_PARTICIPANTS_INITIALIZE: &str =
+    "topal.systems.boot-participants.initialize/1";
+pub const SYSTEMS_BOOT_PARTICIPANTS_RETAIN: &str =
+    "topal.systems.boot-participants.retain-kernel-lifetime/1";
+pub const SYSTEMS_BOOT_PARTICIPANT_ENTRY: &str = "topal.systems.entry.boot-participant/1";
+
+/// Typed entry purpose; this descriptor is not evidence of native arrival.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BootParticipantEntry {
+    InitialProviderSelected,
+}
+
+impl BootParticipantEntry {
+    #[must_use]
+    pub const fn semantic_identity(self) -> &'static str {
+        SYSTEMS_BOOT_PARTICIPANT_ENTRY
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsTargetSelection {
@@ -1241,6 +1259,11 @@ pub enum SystemsOperation {
     DiscardKernelImageTables,
     RetainKernelImageTables,
     DiscardRetainedKernelImageTables,
+    InitializeBootParticipants {
+        entry: BootParticipantEntry,
+        failure_message: String,
+    },
+    RetainBootParticipantsForKernelLifetime,
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction {
         failure_message: String,
@@ -1520,6 +1543,8 @@ impl SystemsOperation {
             Self::DiscardKernelImageTables => SYSTEMS_KERNEL_IMAGE_DISCARD_TABLES,
             Self::RetainKernelImageTables => SYSTEMS_KERNEL_IMAGE_RETAIN_TABLES,
             Self::DiscardRetainedKernelImageTables => SYSTEMS_KERNEL_IMAGE_DISCARD_RETAINED,
+            Self::InitializeBootParticipants { .. } => SYSTEMS_BOOT_PARTICIPANTS_INITIALIZE,
+            Self::RetainBootParticipantsForKernelLifetime => SYSTEMS_BOOT_PARTICIPANTS_RETAIN,
             Self::ReserveStaticImageHierarchy { .. } => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY
             }
@@ -1825,6 +1850,7 @@ impl SystemsOperation {
 
 include!("systems_model_program.rs");
 include!("systems_model_authority.rs");
+include!("systems_boot_participants_model.rs");
 include!("systems_model_authority_protocols.rs");
 include!("systems_model_transitions.rs");
 include!("systems_model_storage_transitions.rs");
@@ -1835,4 +1861,5 @@ mod tests {
     include!("systems_model_tests_memory_and_protocols.rs");
     include!("systems_model_tests_hierarchy_backing.rs");
     include!("systems_model_tests_image_backing.rs");
+    include!("systems_model_tests_boot_participants.rs");
 }

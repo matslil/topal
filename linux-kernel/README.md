@@ -11,6 +11,11 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [boot-participant source stage](step-4-boot-participant-source.md) checks an
+explicit typed entry request and affine domain retention. All fourteen commands
+pass, and the legacy kernel rebuild retains its bytes. Native startup remains
+refused until the actual entry and lifetime protocol are qualified.
+
 The [boot-participant arrival stage](step-4-boot-participant-arrival.md) specifies
 and models the target-local entry and acknowledgment needed to account for all
 CPUs. All 401 memory-model checks pass, including 22 new arrival tests. It grants

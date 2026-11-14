@@ -19,7 +19,9 @@ use topal_syntax::{
 pub use topal_semantics::{
     AtomicCompareExchangeResult as CompilerAtomicCompareExchangeResult,
     AtomicDomain as CompilerAtomicDomain, AtomicOrder as CompilerAtomicOrder,
-    AtomicWordRequest as CompilerAtomicWordRequest, BootstrapRegion as CompilerBootstrapRegion,
+    AtomicWordRequest as CompilerAtomicWordRequest,
+    BootParticipantEntry as CompilerBootParticipantEntry,
+    BootstrapRegion as CompilerBootstrapRegion,
     BootstrapStorageDescriptor as CompilerBootstrapStorageDescriptor,
     BootstrapStorageErrorCode as CompilerBootstrapStorageErrorCode,
     BootstrapStoragePlacement as CompilerBootstrapStoragePlacement,
@@ -56,12 +58,13 @@ pub use topal_semantics::{
     PciRegionRegisterRequest as CompilerPciRegionRegisterRequest,
     PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
     SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
-    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
-    SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
-    SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
-    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
+    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOT_PARTICIPANT_ENTRY,
+    SYSTEMS_BOOT_PARTICIPANTS_INITIALIZE, SYSTEMS_BOOT_PARTICIPANTS_RETAIN,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
+    SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED, SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
+    SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
@@ -1895,6 +1898,7 @@ include!("systems_frames.rs");
 include!("systems_mapping.rs");
 include!("systems_translation.rs");
 include!("systems_kernel_image_backing.rs");
+include!("systems_boot_participants.rs");
 include!("systems_translation_edit.rs");
 include!("systems_critical.rs");
 
@@ -1944,5 +1948,6 @@ mod tests {
     include!("systems_source_tests_memory_and_image.rs");
     include!("systems_source_tests_hierarchy_backing.rs");
     include!("systems_source_tests_image_backing.rs");
+    include!("systems_source_tests_boot_participants.rs");
     include!("systems_source_tests_image_completion.rs");
 }

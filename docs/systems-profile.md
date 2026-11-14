@@ -2287,6 +2287,17 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+The retained-table scope may explicitly request `context boot participants
+initialize (entry is provider-selected)`. Its success branch consumes the exact
+`BootParticipantArrivals` resource with `context boot participants retain
+arrivals for-kernel-lifetime`, observes arrival, then enters the checked boot
+continuation. Initialization is admitted immediately after the table-retention
+observation. The typed provider-selected participant entry carries no source
+CPU identity, address, register or geometry. Native publication remains refused
+until its actual entry and lifetime protocol are qualified. See
+`TOPAL-SYSTEMS-BOOT-PARTICIPANT-SOURCE-001` and
+[TK-DEC-294](../linux-kernel/design/boot-participant-source.md).
+
 Boot-participant initialization uses a complete boot inventory, a fresh session
 and a provider-selected typed entry. Every expected CPU remains pending until
 its own validated entry publishes a matching arrival acknowledgment. A startup
@@ -2295,7 +2306,7 @@ stack, mailbox and exception storage remain owned throughout the domain's
 lifetime; after entry is armed, a timeout or partial failure retains/poisons
 that storage because a target may arrive late. Arrival facts alone grant no
 protected-image activation or continuous exclusion. This systems-only contract
-is specified and modeled; source syntax and native startup remain unimplemented.
+has checked source/model support; native startup remains unimplemented.
 See `TOPAL-SYSTEMS-BOOT-PARTICIPANT-ARRIVAL-001` and
 [TK-DEC-293](../linux-kernel/design/boot-participant-arrival.md).
 

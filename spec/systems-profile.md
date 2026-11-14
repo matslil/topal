@@ -9331,6 +9331,47 @@ obligations. Existing profiles SHALL NOT implicitly start processors. This rule
 defines a systems protocol, not a core-language change or a claim that its
 source interface or native implementation is already available.
 
+### TOPAL-SYSTEMS-BOOT-PARTICIPANT-SOURCE-001 — Explicit typed initialization
+
+Inside the retained-table scope, immediately after its retention observation,
+`context boot participants initialize (entry is provider-selected)` MAY request
+the initial participant protocol. It SHALL require the unborrowed initial boot
+allocator, unchanged retained boot/image binding and no prior initialization.
+Success SHALL produce one affine `BootParticipantArrivals` resource associated
+with `BootParticipantEntry::InitialProviderSelected` and semantic entry identity
+`topal.systems.entry.boot-participant/1`. That descriptor SHALL select a typed
+provider entry without supplying evidence that any native participant arrived.
+
+The success branch SHALL begin with `context boot participants retain arrivals
+for-kernel-lifetime`, naming the exact allocator and returned resource, followed
+by the exact `TOPAL_BOOT_PARTICIPANTS_ARRIVED` observation and independently
+checked translation/boot continuation. Context and arrival bindings SHALL have
+distinct names. Retention SHALL consume that resource once into the boot-domain
+lifetime and SHALL NOT release supporting backing. The failure branch SHALL
+consume its failure into fatal, with affected authority retained/poisoned after
+possible entry effects. No retry or post-arm reclamation operation is admitted.
+
+Entry-policy substitutions, native geometry, late/repeated initialization,
+foreign owners, missing/duplicate/interleaved consumers and unfinished arrival
+consumption SHALL be rejected by source and semantic validation. An ordinary
+operation after the table-retention observation SHALL close this initial
+admission window. Initialization and retained-domain transitions SHALL remain
+distinct from image-table retention and SHALL record requirements rather than
+invent successful execution or participant counts. Supporting participant roots
+SHALL NOT refer to the inactive table banks retired by the existing scope.
+
+The native compiler SHALL refuse this selection until the complete entry,
+publication, bounded deadline, failure and retained-lifetime realization is
+qualified under `TOPAL-SYSTEMS-BOOT-PARTICIPANT-ARRIVAL-001`. It SHALL NOT ignore
+the operations or replace them with observations. Existing roots SHALL NOT
+initialize participants implicitly. No protected-image witness, scheduler,
+hotplug or general core-language semantic change follows from this protocol.
+
+Initialization SHALL retain semantic identity
+`topal.systems.boot-participants.initialize/1`; its lifetime consumer SHALL
+retain `topal.systems.boot-participants.retain-kernel-lifetime/1`. The checked
+trace SHALL preserve the typed entry descriptor on the arrival requirement.
+
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
 
 Preparation SHALL retain exact actual image, root and table/backing ownership,

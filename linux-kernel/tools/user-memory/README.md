@@ -1,5 +1,11 @@
 # Owned user-memory model
 
+The [boot-participant source stage](../../step-4-boot-participant-source.md)
+connects explicit source initialization and a typed provider entry to affine
+semantic retention and native refusal boundaries. Its
+[bounded runner](run_boot_participant_source.py) validates source/model/compiler
+checks and an unchanged legacy image rebuild, with no VM or CPU startup.
+
 The [boot-participant arrival stage](../../step-4-boot-participant-arrival.md)
 adds [an explicit session/entry model](boot_participants.py), independent
 event-order oracles and whole-owner failure controls in
