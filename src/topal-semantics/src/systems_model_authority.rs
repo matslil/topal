@@ -45,6 +45,25 @@ impl BootstrapAuthorityState {
         index: usize,
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
+        if self.image_backing_live {
+            match operation {
+                SystemsOperation::ConsoleWrite { text }
+                    if text == "TOPAL_KERNEL_IMAGE_BACKING_RESERVED" && !self.image_backing_observed => {
+                        self.image_backing_observed = true;
+                        return Ok(true);
+                    }
+                SystemsOperation::DiscardKernelImageBacking if self.image_backing_observed => {}
+                _ => return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image backing requires one reservation observation then consuming discard before other boot work")),
+            }
+        } else if self.image_backing_discarded && !self.image_backing_discard_observed {
+            if let SystemsOperation::ConsoleWrite { text } = operation
+                && text == "TOPAL_KERNEL_IMAGE_BACKING_DISCARDED"
+            {
+                self.image_backing_discard_observed = true;
+                return Ok(true);
+            }
+            return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image backing requires its discard observation before continuing"));
+        }
         if self.observe_critical(operation)? {
             return Ok(true);
         }
@@ -116,6 +135,22 @@ impl BootstrapAuthorityState {
                         ));
                     }
                 };
+            }
+            SystemsOperation::ReserveKernelImageBacking { .. } => {
+                if !self.allocator_created || self.image_backing_live || self.image_backing_discarded
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.translation != BootstrapTranslationState::BootstrapActive
+                {
+                    return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image backing requires the unborrowed initial allocator and one current-image preparation"));
+                }
+                self.image_backing_live = true;
+            }
+            SystemsOperation::DiscardKernelImageBacking => {
+                if !self.image_backing_live {
+                    return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image-backing discard requires its exact live preparation"));
+                }
+                self.image_backing_live = false;
+                self.image_backing_discarded = true;
             }
             SystemsOperation::ReserveStaticImageHierarchy { .. } => {
                 if !self.allocator_created

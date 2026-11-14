@@ -7,6 +7,17 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [inactive image-backing stage](step-4-image-backing-preparation.md) adds
+source-bound reservation and affine discard of two actual image-sized banks.
+The final reconstructed image determines both whole eight-page allocations;
+native snapshots verify complete initialization, zeroing, erasure and release
+without changing CR3. Ordinary shell and three exec replacements complete;
+independent replay rejects twelve altered records. All thirteen commands pass
+over 964 stable inputs, including 653 frontend, 256 semantics and 354 memory
+model tests. The original-profile rebuild keeps its bytes. Table construction,
+effective protection, complete root/alias/writer integration and production
+qualification remain unfinished.
+
 The [whole-root backing stage](step-4-root-backing-owners.md) retains distinct
 bootstrap/process allocation purposes and compiler-derived whole owners, tied
 to the actual root object and freshly reconstructed image. Its requirements

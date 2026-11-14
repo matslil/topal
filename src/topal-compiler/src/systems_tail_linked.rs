@@ -123,6 +123,7 @@ pub(crate) fn prepare(
     .contains(&role)
         && !(cfg!(test)
             && [
+                "image-backing",
                 "frame-extent",
                 "frame-extent-callers",
                 "frame-extent-bridge",

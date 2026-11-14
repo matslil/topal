@@ -11,6 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [inactive image-backing stage](step-4-image-backing-preparation.md) now
+allocates, initializes, zeroes, erases and releases two actual image-sized
+whole banks through the Topal allocator. All thirteen validation commands pass
+over 964 stable inputs, including four native preparation snapshots, ordinary
+shell/exec completion and independent replay. It does not activate these banks
+or qualify effective image protection or production publication.
+
 The [whole-root backing stage](step-4-root-backing-owners.md) connects distinct
 bootstrap/process compiler-owner descriptors to fresh image requirements.
 Larger native allocations and effective protection remain required.

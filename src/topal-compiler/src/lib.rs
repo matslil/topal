@@ -19,6 +19,7 @@ mod systems_frame_controller;
 mod systems_frame_ownership;
 mod systems_frame_policy_binding;
 mod systems_frame_publication;
+mod systems_image_backing;
 mod systems_kernel_image_layout;
 pub use systems_frame_publication::{
     Binding as SystemsFrameRootBinding, Bounds as SystemsFrameRootBounds,

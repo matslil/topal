@@ -27,7 +27,7 @@ const fn register_encoding(register: SavedRegister, base: u8) -> (Option<u8>, u8
 pub(crate) fn generate_root_object(
     program: &CompilerSystemsProgram,
 ) -> Result<Vec<u8>, CompileError> {
-    generate_root_object_selected(program, None, None)
+    generate_root_object_selected(program, None, None, None, None)
 }
 
 #[cfg(test)]
@@ -42,14 +42,14 @@ pub(crate) fn generate_frame_policy_root_object(
 pub(crate) fn generate_frame_root_checked(
     checked: &crate::systems_frame_policy_binding::Checked,
 ) -> Result<Vec<u8>, CompileError> {
-    generate_root_object_selected(&checked.program, Some(checked), None)
+    generate_root_object_selected(&checked.program, Some(checked), None, None, None)
 }
 
 pub(crate) fn generate_frame_user_extent_root(
     checked: &crate::systems_frame_policy_binding::Checked,
 ) -> Result<(Vec<u8>, crate::systems_user_extent::Owners), CompileError> {
     let mut owners = None;
-    let bytes = generate_root_object_selected(&checked.program, Some(checked), Some(&mut owners))?;
+    let bytes = generate_root_object_selected(&checked.program, Some(checked), Some(&mut owners), None, None)?;
     let mut owners = owners.ok_or_else(|| {
         CompileError::Tool("E-SYSTEMS-USER-EXTENT: missing root owner binding".into())
     })?;
@@ -58,10 +58,30 @@ pub(crate) fn generate_frame_user_extent_root(
     Ok((bytes, owners))
 }
 
+#[cfg(test)]
+pub(crate) fn generate_image_backing_root(
+    checked: &crate::systems_frame_policy_binding::Checked,
+    plan: &crate::systems_image_backing::Plan,
+) -> Result<(Vec<u8>, crate::systems_user_extent::Owners, crate::systems_image_backing::Bindings), CompileError> {
+    let mut owners = None;
+    let mut preparation = None;
+    let bytes = generate_root_object_selected(&checked.program, Some(checked), Some(&mut owners), Some(plan), Some(&mut preparation))?;
+    let mut owners = owners.ok_or_else(|| CompileError::Tool("missing process owner binding".into()))?;
+    let mut preparation = preparation.ok_or_else(|| CompileError::Tool("missing image preparation binding".into()))?;
+    let identity = sha256(&bytes);
+    owners.root_object_sha256 = identity.clone();
+    preparation.root_object_sha256 = identity;
+    owners.validate()?;
+    preparation.validate(plan)?;
+    Ok((bytes, owners, preparation))
+}
+
 fn generate_root_object_selected(
     program: &CompilerSystemsProgram,
     frame: Option<&crate::systems_frame_policy_binding::Checked>,
     user_owners: Option<&mut Option<crate::systems_user_extent::Owners>>,
+    image_backing_plan: Option<&crate::systems_image_backing::Plan>,
+    preparation: Option<&mut Option<crate::systems_image_backing::Bindings>>,
 ) -> Result<Vec<u8>, CompileError> {
     let frames = frame.is_some();
     if let Some(checked) = frame {
@@ -876,6 +896,7 @@ fn generate_root_object_selected(
     }
 
     let mut bootstrap = RootEncoder {
+        image_backing_plan: image_backing_plan.cloned(),
         frame_policy: frames.then(RootFramePolicy::default),
         bootstrap_capacity: program.bootstrap_storage.capacity_bytes,
         region_library: program.region_library.is_some(),
@@ -904,6 +925,12 @@ fn generate_root_object_selected(
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
+    if let Some(output) = preparation {
+        let frame = bootstrap.frame_policy.as_ref().ok_or_else(|| CompileError::Tool("image preparation requires source-owned frames".into()))?;
+        let mut bindings = frame.image_preparation.clone().ok_or_else(|| CompileError::Tool("source does not perform image preparation".into()))?;
+        bindings.token_bytes = frame.next_slot.checked_mul(24).ok_or_else(|| CompileError::Tool("image token-bank size overflow".into()))?;
+        *output = Some(bindings);
+    }
     if let Some(output) = user_owners {
         let frame = bootstrap.frame_policy.as_ref().ok_or_else(|| {
             CompileError::Tool("E-SYSTEMS-USER-EXTENT: source-owned frames required".into())

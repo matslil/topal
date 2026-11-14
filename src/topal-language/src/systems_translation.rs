@@ -6,6 +6,11 @@ fn analyze_translation_sequence(
 ) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
     let (subject, update_name, success, failure_name, failure, span) =
         result_sequence(source, statements, "translation construction")?;
+    if let Expression::Application { items, .. } = subject
+        && items.get(1).is_some_and(|item| identifier_is(source, item, "kernel"))
+    {
+        return analyze_kernel_image_backing_sequence(source, statements, allocator_context, storage);
+    }
     let request = parse_translation_begin(source, subject, allocator_context)?;
     let begin_failure = translation_failure(
         source,

@@ -34,7 +34,13 @@ pub(super) struct Prepared {
     originals: Vec<(PathBuf, String)>,
 }
 
-pub(super) fn prepare(work: &Path, tools: &LlvmTools, baseline: &Path, owned: bool) -> Prepared {
+pub(super) fn prepare(
+    work: &Path,
+    tools: &LlvmTools,
+    baseline: &Path,
+    owned: bool,
+    image_backing: bool,
+) -> Prepared {
     let mut inputs = vec![
         ("root", "root"),
         ("source", "source"),
@@ -54,6 +60,9 @@ pub(super) fn prepare(work: &Path, tools: &LlvmTools, baseline: &Path, owned: bo
     } else {
         ("frame-extent-probe", "extent-probe")
     });
+    if image_backing {
+        inputs.push(("image-backing", "image-backing"));
+    }
     for name in [
         "kernel",
         "time",
@@ -128,7 +137,7 @@ impl Prepared {
         work: &Path,
         kernel: &[u8],
         owners: &crate::systems_user_extent::Owners,
-    ) {
+    ) -> crate::SystemsKernelImageLayout {
         let root_sha = self
             .originals
             .iter()
@@ -153,7 +162,7 @@ impl Prepared {
             .zip(&self.records)
             .map(|(bytes, record)| (bytes.as_slice(), record.sections.as_slice()))
             .collect::<Vec<_>>();
-        let mut result = crate::systems_frame_publication::inspect_private_owned_inputs(
+        let (mut result, layout) = crate::systems_frame_publication::inspect_private_owned_details(
             kernel, &objects, owners,
         )
         .unwrap();
@@ -246,5 +255,6 @@ impl Prepared {
             serde_json::to_vec_pretty(&controls).unwrap(),
         )
         .unwrap();
+        layout
     }
 }

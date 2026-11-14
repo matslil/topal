@@ -2287,6 +2287,26 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+Before initial translation construction, a qualified boot allocator context may
+request `kernel image reserve backing (image is current-kernel, page-policy is
+provider-selected)`. Success returns one affine `ZeroedKernelImageBacking`
+resource holding the complete provider-selected preparation extents. The actual
+current image determines their count and alignment; source supplies neither.
+This resource grants no mapping, table-pointer, activation or protected-context
+authority. The initial consuming operation is `kernel image discard backing`,
+which verifies and erases complete inactive backing, discharges its pins and
+releases each whole extent to its issuing allocator. Issued-identity history
+remains advanced. Other boot work cannot interleave with this preparation.
+
+The native preparation path requires complete current source/image/allocator
+binding. Provisional sizing during compilation cannot authorize execution;
+the final reconstructed image must reproduce its complete requirement before
+loading. The initial x86 provider prepares separate bootstrap and process banks
+while preserving all existing five-page bootstrap-equivalent contracts. Failure
+retains affected resources on the fatal path and publishes no preparation
+witness. See `TOPAL-SYSTEMS-KERNEL-IMAGE-PREPARE-001` and
+[TK-DEC-287](../linux-kernel/design/kernel-image-backing-preparation.md).
+
 Static-image construction may request opaque translation backing with
 `static image construction reserve hierarchy (owner is sealed-construction,
 backing is provider-selected)`. The owner is the exact live sealed construction.

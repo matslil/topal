@@ -24,7 +24,8 @@ use crate::{
     SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
     SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
     SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING, SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
@@ -1228,6 +1229,10 @@ pub enum SystemsOperation {
     ReserveStaticImageHierarchy {
         failure_message: String,
     },
+    ReserveKernelImageBacking {
+        failure_message: String,
+    },
+    DiscardKernelImageBacking,
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction {
         failure_message: String,
@@ -1501,6 +1506,8 @@ impl SystemsOperation {
             Self::DescribeBootMemory { .. } => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             Self::CreateFrameAllocator { .. } => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
+            Self::ReserveKernelImageBacking { .. } => SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING,
+            Self::DiscardKernelImageBacking => SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING,
             Self::ReserveStaticImageHierarchy { .. } => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY
             }
@@ -1815,4 +1822,5 @@ mod tests {
     include!("systems_model_tests_regions_and_contexts.rs");
     include!("systems_model_tests_memory_and_protocols.rs");
     include!("systems_model_tests_hierarchy_backing.rs");
+    include!("systems_model_tests_image_backing.rs");
 }

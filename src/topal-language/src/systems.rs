@@ -79,7 +79,8 @@ pub use topal_semantics::{
     SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
     SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
     SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING, SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -1891,6 +1892,7 @@ include!("systems_boot_memory.rs");
 include!("systems_frames.rs");
 include!("systems_mapping.rs");
 include!("systems_translation.rs");
+include!("systems_kernel_image_backing.rs");
 include!("systems_translation_edit.rs");
 include!("systems_critical.rs");
 
@@ -1939,5 +1941,6 @@ mod tests {
     include!("systems_source_tests_device_lifecycles.rs");
     include!("systems_source_tests_memory_and_image.rs");
     include!("systems_source_tests_hierarchy_backing.rs");
+    include!("systems_source_tests_image_backing.rs");
     include!("systems_source_tests_image_completion.rs");
 }

@@ -17,6 +17,11 @@ const LIMIT: u64 = 1024 * 1024 * 1024;
 #[path = "systems_kernel_translation_tables.rs"]
 mod translation_tables;
 
+#[cfg(test)]
+pub(crate) fn preparation_pages(layout: &SystemsKernelImageLayout) -> Result<u64, CompileError> {
+    Ok(translation_tables::TranslationTables::new(layout)?.pages())
+}
+
 /// Compare freshly reconstructed image requirements with compiler-derived
 /// whole owners of both roots. This reports the rebuild obligation; it does
 /// not turn numeric geometry or descriptors into runtime backing authority.

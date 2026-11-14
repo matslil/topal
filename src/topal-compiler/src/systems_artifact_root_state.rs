@@ -647,6 +647,8 @@ enum RootLibraryDependency {
 
 #[derive(Default)]
 struct RootEncoder {
+    image_backing_plan: Option<crate::systems_image_backing::Plan>,
+    image_backing_live: bool,
     frame_policy: Option<RootFramePolicy>,
     frame_relocations: Vec<(u64, &'static str, u64, bool)>,
     bootstrap_capacity: u64,
@@ -1022,6 +1024,7 @@ struct ProviderSymbols {
 
 include!("systems_root_encoder_memory.rs");
 include!("systems_root_encoder_frames.rs");
+include!("systems_root_encoder_image_backing.rs");
 
 include!("systems_root_encoder_stack_metadata.rs");
 

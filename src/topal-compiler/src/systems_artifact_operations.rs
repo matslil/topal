@@ -16,6 +16,12 @@ fn encode_operations(
             CompilerSystemsOperation::ReserveStaticImageHierarchy { .. } => {
                 encoder.reserve_static_image_hierarchy()?;
             }
+            CompilerSystemsOperation::ReserveKernelImageBacking { .. } => {
+                encoder.reserve_kernel_image_backing()?;
+            }
+            CompilerSystemsOperation::DiscardKernelImageBacking => {
+                encoder.discard_kernel_image_backing()?;
+            }
             CompilerSystemsOperation::ReleasePhysicalFrames => {
                 encoder.release_physical_frames()?;
             }

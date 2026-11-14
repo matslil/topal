@@ -306,6 +306,10 @@ pub(crate) fn semantic_trace(
                 CompilerSystemsTransition::ReserveStaticImageHierarchy => {
                     format!("{identity}:backing=provider-selected")
                 }
+                CompilerSystemsTransition::ReserveKernelImageBacking => format!(
+                    "{identity}:image=current-kernel:page-policy=provider-selected:inactive-only"),
+                CompilerSystemsTransition::DiscardKernelImageBacking => format!(
+                    "{identity}:whole-erase-and-release"),
                 CompilerSystemsTransition::MapKernelFrames { .. } => {
                     format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
                 }

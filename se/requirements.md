@@ -1981,6 +1981,15 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+The initial preparation interface shall reserve and zero complete image-derived
+backing under the boot allocator and expose only one affine preparation owner.
+The native provider shall preserve exact issuer, generation, whole size,
+alignment, pins, RAM provenance, image/boot/active-root exclusion and disjointness.
+Discard shall verify inactivity, erase and read back all backing, then unpin and
+release whole extents while retaining issued-identity history. Native loading
+shall require the final fresh image's exact requirement and complete source/
+object binding. This preparation shall grant no protected context or activation.
+
 The static-image systems interface shall admit provider-selected hierarchy
 backing tied to the exact sealed construction without source counts or native
 geometry. Preserve that purpose in checked operations and provenance, and

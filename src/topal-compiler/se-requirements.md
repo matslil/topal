@@ -3178,6 +3178,18 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+Image-backing preparation shall have distinct checked reserve/discard operations
+and one affine live resource before initial translation construction. Reject
+interleaved work, wrong owner, duplicate/disordered transitions and live
+disposition. A native root shall require a compiler-owned current-image sizing
+plan; unbound public lowering shall refuse the operation. Before loading, fresh
+complete source/object/link/load reconstruction shall reproduce the exact whole
+requirements, including any sizing feedback. Runtime preparation shall validate
+actual complete allocator owners, image/boot/active-root exclusions and pins,
+zero/read back every byte and retain ownership through complete discard/whole
+release. Keep legacy allocation and USER-table validators unchanged. Prepared
+bytes and sizing convergence shall not qualify protected activation.
+
 The checker shall retain a distinct provider-selected static-hierarchy
 reservation operation instead of synthesizing a generic source frame count.
 The current qualified x86 provider shall resolve it to exactly five frames

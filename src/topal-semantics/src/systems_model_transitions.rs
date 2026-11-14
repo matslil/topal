@@ -1173,6 +1173,12 @@ fn model_bootstrap_operation(
         SystemsOperation::ReserveStaticImageHierarchy { .. } => {
             transitions.push(SystemsTransition::ReserveStaticImageHierarchy);
         }
+        SystemsOperation::ReserveKernelImageBacking { .. } => {
+            transitions.push(SystemsTransition::ReserveKernelImageBacking);
+        }
+        SystemsOperation::DiscardKernelImageBacking => {
+            transitions.push(SystemsTransition::DiscardKernelImageBacking);
+        }
         SystemsOperation::ReleasePhysicalFrames => {
             transitions.push(SystemsTransition::ReleasePhysicalFrames);
         }

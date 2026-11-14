@@ -24,7 +24,8 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
     SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
     SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING, SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -132,6 +133,8 @@ pub enum X86SystemsLowering {
     RetainedE820FrameAuthority,
     E820StaticFrameExtentSelect,
     ReserveStaticImageHierarchy,
+    ReserveKernelImageBacking,
+    DiscardKernelImageBacking,
     ConsumePhysicalFrameExtent,
     ConstructInitialStaticImageLeaves,
     ZeroStaticImagePayload,
@@ -302,6 +305,12 @@ impl X86SystemsLowering {
             }
             Self::ReserveStaticImageHierarchy => {
                 "topal.provider.x86_64.static-image.reserve-bootstrap-equivalent-hierarchy/1"
+            }
+            Self::ReserveKernelImageBacking => {
+                "topal.provider.x86_64.kernel-image.reserve-inactive-backing/1"
+            }
+            Self::DiscardKernelImageBacking => {
+                "topal.provider.x86_64.kernel-image.discard-inactive-backing/1"
             }
             Self::ConsumePhysicalFrameExtent => "topal.provider.x86_64.frames.consume-extent/1",
             Self::ConstructInitialStaticImageLeaves => {
@@ -809,6 +818,20 @@ fn plan_provider_selected(
     if program.frame_allocator_library.is_some() != frame_source_checked {
         return Err(CompileError::Tool("E-SYSTEMS-FRAME-POLICY-BINDING: native provider planning requires complete source/allocator/caller binding".into()));
     }
+    if !frame_source_checked
+        && program.bootstrap.handler.operations.iter().any(|op| {
+            matches!(
+                op,
+                topal_language::compiler::CompilerSystemsOperation::ReserveKernelImageBacking { .. }
+                    | topal_language::compiler::CompilerSystemsOperation::DiscardKernelImageBacking
+            )
+        })
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-KERNEL-IMAGE: native image preparation requires source/frame/image binding"
+                .into(),
+        ));
+    }
 
     let mut semantic_identities = program
         .bootstrap
@@ -907,6 +930,8 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_BOOT_MEMORY_DESCRIBE => X86SystemsLowering::LinuxBootParamsE820,
         SYSTEMS_FRAME_ALLOCATOR_CREATE => X86SystemsLowering::RetainedE820FrameAuthority,
         SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820StaticFrameExtentSelect,
+        SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING => X86SystemsLowering::ReserveKernelImageBacking,
+        SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING => X86SystemsLowering::DiscardKernelImageBacking,
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY => {
             X86SystemsLowering::ReserveStaticImageHierarchy
         }
@@ -1244,6 +1269,8 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::LinuxBootParamsE820 => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             X86SystemsLowering::RetainedE820FrameAuthority => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             X86SystemsLowering::E820StaticFrameExtentSelect => SYSTEMS_FRAMES_ALLOCATE,
+            X86SystemsLowering::ReserveKernelImageBacking => SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING,
+            X86SystemsLowering::DiscardKernelImageBacking => SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING,
             X86SystemsLowering::ReserveStaticImageHierarchy => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY
             }

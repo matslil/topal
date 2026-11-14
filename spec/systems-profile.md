@@ -9084,6 +9084,45 @@ addresses SHALL remain provider details. Additional image aliases MAY narrow
 their backing role's rights but SHALL NOT add rights or incompatible memory
 attributes. Every declared primary view SHALL retain its required coverage.
 
+### TOPAL-SYSTEMS-KERNEL-IMAGE-PREPARE-001 — Inactive whole-backing reservation and discard
+
+Before initial translation construction, the boot allocator context MAY reserve
+backing with `kernel image reserve backing (image is current-kernel, page-policy
+is provider-selected)`. Success SHALL produce one affine
+`ZeroedKernelImageBacking` containing every complete provider-selected
+preparation extent for the actual current image. Source SHALL NOT select a page
+count, bank count, native address, table format or permission bit. Parameters
+SHALL occur exactly once. Missing current-image/source/native/allocator binding
+SHALL prevent native lowering or loading.
+
+Reservation SHALL preserve exact issuer, generation, whole count/alignment,
+pins, bounds, RAM provenance, boot/image/active-table exclusion and pairwise
+disjointness. Before success every byte SHALL be zero and read back. All backing
+SHALL remain owned and pinned, with no active root or hardware reference into
+it. This resource SHALL grant no byte access, table interpretation, mapping,
+activation, entry or protected-context authority. The initial provider SHALL
+admit only the ordered preparation observation and consuming discard before
+ordinary boot work resumes.
+
+`kernel image discard backing` SHALL consume the exact live preparation owner,
+revalidate its complete owners and inactivity, erase and verify every byte,
+discharge all preparation pins and release each indivisible extent through its
+issuing allocator. Allocator issuer and issued-identity history SHALL be
+preserved. A wrong owner, duplicate or missing discard, interleaved work, partial
+release or recoverable disposition with preparation live SHALL be invalid.
+Failure SHALL retain or poison affected authority on the fatal path and SHALL
+NOT return an ordinary preparation or protected witness.
+
+Compiler sizing proposals SHALL remain non-executable until complete final
+source/object/link/load reconstruction reproduces the current image's exact
+whole requirement. Failed or non-convergent sizing SHALL prevent loading. The
+initial x86 component MAY reserve separate bootstrap/process banks; their
+count and geometry SHALL remain provider details. This rule SHALL NOT qualify
+non-image mapping roles, effective permission controls, table publication,
+asynchronous writers or any active/restorable protected root. Existing
+bootstrap-equivalent contracts and native USER-table admission SHALL retain
+their exact meaning.
+
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
 
 Preparation SHALL retain exact actual image, root and table/backing ownership,

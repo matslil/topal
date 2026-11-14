@@ -85,6 +85,15 @@ pub(crate) fn inspect_private_owned_inputs(
     objects: &[(&[u8], &[linked::Section])],
     owners: &crate::systems_user_extent::Owners,
 ) -> Result<serde_json::Value, CompileError> {
+    inspect_private_owned_details(kernel, objects, owners).map(|(record, _)| record)
+}
+
+#[cfg(test)]
+pub(crate) fn inspect_private_owned_details(
+    kernel: &[u8],
+    objects: &[(&[u8], &[linked::Section])],
+    owners: &crate::systems_user_extent::Owners,
+) -> Result<(serde_json::Value, crate::SystemsKernelImageLayout), CompileError> {
     // Only the fresh producer's compiler-derived descriptors enter here;
     // serialized owner snapshots are never accepted as allocation authority.
     owners.validate()?;
@@ -100,7 +109,7 @@ pub(crate) fn inspect_private_owned_inputs(
     }
     record["hierarchy_backing_requirements"] =
         crate::systems_kernel_image_layout::backing_requirements(&layout, owners)?;
-    Ok(record)
+    Ok((record, layout))
 }
 
 #[cfg(test)]
@@ -530,6 +539,21 @@ pub(crate) fn compile(
             &fs::read_to_string(work.join(format!("{role}-disassembly.stdout.log")))
                 .map_err(invalid)?,
         )?;
+    }
+    #[cfg(test)]
+    if role == "image-backing" {
+        crate::systems_image_backing::inspect_instructions(
+            &fs::read_to_string(work.join("image-backing-disassembly.stdout.log"))
+                .map_err(invalid)?,
+        )?;
+        let inspection = crate::systems_image_backing::inspect(
+            &fs::read(work.join("image-backing.o")).map_err(invalid)?,
+        )?;
+        fs::write(
+            work.join("image-backing-component.json"),
+            serde_json::to_vec_pretty(&inspection).map_err(invalid)?,
+        )
+        .map_err(invalid)?;
     }
     Ok(())
 }

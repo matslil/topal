@@ -1,5 +1,14 @@
 # Owned user-memory model
 
+The [inactive image-backing stage](../../step-4-image-backing-preparation.md)
+uses source-bound whole owners to prepare and discard two final-image-sized
+banks. Its [bounded driver](run_image_backing.py) checks frontend/model/backend
+protocols, complete image reconstruction, four read-only native snapshots,
+ordinary application completion and the original-profile rebuild. The
+[offline reader](readback_image_backing.py) verifies captured bytes, ownership,
+controls and final bootstrap root, including twelve altered-record controls.
+No prepared bank becomes an active protected hierarchy.
+
 The [whole-root backing stage](../../step-4-root-backing-owners.md) adds compiler
 allocation purposes, the separately retained bootstrap owner and fresh-image
 requirements comparison. `run_hierarchy_backing.py --profile root-owners`

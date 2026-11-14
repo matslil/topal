@@ -3,12 +3,24 @@
 const FRAME_ROOT_TOKENS: &str = "topal_x86_frame_root_tokens_v1";
 #[derive(Default)]
 struct RootFramePolicy {
+    image_preparation: Option<crate::systems_image_backing::Bindings>,
     next_slot: u64,
     current: Option<u64>,
     payload: Option<u64>,
     owners: std::collections::BTreeMap<&'static str, u64>,
     allocations: std::collections::BTreeMap<u64, crate::systems_frame_ownership::Allocation>,
     user_owners: Vec<Option<crate::systems_frame_ownership::EntryOwners>>,
+}
+impl RootFramePolicy {
+    fn capture_owner(&self, name: &'static str) -> Option<crate::systems_user_extent::Owner> {
+        let slot = *self.owners.get(name)?;
+        let allocation = *self.allocations.get(&slot)?;
+        Some(crate::systems_user_extent::Owner {
+            slot, count: allocation.count, alignment: allocation.alignment,
+            purpose: allocation.purpose,
+            pins: self.owners.values().filter(|&&owner| owner == slot).count() as u64,
+        })
+    }
 }
 impl RootEncoder {
     fn frame_address(&mut self, opcode: &[u8], symbol: &'static str, offset: u64) {

@@ -343,6 +343,9 @@ impl RootEncoder {
     }
 
     fn complete(&self) -> Result<(), CompileError> {
+        if self.image_backing_live {
+            return Err(CompileError::Tool("root ended with live image-backing preparation".into()));
+        }
         if let Some(frames) = &self.frame_policy {
             if frames.current.is_some()
                 || frames.payload.is_some()

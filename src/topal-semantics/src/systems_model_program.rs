@@ -159,6 +159,8 @@ pub enum SystemsTransition {
         request: PhysicalFrameRequest,
     },
     ReserveStaticImageHierarchy,
+    ReserveKernelImageBacking,
+    DiscardKernelImageBacking,
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction,
     ZeroStaticImageConstructionPayload,
@@ -650,6 +652,8 @@ impl SystemsTransition {
             Self::DescribeBootMemory => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             Self::CreateFrameAllocator => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
+            Self::ReserveKernelImageBacking => SYSTEMS_KERNEL_IMAGE_RESERVE_BACKING,
+            Self::DiscardKernelImageBacking => SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING,
             Self::ReserveStaticImageHierarchy => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
             Self::PrepareStaticImageConstruction => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -1299,6 +1303,8 @@ fn validate_entry(
                 SystemsOperation::DescribeBootMemory { .. }
                     | SystemsOperation::CreateFrameAllocator { .. }
                     | SystemsOperation::AllocatePhysicalFrames { .. }
+                    | SystemsOperation::ReserveKernelImageBacking { .. }
+                    | SystemsOperation::DiscardKernelImageBacking
                     | SystemsOperation::ReserveStaticImageHierarchy { .. }
                     | SystemsOperation::ReleasePhysicalFrames
                     | SystemsOperation::PrepareStaticImageConstruction { .. }
@@ -1691,6 +1697,10 @@ fn validate_kernel_thread_handler(
 
 #[derive(Default)]
 struct BootstrapAuthorityState {
+    image_backing_live: bool,
+    image_backing_observed: bool,
+    image_backing_discarded: bool,
+    image_backing_discard_observed: bool,
     memory_described: bool,
     allocator_created: bool,
     memory_ownership: BootstrapMemoryOwnership,

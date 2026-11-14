@@ -401,7 +401,7 @@ fn execute_profiled_mode(
     focus: Option<CallerFocus>,
     native: bool,
 ) -> std::path::PathBuf {
-    execute_profiled_input(profile, focus, native, None, None)
+    execute_profiled_input(profile, focus, native, None, None, None, None)
 }
 
 /// Compile a fresh ordinary source image with the existing private owning-MM
@@ -422,6 +422,8 @@ pub(crate) fn prepare_owned_source_fixture(
         Some(CallerFocus::SourceBoundary),
         false,
         Some((image, source_work)),
+        None,
+        None,
         None,
     )
 }
@@ -444,7 +446,37 @@ pub(crate) fn prepare_provider_backing_source_fixture(
         false,
         Some((image, source_work)),
         Some(&hierarchy_backing::selected_root()),
+        None,
+        None,
     )
+}
+
+/// Proposals remain compile-only until the caller binds the final fresh image.
+pub(crate) fn prepare_image_backing_fixture(
+    image: &[u8],
+    source_work: &std::path::Path,
+    plan: Option<&crate::systems_image_backing::Plan>,
+) -> (std::path::PathBuf, crate::SystemsKernelImageLayout) {
+    let selected = plan.map(|_| {
+        crate::systems_image_backing::with_image_preparation(&hierarchy_backing::selected_root())
+    });
+    let mut layout = None;
+    let work = execute_profiled_input(
+        KernelProfile {
+            memory: true,
+            user_extents: true,
+            owned_callers: true,
+            process_memory: true,
+            policy_failure: None,
+        },
+        Some(CallerFocus::SourceBoundary),
+        false,
+        Some((image, source_work)),
+        selected.as_deref(),
+        plan,
+        Some(&mut layout),
+    );
+    (work, layout.unwrap())
 }
 
 fn execute_profiled_input(
@@ -453,6 +485,8 @@ fn execute_profiled_input(
     native: bool,
     user_fixture: Option<(&[u8], &std::path::Path)>,
     selected_root: Option<&str>,
+    image_plan: Option<&crate::systems_image_backing::Plan>,
+    layout_output: Option<&mut Option<crate::SystemsKernelImageLayout>>,
 ) -> std::path::PathBuf {
     let KernelProfile {
         memory,
@@ -471,7 +505,14 @@ fn execute_profiled_input(
         failure.prepare(&mut input);
     }
     let checked = crate::systems_frame_policy_binding::check(&root, &input).unwrap();
-    let (bytes, owners) = if user_extents {
+    let mut image_bindings = None;
+    let (bytes, owners) = if let Some(plan) = image_plan {
+        assert!(user_extents && process_memory && !native);
+        let (bytes, owners, bindings) =
+            crate::systems_artifact::generate_image_backing_root(&checked, plan).unwrap();
+        image_bindings = Some(bindings);
+        (bytes, Some(owners))
+    } else if user_extents {
         let (bytes, owners) =
             crate::systems_artifact::generate_frame_user_extent_root(&checked).unwrap();
         (bytes, Some(owners))
@@ -653,6 +694,13 @@ fn execute_profiled_input(
         serde_json::to_vec_pretty(&checked.source).unwrap(),
     )
     .unwrap();
+    if let Some(bindings) = &image_bindings {
+        fs::write(
+            work.join("image-backing-bindings.json"),
+            serde_json::to_vec_pretty(bindings).unwrap(),
+        )
+        .unwrap();
+    }
     let tools = crate::LlvmTools::discover(None).unwrap();
     run(
         &work,
@@ -685,6 +733,7 @@ fn execute_profiled_input(
             .args(["-passes=verify", "-disable-output"])
             .arg(work.join("target.ll")),
     );
+    let mut layout = None;
     build_guest(
         &work,
         &checked,
@@ -694,7 +743,12 @@ fn execute_profiled_input(
         native,
         user_fixture,
         owners.as_ref(),
+        image_plan.zip(image_bindings.as_ref()),
+        &mut layout,
     );
+    if let Some(output) = layout_output {
+        *output = layout;
+    }
     work
 }
 
@@ -707,6 +761,11 @@ fn build_guest(
     native: bool,
     user_fixture: Option<(&[u8], &std::path::Path)>,
     owner_bindings: Option<&crate::systems_user_extent::Owners>,
+    image_backing: Option<(
+        &crate::systems_image_backing::Plan,
+        &crate::systems_image_backing::Bindings,
+    )>,
+    layout_output: &mut Option<crate::SystemsKernelImageLayout>,
 ) {
     let KernelProfile {
         memory,
@@ -1143,8 +1202,13 @@ fn build_guest(
                 frame["roots"]["topal_frame_kernel_dispatch_v1"].as_u64().unwrap())
                 .unwrap()).unwrap();
     }
+    if let Some((plan, bindings)) = image_backing {
+        let text = crate::systems_image_backing::llvm(plan, bindings).unwrap();
+        crate::systems_frame_publication::compile("image-backing", &text, tools, work).unwrap();
+    }
     let legacy = &baseline.directory;
-    let prepared = process_memory.then(|| closed_link::prepare(work, tools, legacy, owned_callers));
+    let prepared = process_memory
+        .then(|| closed_link::prepare(work, tools, legacy, owned_callers, image_backing.is_some()));
     let objects = [
         "namespace-library.o",
         "inode-mode-library.o",
@@ -1221,6 +1285,9 @@ fn build_guest(
             assert!(path.is_file(), "missing {}", path.display());
             link.arg(path);
         }
+        if image_backing.is_some() {
+            link.arg(prepared.as_ref().unwrap().path("image-backing.o"));
+        }
         link.arg("-o").arg(work.join("kernel.elf"));
         run(work, label, &mut link);
         let bytes = fs::read(work.join("kernel.elf")).unwrap();
@@ -1239,7 +1306,7 @@ fn build_guest(
     }
     let kernel = fs::read(work.join("kernel.elf")).unwrap();
     if let Some(prepared) = prepared {
-        prepared.inspect(work, &kernel, owner_bindings.unwrap());
+        *layout_output = Some(prepared.inspect(work, &kernel, owner_bindings.unwrap()));
     }
     if access_audit_selected {
         run(

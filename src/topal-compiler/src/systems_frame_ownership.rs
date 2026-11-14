@@ -7,6 +7,8 @@ use serde::Serialize;
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum Purpose {
     SourceExtent,
+    PreparedImageBootstrap,
+    PreparedImageProcess,
     BootstrapHierarchy,
     TranslationEdit,
     StaticImagePayload,
