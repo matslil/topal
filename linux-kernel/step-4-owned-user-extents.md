@@ -1287,3 +1287,33 @@ reproduces two earlier reader errors: legacy-manifest schema selection and
 callback collection shape. Their failed sources and notice summaries remain.
 Kernel/boot bytes, language meaning, production selection, native helper coverage
 and the original Linux acceptance obligations are unchanged.
+
+## Calendar data placement and fresh native regressions
+
+The [placement stage](tools/user-memory/results/stage-3-calendar-placement.md)
+implements the existing private Gregorian-data role in two read-only ELF data
+objects. Exactly 4,864 bytes leave the instruction body; 6,237 local fixups,
+24 retained external bindings and two new data references account for the full
+layout transformation. Provider revision 235 changes the kernel to `d8f937b...`.
+RTC acquisition, calendar arithmetic, user-copy behavior and core semantics
+retain their approved contracts.
+
+Fresh child exec (four generations and sixteen ordinary refusals) and all 51
+unchanged pinned BusyBox workloads pass on that same kernel. Selected compiler
+checks, 259 user-memory models and 82 process-memory models pass; all 759 watched
+inputs stay unchanged over the 6,607.49-second driver. The closed native archive
+and frozen replay retain both builds and all records, including 859 saved-record
+controls. No full compiler-suite completion is claimed.
+
+Fresh LLVM/GNU listings agree on all 848 selected privileged controls. The
+embedded JNE-displacement opcode candidate remains. Actual current-corpus
+helper-entry coverage is 66/91; the preceding 89/91 union belongs to its older
+kernel. Neither count proves complete normal-return or lifetime coverage.
+
+The companion diagnostic retains 234 actual event-boundary samples: 3,712 of
+3,744 endpoint checks resolve to writable supervisor identity routes with clear
+execute-disable bits. The 32 checks around final retirement use an actual CR3
+whose hierarchy was not captured, so they remain unresolved. ELF section flags
+do not establish runtime hardware protection. Existing CR0.WP initialization
+and all ownership, mapping, source and activation obligations remain required.
+Complete Linux/distribution/container/VM-host acceptance remains unfinished.

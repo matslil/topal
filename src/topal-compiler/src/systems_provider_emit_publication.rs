@@ -68,6 +68,9 @@ fn generate_provider_selected(
         X86_SYSTEMS_PROVIDER_TEXT_SECTION.as_bytes().to_vec(),
         SectionKind::Text,
     );
+    for (section_name, symbol, data) in process_runtime::realtime::constants() {
+        append_readonly_data(&mut object, section_name, symbol, &data);
+    }
     append_function(
         &mut object,
         text,

@@ -190,3 +190,26 @@ effects remain separate obligations. Interpreter arithmetic/conditions follow
 the [Intel SDM](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html),
 Volume 2A (CMP/Jcc and encoding) and Volume 2B (MOV/RDMSR/PUSHFQ). This model is
 an x86 adapter observation, not a portable language rule or activation authority.
+
+## Separated calendar data
+
+[inspect_calendar_placement.py](inspect_calendar_placement.py) checks independent
+Gregorian object/linked bytes, read-only ELF sections and loads, exact process
+layout transformation and all external bindings. Its four byte-model tests
+reject unplanned changes without executing altered bytes.
+
+The [placement report](results/stage-3-calendar-placement.md) binds provider
+revision 235 to fresh child exec and the complete 51-workload pinned corpus,
+341 models, selected compiler checks and exact frozen source/data replay.
+It also preserves fresh decoder agreement, current-corpus 66/91 helper-entry
+coverage and actual writable supervisor mapping samples with unresolved final
+root coverage. It grants no hardware-protection or production qualification.
+
+```sh
+rtk scripts/run_bounded.py -- python3 -B linux-kernel/tools/user-memory/run_calendar_placement.py linux-kernel/.cache/x86_64/NEW_PLACEMENT_OUTPUT
+```
+
+This native driver currently uses the preceding local
+`process-mm-applications-corpus/run.json` cache to locate the pinned image.
+The report's retained frozen replay works from committed archives without that
+original cache. This driver is not a cold production-reconstruction path.

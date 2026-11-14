@@ -7,7 +7,18 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
-The [calendar-data audit](tools/user-memory/results/stage-3-calendar-data.md)
+The [calendar placement stage](tools/user-memory/results/stage-3-calendar-placement.md)
+moves 4,864 Gregorian data bytes out of the process instruction body into
+read-only/non-executable ELF data loads. Both fresh native builds produce the
+same new kernel; all 51 pinned workloads, four child-exec generations, sixteen
+ordinary rejected execs, selected compiler checks and 341 models pass. All 759
+watched inputs remain stable. Frozen replay preserves the full native records.
+Fresh listings agree on all 848 selected privileged controls. Saved mappings
+still have writable supervisor routes and clear execute-disable bits where
+resolved; 32 endpoint checks at final retirement remain unresolved. Hardware
+protection, complete entries/lifetime and public activation remain unqualified.
+
+The preceding [calendar-data audit](tools/user-memory/results/stage-3-calendar-data.md)
 identifies the selected decoder discrepancy as the low byte of a Gregorian
 day-count table entry. Exact table/consumer bytes, source reconstruction and
 conditional graph checks pass, together with 337 host tests and frozen replay.

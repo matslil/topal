@@ -64,6 +64,7 @@ pub(super) fn byte_snapshot(code: &X86FunctionEncoder) -> Option<serde_json::Val
         "schema": "topal.owned-process-byte-origins/1",
         "function": super::X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
         "locations": locations, "spans": spans, "labels": code.labels,
+        "fixups": &code.fixups,
         "scope": "Test-only emission locations covering selected function bytes, including data and fixup fields. Locations describe the writer; they do not prove pointer authority, admission dominance, source-to-native conformance or access lifetime",
     }))
 }

@@ -2,6 +2,9 @@
 use super::file_descriptions::{STAGING, TABLE_CONTEXT, wipe_staging};
 use super::{CompileError, E, R::*, X86FunctionEncoder, emit_static_process_sysret};
 
+pub(in super::super) const YEAR_SYMBOL: &str = "topal_x86_realtime_years_v1";
+pub(in super::super) const MONTH_SYMBOL: &str = "topal_x86_realtime_months_v1";
+
 pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     let mut e = E(code);
     e.gs(0x8b, R11, TABLE_CONTEXT);
@@ -143,14 +146,14 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.jump_if(0x87, "realtime-observe-eio");
     e.add(A, -1970);
     e.0.bytes(&[0x48, 0xc1, 0xe0, 4]);
-    e.0.rip_lea(&[0x4c, 0x8d, 0x2d], "realtime-year-table");
+    e.0.external_address(&[0x4c, 0x8d, 0x2d], YEAR_SYMBOL);
     e.rr(0x01, R13, A);
     e.load(R15, R13, 0);
     e.load(R14, R13, 8);
     e.load(B, R12, STAGING + 32);
     e.add(B, -1);
     e.0.bytes(&[0x48, 0xc1, 0xe3, 4]);
-    e.0.rip_lea(&[0x4c, 0x8d, 0x2d], "realtime-month-table");
+    e.0.external_address(&[0x4c, 0x8d, 0x2d], MONTH_SYMBOL);
     e.rr(0x01, R13, B);
     e.load(A, R13, 0);
     e.load(C, R13, 8);
@@ -184,21 +187,28 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     wipe_staging(&mut e);
     e.imm(A, (-5_i64) as u64);
     e.0.bytes(&[0xf9, 0xc3]);
-    // Calendar constants are private immutable provider data, never a chosen
-    // timestamp. The runtime RTC year/month select their corresponding entries.
-    e.0.bind("realtime-year-table")?;
+    Ok(())
+}
+
+/// Private calendar data has no instruction-entry or mutable-storage role.
+/// Runtime RTC values still select the rows; these constants are not a sample.
+pub(in super::super) fn constants() -> [(&'static str, &'static str, Vec<u8>); 2] {
+    let mut years = Vec::with_capacity(292 * 16);
     let mut days = 0_u64;
     for year in 1970..2262 {
-        e.0.bytes(&days.to_le_bytes());
-        e.0.bytes(&u64::from(leap(year)).to_le_bytes());
+        years.extend_from_slice(&days.to_le_bytes());
+        years.extend_from_slice(&u64::from(leap(year)).to_le_bytes());
         days += if leap(year) { 366 } else { 365 };
     }
-    e.0.bind("realtime-month-table")?;
+    let mut months = Vec::with_capacity(12 * 16);
     let mut days = 0_u64;
     for length in [31_u64, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] {
-        e.0.bytes(&days.to_le_bytes());
-        e.0.bytes(&length.to_le_bytes());
+        months.extend_from_slice(&days.to_le_bytes());
+        months.extend_from_slice(&length.to_le_bytes());
         days += length;
     }
-    Ok(())
+    [
+        (".rodata.topal.realtime.years", YEAR_SYMBOL, years),
+        (".rodata.topal.realtime.months", MONTH_SYMBOL, months),
+    ]
 }

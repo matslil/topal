@@ -1,0 +1,36 @@
+{
+  "archive_manifest": {
+    "bytes": 2944,
+    "sha256": "003fb3d31e452816969dee8de401f0f5275cb83250a0249cd7e866bb978b83a6"
+  },
+  "entries": 21,
+  "frozen_replay": {
+    "full_decoder_control_agreement": true,
+    "helper_declared": 91,
+    "helper_reached": 66,
+    "mapping_summary": {
+      "all_resolved_XD_clear": true,
+      "all_resolved_identity": true,
+      "all_resolved_writable_bits_set": true,
+      "all_walks_resolved": false,
+      "any_resolved_user_accessible": false,
+      "boundary_samples": 234,
+      "point_walks": 3744,
+      "resolved": 3712,
+      "unresolved": 32
+    },
+    "new_native_execution": false,
+    "passed": true,
+    "qualification_complete": false,
+    "selected_controls": 848
+  },
+  "new_native_execution": false,
+  "passed": true,
+  "qualification_complete": false,
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3406233600",
+    "memory.peak": "867328000",
+    "memory.swap.max": "0"
+  }
+}

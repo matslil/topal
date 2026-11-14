@@ -79,6 +79,25 @@ fn append_encoded_function(
     });
 }
 
+fn append_readonly_data(object: &mut Object<'_>, section_name: &str, name: &str, data: &[u8]) {
+    let section = object.add_section(
+        Vec::new(),
+        section_name.as_bytes().to_vec(),
+        SectionKind::ReadOnlyData,
+    );
+    let value = object.append_section_data(section, data, 16);
+    object.add_symbol(Symbol {
+        name: name.as_bytes().to_vec(),
+        value,
+        size: data.len() as u64,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(section),
+        flags: SymbolFlags::None,
+    });
+}
+
 fn append_linkable_function(
     object: &mut Object<'_>,
     section: object::write::SectionId,

@@ -401,6 +401,17 @@ ELF entry, selected first instruction, and `AT_PHDR`/`AT_PHENT`/`AT_PHNUM`
 facts, exact constructed validation and stack consumption, an ordered witness,
 and deterministic physical execution without admitting a general loader.
 
+## Calendar provider data placement
+
+The existing realtime/artifact contracts also trace through the
+[calendar placement report](tools/user-memory/results/stage-3-calendar-placement.md):
+`TK-DEC-243`, `TOPAL-SYSTEMS-STATIC-PROCESS-REALTIME-SECONDS-001`,
+`TOPAL-COMP-SYSTEMS-ARTIFACT-001` and `TOPAL-SYSTEMS-ARTIFACT-001` bind provider
+revision 235 to exact object/linked data and instruction-layout comparison,
+selected compiler tests, 341 models, fresh child exec, all 51 pinned workloads
+and frozen native-record replay. Fresh decoder and mapping diagnostics preserve
+the remaining hardware, complete-entry/lifetime and production obligations.
+
 ## Ordinary source execution on an actual root owner
 
 | Goal and requirements | Rules | Evidence | Scope |

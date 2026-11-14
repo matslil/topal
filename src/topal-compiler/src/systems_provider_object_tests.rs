@@ -171,7 +171,7 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
             file.sections()
                 .flat_map(|section| section.relocations())
                 .count(),
-            51 + if source_page { 29 } else { 0 } + if source_inode { 26 } else { 0 },
+            53 + if source_page { 29 } else { 0 } + if source_inode { 26 } else { 0 },
             "source page/inode: {source_page}/{source_inode}"
         );
         let mut undefined = std::collections::BTreeSet::from([
@@ -234,6 +234,50 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
             SectionKind::Text
         );
     }
+}
+
+#[test]
+fn calendar_constants_are_data_with_bound_rip_references() {
+    // TOPAL-SYSTEMS-STATIC-PROCESS-REALTIME-SECONDS-001,
+    // TOPAL-SYSTEMS-ARTIFACT-001: constants are data, not instruction bytes.
+    let generated = generated();
+    let file = object::File::parse(generated.bytes.as_slice()).unwrap();
+    let mut payload = Vec::new();
+    for (name, size) in [
+        (process_runtime::realtime::YEAR_SYMBOL, 292 * 16),
+        (process_runtime::realtime::MONTH_SYMBOL, 12 * 16),
+    ] {
+        let symbol = file.symbol_by_name(name).unwrap();
+        assert_eq!(symbol.kind(), SymbolKind::Data);
+        assert_eq!(symbol.size(), size);
+        let section = file.section_by_index(symbol.section_index().unwrap()).unwrap();
+        assert_eq!(section.kind(), SectionKind::ReadOnlyData);
+        match section.flags() {
+            object::SectionFlags::Elf { sh_flags, .. } => {
+                assert_ne!(sh_flags.0 & object::elf::SHF_ALLOC.0, 0);
+                assert_eq!(sh_flags.0 & (object::elf::SHF_WRITE.0 | object::elf::SHF_EXECINSTR.0), 0);
+            }
+            _ => panic!("calendar data must have ELF permissions"),
+        }
+        let data = symbol_bytes(&file, name);
+        payload.extend_from_slice(&data);
+        let relocations = file.sections().flat_map(|s| s.relocations()).filter(|(_, r)| {
+            r.target() == object::RelocationTarget::Symbol(symbol.index())
+        }).collect::<Vec<_>>();
+        assert_eq!(relocations.len(), 1);
+        assert_eq!(relocations[0].1.addend(), -4);
+        assert_eq!(relocations[0].1.size(), 32);
+        assert_eq!(relocations[0].1.kind(), object::RelocationKind::Relative);
+    }
+    let years = symbol_bytes(&file, process_runtime::realtime::YEAR_SYMBOL);
+    for (year, days, leap) in [(1970, 0_u64, 0_u64), (1972, 730, 1),
+                               (2000, 10957, 1), (2075, 38351, 0), (2100, 47482, 0)] {
+        let at = (year - 1970) * 16;
+        assert_eq!(&years[at..at + 8], &days.to_le_bytes());
+        assert_eq!(&years[at + 8..at + 16], &leap.to_le_bytes());
+    }
+    let process = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL);
+    assert!(!process.windows(payload.len()).any(|window| window == payload));
 }
 
 #[test]
