@@ -7,6 +7,16 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [closed private image stage](step-4-closed-private-image.md) now reuses
+canonical static/local compilation and source retention for the experimental
+process-MM producer. It reconstructs all 23 objects and 862 allocated
+contributions while preserving original audit inputs. All 51 unchanged pinned
+workloads, four child-exec generations, sixteen ordinary failed execs, selected
+compiler/static checks and 354 host models pass over 766 stable inputs.
+Independent saved-record readers pass. Mapping builders that enforce image
+protection, complete root-backing integration and production qualification
+remain unfinished.
+
 The [compiler image-layout component](step-4-compiler-image-layout.md) now derives
 image roles and additional leaf storage after complete fresh source/native/link
 reconstruction. Five Rust tests, workspace/static checks and 354 host models

@@ -78,10 +78,16 @@ pub fn plan_x86_64_systems_frame_kernel_image(
             "candidate differs from complete fresh reconstruction",
         ));
     }
-    derive(kernel, &fresh)
+    from_reconstructed(kernel, &fresh.record.linked, &fresh.record.linker_padding)
 }
 
-fn derive(kernel: &[u8], fresh: &frame::Rebuilt) -> Result<SystemsKernelImageLayout, CompileError> {
+// Callers must freshly reconstruct complete contributions and allocation/load
+// coverage first. This descriptive result is still never live image authority.
+pub(crate) fn from_reconstructed(
+    kernel: &[u8],
+    placements: &[crate::systems_tail_linked::Placement],
+    linker_padding: &[frame::LinkerExtent],
+) -> Result<SystemsKernelImageLayout, CompileError> {
     use SystemsKernelImageRole::{Code, Immutable, Mutable};
     let file = object::File::parse(kernel).map_err(invalid)?;
     let mut regions = Vec::new();
@@ -96,9 +102,7 @@ fn derive(kernel: &[u8], fresh: &frame::Rebuilt) -> Result<SystemsKernelImageLay
             .address()
             .checked_add(section.size())
             .ok_or_else(|| invalid("allocated extent overflow"))?;
-        let inputs = fresh
-            .record
-            .linked
+        let inputs = placements
             .iter()
             .filter(|p| section.address() <= p.address && p.address < end)
             .collect::<Vec<_>>();
@@ -119,7 +123,7 @@ fn derive(kernel: &[u8], fresh: &frame::Rebuilt) -> Result<SystemsKernelImageLay
                 return Err(invalid("inconsistent input/section roles"));
             }
             expected
-        } else if fresh.record.linker_padding.iter().any(|p| {
+        } else if linker_padding.iter().any(|p| {
             p.kind == "lld-empty-got-page-tail/1"
                 && p.address == section.address()
                 && p.bytes == section.size()
@@ -135,7 +139,7 @@ fn derive(kernel: &[u8], fresh: &frame::Rebuilt) -> Result<SystemsKernelImageLay
             role,
         });
     }
-    for padding in &fresh.record.linker_padding {
+    for padding in linker_padding {
         if padding.kind == "lld-readonly-elf-header-load/1" {
             regions.push(SystemsKernelImageSpan {
                 start: padding.address,

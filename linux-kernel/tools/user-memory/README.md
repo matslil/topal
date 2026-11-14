@@ -6,6 +6,15 @@ x86 leaf storage. Its bounded compiler/model matrix is available through
 [run_compiler_image_layout.py](run_compiler_image_layout.py). It executes no
 guest or generated host code and does not activate image protection.
 
+The [closed private image stage](../../step-4-closed-private-image.md)
+uses the same strict reconstruction for the expanded private process-MM image,
+preserving original audit objects and linking separate marked copies.
+[run_closed_private_image.py](run_closed_private_image.py) combines selected
+compiler/static/model checks with ordinary child exec, all 51 unchanged pinned
+BusyBox workloads and independent saved-record readers. It requires an explicit
+pinned application path and the normal no-swap bounded wrapper. It does not
+activate native image protection or qualify production publication.
+
 This independent model exercises `TOPAL-SYSTEMS-USER-EXTENT-001` and the
 [design](../../design/owned-user-extents.md). Its immutable inputs describe
 already established table, backing and entry observations. Constructing those

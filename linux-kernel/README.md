@@ -11,6 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The latest [private image reconstruction stage](step-4-closed-private-image.md)
+closes static/local compilation and complete allocated-image checks for the
+experimental process-MM producer. The fresh ordinary child-exec case and all
+51 unchanged pinned BusyBox workloads pass independent readback. Complete native
+image protection and the original distribution/container/VM-host acceptance
+remain unfinished.
+
 The experimental [owned user-memory work](step-4-owned-user-extents.md) now
 qualifies selected [clock/random stack retirement](tools/user-memory/results/stage-3-stack-retirement/README.md).
 Fresh VM regressions and exact emitted-byte comparison cover the new cleanup.

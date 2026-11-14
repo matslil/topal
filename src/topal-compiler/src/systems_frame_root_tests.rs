@@ -2,6 +2,8 @@ use crate::systems_tail_owner::run_tail_native_fixture as run;
 use object::{Object, ObjectSection, ObjectSymbol, RelocationTarget};
 use std::{fs, process::Command};
 
+#[path = "systems_frame_root_link_tests.rs"]
+mod closed_link;
 #[path = "systems_process_mm_fault_tests.rs"]
 mod policy_failure;
 
@@ -131,6 +133,23 @@ fn process_mm_prelude_missing_stat_executes_owned_read_and_retires_caller() {
 fn process_mm_child_exec_preserves_inactive_parent_and_fresh_child_heap() {
     // TOPAL-SYSTEMS-PROCESS-MM-001: ordinary exec/startup/yield/wait.
     execute_selected(true, true, true, Some(CallerFocus::SourceProcessExec));
+}
+
+#[test]
+fn process_mm_closed_link_reconstructs_complete_private_image() {
+    // TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001 / KERNEL-IMAGE-PLAN-001.
+    // Compile/link/reconstruct only; native execution is a separate test.
+    execute_profiled_mode(
+        KernelProfile {
+            memory: true,
+            user_extents: true,
+            owned_callers: true,
+            process_memory: true,
+            policy_failure: None,
+        },
+        Some(CallerFocus::SourceProcessExec),
+        false,
+    );
 }
 
 #[test]
@@ -372,6 +391,14 @@ struct KernelProfile {
 }
 
 fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::path::PathBuf {
+    execute_profiled_mode(profile, focus, true)
+}
+
+fn execute_profiled_mode(
+    profile: KernelProfile,
+    focus: Option<CallerFocus>,
+    native: bool,
+) -> std::path::PathBuf {
     let KernelProfile {
         memory,
         user_extents,
@@ -530,6 +557,14 @@ fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::
     eprintln!("actual frame source root: {}", work.display());
     fs::write(work.join("root.t"), root).unwrap();
     fs::write(work.join("root.o"), &bytes).unwrap();
+    if process_memory {
+        fs::write(work.join("frame-policy.t"), &input.text).unwrap();
+        fs::write(
+            work.join("frame-policy.modules.json"),
+            crate::systems_library::modules::snapshot(&input).unwrap(),
+        )
+        .unwrap();
+    }
     if let Some(failure) = profile.policy_failure {
         failure.record(&work, &input);
     }
@@ -590,7 +625,7 @@ fn execute_profiled(profile: KernelProfile, focus: Option<CallerFocus>) -> std::
             .args(["-passes=verify", "-disable-output"])
             .arg(work.join("target.ll")),
     );
-    build_guest(&work, &checked, &tools, profile, focus);
+    build_guest(&work, &checked, &tools, profile, focus, native);
     work
 }
 
@@ -600,6 +635,7 @@ fn build_guest(
     tools: &crate::LlvmTools,
     profile: KernelProfile,
     focus: Option<CallerFocus>,
+    native: bool,
 ) {
     let KernelProfile {
         memory,
@@ -813,6 +849,10 @@ fn build_guest(
         }
     }
     for role in roles {
+        if process_memory {
+            closed_link::compile_input(work, tools, role);
+            continue;
+        }
         run(
             work,
             &format!("{role}-llc"),
@@ -1027,6 +1067,7 @@ fn build_guest(
                 .unwrap()).unwrap();
     }
     let legacy = &baseline.directory;
+    let prepared = process_memory.then(|| closed_link::prepare(work, tools, legacy, owned_callers));
     let objects = [
         "namespace-library.o",
         "inode-mode-library.o",
@@ -1071,7 +1112,12 @@ fn build_guest(
             "boundary",
             "provider",
         ] {
-            link.arg(work.join(format!("{name}.o")));
+            let file = format!("{name}.o");
+            link.arg(
+                prepared
+                    .as_ref()
+                    .map_or_else(|| work.join(&file), |p| p.path(&file)),
+            );
         }
         if user_extents {
             for name in [
@@ -1083,11 +1129,18 @@ fn build_guest(
                 },
                 "extent-bridge",
             ] {
-                link.arg(work.join(format!("{name}.o")));
+                let file = format!("{name}.o");
+                link.arg(
+                    prepared
+                        .as_ref()
+                        .map_or_else(|| work.join(&file), |p| p.path(&file)),
+                );
             }
         }
         for name in objects {
-            let path = legacy.join(name);
+            let path = prepared
+                .as_ref()
+                .map_or_else(|| legacy.join(name), |p| p.path(name));
             assert!(path.is_file(), "missing {}", path.display());
             link.arg(path);
         }
@@ -1108,6 +1161,9 @@ fn build_guest(
         }
     }
     let kernel = fs::read(work.join("kernel.elf")).unwrap();
+    if let Some(prepared) = prepared {
+        prepared.inspect(work, &kernel);
+    }
     if access_audit_selected {
         run(
             work,
@@ -1284,6 +1340,15 @@ fn build_guest(
     )
     .unwrap();
     fs::write(work.join("initramfs.cpio"), resource).unwrap();
+    if !native {
+        assert!(process_memory);
+        fs::write(
+            work.join("build-only.json"),
+            b"{\"native_execution\":false}\n",
+        )
+        .unwrap();
+        return;
+    }
     run(
         work,
         "guest",

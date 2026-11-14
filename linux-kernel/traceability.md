@@ -423,6 +423,16 @@ checks include independent page-cell comparisons and stale/incomplete/altered
 artifact controls; 354 host models and static checks pass. Descriptive layout
 data does not satisfy native owner/publication/lifetime obligations.
 
+The [closed private producer](step-4-closed-private-image.md) extends the
+same reconstruction machinery to the private process-MM image under
+`TOPAL-SYSTEMS-TAIL-BINDING-001` and
+`TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001`. Exact original objects remain
+available to independent audit readers; separate marked copies supply complete
+linked allocation reconstruction. Static altered-input controls, ordinary child
+exec, all 51 pinned workloads and independent saved-record readback pass.
+This supplies descriptive image geometry and regression evidence; complete
+native root/owner/publication/lifetime and production gates remain open.
+
 ## Calendar provider data placement
 
 The existing realtime/artifact contracts also trace through the

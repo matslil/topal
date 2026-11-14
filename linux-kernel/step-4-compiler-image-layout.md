@@ -83,10 +83,14 @@ review uses independent page-cell checks and reconstruction counterexamples;
 no independent human security review is claimed. No current provider, exact
 five-page check, mapping builder or publication contract changes.
 
-The private process-MM producer still needs complete reconstruction of its
-expanded component roles and GOT storage. Read-only inspection identifies two
-current GOT targets: the kernel reservation-end symbol and the frame `brk`
-return label. This identifies work, not qualification. Before native activation,
+At this component stage, the private process-MM producer still required
+complete reconstruction of its expanded roles and two GOT targets: the kernel
+reservation-end symbol and frame `brk` return label. The subsequent
+[closed private image stage](step-4-closed-private-image.md) reuses canonical
+static/local compilation and source retention to remove those live GOT slots
+and reconstruct its complete allocated image. Its native evidence has a
+separate artifact identity and retains the remaining protection gates. Before
+native activation,
 bind the complete topology/backing, both bootstrap and process-root producers,
 all restorable roots/aliases, actual controls, publication/maintenance,
 competing writers, failure and retirement to the approved

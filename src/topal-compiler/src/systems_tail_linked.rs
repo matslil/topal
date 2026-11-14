@@ -121,6 +121,14 @@ pub(crate) fn prepare(
         "library-namespace",
     ]
     .contains(&role)
+        && !(cfg!(test)
+            && [
+                "frame-extent",
+                "frame-extent-callers",
+                "frame-extent-bridge",
+                "frame-extent-probe",
+            ]
+            .contains(&role))
     {
         return Err(invalid("unqualified object role"));
     }

@@ -71,6 +71,26 @@ fn invalid(message: impl std::fmt::Display) -> CompileError {
     CompileError::Tool(format!("E-SYSTEMS-FRAME-RECONSTRUCTION: {message}"))
 }
 
+#[cfg(test)]
+pub(crate) fn inspect_private_inputs(
+    kernel: &[u8],
+    objects: &[(&[u8], &[linked::Section])],
+) -> Result<serde_json::Value, CompileError> {
+    // The private VM producer supplies its freshly generated objects here,
+    // never a candidate manifest. This closes image bytes/layout only; the
+    // separate private ownership/context/publication gates remain in force.
+    let placements = linked::inspect(kernel, objects)?;
+    validate_reservation(kernel)?;
+    let padding = coverage::validate(kernel, &placements)?;
+    let layout =
+        crate::systems_kernel_image_layout::from_reconstructed(kernel, &placements, &padding)?;
+    Ok(serde_json::json!({
+        "scope": "fresh private-producer object/link/allocation/image-layout reconstruction; no canonical publication or protected context",
+        "placements": placements, "linker_padding": padding, "layout": layout,
+        "production_qualified": false, "protected_context": false,
+    }))
+}
+
 pub(crate) fn library_sources(
     libraries: crate::SystemsKernelLibraries<'_>,
 ) -> BTreeMap<String, Source> {
@@ -400,7 +420,12 @@ fn validate_reservation(kernel: &[u8]) -> Result<(), CompileError> {
     Ok(())
 }
 
-fn compile(role: &str, llvm: &str, tools: &LlvmTools, work: &Path) -> Result<(), CompileError> {
+pub(crate) fn compile(
+    role: &str,
+    llvm: &str,
+    tools: &LlvmTools,
+    work: &Path,
+) -> Result<(), CompileError> {
     fs::write(work.join(format!("{role}.ll")), llvm).map_err(invalid)?;
     let native = work.join(format!("{role}.native.ll"));
     fs::write(&native, closed_llvm(llvm)).map_err(invalid)?;
