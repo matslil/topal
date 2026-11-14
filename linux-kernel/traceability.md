@@ -403,6 +403,21 @@ and deterministic physical execution without admitting a general loader.
 
 ## Kernel-image protection design and models
 
+`TK-DEC-290` connects `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
+[processor-inventory design](design/boot-processor-topology.md) to
+`TOPAL-SYSTEMS-BOOT-PROCESSOR-TOPOLOGY-001`.
+[Native firmware discovery](../src/topal-compiler/src/runtime/kernel_boot_firmware.ll)
+and [processor decoding](../src/topal-compiler/src/runtime/kernel_boot_processors.ll)
+bind bounded retained ranges, complete relevant checksums/copies and the actual
+BSP. [Independent replay](tools/user-memory/boot_processors.py),
+[model counterexamples](tools/user-memory/test_boot_processors.py) and read-only
+VM captures provide the scoped evidence in the
+[report and receipt](step-4-boot-processor-topology.md). All fifteen commands,
+both native protocols and 371 memory models pass; 24 processor controls remain
+offline. Native unsupported-state coverage, processor participation and all-root/
+CPU publication/lifetime remain required.
+
 `TK-DEC-289` connects `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
 `TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
 [boot-binding design](design/kernel-image-boot-binding.md) to

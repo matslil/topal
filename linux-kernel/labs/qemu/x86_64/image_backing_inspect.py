@@ -45,13 +45,19 @@ class Initialization(gdb.Breakpoint):
             return False
         except Exception: fail()
 
-class BootMsr(gdb.Breakpoint):
+class BootRead(gdb.Breakpoint):
     def __init__(self):
-        super().__init__('*topal_x86_image_boot_msr_observe_v1',type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
+        super().__init__('*topal_x86_image_boot_read_observe_v1',type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
     def stop(self):
         try:
-            observed.setdefault('boot_msr_reads',[]).append(dict(number=reg('rdi'),value=reg('rsi')))
-            assert len(observed['boot_msr_reads'])<=96
+            kind=reg('rdi')
+            assert kind in [0,1,2]
+            if kind==0:
+                observed.setdefault('boot_msr_reads',[]).append(dict(number=reg('rsi'),value=reg('rdx')))
+                assert len(observed['boot_msr_reads'])<=96
+            else:
+                observed.setdefault('boot_processor_reads',[]).append(dict(kind=kind,selector=reg('rsi'),value=reg('rdx')))
+                assert len(observed['boot_processor_reads'])<=4
             return False
         except Exception: fail()
 
@@ -73,7 +79,9 @@ class Checkpoint(gdb.Breakpoint):
                     observed['halt_diagnostics']=dict(context=ctx,journal=journal,controls=controls,
                         tokens=words(tokens,profile['bindings']['token_bytes']//8),
                         stack=words(reg('rsp'),16),backtrace=gdb.execute('bt',to_string=True))
-                    if tables: observed['halt_diagnostics']['boot_registers']=words(address('topal_x86_image_boot_observation_v1'),128)
+                    if tables:
+                        observed['halt_diagnostics']['boot_registers']=words(address('topal_x86_image_boot_observation_v1'),128)
+                        observed['halt_diagnostics']['processor_registers']=words(address('topal_x86_boot_processors_v1'),128)
                 assert [row['phase'] for row in observed['phases']]==list(range(released+1))
                 owner=profile['active_owners']['bootstrap']
                 token=words(tokens+owner['slot']*24,3)
@@ -105,6 +113,7 @@ class Checkpoint(gdb.Breakpoint):
                 assert boot_registers[0]==1 and boot_registers[1:4]==[controls['cr0'],controls['cr3'],controls['cr4']]
                 if observed['phases']: assert boot_registers==observed['phases'][0]['boot_registers']
                 row['boot_registers']=boot_registers
+                capture_boot_processors(row)
                 if phase in [0,released]:
                     original_thread=gdb.selected_thread()
                     cpus=[]
@@ -199,7 +208,7 @@ class Checkpoint(gdb.Breakpoint):
 
 try:
     Initialization()
-    if tables: BootMsr()
+    if tables: BootRead()
     Checkpoint('topal_x86_image_tables_observe_v1' if tables else 'topal_x86_image_backing_observe_v1')
     Checkpoint('topal_x86_systems_fatal',True)
     gdb.execute('continue')
@@ -258,6 +267,8 @@ def main(*, tables=False):
         prefix=f'profile={profile!r}\n'
         if tables:
             prefix+=f'import sys\nsys.path.insert(0,{str(topal_gate.LINUX_KERNEL/"tools/user-memory")!r})\nfrom inactive_image_tables import encode as table_encode\n'
+            from boot_processors_inspect import GDB_HELPERS
+            prefix+=GDB_HELPERS
         harness.main(work_name=role+'-native', program_prefix=prefix,
                      guest_timeout_seconds=600, input_scope='ordinary source-built transfer workload')
         native = json.loads((build / (role+'-native/observations.json')).read_text())

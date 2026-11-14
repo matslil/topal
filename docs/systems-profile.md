@@ -2287,6 +2287,16 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+The boot binding also identifies the initial firmware-advertised processor set,
+including enabled and runtime-enableable participants. The provider validates
+the retained discovery path and processor identities within its supported
+firmware profile, and compares the relevant bytes again before discard.
+Decoding uses the same retained snapshot whose fields and checksums are checked.
+Firmware identifiers and table formats stay private; an inventory grants no
+processor-startup, parking, hotplug, scheduling or protected-context authority.
+See `TOPAL-SYSTEMS-BOOT-PROCESSOR-TOPOLOGY-001` and
+[TK-DEC-290](../linux-kernel/design/boot-processor-topology.md).
+
 Inactive table preparation also binds the actual boot handoff and retained
 non-image state. The provider checks the entry translation topology, descriptor
 tables and handler targets, current stack/code, boot-resource identity and

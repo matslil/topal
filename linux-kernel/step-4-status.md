@@ -7,6 +7,15 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [processor-inventory stage](step-4-boot-processor-topology.md) adds native
+bounded firmware discovery, exact retained-copy decoding and actual BSP identity
+binding. Independent replay checks five root entries, both advertised enabled
+processors, 386 retained bytes, four native identity reads and 24 offline
+controls. All fifteen commands pass over 985 stable inputs, including both
+ordinary application/exec protocols and 371 memory models. Predecessor kernel
+identities remain unchanged. Discovery grants no processor startup, parking,
+hotplug, all-CPU exclusion, protected activation or continuous lifetime authority.
+
 The [boot-binding stage](step-4-kernel-image-boot-binding.md) binds actual boot
 handoff bytes, retained entry tables/descriptors/stack/resource and supported
 interpretation state to inactive construction and discard. Independent replay

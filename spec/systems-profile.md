@@ -9192,6 +9192,38 @@ asynchronous writers, subsequent roots, invalidation/publication, effective
 permissions or continuous lifetime. All protected-activation obligations of
 `TOPAL-SYSTEMS-KERNEL-IMAGE-PUBLISH-001` SHALL remain independently mandatory.
 
+### TOPAL-SYSTEMS-BOOT-PROCESSOR-TOPOLOGY-001 — Initial firmware processor inventory
+
+The boot provider SHALL identify the initial firmware-advertised processor
+inventory through its supported discovery path. It SHALL distinguish enabled,
+runtime-enableable and unusable records, preserve relevant provider-private
+identities, and bind the actual bootstrap processor to exactly one enabled
+participant. Relevant identities SHALL be unique; their numeric values alone
+SHALL NOT supply processor or execution authority.
+
+Discovery SHALL bound every physical read, table length, entry walk and retained
+copy. Validation and decoding SHALL use the same retained bytes with complete
+relevant checksum checks. Repeated header copies SHALL agree with their
+retained complete table. The provider SHALL reject
+ambiguous, malformed, truncated or unsupported inventory within its declared
+profile. It SHALL retain firmware provenance and compare complete relevant
+bytes and discovery identities again before discard. A corrected outer digest
+or unchanged table checksum SHALL NOT substitute for exact retained equality.
+
+The initial x86 implementation MAY discover ACPI through its qualified legacy
+boot path, follow RSDT or XSDT to one MADT, and interpret supported Local APIC
+and Local x2APIC records. Its bounded profile SHALL explicitly reject unsupported
+processor/interrupt record forms; it SHALL NOT silently infer that skipped
+records cannot describe further participants. Source SHALL NOT receive ACPI,
+APIC identifiers, physical addresses or table access through this binding.
+
+This inventory SHALL NOT grant processor startup, parking, scheduling, hotplug,
+all-CPU exclusion, effective image protection or continuous lifetime authority.
+Other architectures SHALL bind their supported firmware discovery and native
+identities independently. The activation and lifetime obligations of
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PUBLISH-001` and
+`TOPAL-SYSTEMS-KERNEL-IMAGE-LIFETIME-001` SHALL remain mandatory.
+
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
 
 Preparation SHALL retain exact actual image, root and table/backing ownership,

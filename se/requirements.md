@@ -1981,6 +1981,14 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+The provider shall bind the initial firmware-advertised processor inventory,
+including enabled and online-capable participants, to the actual boot context.
+Validate discovery ranges, lengths, checksums, supported record formats and
+unique relevant identities; retain and compare the relevant complete bytes.
+Decode those validated retained bytes without substituting a later firmware read.
+An inventory shall not substitute for actual processor participation, exclusion,
+hotplug or lifetime qualification. Native formats shall stay provider-private.
+
 Preparation shall bind actual boot handoff bytes and retained entry tables,
 descriptor/handler identities, stack, boot resource and interpretation state.
 It shall preserve the checked entry context's memory-attribute encodings and

@@ -11,6 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [processor-inventory stage](step-4-boot-processor-topology.md) adds bounded
+native ACPI discovery and decoding from validated retained bytes. All fifteen
+commands pass over 985 stable inputs; both VM protocols and 371 memory models
+pass. Independent replay checks the two-processor inventory, four identity reads
+and 24 offline controls. Startup, parking, all-CPU lifetime and full kernel
+replacement remain unfinished.
+
 The [boot-binding stage](step-4-kernel-image-boot-binding.md) checks the actual
 adapter, entry topology/descriptors, boot resource and capability-gated hardware
 state during inactive table preparation and discard. All fifteen commands pass

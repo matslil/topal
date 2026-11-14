@@ -24,7 +24,7 @@ define internal {i32,i32,i32,i32} @k.boot.cpuid(i32 %leaf) {
   %v = call {i32,i32,i32,i32} asm sideeffect "cpuid", "={ax},={bx},={cx},={dx},0,2,~{dirflag},~{fpsr},~{flags}"(i32 %leaf,i32 0)
   ret {i32,i32,i32,i32} %v
 }
-define void @topal_x86_image_boot_msr_observe_v1(i64 %number,i64 %value) {
+define void @topal_x86_image_boot_read_observe_v1(i64 %kind,i64 %number,i64 %value) {
   call void asm sideeffect "", "~{memory},~{dirflag},~{fpsr},~{flags}"()
   ret void
 }
@@ -37,7 +37,7 @@ define internal i64 @k.boot.msr(i32 %number) {
   %up = shl i64 %hi,32
   %word = or i64 %lo,%up
   %id = zext i32 %number to i64
-  call void @topal_x86_image_boot_msr_observe_v1(i64 %id,i64 %word)
+  call void @topal_x86_image_boot_read_observe_v1(i64 0,i64 %id,i64 %word)
   ret i64 %word
 }
 define internal void @k.boot.record(i64 %index,i64 %value,i1 %save) {
@@ -350,6 +350,7 @@ contents:
   call void @k.boot.transition()
   call void @k.boot.descriptors(i1 %save)
   call void @k.boot.handoff(i1 %save)
+  call void @k.fw.verify(i1 %save)
   fence seq_cst
   call void @k.boot.record(i64 0,i64 1,i1 true)
   ret void

@@ -42,6 +42,9 @@ pub(crate) fn inspect(kernel: &[u8], image: &[u8]) -> Result<serde_json::Value, 
         "mmio_windows":[[HPET_MMIO_LEAF_ADDRESS,HPET_MMIO_LEAF_ADDRESS+0x200000],
                          [LOCAL_APIC_PAGE_ADDRESS,LOCAL_APIC_PAGE_ADDRESS+0x200000]],"mmio_cache_index":3,
         "variable_mtrr_bound":16,"observation_words":128,
+        "firmware_processors":{"discovery":"legacy-acpi","root_entries":64,
+            "madt_bytes":4096,"participants":16,"retained_bytes":8192,
+            "inventory_only":true},
         "protected_context":false,"production_qualified":false,
     }))
 }
@@ -113,19 +116,21 @@ pub(crate) fn llvm() -> Result<String, CompileError> {
     ] {
         header.push_str(&format!("declare void @{symbol}()\n"));
     }
-    let body = include_str!("runtime/kernel_image_boot.ll")
-        .replace(
-            ") {",
-            ") nounwind noinline noredzone noimplicitfloat \"disable-tail-calls\"=\"true\" {",
-        )
-        .replace("{{TRANSITION_BYTES}}", &transition.len().to_string())
-        .replace("{{ENTRY_FIXUP}}", &immediate.to_string())
-        .replace("{{ENTRY_FIXUP_END}}", &(immediate + 8).to_string())
-        .replace("{{KERNEL_ENTRY}}", X86_SYSTEMS_KERNEL_ENTRY)
-        .replace("{{DEBUG_ENTRY}}", X86_SYSTEMS_DEBUG_BREAK_ENTRY)
-        .replace("{{LOCAL_ENTRY}}", X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)
-        .replace("{{DEADLINE_ENTRY}}", X86_SYSTEMS_DEADLINE_ENTRY)
-        .replace("{{FAULT_ENTRY}}", X86_SYSTEMS_USER_COPY_FAULT_SYMBOL);
+    let body = (include_str!("runtime/kernel_image_boot.ll").to_owned()
+        + include_str!("runtime/kernel_boot_firmware.ll")
+        + include_str!("runtime/kernel_boot_processors.ll"))
+    .replace(
+        ") {",
+        ") nounwind noinline noredzone noimplicitfloat \"disable-tail-calls\"=\"true\" {",
+    )
+    .replace("{{TRANSITION_BYTES}}", &transition.len().to_string())
+    .replace("{{ENTRY_FIXUP}}", &immediate.to_string())
+    .replace("{{ENTRY_FIXUP_END}}", &(immediate + 8).to_string())
+    .replace("{{KERNEL_ENTRY}}", X86_SYSTEMS_KERNEL_ENTRY)
+    .replace("{{DEBUG_ENTRY}}", X86_SYSTEMS_DEBUG_BREAK_ENTRY)
+    .replace("{{LOCAL_ENTRY}}", X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)
+    .replace("{{DEADLINE_ENTRY}}", X86_SYSTEMS_DEADLINE_ENTRY)
+    .replace("{{FAULT_ENTRY}}", X86_SYSTEMS_USER_COPY_FAULT_SYMBOL);
     if body.contains("{{") {
         return Err(CompileError::Tool("unbound boot contract".into()));
     }

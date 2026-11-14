@@ -3178,6 +3178,15 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+The private provider shall discover the initial firmware processor inventory
+through the actual supported boot path, with bounded physical reads, retained
+firmware provenance, complete relevant checksums and processor records. Bind
+the actual bootstrap processor, reject ambiguous or unsupported inventory,
+and compare every retained relevant byte before discard. It shall validate and
+decode the same retained snapshot, including equality of separately copied
+headers. Independent replay shall reconstruct those facts from actual captured bytes. Keep inventory,
+quiescence and all-CPU lifetime evidence distinct.
+
 The private inactive-table producer shall reconstruct the actual boot adapter
 from the fresh complete kernel and bind its retained roles and handler targets.
 Native preparation shall validate entry topology/descriptors/handoff and record
