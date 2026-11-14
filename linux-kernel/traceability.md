@@ -403,6 +403,27 @@ and deterministic physical execution without admitting a general loader.
 
 ## Kernel-image protection design and models
 
+`TK-DEC-289` connects `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
+[boot-binding design](design/kernel-image-boot-binding.md) to
+`TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-BINDING-001`. The
+[report and receipt](step-4-kernel-image-boot-binding.md) bind fresh complete
+adapter/kernel reconstruction, native entry-table/descriptor/handoff checks,
+capability-gated architectural reads, instruction/call/stack inspection and
+independent actual-byte/MSR replay. Both native preparation protocols and 363
+memory models pass; 23 boot controls remain explicitly offline. Observations
+do not supply activation, all-CPU/writer exclusion or lifetime authority.
+
+`TK-DEC-287` and `TK-DEC-288` connect the same requirements to
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PREPARE-001` and
+`TOPAL-SYSTEMS-KERNEL-IMAGE-TABLES-001` through
+[whole inactive backing](step-4-image-backing-preparation.md) and
+[owned inactive construction](step-4-inactive-image-table-construction.md).
+Source/IR/model/lowering preserve distinct affine resources, exact final image
+binding, complete bootstrap/process owners and the separate low USER leaf.
+Native snapshots and independent replay verify construction, whole erase and
+release; protected publication and complete lifetime remain required.
+
 The [whole-root backing stage](step-4-root-backing-owners.md) retains allocation
 purpose and both bootstrap/process whole-owner descriptors from fresh root
 generation, binds the exact raw object and linked token bank, and compares them

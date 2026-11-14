@@ -36,11 +36,31 @@ pub(crate) fn llvm(plan: &Plan, bindings: &Bindings) -> Result<String, CompileEr
     ))
 }
 
-pub(crate) fn inspect_instructions(text: &str) -> Result<(), CompileError> {
+pub(crate) fn inspect_instructions_selected(text: &str, boot: bool) -> Result<(), CompileError> {
     let mut function = "";
-    let mut reads = 0;
+    let mut reads = std::collections::BTreeMap::<&str, u64>::new();
     let mut ordinary = String::new();
     for line in text.lines() {
+        if let Some((address, body)) = line.split_once(':')
+            && !address.trim().is_empty()
+            && address.trim().chars().all(|c| c.is_ascii_hexdigit())
+        {
+            let fields = body.split_whitespace().collect::<Vec<_>>();
+            if fields.first().is_some_and(|m| {
+                [
+                    "lgdt", "lgdtq", "lidt", "lidtq", "ltr", "lldt", "invlpg", "invlpga", "invd",
+                    "wbinvd", "clac", "stac", "clts", "lmsw", "xsetbv",
+                ]
+                .contains(m)
+            }) || fields
+                .last()
+                .is_some_and(|m| ["%cs", "%ds", "%es", "%ss", "%fs", "%gs"].contains(m))
+            {
+                return Err(CompileError::Tool(
+                    "image preparation must not write architecture control state".into(),
+                ));
+            }
+        }
         if line.ends_with(">:")
             && let Some((_, name)) = line.split_once(" <")
         {
@@ -49,22 +69,49 @@ pub(crate) fn inspect_instructions(text: &str) -> Result<(), CompileError> {
         if let Some((address, body)) = line.split_once(':')
             && !address.trim().is_empty()
             && address.trim().chars().all(|c| c.is_ascii_hexdigit())
-            && body.contains("%cr")
+            && (body.contains("%cr")
+                || body.split_whitespace().any(|word| word == "%cs,")
+                || ["cpuid", "rdmsr", "sgdtq", "sidtq", "sgdt", "sidt"]
+                    .contains(&body.split_whitespace().next().unwrap_or("")))
         {
-            if function != "k.image.active_root"
-                || body.split_whitespace().collect::<Vec<_>>() != ["movq", "%cr3,", "%rax"]
-            {
-                return Err(CompileError::Tool(
-                    "unexpected image-backing privileged instruction".into(),
-                ));
-            }
-            reads += 1;
+            let fields = body.split_whitespace().collect::<Vec<_>>();
+            let key = match (function, fields.as_slice()) {
+                ("k.image.active_root", ["movq", "%cr3,", "%rax"]) => "cr3",
+                ("k.boot.cr0", ["movq", "%cr0,", "%rax"]) if boot => "cr0",
+                ("k.boot.cr4", ["movq", "%cr4,", "%rax"]) if boot => "cr4",
+                ("k.boot.cs", ["movw", "%cs,", "%ax"]) if boot => "cs",
+                ("k.boot.cpuid", ["cpuid"]) if boot => "cpuid",
+                ("k.boot.msr", ["rdmsr"]) if boot => "rdmsr",
+                ("k.boot.descriptors", [op, operand])
+                    if boot
+                        && ["sgdtq", "sgdt", "sidtq", "sidt"].contains(op)
+                        && operand.starts_with("(%")
+                        && operand.ends_with(')') =>
+                {
+                    if op.starts_with('s') && op.contains("gdt") {
+                        "sgdt"
+                    } else {
+                        "sidt"
+                    }
+                }
+                _ => {
+                    return Err(CompileError::Tool(
+                        "unexpected image-preparation architectural instruction".into(),
+                    ));
+                }
+            };
+            *reads.entry(key).or_default() += 1;
         } else {
             ordinary.push_str(line);
             ordinary.push('\n');
         }
     }
-    if reads != 1 {
+    let expected = if boot {
+        vec!["cr3", "cr0", "cr4", "cs", "cpuid", "rdmsr", "sgdt", "sidt"]
+    } else {
+        vec!["cr3"]
+    };
+    if reads.len() != expected.len() || expected.iter().any(|key| reads.get(key) != Some(&1)) {
         return Err(CompileError::Tool(
             "image-backing component requires exactly one active-root observation site".into(),
         ));

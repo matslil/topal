@@ -45,6 +45,16 @@ class Initialization(gdb.Breakpoint):
             return False
         except Exception: fail()
 
+class BootMsr(gdb.Breakpoint):
+    def __init__(self):
+        super().__init__('*topal_x86_image_boot_msr_observe_v1',type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
+    def stop(self):
+        try:
+            observed.setdefault('boot_msr_reads',[]).append(dict(number=reg('rdi'),value=reg('rsi')))
+            assert len(observed['boot_msr_reads'])<=96
+            return False
+        except Exception: fail()
+
 class Checkpoint(gdb.Breakpoint):
     def __init__(self,symbol,final=False):
         super().__init__('*'+symbol,type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
@@ -63,6 +73,7 @@ class Checkpoint(gdb.Breakpoint):
                     observed['halt_diagnostics']=dict(context=ctx,journal=journal,controls=controls,
                         tokens=words(tokens,profile['bindings']['token_bytes']//8),
                         stack=words(reg('rsp'),16),backtrace=gdb.execute('bt',to_string=True))
+                    if tables: observed['halt_diagnostics']['boot_registers']=words(address('topal_x86_image_boot_observation_v1'),128)
                 assert [row['phase'] for row in observed['phases']]==list(range(released+1))
                 owner=profile['active_owners']['bootstrap']
                 token=words(tokens+owner['slot']*24,3)
@@ -89,6 +100,33 @@ class Checkpoint(gdb.Breakpoint):
             assert journal[1]==profile['pages'] and controls['cr3']==journal[4]
             if observed['phases']: assert controls==observed['phases'][0]['controls']
             row=dict(phase=phase,journal=journal,context=ctx,controls=controls,stack=reg('rsp'),banks=[])
+            if tables:
+                boot_registers=words(address('topal_x86_image_boot_observation_v1'),128)
+                assert boot_registers[0]==1 and boot_registers[1:4]==[controls['cr0'],controls['cr3'],controls['cr4']]
+                if observed['phases']: assert boot_registers==observed['phases'][0]['boot_registers']
+                row['boot_registers']=boot_registers
+                if phase in [0,released]:
+                    original_thread=gdb.selected_thread()
+                    cpus=[]
+                    for thread in gdb.selected_inferior().threads():
+                        thread.switch()
+                        cpus.append(dict(thread=thread.num,ptid=list(thread.ptid),registers={n:reg(n) for n in ['cr0','cr3','cr4','cs','rip','rsp','eflags']}))
+                    original_thread.switch()
+                    monitor=gdb.execute('monitor info registers',to_string=True)
+                    import re
+                    efer=re.search(r'\bEFER=([0-9a-fA-F]+)',monitor)
+                    assert efer and int(efer.group(1),16)==boot_registers[4]
+                    captured=dict(cpus=cpus,monitor=monitor,regions={})
+                    regions=[('entry-tables',None,None),('gdt',boot_registers[9],48),
+                             ('idt',boot_registers[11],4096),('idt-pointer',0x106000,10),
+                             ('transition',1048576,boot_registers[26])]
+                    for name,base,length in regions:
+                        data=(b''.join(memory(base,4096) for base in profile['boot_contract']['entry_table_pages'])
+                              if name=='entry-tables' else memory(base,length))
+                        filename=f'boot-{phase}-{name}.bin'
+                        with open(os.path.join(os.path.dirname(observation_path),filename),'wb') as f: f.write(data)
+                        captured['regions'][name]=dict(file=filename,bytes=len(data),sha256=hashlib.sha256(data).hexdigest())
+                    row['boot_snapshot']=captured
             for index,owner in enumerate(extent_owners):
                 token=words(tokens+owner['slot']*24,3)
                 if phase<released:
@@ -161,6 +199,7 @@ class Checkpoint(gdb.Breakpoint):
 
 try:
     Initialization()
+    if tables: BootMsr()
     Checkpoint('topal_x86_image_tables_observe_v1' if tables else 'topal_x86_image_backing_observe_v1')
     Checkpoint('topal_x86_systems_fatal',True)
     gdb.execute('continue')
@@ -201,10 +240,14 @@ def main(*, tables=False):
         low = owners['low_user_leaf']
         assert (low['count'],low['alignment'],low['pins'],low['purpose']) == (1,1,1,'prepared-image-low-user-leaf')
         assert low['slot'] not in [b['slot'] for b in owners['banks']]
+        boot_contract=json.loads((build/'kernel-image-boot-binding.json').read_text())
+        assert boot_contract['kernel_sha256']==kernel
+        assert boot_contract['boot_image_sha256']==topal_gate.digest(build/'bzImage')
     assert [row['count'] for row in owners['banks']] == [pages, pages]
     profile = dict(bindings=owners, pages=pages, tables=tables, layout=plan['layout'],
                    component=component,
                    active_owners=json.loads((build / 'root-backing-owners.json').read_text()))
+    if tables: profile['boot_contract']=boot_contract
     result = dict(passed=False, native_execution=False, native_execution_attempted=False,
                   protected_context=False, production_qualified=False,
                   kernel_sha256=kernel, scope='Actual image-sized whole-owner reserve/zero/erase/release, with read-only hardware-breakpoint observations; no protected activation')

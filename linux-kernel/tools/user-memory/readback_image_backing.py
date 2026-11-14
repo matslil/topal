@@ -97,6 +97,12 @@ def inspect(build, tables=False):
     read = lambda name: (folder / name).read_bytes()
     selected_layout = plan['layout'] if tables else None
     validate(native, pages, read, selected_layout)
+    if tables:
+        from boot_image_binding import inspect as inspect_boot, altered_record_controls
+        boot_binding=json.loads((build/'kernel-image-boot-binding.json').read_text())
+        boot=inspect_boot(native,boot_binding,(build/'kernel.elf').read_bytes(),(build/'bzImage').read_bytes(),read)
+        boot['rejected_offline_controls']=altered_record_controls(
+            native,boot_binding,(build/'kernel.elf').read_bytes(),(build/'bzImage').read_bytes(),read)
     controls = []
     for case in range(12):
         changed = deepcopy(native)
@@ -148,15 +154,17 @@ def inspect(build, tables=False):
                 controls.append(16+case)
             else:
                 raise AssertionError(f'altered table bytes accepted after rehash: {case}')
-    return dict(passed=True, native_execution=False, kernel_sha256=result['kernel_sha256'],
+    answer = dict(passed=True, native_execution=False, kernel_sha256=result['kernel_sha256'],
                 phases=len(native['phases']), banks=2, extents=3 if tables else 2,
                 pages_per_bank=pages, rejected_controls=controls,
                 protected_context=False, production_qualified=False,
                 scope='Replay of current native bytes/owners/control registers and final actual bootstrap bank; altered records are offline controls, not injected guest execution')
+    if tables: answer['boot_binding']=boot
+    return answer
 
 
 def record_size(component):
-    return sum(n+8 for n in component['frames'].values()) + component['gateway_window_bytes']
+    return sum(n+8 for n in component['frames'].values()) + component['gateway_window_bytes'] + component.get('inline_flags_stack_bytes',0)
 
 
 if __name__ == '__main__':

@@ -42,6 +42,7 @@ def main():
                       'linux-kernel/design/kernel-image-protection.md',
                       'linux-kernel/design/kernel-image-backing-preparation.md',
                       'linux-kernel/design/inactive-image-table-construction.md',
+                      'linux-kernel/design/kernel-image-boot-binding.md',
                       'linux-kernel/design/decision-register.md',
                       'linux-kernel/tools/user-memory/image_backing_source.rs'])
         return sorted(paths)
@@ -54,7 +55,7 @@ def main():
     report = dict(passed=False, commands={}, source_hashes_before=before,
                   scope='Actual final-image-sized whole owned inactive banks, native initialization/zero/erase/release and ordinary guest application completion; no active protected hierarchy or production qualification')
     if tables:
-        report['scope'] = 'Exact final-image-partition-bound inactive bootstrap/process table construction, separate zero low USER leaf, whole erase/release, ordinary native guest and previous backing-only regression; no activation or production qualification'
+        report['scope'] = 'Actual boot bytes, capability-gated memory-attribute reads, entry controls and retained hardware state bound to inactive bootstrap/process table construction; separate low USER leaf, whole erase/release, ordinary native guest and previous backing-only regression; snapshots grant no activation, all-CPU lifetime or production qualification'
     began = time.monotonic()
 
     def save():
@@ -119,6 +120,14 @@ def main():
                       readback=json.loads((native / (role+'-readback.json')).read_text()),
                       image_layout=binding['layout'], component=component,
                       original_inputs=binding['original_inputs'], contributions=len(binding['placements']))
+        if tables:
+            boot=report['readback']['boot_binding']
+            assert boot['passed'] and boot['cache_indices_preserved']
+            assert boot['entry_table_words']==2048 and boot['idt_words']==512 and boot['gdt_words']==6
+            assert boot['cpus_observed']==2 and boot['boot_snapshots']==2
+            assert boot['independently_observed_msr_reads']==2*(5+2*boot['variable_mtrrs']+boot['fixed_mtrrs'])
+            assert boot['idt_pointer_bytes']==10 and len(boot['rejected_offline_controls'])==23
+            report['boot_binding']=json.loads((native/'kernel-image-boot-binding.json').read_text())
         for name, argv in COMMANDS.items():
             command(name, argv)
         command('legacy-owners', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1',

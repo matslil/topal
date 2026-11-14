@@ -61,6 +61,9 @@ const MAX_PROTECTED_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 #[path = "systems_boot_image_fixture.rs"]
 mod fixture;
 #[cfg(test)]
+#[path = "systems_boot_image_contract.rs"]
+pub(crate) mod image_contract;
+#[cfg(test)]
 pub(crate) use fixture::unpublished_component_fixture;
 
 static NEXT_BOOT_STAGE: AtomicU64 = AtomicU64::new(0);

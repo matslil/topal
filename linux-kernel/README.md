@@ -11,6 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [boot-binding stage](step-4-kernel-image-boot-binding.md) checks the actual
+adapter, entry topology/descriptors, boot resource and capability-gated hardware
+state during inactive table preparation and discard. All fifteen commands pass
+over 979 stable inputs, including 64 independently observed MSR reads and 23
+offline boot controls. Effective protection, all-root/CPU lifetime and full
+kernel-replacement acceptance remain open.
+
 The [inactive table-construction stage](step-4-inactive-image-table-construction.md)
 now builds and verifies both image-sized table banks plus a separately owned
 zero low USER leaf. All fifteen commands pass over 974 stable inputs, including

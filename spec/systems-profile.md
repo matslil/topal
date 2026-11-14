@@ -9163,6 +9163,35 @@ roles, device memory attributes, asynchronous writers, saved/restorable roots,
 publication or continuous lifetime. Existing bootstrap-equivalent producers
 and native USER-table admission SHALL retain their exact contracts.
 
+### TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-BINDING-001 — Retained boot and interpretation binding
+
+Inactive table preparation SHALL bind the actual current kernel to its boot
+handoff, retained translation storage, descriptor tables and handler entries,
+bootstrap stack and boot-resource identity. Boot-only code SHALL have an
+explicit handoff/retirement role; remaining live handler and return targets
+SHALL refer to executable image roles. Boot-reserved storage SHALL remain
+retained until its references and active-root obligations are discharged.
+
+The native provider SHALL validate the complete supported entry translation
+topology and descriptor contents, including unused entries. It SHALL retain
+the entry mapping's cache encodings for each corresponding physical view;
+page subdivision SHALL preserve the applicable memory-attribute index rather
+than confuse large/small leaf bit positions. Architectural accessed/dirty
+updates MAY be accepted only in their applicable entry fields.
+
+Native optional register reads SHALL follow supported-capability checks. The
+provider SHALL record actual paging/privilege state, execute-disable capability,
+descriptor/stack facts and complete advertised memory-attribute register state
+within its declared bounded profile. It SHALL compare retained identities and
+interpretation state again before discard, without changing controls. Missing
+or unsupported binding SHALL fail fatally without ordinary preparation success.
+
+Source SHALL NOT receive registers, physical pointers, native formats or an
+activation witness from this binding. A snapshot SHALL NOT qualify other CPUs,
+asynchronous writers, subsequent roots, invalidation/publication, effective
+permissions or continuous lifetime. All protected-activation obligations of
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PUBLISH-001` SHALL remain independently mandatory.
+
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
 
 Preparation SHALL retain exact actual image, root and table/backing ownership,

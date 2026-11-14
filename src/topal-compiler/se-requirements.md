@@ -3178,6 +3178,14 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+The private inactive-table producer shall reconstruct the actual boot adapter
+from the fresh complete kernel and bind its retained roles and handler targets.
+Native preparation shall validate entry topology/descriptors/handoff and record
+supported mode and complete advertised cache-attribute state without changing
+controls. Compare retained state again before discard. Keep register access
+private to the provider and qualify its instruction/call/stack closure. This
+boot binding shall not qualify activation or all-CPU/writer lifetime.
+
 Inactive table preparation shall retain distinct prepare/discard operations
 and reject use of a backing-only plan or owner in that protocol. Fresh final
 reconstruction shall match the complete image partition and generated template,

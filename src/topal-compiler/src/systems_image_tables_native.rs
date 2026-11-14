@@ -75,8 +75,9 @@ pub(super) fn llvm(plan: &Plan, bindings: &Bindings) -> Result<String, CompileEr
             "define i1 @topal_x86_image_table_",
             "define internal i1 @topal_x86_image_table_",
         );
+    let boot = crate::systems_boot_image::image_contract::llvm()?;
     Ok(format!(
-        "target datalayout = \"{}\"\ntarget triple = \"x86_64-unknown-none\"\n{text}\n{owner}\n{template}\n",
+        "target datalayout = \"{}\"\ntarget triple = \"x86_64-unknown-none\"\n{text}\n{owner}\n{template}\n{boot}\n",
         crate::X86_SYSTEMS_DATA_LAYOUT
     ))
 }

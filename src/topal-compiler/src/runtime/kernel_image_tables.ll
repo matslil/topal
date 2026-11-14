@@ -80,6 +80,7 @@ define i64 @topal_x86_image_tables_prepare_v1() nounwind noinline noredzone noim
   %fresh = icmp eq i64 %phase,0
   call void @k.image.require(i1 %fresh)
   %owners = call {i64,i64,i64,i64} @k.tables.owners()
+  call void @k.boot.verify(i1 true)
   %b = extractvalue {i64,i64,i64,i64} %owners,0
   %p = extractvalue {i64,i64,i64,i64} %owners,1
   %low = extractvalue {i64,i64,i64,i64} %owners,2
@@ -121,6 +122,7 @@ define i64 @topal_x86_image_tables_discard_v1() nounwind noinline noredzone noim
   %prepared = icmp eq i64 %phase,2
   call void @k.image.require(i1 %prepared)
   %owners = call {i64,i64,i64,i64} @k.tables.owners()
+  call void @k.boot.verify(i1 false)
   %b = extractvalue {i64,i64,i64,i64} %owners,0
   %p = extractvalue {i64,i64,i64,i64} %owners,1
   %low = extractvalue {i64,i64,i64,i64} %owners,2

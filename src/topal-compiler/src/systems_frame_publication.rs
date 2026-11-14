@@ -542,9 +542,10 @@ pub(crate) fn compile(
     }
     #[cfg(test)]
     if role == "image-backing" || role == "image-tables" {
-        crate::systems_image_backing::inspect_instructions(
+        crate::systems_image_backing::inspect_instructions_selected(
             &fs::read_to_string(work.join(format!("{role}-disassembly.stdout.log")))
                 .map_err(invalid)?,
+            role == "image-tables",
         )?;
         let inspection = crate::systems_image_backing::inspect_selected(
             &fs::read(work.join(format!("{role}.o"))).map_err(invalid)?,

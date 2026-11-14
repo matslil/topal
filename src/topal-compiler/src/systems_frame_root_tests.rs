@@ -1497,11 +1497,17 @@ fn build_guest(
                 .arg(work),
         );
     }
-    fs::write(
-        work.join("bzImage"),
-        crate::systems_boot_image::unpublished_component_fixture(&kernel).unwrap(),
-    )
-    .unwrap();
+    let boot_image = crate::systems_boot_image::unpublished_component_fixture(&kernel).unwrap();
+    if image_backing.is_some_and(|(plan, _)| plan.is_tables()) {
+        let binding =
+            crate::systems_boot_image::image_contract::inspect(&kernel, &boot_image).unwrap();
+        fs::write(
+            work.join("kernel-image-boot-binding.json"),
+            serde_json::to_vec_pretty(&binding).unwrap(),
+        )
+        .unwrap();
+    }
+    fs::write(work.join("bzImage"), boot_image).unwrap();
     let resource = crate::systems_boot_resource::generate_initial_boot_resource(
         &fs::read(&baseline.initial_user_image).unwrap(),
         &fs::read(baseline.static_user_image.unwrap()).unwrap(),

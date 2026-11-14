@@ -1,5 +1,29 @@
 use super::*;
 
+#[test]
+fn image_tables_boot_observation_sites_refuse_writes_and_unqualified_reads() {
+    let assembly = "0 <k.image.active_root>:\n 0: movq %cr3, %rax\n 3: retq\n\
+0 <k.boot.cr0>:\n 0: movq %cr0, %rax\n 3: retq\n\
+0 <k.boot.cr4>:\n 0: movq %cr4, %rax\n 3: retq\n\
+0 <k.boot.cs>:\n 0: movw %cs, %ax\n 3: retq\n\
+0 <k.boot.cpuid>:\n 0: cpuid\n 2: retq\n\
+0 <k.boot.msr>:\n 0: rdmsr\n 2: retq\n\
+0 <k.boot.descriptors>:\n 0: sgdtq (%rax)\n 3: sidtq (%rax)\n 6: retq\n";
+    inspect_instructions_selected(assembly, true).unwrap();
+    inspect_instructions_selected(&(assembly.to_owned() + " 10: nopw %cs:(%rax,%rax)\n"), true)
+        .unwrap();
+    assert!(inspect_instructions_selected(assembly, false).is_err());
+    for (old, new) in [
+        ("movq %cr0, %rax", "movq %rax, %cr0"),
+        ("rdmsr", "wrmsr"),
+        ("k.boot.msr", "unqualified.reader"),
+        ("sgdtq", "lgdtq"),
+        ("0: rdmsr", "0: rdmsr\n 2: rdmsr"),
+    ] {
+        assert!(inspect_instructions_selected(&assembly.replace(old, new), true).is_err());
+    }
+}
+
 fn layout(role: crate::SystemsKernelImageRole) -> crate::SystemsKernelImageLayout {
     crate::SystemsKernelImageLayout {
         schema: "topal.kernel-image-layout.x86_64/1".into(),

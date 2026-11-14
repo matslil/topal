@@ -25,7 +25,7 @@ pub(crate) fn inspect_selected(
         .filter_map(|s| s.name().ok())
         .filter(|s| !s.is_empty())
         .collect::<BTreeSet<_>>();
-    let expected = BTreeSet::from([
+    let mut expected = BTreeSet::from([
         "topal_x86_frame_context_v1",
         "topal_x86_frame_registry_v1",
         "topal_x86_frame_table_v1",
@@ -35,6 +35,16 @@ pub(crate) fn inspect_selected(
         "topal_x86_frame_gateway_v1",
         "topal_x86_systems_fatal",
     ]);
+    if tables {
+        expected.extend([
+            "topal_x86_frame_handoff_v1",
+            crate::X86_SYSTEMS_KERNEL_ENTRY,
+            crate::X86_SYSTEMS_DEBUG_BREAK_ENTRY,
+            crate::X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
+            crate::X86_SYSTEMS_DEADLINE_ENTRY,
+            crate::X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
+        ]);
+    }
     let frames = crate::systems_library::stack_sizes(&file)?;
     if imports != expected || frames.keys().cloned().collect::<BTreeSet<_>>() != names {
         return Err(invalid());
@@ -79,6 +89,7 @@ pub(crate) fn inspect_selected(
     let helper = frames
         .values()
         .try_fold(0u64, |total, n| total.checked_add(*n)?.checked_add(8))
+        .and_then(|n| n.checked_add(if tables { 8 } else { 0 }))
         .ok_or_else(invalid)?;
     let combined = helper
         .checked_add(4096)
@@ -104,5 +115,6 @@ pub(crate) fn inspect_selected(
         "combined_boot_stack_bytes": combined, "boot_stack_allowance_bytes": 8192,
         "protected_context": false, "production_qualified": false,
         "inactive_tables": tables,
+        "inline_flags_stack_bytes": if tables {8} else {0},
     }))
 }

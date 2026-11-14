@@ -7,6 +7,16 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [boot-binding stage](step-4-kernel-image-boot-binding.md) binds actual boot
+handoff bytes, retained entry tables/descriptors/stack/resource and supported
+interpretation state to inactive construction and discard. Independent replay
+checks 64 MSR reads, both-CPU snapshots, complete boot bytes/cache indices and
+23 altered boot records/rehashes. All fifteen commands pass over 979 stable
+inputs, including 654 frontend, 257 semantics and 363 memory-model tests. Both
+native protocols complete ordinary application/exec workloads; predecessor
+kernel identities remain unchanged. These observations grant no activation,
+all-CPU/writer lifetime or effective protected-context witness.
+
 The [inactive table-construction stage](step-4-inactive-image-table-construction.md)
 constructs and verifies complete bootstrap/process primary-view banks and a
 distinct zero low USER leaf. Final reconstruction must match the full image

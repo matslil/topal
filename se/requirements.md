@@ -1981,6 +1981,13 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+Preparation shall bind actual boot handoff bytes and retained entry tables,
+descriptor/handler identities, stack, boot resource and interpretation state.
+It shall preserve the checked entry context's memory-attribute encodings and
+reject unsupported capabilities before reading their optional registers.
+Entry observations shall not substitute for all-CPU/writer lifetime or an
+effective protected context. No host protection shall be changed for this work.
+
 Inactive table preparation shall own every complete bank and separately required
 user-table extent, construct and verify the actual final image's exact primary
 views, and retain all pins until complete discard/erase/release. Matching only

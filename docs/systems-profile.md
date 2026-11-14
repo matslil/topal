@@ -2287,6 +2287,16 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+Inactive table preparation also binds the actual boot handoff and retained
+non-image state. The provider checks the entry translation topology, descriptor
+tables and handler targets, current stack/code, boot-resource identity and
+supported interpretation capabilities. It retains raw memory-attribute state
+and preserves the checked entry mapping's cache encodings; this does not grant
+activation or prove other CPUs, asynchronous writers or later mapping paths.
+Source receives no architecture register interface. See
+`TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-BINDING-001` and
+[TK-DEC-289](../linux-kernel/design/kernel-image-boot-binding.md).
+
 A qualified boot allocator may instead request `kernel image prepare tables
 (image is current-kernel, page-policy is provider-selected)`. Success returns
 one affine `InactiveKernelImageTables` resource. The provider reserves complete

@@ -136,7 +136,7 @@ mod native;
 mod tables_native;
 
 #[cfg(test)]
-pub(crate) use native::{inspect_instructions, llvm};
+pub(crate) use native::{inspect_instructions_selected, llvm};
 
 #[cfg(test)]
 #[path = "systems_image_backing_inspection.rs"]
