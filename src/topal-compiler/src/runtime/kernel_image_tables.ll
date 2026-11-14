@@ -56,7 +56,7 @@ check:
   call void @k.image.require(i1 %same)
   ret void
 }
-define internal void @k.tables.verify(i64 %b,i64 %p,i64 %low) nounwind noinline noredzone noimplicitfloat "disable-tail-calls"="true" {
+define internal void @k.tables.verify(i64 %b,i64 %p,i64 %low,i1 %save) nounwind noinline noredzone noimplicitfloat "disable-tail-calls"="true" {
   %bp = inttoptr i64 %b to ptr
   %pp = inttoptr i64 %p to ptr
   %bv = call i1 @topal_x86_image_table_verify_data_v1(ptr %bp,i64 %b,i64 0,i64 0)
@@ -64,6 +64,7 @@ define internal void @k.tables.verify(i64 %b,i64 %p,i64 %low) nounwind noinline 
   %ok = and i1 %bv,%pv
   call void @k.image.require(i1 %ok)
   call void @k.image.verify_zero(i64 %low,i64 512)
+  call void @k.cover.verify(i64 %b,i64 %p,i1 %save)
   ret void
 }
 define internal void @k.tables.erase(i64 %b,i64 %p,i64 %low) nounwind noinline noredzone noimplicitfloat "disable-tail-calls"="true" {
@@ -112,7 +113,7 @@ define i64 @topal_x86_image_tables_prepare_v1() nounwind noinline noredzone noim
   %pc = call i1 @topal_x86_image_table_prepare_data_v1(ptr %pp,i64 {{BYTES}},i64 %p,i64 1,i64 %low)
   call void @k.image.require(i1 %pc)
   fence seq_cst
-  call void @k.tables.verify(i64 %b,i64 %p,i64 %low)
+  call void @k.tables.verify(i64 %b,i64 %p,i64 %low,i1 true)
   call void @k.image.store(i64 0,i64 2)
   call void @topal_x86_image_tables_observe_v1()
   ret i64 1
@@ -145,7 +146,7 @@ define i64 @topal_x86_image_tables_discard_v1() nounwind noinline noredzone noim
   call void @k.tables.identity(ptr %bt,i64 5,i1 false)
   call void @k.tables.identity(ptr %pt,i64 7,i1 false)
   call void @k.tables.identity(ptr %lt,i64 11,i1 false)
-  call void @k.tables.verify(i64 %b,i64 %p,i64 %low)
+  call void @k.tables.verify(i64 %b,i64 %p,i64 %low,i1 false)
   call void @k.tables.erase(i64 %b,i64 %p,i64 %low)
   call void @k.image.store(i64 0,i64 3)
   call void @topal_x86_image_tables_observe_v1()

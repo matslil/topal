@@ -1981,6 +1981,15 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+Both inactive primary-view banks shall preserve the declared access, identity
+and cache encodings of all supported retained boot roles and actual boot-input
+extents. Boot-only code shall have transferred out before a non-executable
+retained-storage view is accepted. Complete bounded owned-table walks shall
+check effective ancestor and leaf permissions, including absence, aliases and
+granule boundaries, before construction success and again before discard.
+Device reachability shall not grant device-control authority. Inactive coverage
+shall not qualify effective activation or continuous lifetime.
+
 The provider shall bind the initial firmware-advertised processor inventory,
 including enabled and online-capable participants, to the actual boot context.
 Validate discovery ranges, lengths, checksums, supported record formats and

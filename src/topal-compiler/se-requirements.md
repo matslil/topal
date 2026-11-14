@@ -3194,6 +3194,11 @@ supported mode and complete advertised cache-attribute state without changing
 controls. Compare retained state again before discard. Keep register access
 private to the provider and qualify its instruction/call/stack closure. This
 boot binding shall not qualify activation or all-CPU/writer lifetime.
+`TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-COVERAGE-001` additionally requires complete
+bounded walks of both constructed banks for adapter-derived retained roles,
+actual boot inputs and declared MMIO views. Preserve effective permissions,
+physical identity and cache encodings, retain exact facts, and repeat before
+discard without replacing exact owners/templates or widening USER admission.
 
 Inactive table preparation shall retain distinct prepare/discard operations
 and reject use of a backing-only plan or owner in that protocol. Fresh final

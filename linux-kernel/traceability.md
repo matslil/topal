@@ -403,6 +403,21 @@ and deterministic physical execution without admitting a general loader.
 
 ## Kernel-image protection design and models
 
+`TK-DEC-291` connects `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
+[inactive boot-coverage design](design/inactive-boot-coverage.md) to
+`TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-COVERAGE-001`.
+The [native checker](../src/topal-compiler/src/runtime/kernel_boot_coverage.ll)
+walks every page of eleven adapter-derived retained/input/device roles through
+both exact owned banks. The
+[independent interpreter](tools/user-memory/boot_coverage.py) compares captured
+bytes and complete native journals; [four model tests](tools/user-memory/test_boot_coverage.py)
+cover interior holes, ancestor rights, bounds and granules. The
+[report and receipt](step-4-inactive-boot-coverage.md) record all fifteen commands
+passing over 989 stable inputs, both VM protocols, 375 memory models and 22 new
+offline controls. Inactive coverage does not qualify active roots, effective
+permissions, CPU/writer exclusion, publication or continuous lifetime.
+
 `TK-DEC-290` connects `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
 `TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
 [processor-inventory design](design/boot-processor-topology.md) to

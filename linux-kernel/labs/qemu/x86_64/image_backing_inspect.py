@@ -113,6 +113,7 @@ class Checkpoint(gdb.Breakpoint):
                 assert boot_registers[0]==1 and boot_registers[1:4]==[controls['cr0'],controls['cr3'],controls['cr4']]
                 if observed['phases']: assert boot_registers==observed['phases'][0]['boot_registers']
                 row['boot_registers']=boot_registers
+                row['boot_coverage']=words(address('topal_x86_boot_coverage_v1'),64)
                 capture_boot_processors(row)
                 if phase in [0,released]:
                     original_thread=gdb.selected_thread()

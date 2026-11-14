@@ -44,6 +44,7 @@ def main():
                       'linux-kernel/design/inactive-image-table-construction.md',
                       'linux-kernel/design/kernel-image-boot-binding.md',
                       'linux-kernel/design/boot-processor-topology.md',
+                      'linux-kernel/design/inactive-boot-coverage.md',
                       'linux-kernel/design/decision-register.md',
                       'linux-kernel/tools/user-memory/image_backing_source.rs'])
         return sorted(paths)
@@ -133,6 +134,10 @@ def main():
             assert inventory['passed'] and inventory['inventory_only']
             assert inventory['enabled']==2 and inventory['boot_snapshots']==2
             assert inventory['independent_identity_reads']==4 and len(inventory['rejected_offline_controls'])==24
+            coverage=report['readback']['boot_coverage']
+            assert coverage['passed'] and coverage['inactive_only']
+            assert coverage['roles']==11 and coverage['views']==22
+            assert coverage['native_completed_checks']==2 and len(coverage['rejected_offline_controls'])==22
         for name, argv in COMMANDS.items():
             command(name, argv)
         command('legacy-owners', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1',

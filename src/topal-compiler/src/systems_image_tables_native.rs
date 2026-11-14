@@ -45,8 +45,9 @@ pub(super) fn llvm(plan: &Plan, bindings: &Bindings) -> Result<String, CompileEr
             "@k.image.verify_zero(i64 %base,i64 %words)",
         )
         .replace("{{WORDS}}", "%words");
-    let runtime = include_str!("runtime/kernel_image_tables.ll");
-    let text = (common + runtime)
+    let runtime = include_str!("runtime/kernel_image_tables.ll").to_owned()
+        + include_str!("runtime/kernel_boot_coverage.ll");
+    let text = (common + &runtime)
         .replace(
             "@topal_x86_image_backing_observation_v1",
             "@topal_x86_image_tables_observation_v1",

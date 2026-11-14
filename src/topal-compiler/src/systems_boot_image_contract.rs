@@ -1,6 +1,38 @@
 //! Private boot binding from the same adapter source, not publication authority.
 use super::*;
 
+fn retained_roles() -> [(&'static str, u64, u64); 7] {
+    [
+        (
+            "closed-handoff-code",
+            X86_PROTECTED_PAYLOAD_ADDRESS,
+            PAGE_TABLE_PML4_ADDRESS,
+        ),
+        (
+            "retained-entry-tables",
+            PAGE_TABLE_PML4_ADDRESS,
+            GDT_ADDRESS,
+        ),
+        ("retained-gdt", GDT_ADDRESS, IDT_ADDRESS),
+        ("retained-idt", IDT_ADDRESS, IDT_DESCRIPTOR_ADDRESS),
+        (
+            "retained-idt-pointer",
+            IDT_DESCRIPTOR_ADDRESS,
+            LOCAL_APIC_PD_ADDRESS,
+        ),
+        (
+            "retained-mmio-table",
+            LOCAL_APIC_PD_ADDRESS,
+            TRANSITION_RESERVED_END,
+        ),
+        (
+            "bootstrap-stack",
+            TRANSITION_RESERVED_END,
+            X86_INITIAL_STACK_TOP,
+        ),
+    ]
+}
+
 pub(crate) fn inspect(kernel: &[u8], image: &[u8]) -> Result<serde_json::Value, CompileError> {
     let fresh = unpublished_component_fixture(kernel)?;
     if fresh != image {
@@ -28,20 +60,13 @@ pub(crate) fn inspect(kernel: &[u8], image: &[u8]) -> Result<serde_json::Value, 
         "scope":"Fresh complete private adapter/kernel reconstruction and retained-role identities; no activation, CPU lifetime or production publication",
         "kernel_sha256":sha256(kernel),"boot_image_sha256":sha256(image),
         "adapter_revision":X86_LINUX_BOOT_ADAPTER_REVISION,"handlers":handlers,
-        "roles":[
-            {"role":"closed-handoff-code","start":X86_PROTECTED_PAYLOAD_ADDRESS,"end":PAGE_TABLE_PML4_ADDRESS},
-            {"role":"retained-entry-tables","start":PAGE_TABLE_PML4_ADDRESS,"end":GDT_ADDRESS},
-            {"role":"retained-gdt","start":GDT_ADDRESS,"end":IDT_ADDRESS},
-            {"role":"retained-idt","start":IDT_ADDRESS,"end":IDT_DESCRIPTOR_ADDRESS},
-            {"role":"retained-idt-pointer","start":IDT_DESCRIPTOR_ADDRESS,"end":LOCAL_APIC_PD_ADDRESS},
-            {"role":"retained-mmio-table","start":LOCAL_APIC_PD_ADDRESS,"end":TRANSITION_RESERVED_END},
-            {"role":"bootstrap-stack","start":TRANSITION_RESERVED_END,"end":X86_INITIAL_STACK_TOP}
-        ],
+        "roles":retained_roles().map(|(role,start,end)|serde_json::json!({"role":role,"start":start,"end":end})),
         "entry_root":PAGE_TABLE_PML4_ADDRESS,"entry_table_pages":[PAGE_TABLE_PML4_ADDRESS,PAGE_TABLE_PDPT_ADDRESS,PAGE_TABLE_PD_ADDRESS,LOCAL_APIC_PD_ADDRESS],
         "direct_window":[0,X86_INITIAL_IDENTITY_LIMIT],"direct_cache_index":0,
         "mmio_windows":[[HPET_MMIO_LEAF_ADDRESS,HPET_MMIO_LEAF_ADDRESS+0x200000],
                          [LOCAL_APIC_PAGE_ADDRESS,LOCAL_APIC_PAGE_ADDRESS+0x200000]],"mmio_cache_index":3,
         "variable_mtrr_bound":16,"observation_words":128,
+        "inactive_coverage":{"roles":11,"journal_words":64,"complete_page_walks":true,"activation":false},
         "firmware_processors":{"discovery":"legacy-acpi","root_entries":64,
             "madt_bytes":4096,"participants":16,"retained_bytes":8192,
             "inventory_only":true},
@@ -107,6 +132,22 @@ pub(crate) fn llvm() -> Result<String, CompileError> {
             .collect::<Vec<_>>()
             .join(",")
     );
+    let ranges = |items: &[(u64, u64)]| {
+        items
+            .iter()
+            .map(|(start, end)| format!("[2 x i64] [i64 {start},i64 {end}]"))
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    header.push_str(&format!(
+        "@k.cover.fixed = private constant [7 x [2 x i64]] [{}], align 8\n\
+@k.cover.mmio = private constant [2 x [2 x i64]] [{}], align 8\n",
+        ranges(&retained_roles().map(|(_, start, end)| (start, end))),
+        ranges(&[
+            (HPET_MMIO_LEAF_ADDRESS, HPET_MMIO_LEAF_ADDRESS + 0x200000),
+            (LOCAL_APIC_PAGE_ADDRESS, LOCAL_APIC_PAGE_ADDRESS + 0x200000)
+        ]),
+    ));
     for symbol in [
         X86_SYSTEMS_KERNEL_ENTRY,
         X86_SYSTEMS_DEBUG_BREAK_ENTRY,

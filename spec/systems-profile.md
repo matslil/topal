@@ -9192,6 +9192,33 @@ asynchronous writers, subsequent roots, invalidation/publication, effective
 permissions or continuous lifetime. All protected-activation obligations of
 `TOPAL-SYSTEMS-KERNEL-IMAGE-PUBLISH-001` SHALL remain independently mandatory.
 
+### TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-COVERAGE-001 — Inactive retained-role reachability
+
+After complete whole-owner and table-template validation, preparation SHALL
+walk both actual inactive primary-view banks for every declared retained boot
+role and actual boot-input extent. It SHALL validate complete outward-rounded
+coverage, physical identity, effective ancestor/leaf access and supported cache
+encoding at every covered minimum granule. Extent bounds and rounding overflow
+SHALL be checked before walking. Every table read SHALL remain within the exact
+owned bank. Absent entries, unsupported granules, external table pointers,
+incompatible permissions and aliases SHALL fail without preparation success.
+
+The initial x86 provider SHALL derive its seven fixed retained extents from the
+same adapter source and its boot-input extents from the retained boot binding.
+Their direct views SHALL be supervisor-readable/writable and non-executable at
+cache index zero. Retired handoff storage SHALL be accepted as non-executable
+only after control has transferred into the validated executable image. The
+two declared MMIO views SHALL retain supervisor RW/NX and cache index three.
+Device reachability SHALL NOT grant device-control authority.
+
+The provider SHALL retain exact extents and checked page counts, repeat complete
+coverage checks before discard, and preserve all prior owner, template, USER
+exclusion and retirement checks. An independent byte replay SHALL distinguish
+this evidence from effective hardware permissions, all-root integration,
+processor participation, publication and continuous lifetime. This check SHALL
+NOT grant activation or a protected-image witness. Native failure-path gaps
+SHALL remain explicit rather than being discharged by altered saved data.
+
 ### TOPAL-SYSTEMS-BOOT-PROCESSOR-TOPOLOGY-001 — Initial firmware processor inventory
 
 The boot provider SHALL identify the initial firmware-advertised processor

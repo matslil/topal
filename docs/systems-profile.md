@@ -2287,6 +2287,17 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+Inactive preparation checks the retained non-image roles against both actual
+constructed banks. Boot tables, descriptors, stack, handoff storage and actual
+boot-input extents must retain their declared identity, supervisor access,
+write availability, non-execution and memory-attribute encodings. The closed
+handoff code has already transferred into the image and is retired from
+execution; its storage remains retained. Device views retain their distinct
+provider contract. These checks describe inactive reachability; they grant no
+device access, effective protection, processor exclusion or activation.
+See `TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-COVERAGE-001` and
+[TK-DEC-291](../linux-kernel/design/inactive-boot-coverage.md).
+
 The boot binding also identifies the initial firmware-advertised processor set,
 including enabled and runtime-enableable participants. The provider validates
 the retained discovery path and processor identities within its supported

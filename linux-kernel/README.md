@@ -11,6 +11,12 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [inactive boot-coverage stage](step-4-inactive-boot-coverage.md) checks every
+page of eleven retained boot/input/device roles in both constructed banks.
+All fifteen commands pass over 989 stable inputs; independent replay checks
+3,302 page views and rejects 22 new offline controls. Active protection,
+all-root/CPU lifetime and full kernel replacement remain unfinished.
+
 The [processor-inventory stage](step-4-boot-processor-topology.md) adds bounded
 native ACPI discovery and decoding from validated retained bytes. All fifteen
 commands pass over 985 stable inputs; both VM protocols and 371 memory models

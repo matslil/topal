@@ -7,6 +7,15 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [inactive boot-coverage stage](step-4-inactive-boot-coverage.md) checks every
+page of eleven retained boot/input/device roles through both actual inactive
+banks, preserving effective table permissions, identity and cache encodings.
+Independent replay checks 3,302 page views per completed check, exact native
+journals and 22 new offline controls. All fifteen commands pass over 989 stable
+inputs, including both VM protocols and 375 memory models. The new checker
+activates no table and grants no effective protection or lifetime authority;
+complete root/alias/writer/CPU integration and original acceptance remain open.
+
 The [processor-inventory stage](step-4-boot-processor-topology.md) adds native
 bounded firmware discovery, exact retained-copy decoding and actual BSP identity
 binding. Independent replay checks five root entries, both advertised enabled

@@ -161,6 +161,10 @@ def inspect(build, tables=False):
                 scope='Replay of current native bytes/owners/control registers and final actual bootstrap bank; altered records are offline controls, not injected guest execution')
     if tables: answer['boot_binding']=boot
     if tables:
+        from boot_coverage import inspect as inspect_coverage, altered_record_controls as coverage_controls
+        answer['boot_coverage']=inspect_coverage(native,boot_binding,read)
+        answer['boot_coverage']['rejected_offline_controls']=coverage_controls(native,boot_binding,read)
+    if tables:
         from boot_processors import inspect as inspect_processors, altered_record_controls as processor_controls
         answer['processor_inventory']=inspect_processors(native,read)
         answer['processor_inventory']['rejected_offline_controls']=processor_controls(native,read)
