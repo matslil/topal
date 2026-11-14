@@ -1981,6 +1981,15 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+An explicit scoped retention consumer shall carry exact complete inactive table
+owners across the checked boot continuation, including userspace and root
+restoration, without granting activation. It shall finish the initial binding's
+comparison before interleaving ordinary work, retain issuer/identity/generation/
+pin/exclusion obligations, revalidate unchanged banks before whole retirement,
+and release them only before the designated terminal disposition. Earlier fatal
+branches shall retain/poison affected authority. Historical boot observations
+shall not qualify a later context; activation still needs complete requalification.
+
 Both inactive primary-view banks shall preserve the declared access, identity
 and cache encodings of all supported retained boot roles and actual boot-input
 extents. Boot-only code shall have transferred out before a non-executable

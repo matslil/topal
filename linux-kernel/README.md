@@ -11,6 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [scoped table-retention stage](step-4-retained-image-tables.md) keeps exact
+pinned inactive owners through ordinary execution and root restoration, then
+revalidates and releases them completely. All seventeen leaf commands pass over
+998 stable inputs, including three VM protocols, 379 memory models and 33 actual
+exec/exit-entry snapshots. Activation, full root/CPU protection and complete
+kernel replacement remain unfinished.
+
 The [inactive boot-coverage stage](step-4-inactive-boot-coverage.md) checks every
 page of eleven retained boot/input/device roles in both constructed banks.
 All fifteen commands pass over 989 stable inputs; independent replay checks

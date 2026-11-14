@@ -3199,6 +3199,12 @@ bounded walks of both constructed banks for adapter-derived retained roles,
 actual boot inputs and declared MMIO views. Preserve effective permissions,
 physical identity and cache encodings, retain exact facts, and repeat before
 discard without replacing exact owners/templates or widening USER admission.
+`TOPAL-SYSTEMS-KERNEL-IMAGE-RETAIN-001` requires an explicit scoped inactive
+consumer, original binding comparison before interleaving, exact retained
+issuer/ID/generation/pins, unchanged banks through ordinary root/user work and
+whole retirement before designated terminal disposition. Historical context
+facts shall not substitute for future activation qualification. Earlier fatal
+branches shall keep affected ownership poisoned rather than resume ordinarily.
 
 Inactive table preparation shall retain distinct prepare/discard operations
 and reject use of a backing-only plan or owner in that protocol. Fresh final

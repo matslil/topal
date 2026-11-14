@@ -649,6 +649,8 @@ enum RootLibraryDependency {
 struct RootEncoder {
     image_backing_plan: Option<crate::systems_image_backing::Plan>,
     image_backing_live: bool,
+    image_tables_retained: bool,
+    image_retention_completed: bool,
     frame_policy: Option<RootFramePolicy>,
     frame_relocations: Vec<(u64, &'static str, u64, bool)>,
     bootstrap_capacity: u64,

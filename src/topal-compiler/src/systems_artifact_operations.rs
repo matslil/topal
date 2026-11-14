@@ -28,6 +28,12 @@ fn encode_operations(
             CompilerSystemsOperation::DiscardKernelImageTables => {
                 encoder.discard_kernel_image_backing(true)?;
             }
+            CompilerSystemsOperation::RetainKernelImageTables => {
+                encoder.retain_kernel_image_tables()?;
+            }
+            CompilerSystemsOperation::DiscardRetainedKernelImageTables => {
+                encoder.discard_retained_kernel_image_tables()?;
+            }
             CompilerSystemsOperation::ReleasePhysicalFrames => {
                 encoder.release_physical_frames()?;
             }

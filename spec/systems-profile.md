@@ -9149,7 +9149,7 @@ storage requirement used by the constructor. An equal page count alone SHALL
 NOT suffice. Sizing/template feedback SHALL converge before loading; failed or
 non-convergent proposals SHALL remain non-executable by the producer.
 
-The initial consumer SHALL admit only its ordered preparation observation,
+The immediate-discard consumer SHALL admit only its ordered preparation observation,
 `kernel image discard tables` for the exact live resource, and discard
 observation before ordinary boot resumes. Discard SHALL revalidate the same
 whole owners, pins, inactive roots and constructed words, erase and read back
@@ -9162,6 +9162,39 @@ Constructed bytes SHALL NOT qualify activation, effective permissions, non-image
 roles, device memory attributes, asynchronous writers, saved/restorable roots,
 publication or continuous lifetime. Existing bootstrap-equivalent producers
 and native USER-table admission SHALL retain their exact contracts.
+
+### TOPAL-SYSTEMS-KERNEL-IMAGE-RETAIN-001 — Scoped inactive ownership
+
+Following the exact preparation observation, `context kernel image retain
+tables tables during { ... }` MAY consume the exact `InactiveKernelImageTables`
+into a scoped `RetainedKernelImageTables` owner. Only the table resource SHALL
+be admitted; wrong-context, wrong-resource, duplicate or interleaved retention
+SHALL be rejected. The provider SHALL complete the original boot/context and
+constructed-table comparisons before entering the checked continuation.
+
+The scope SHALL preserve all whole-bank and separate USER-leaf owners, issuer,
+identity, generation, extent, pins, disjointness and inactivity while permitting
+the independently checked continuation's allocations, userspace execution and
+root restoration. Retained banks SHALL NOT become accessible to ordinary source
+or admissible to the USER walker. Their stored words SHALL remain unchanged.
+The initial boot snapshots SHALL remain historical observations and SHALL NOT
+qualify a later execution context or activation.
+
+Before the continuation's designated terminal disposition, the provider SHALL
+revalidate the same exact owners/generations and complete table/zero-leaf bytes,
+repeat retained-role reachability checks, erase and read back every owned byte,
+then unpin/release every complete owner through its issuer. Issued identity
+history SHALL remain monotonic; later unrelated allocations SHALL NOT be
+mistaken for changes to the retained owners. All other continuation resources
+SHALL satisfy their existing completion obligations. No ordinary operation
+SHALL follow the retained-discard observation before terminal disposition.
+Earlier failure branches SHALL retain or poison held authority on their fatal
+path, without ordinary partial-success continuation or mandatory unsafe cleanup.
+
+This scoped systems element SHALL NOT introduce general language finalizers,
+change core semantics, grant activation or supply a protected-image witness.
+Every active/restorable root, mode, CPU/writer, publication and continuous
+protection obligation SHALL remain required before future activation.
 
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-BINDING-001 — Retained boot and interpretation binding
 

@@ -343,7 +343,10 @@ impl RootEncoder {
     }
 
     fn complete(&self) -> Result<(), CompileError> {
-        if self.image_backing_live {
+        if self.image_backing_plan.as_ref().is_some_and(|p|p.is_retained()) && !self.image_retention_completed {
+            return Err(CompileError::Tool("retained image plan requires its exact scoped consumer".into()));
+        }
+        if self.image_backing_live || self.image_tables_retained {
             return Err(CompileError::Tool("root ended with live image-backing preparation".into()));
         }
         if let Some(frames) = &self.frame_policy {

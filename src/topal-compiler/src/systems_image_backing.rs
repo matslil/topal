@@ -8,11 +8,15 @@ pub(crate) const RELEASED: &str = "topal_x86_image_backing_released_v1";
 pub(crate) const TABLE_PREPARE: &str = "topal_x86_image_tables_prepare_v1";
 pub(crate) const TABLE_DISCARD: &str = "topal_x86_image_tables_discard_v1";
 pub(crate) const TABLE_RELEASED: &str = "topal_x86_image_tables_released_v1";
+pub(crate) const TABLE_RETAIN: &str = "topal_x86_image_tables_retain_v1";
+pub(crate) const RETAINED_DISCARD: &str = "topal_x86_retained_tables_discard_v1";
+pub(crate) const RETAINED_RELEASED: &str = "topal_x86_retained_tables_released_v1";
 
 #[derive(Clone, Debug)]
 pub(crate) struct Plan {
     pages: u64,
     tables: bool,
+    retained: bool,
     #[cfg(test)]
     table_plan: Option<crate::systems_kernel_image_layout::InactiveTablePlan>,
 }
@@ -25,6 +29,7 @@ impl Plan {
         Ok(Self {
             pages: crate::systems_kernel_image_layout::preparation_pages(layout)?,
             tables: false,
+            retained: false,
             table_plan: None,
         })
     }
@@ -36,11 +41,23 @@ impl Plan {
         Ok(Self {
             pages: table_plan.pages(),
             tables: true,
+            retained: false,
             table_plan: Some(table_plan),
         })
     }
     pub(crate) fn is_tables(&self) -> bool {
         self.tables
+    }
+    pub(crate) fn is_retained(&self) -> bool {
+        self.retained
+    }
+    #[cfg(test)]
+    pub(crate) fn for_retained_tables(
+        layout: &crate::SystemsKernelImageLayout,
+    ) -> Result<Self, CompileError> {
+        let mut plan = Self::for_tables(layout)?;
+        plan.retained = true;
+        Ok(plan)
     }
     #[cfg(test)]
     pub(crate) fn table_plan(
@@ -150,7 +167,7 @@ pub(crate) use inspection::inspect_selected;
 #[path = "../../../linux-kernel/tools/user-memory/image_backing_source.rs"]
 mod source;
 #[cfg(test)]
-pub(crate) use source::{with_image_preparation, with_image_tables};
+pub(crate) use source::{with_image_preparation, with_image_tables, with_retained_image_tables};
 #[cfg(test)]
 #[path = "systems_image_backing_tests.rs"]
 mod tests;
@@ -158,3 +175,7 @@ mod tests;
 #[cfg(test)]
 #[path = "systems_image_tables_tests.rs"]
 mod table_tests;
+
+#[cfg(test)]
+#[path = "systems_retained_tables_tests.rs"]
+mod retained_tests;

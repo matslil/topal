@@ -16,7 +16,7 @@ HANDLERS = ['_topal_kernel_entry','topal_x86_systems_debug_break_entry',
             'topal_x86_systems_user_copy_page_fault']
 
 
-def symbols(kernel):
+def symbols(kernel,extra=()):
     require(kernel[:6]==b'\x7fELF\x02\x01','ELF64 little-endian kernel required')
     shoff=struct.unpack_from('<Q',kernel,40)[0]
     size,count=struct.unpack_from('<HH',kernel,58)
@@ -34,7 +34,7 @@ def symbols(kernel):
             end=names.find(b'\0',name)
             require(0<=name<=end<len(names),'bounded symbol name')
             label=names[name:end].decode()
-            if label not in set(HANDLERS)|{'topal_x86_kernel_reservation_end_v1'}: continue
+            if label not in set(HANDLERS)|{'topal_x86_kernel_reservation_end_v1'}|set(extra): continue
             require(label not in result,'duplicate global symbol')
             result[label]=dict(address=value,size=length,type=info&15)
     return result

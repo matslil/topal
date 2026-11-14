@@ -1,4 +1,14 @@
 //! Shared full-root test transformation; the resulting source is checked.
+pub(crate) fn with_retained_image_tables(root: &str) -> String {
+    let text = with_image_tables(root);
+    let old = "                          memory kernel image discard tables image-backing\n                          memory console write \"TOPAL_KERNEL_IMAGE_TABLES_DISCARDED\"\n";
+    assert_eq!(text.matches(old).count(), 1);
+    let text=text.replacen(old,"                          memory kernel image retain tables image-backing during {\n                          memory console write \"TOPAL_KERNEL_IMAGE_TABLES_RETAINED\"\n",1);
+    let end = "                        }\n                        Error failure then {\n                          failure fatal \"kernel image backing preparation failed\"";
+    assert_eq!(text.matches(end).count(), 1);
+    text.replacen(end, &format!("                          }}\n{end}"), 1)
+}
+
 pub(crate) fn with_image_tables(root: &str) -> String {
     with_image_preparation(root)
         .replace(

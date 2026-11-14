@@ -18,6 +18,9 @@ pub const SYSTEMS_KERNEL_IMAGE_DISCARD_BACKING: &str =
     "topal.systems.kernel-image.discard-backing/1";
 pub const SYSTEMS_KERNEL_IMAGE_PREPARE_TABLES: &str = "topal.systems.kernel-image.prepare-tables/1";
 pub const SYSTEMS_KERNEL_IMAGE_DISCARD_TABLES: &str = "topal.systems.kernel-image.discard-tables/1";
+pub const SYSTEMS_KERNEL_IMAGE_RETAIN_TABLES: &str = "topal.systems.kernel-image.retain-tables/1";
+pub const SYSTEMS_KERNEL_IMAGE_DISCARD_RETAINED: &str =
+    "topal.systems.kernel-image.discard-retained-tables/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY: &str =
     "topal.systems.static-image.construction.reserve-hierarchy/1";
 pub const SYSTEMS_FRAMES_RELEASE: &str = "topal.systems.frames.release/1";

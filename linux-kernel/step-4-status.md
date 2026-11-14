@@ -7,6 +7,16 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [scoped table-retention stage](step-4-retained-image-tables.md) retains exact
+whole inactive banks/low leaf through the checked boot continuation. Native
+checks and independent replay preserve IDs/generations/pins across allocator
+issuance from 5 to 204, 33 exec/exit entries and actual root restoration, then
+verify complete 69,632-byte retirement. All seventeen leaf validation commands
+pass over 998 stable inputs, including three VM protocols and 379 memory models.
+The immediate-discard, backing-only and original kernel identities remain
+unchanged. The new lifetime grants no activation or effective protection;
+complete root/alias/writer/CPU integration and original acceptance remain open.
+
 The [inactive boot-coverage stage](step-4-inactive-boot-coverage.md) checks every
 page of eleven retained boot/input/device roles through both actual inactive
 banks, preserving effective table permissions, identity and cache encodings.

@@ -1072,7 +1072,7 @@ impl BootstrapAuthorityState {
     }
 
     fn complete(self) -> Result<(), SystemsModelError> {
-        if self.image_backing_live || (self.image_backing_discarded && !self.image_backing_discard_observed) {
+        if self.image_backing_live || self.image_tables_retained || (self.image_backing_discarded && !self.image_backing_discard_observed) {
             return Err(SystemsModelError::new("E-SYSTEMS-FRAMES-LIVE", "image-backing preparation remains live at disposition"));
         }
         if !self.critical_stack.is_empty() {

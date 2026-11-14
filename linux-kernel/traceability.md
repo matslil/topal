@@ -403,6 +403,21 @@ and deterministic physical execution without admitting a general loader.
 
 ## Kernel-image protection design and models
 
+`TK-DEC-292` connects `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
+[scoped retention design](design/retained-image-tables.md) to
+`TOPAL-SYSTEMS-KERNEL-IMAGE-RETAIN-001`. Source/model transitions and exact
+compiler owner bindings feed the
+[native lifetime component](../src/topal-compiler/src/runtime/kernel_retained_tables.ll).
+[Independent replay](tools/user-memory/retained_image_tables.py) checks all
+seven phases, 33 ordinary syscall entries, complete owner generations/pins,
+actual root restoration and whole retirement, with four new owner models and
+21 offline controls. The [report and receipt](step-4-retained-image-tables.md)
+record seventeen leaf commands passing over 998 stable inputs, three native
+VM protocols, 379 memory models and unchanged predecessor kernel identities.
+Historical boot observations do not qualify later contexts. Activation,
+all-root/CPU/alias/writer integration and continuous protection remain required.
+
 `TK-DEC-291` connects `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
 `TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
 [inactive boot-coverage design](design/inactive-boot-coverage.md) to

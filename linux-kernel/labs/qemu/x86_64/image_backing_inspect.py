@@ -15,7 +15,9 @@ import topal_gate
 PROGRAM = r'''
 import gdb, hashlib, json, os, traceback
 tables=profile.get('tables',False)
-released=4 if tables else 3
+retained=profile.get('retained',False)
+released=6 if retained else (4 if tables else 3)
+boot_capture_phases=[0,3] if retained else [0,released]
 extent_owners=profile['bindings']['banks']+([profile['bindings']['low_user_leaf']] if tables else [])
 observed = dict(passed=False, phases=[], target_state_injected=False,
                 protected_context=False, native_execution_attempted=True)
@@ -42,6 +44,7 @@ class Initialization(gdb.Breakpoint):
             observed['initial_stack']=reg('rsp')
             assert observed['initial_stack']-profile['component']['combined_boot_stack_bytes']>=0x109040
             self.enabled=False
+            if retained: RetainedEvent()
             return False
         except Exception: fail()
 
@@ -100,22 +103,28 @@ class Checkpoint(gdb.Breakpoint):
                     if slot!=owner['slot']: assert words(tokens+slot*24,3)==[0,0,0]
                 observed['final_bootstrap']=dict(token=token,record=record,controls=controls,
                     base=base,bank_sha256=hashlib.sha256(data).hexdigest())
+                if retained: observed['retention_event_count']=len(observed['retention_events'])
                 observed['passed']=True
                 with open(observation_path,'w') as f: json.dump(observed,f,indent=2)
                 return True
             phase=journal[0]
             assert phase==len(observed['phases']) and phase<=released
-            assert journal[1]==profile['pages'] and controls['cr3']==journal[4]
-            if observed['phases']: assert controls==observed['phases'][0]['controls']
+            assert journal[1]==profile['pages']
+            if not retained or phase<=3:
+                assert controls['cr3']==journal[4]
+                if observed['phases']: assert controls==observed['phases'][0]['controls']
             row=dict(phase=phase,journal=journal,context=ctx,controls=controls,stack=reg('rsp'),banks=[])
             if tables:
                 boot_registers=words(address('topal_x86_image_boot_observation_v1'),128)
-                assert boot_registers[0]==1 and boot_registers[1:4]==[controls['cr0'],controls['cr3'],controls['cr4']]
+                assert boot_registers[0]==1
+                if not retained or phase<=3:
+                    assert boot_registers[1:4]==[controls['cr0'],controls['cr3'],controls['cr4']]
                 if observed['phases']: assert boot_registers==observed['phases'][0]['boot_registers']
                 row['boot_registers']=boot_registers
                 row['boot_coverage']=words(address('topal_x86_boot_coverage_v1'),64)
+                if retained: row['retained_tables']=words(address('topal_x86_retained_tables_v1'),32)
                 capture_boot_processors(row)
-                if phase in [0,released]:
+                if phase in boot_capture_phases:
                     original_thread=gdb.selected_thread()
                     cpus=[]
                     for thread in gdb.selected_inferior().threads():
@@ -188,7 +197,7 @@ class Checkpoint(gdb.Breakpoint):
                 if phase==0:
                     expected=[6510615555426900570^base^i for i in range(count*512)]
                     assert raw==b''.join(word.to_bytes(8,'little') for word in expected)
-                elif tables and phase==2 and index<2:
+                elif tables and (phase==2 or retained and phase in [3,4]) and index<2:
                     expected=table_encode(profile['layout'],base,journal[10] if index==1 else None)
                     assert raw==expected
                 else: assert raw==bytes(count*4096)
@@ -199,8 +208,12 @@ class Checkpoint(gdb.Breakpoint):
             for index,a in enumerate(row['banks']):
                 for b in row['banks'][:index]:
                     assert a['base']+a['bytes']<=b['base'] or b['base']+b['bytes']<=a['base']
-            assert ctx[2]==journal[9]
-            if observed['phases']: assert ctx==observed['phases'][0]['context']
+            if not retained or phase<=3:
+                assert ctx[2]==journal[9]
+                if observed['phases']: assert ctx==observed['phases'][0]['context']
+            else:
+                assert ctx[:2]==observed['phases'][0]['context'][:2] and ctx[3]==observed['phases'][0]['context'][3]
+                assert ctx[2]>=observed['phases'][0]['context'][2]
             observed['phases'].append(row)
             with open(observation_path,'w') as f: json.dump(observed,f,indent=2)
             print('IMAGE_TABLES_PHASE' if tables else 'IMAGE_BACKING_PHASE',phase,flush=True)
@@ -220,7 +233,7 @@ except Exception: fail()
 '''
 
 
-def main(*, tables=False):
+def main(*, tables=False, retained=False):
     build = Path(sys.argv[1]).resolve()
     assert build.is_relative_to(topal_gate.LINUX_KERNEL.resolve())
     group = next(line.split(':', 2)[2] for line in Path('/proc/self/cgroup').read_text().splitlines()
@@ -229,6 +242,7 @@ def main(*, tables=False):
     assert 'topal-bounded-' in group and (resources / 'memory.swap.max').read_text().strip() == '0'
     role = 'image-tables' if tables else 'image-backing'
     plan = json.loads((build / (role+'-plan-binding.json')).read_text())
+    assert plan.get('retained',False)==retained and (not retained or tables)
     binding = json.loads((build / 'private-image-binding.json').read_text())
     kernel = topal_gate.digest(build / 'kernel.elf')
     assert plan['kernel_sha256'] == binding['layout']['kernel_sha256'] == kernel
@@ -254,10 +268,15 @@ def main(*, tables=False):
         assert boot_contract['kernel_sha256']==kernel
         assert boot_contract['boot_image_sha256']==topal_gate.digest(build/'bzImage')
     assert [row['count'] for row in owners['banks']] == [pages, pages]
-    profile = dict(bindings=owners, pages=pages, tables=tables, layout=plan['layout'],
+    profile = dict(bindings=owners, pages=pages, tables=tables, retained=retained, layout=plan['layout'],
                    component=component,
                    active_owners=json.loads((build / 'root-backing-owners.json').read_text()))
     if tables: profile['boot_contract']=boot_contract
+    if retained:
+        from boot_image_binding import symbols
+        profile['process_entry']=symbols((build/'kernel.elf').read_bytes(),
+            ['topal_x86_systems_static_image_process_enter'])['topal_x86_systems_static_image_process_enter']
+        assert profile['process_entry']['type']==2 and 0<profile['process_entry']['size']<=1<<20
     result = dict(passed=False, native_execution=False, native_execution_attempted=False,
                   protected_context=False, production_qualified=False,
                   kernel_sha256=kernel, scope='Actual image-sized whole-owner reserve/zero/erase/release, with read-only hardware-breakpoint observations; no protected activation')
@@ -270,13 +289,18 @@ def main(*, tables=False):
             prefix+=f'import sys\nsys.path.insert(0,{str(topal_gate.LINUX_KERNEL/"tools/user-memory")!r})\nfrom inactive_image_tables import encode as table_encode\n'
             from boot_processors_inspect import GDB_HELPERS
             prefix+=GDB_HELPERS
+            if retained:
+                from retained_tables_inspect import GDB_HELPERS as RETAINED_HELPERS
+                prefix+=RETAINED_HELPERS
         harness.main(work_name=role+'-native', program_prefix=prefix,
                      guest_timeout_seconds=600, input_scope='ordinary source-built transfer workload')
         native = json.loads((build / (role+'-native/observations.json')).read_text())
-        assert native['passed'] and [row['phase'] for row in native['phases']] == list(range(5 if tables else 4))
+        assert native['passed'] and [row['phase'] for row in native['phases']] == list(range(7 if retained else (5 if tables else 4)))
         serial = (build / (role+'-native/serial.log')).read_bytes()
         markers = ([b'TOPAL_KERNEL_IMAGE_TABLES_PREPARED',b'TOPAL_KERNEL_IMAGE_TABLES_DISCARDED'] if tables else
                    [b'TOPAL_KERNEL_IMAGE_BACKING_RESERVED', b'TOPAL_KERNEL_IMAGE_BACKING_DISCARDED'])
+        if retained:
+            markers=[b'TOPAL_KERNEL_IMAGE_TABLES_PREPARED',b'TOPAL_KERNEL_IMAGE_TABLES_RETAINED',b'TOPAL_KERNEL_IMAGE_RETAINED_TABLES_DISCARDED']
         for marker in markers:
             assert serial.count(marker) == 1
             serial = serial.replace(marker, b'')
@@ -288,7 +312,7 @@ def main(*, tables=False):
         assert serial.count(marker) == 8
         serial = serial.replace(marker, b'')
         topal_gate.verify_process_serial(serial, external=False, process_workload='true')
-        result.update(passed=True, native_execution=True, banks=2, pages_per_bank=pages,
+        result.update(banks=2, pages_per_bank=pages,
                       completed_programs=4, checked_console_copies=8,
                       zeroed_bytes=(pages*2+int(tables))*4096, discarded_bytes=(pages*2+int(tables))*4096,
                       observations=role+'-native/observations.json',
@@ -296,6 +320,15 @@ def main(*, tables=False):
         if tables:
             result.update(constructed_table_bytes=pages*4096*2,low_user_leaf_bytes=4096,extents=3,
                           scope='Actual image-bound inactive bootstrap/process table construction and separate zero low USER leaf; whole erase/release, no activation')
+        if retained:
+            events=native['retention_events']
+            assert 4<=len(events)<=64 and all(e['syscall'] in [59,60,231] for e in events)
+            assert sum(e['syscall']==59 for e in events)>=3
+            assert events[-1]['syscall'] in [60,231]
+            assert (build/(role+'-native/serial.log')).read_bytes().count(b'TOPAL_KERNEL_PROCESS_EXEC_COMMITTED')==3
+            result.update(retained=True,retention_events=len(events),exec_attempts=sum(e['syscall']==59 for e in events),successful_execs=3,
+                          scope='Actual pinned inactive owners across initial user execution, three execs and ordinary root restoration; same-owner byte checks and whole retirement, no activation')
+        result.update(passed=True,native_execution=True)
     finally:
         result['resources'] = {name: (resources / name).read_text().strip() for name in
                                ['memory.max', 'memory.swap.max', 'memory.peak', 'memory.events']}

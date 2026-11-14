@@ -2,6 +2,39 @@
 mod image_backing_source;
 
 #[test]
+fn retained_image_tables_scope_consumes_once_and_retires_after_continuation() {
+    // TOPAL-SYSTEMS-KERNEL-IMAGE-RETAIN-001.
+    let text=image_backing_source::with_retained_image_tables(SOURCE);
+    let program=analyze_systems_for_compiler(&text,&CompilerSystemsTargetSelection::initial_x86_64_qemu()).unwrap();
+    let operations=&program.bootstrap.handler.operations;
+    let keep=operations.iter().position(|o|matches!(o,CompilerSystemsOperation::RetainKernelImageTables)).unwrap();
+    let done=operations.iter().position(|o|matches!(o,CompilerSystemsOperation::DiscardRetainedKernelImageTables)).unwrap();
+    assert_eq!(done+2,operations.len());
+    assert!(keep<operations.iter().position(|o|matches!(o,CompilerSystemsOperation::BeginTranslationUpdate {..})).unwrap());
+    assert!(operations[keep+1..done].iter().any(|o|matches!(o,CompilerSystemsOperation::CompleteUserExecution)));
+    assert!(!operations.iter().any(|o|matches!(o,CompilerSystemsOperation::DiscardKernelImageTables)));
+    model_systems_transitions(&program).unwrap();
+}
+
+#[test]
+fn retained_image_tables_scope_refuses_forgery_interleaving_and_duplicate_consumers() {
+    let text=image_backing_source::with_retained_image_tables(SOURCE);
+    for (old,new) in [
+        ("retain tables image-backing during", "retain tables unrelated during"),
+        ("memory kernel image retain", "other kernel image retain"),
+        ("retain tables image-backing during", "retain backing image-backing during"),
+        ("retain tables image-backing during", "retain tables image-backing later"),
+        ("memory kernel image retain tables", "memory console write \"interleave\"\n memory kernel image retain tables"),
+        ("TOPAL_KERNEL_IMAGE_TABLES_RETAINED", "TOPAL_KERNEL_IMAGE_TABLES_PREPARED"),
+        ("Ok image-backing then", "Ok memory then"),
+        ("reserve backing", "reserve retained-backing"),
+    ] {
+        if !text.contains(old) { continue; }
+        assert!(analyze_systems_for_compiler(&text.replacen(old,new,1),&CompilerSystemsTargetSelection::initial_x86_64_qemu()).is_err(),"{old}");
+    }
+}
+
+#[test]
 fn kernel_image_tables_source_preserves_its_distinct_affine_resource() {
     // TOPAL-SYSTEMS-KERNEL-IMAGE-TABLES-001.
     let text = image_backing_source::with_image_tables(SOURCE);

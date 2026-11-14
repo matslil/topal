@@ -45,8 +45,26 @@ pub(super) fn llvm(plan: &Plan, bindings: &Bindings) -> Result<String, CompileEr
             "@k.image.verify_zero(i64 %base,i64 %words)",
         )
         .replace("{{WORDS}}", "%words");
-    let runtime = include_str!("runtime/kernel_image_tables.ll").to_owned()
+    let mut runtime = include_str!("runtime/kernel_image_tables.ll").to_owned()
         + include_str!("runtime/kernel_boot_coverage.ll");
+    if plan.is_retained() {
+        let from = runtime
+            .find("define i64 @topal_x86_image_tables_discard_v1()")
+            .unwrap();
+        let until = from
+            + runtime[from..]
+                .find("  call void @k.tables.erase(i64 %b,i64 %p,i64 %low)")
+                .unwrap();
+        let retain = runtime[from..until].replace(
+            "@topal_x86_image_tables_discard_v1()",
+            "@topal_x86_image_tables_retain_v1()",
+        );
+        runtime.push_str(&retain);
+        runtime.push_str("  %retained = call {i64,i64,i64} @r.verify(i1 true)\n  store volatile i64 1,ptr @topal_x86_retained_tables_v1,align 8\n  call void @k.image.store(i64 0,i64 3)\n  call void @topal_x86_image_tables_observe_v1()\n  ret i64 1\n}\n");
+        runtime.push_str(include_str!("runtime/kernel_retained_tables.ll"));
+        runtime=runtime.replace("%expected = select i1 %save,i64 0,i64 1", "%one = icmp eq i64 %phase,1\n  %two = icmp eq i64 %phase,2\n  %repeat = or i1 %one,%two\n  %expected_repeat = select i1 %repeat,i64 %phase,i64 1\n  %expected = select i1 %save,i64 0,i64 %expected_repeat")
+            .replace("%completed = select i1 %save,i64 1,i64 2", "%advanced = add i64 %phase,1\n  %completed = select i1 %save,i64 1,i64 %advanced");
+    }
     let text = (common + &runtime)
         .replace(
             "@topal_x86_image_backing_observation_v1",

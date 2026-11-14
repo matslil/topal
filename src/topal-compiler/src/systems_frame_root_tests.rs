@@ -459,7 +459,11 @@ pub(crate) fn prepare_image_backing_fixture(
 ) -> (std::path::PathBuf, crate::SystemsKernelImageLayout) {
     let selected =
         plan.map(|plan| {
-            if plan.is_tables() {
+            if plan.is_retained() {
+                crate::systems_image_backing::with_retained_image_tables(
+                    &hierarchy_backing::selected_root(),
+                )
+            } else if plan.is_tables() {
                 crate::systems_image_backing::with_image_tables(&hierarchy_backing::selected_root())
             } else {
                 crate::systems_image_backing::with_image_preparation(

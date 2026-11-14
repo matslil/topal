@@ -56,10 +56,12 @@ impl BootstrapAuthorityState {
                     }
                 SystemsOperation::DiscardKernelImageBacking if self.image_backing_observed && !self.image_tables => {}
                 SystemsOperation::DiscardKernelImageTables if self.image_backing_observed && self.image_tables => {}
+                SystemsOperation::RetainKernelImageTables if self.image_backing_observed && self.image_tables => {}
                 _ => return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image backing requires one reservation observation then consuming discard before other boot work")),
             }
         } else if self.image_backing_discarded && !self.image_backing_discard_observed {
-            let marker = if self.image_tables { "TOPAL_KERNEL_IMAGE_TABLES_DISCARDED" }
+            let marker = if self.image_tables_retired { "TOPAL_KERNEL_IMAGE_RETAINED_TABLES_DISCARDED" }
+                         else if self.image_tables { "TOPAL_KERNEL_IMAGE_TABLES_DISCARDED" }
                          else { "TOPAL_KERNEL_IMAGE_BACKING_DISCARDED" };
             if let SystemsOperation::ConsoleWrite { text } = operation
                 && text == marker
@@ -68,6 +70,18 @@ impl BootstrapAuthorityState {
                 return Ok(true);
             }
             return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image backing requires its discard observation before continuing"));
+        }
+        if self.image_tables_retired {
+            return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "retained table retirement must immediately precede terminal disposition"));
+        }
+        if self.image_tables_retained && !self.image_retention_observed {
+            if let SystemsOperation::ConsoleWrite { text } = operation
+                && text == "TOPAL_KERNEL_IMAGE_TABLES_RETAINED"
+            {
+                self.image_retention_observed = true;
+                return Ok(true);
+            }
+            return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "retention requires its exact observation before ordinary boot"));
         }
         if self.observe_critical(operation)? {
             return Ok(true);
@@ -142,7 +156,7 @@ impl BootstrapAuthorityState {
                 };
             }
             SystemsOperation::ReserveKernelImageBacking { .. } | SystemsOperation::PrepareKernelImageTables { .. } => {
-                if !self.allocator_created || self.image_backing_live || self.image_backing_discarded
+                if !self.allocator_created || self.image_backing_live || self.image_backing_discarded || self.image_tables_retained
                     || self.memory_ownership != BootstrapMemoryOwnership::None
                     || self.translation != BootstrapTranslationState::BootstrapActive
                 {
@@ -156,6 +170,25 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "image-backing discard requires its exact live preparation"));
                 }
                 self.image_backing_live = false;
+                self.image_backing_discarded = true;
+            }
+            SystemsOperation::RetainKernelImageTables => {
+                if !self.image_backing_live || !self.image_tables || self.image_tables_retained {
+                    return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "retention requires its exact prepared table resource"));
+                }
+                self.image_backing_live = false;
+                self.image_tables_retained = true;
+            }
+            SystemsOperation::DiscardRetainedKernelImageTables => {
+                if !self.image_tables_retained || !self.image_retention_observed
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.translation != BootstrapTranslationState::RemovedActive
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new("E-SYSTEMS-KERNEL-IMAGE", "retained table retirement requires its completed continuation and exact live owner"));
+                }
+                self.image_tables_retained = false;
+                self.image_tables_retired = true;
                 self.image_backing_discarded = true;
             }
             SystemsOperation::ReserveStaticImageHierarchy { .. } => {

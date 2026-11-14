@@ -2287,6 +2287,20 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+After the preparation observation, `context kernel image retain tables tables
+during { ... }` consumes the exact inactive resource into a scoped
+`RetainedKernelImageTables` owner. The checked boot continuation may allocate,
+execute userspace and restore roots while those banks stay pinned and inactive.
+At its designated terminal disposition, the provider revalidates whole owners,
+generations and unchanged table bytes, erases and releases complete storage,
+then performs that disposition. Earlier fatal branches retain/poison resources.
+The initial boot-context comparison completes before entering the scope; its
+observations do not become valid for a later context. Retention grants no
+activation or protected-context authority and does not weaken the original
+immediate-discard protocol. See
+`TOPAL-SYSTEMS-KERNEL-IMAGE-RETAIN-001` and
+[TK-DEC-292](../linux-kernel/design/retained-image-tables.md).
+
 Inactive preparation checks the retained non-image roles against both actual
 constructed banks. Boot tables, descriptors, stack, handoff storage and actual
 boot-input extents must retain their declared identity, supervisor access,

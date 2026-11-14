@@ -1,4 +1,37 @@
 impl RootEncoder {
+    fn retain_kernel_image_tables(&mut self)->Result<(),CompileError>{
+        if !self.image_backing_live || self.image_tables_retained
+            || self.image_backing_plan.as_ref().is_none_or(|p|!p.is_retained()) {
+            return Err(CompileError::Tool("retention requires exact bound table preparation".into()));
+        }
+        self.image_backing_call(crate::systems_image_backing::TABLE_RETAIN)?;
+        self.image_backing_live=false;
+        self.image_tables_retained=true;
+        Ok(())
+    }
+
+    fn discard_retained_kernel_image_tables(&mut self)->Result<(),CompileError>{
+        if !self.image_tables_retained || self.image_backing_live
+            || self.image_backing_plan.as_ref().is_none_or(|p|!p.is_retained())
+            || self.physical_frame_count.is_some() || self.kernel_mapping_live
+            || self.translation!=RootTranslationState::RemovedActive
+            || self.frame_policy.as_ref().is_none_or(|frame| frame.current.is_some()
+                || frame.payload.is_some() || frame.owners.keys().any(|key|
+                    !["bootstrap-translation","prepared-image-bootstrap","prepared-image-process","prepared-image-low-leaf"].contains(key)))
+        {
+            return Err(CompileError::Tool("retained table retirement requires completed continuation owners".into()));
+        }
+        self.image_backing_call(crate::systems_image_backing::RETAINED_DISCARD)?;
+        for owner in ["prepared-image-bootstrap","prepared-image-process","prepared-image-low-leaf"] {
+            self.frame_return(owner)?;
+            self.frame_release_source()?;
+        }
+        self.image_backing_call(crate::systems_image_backing::RETAINED_RELEASED)?;
+        self.image_tables_retained=false;
+        self.image_retention_completed=true;
+        Ok(())
+    }
+
     fn image_backing_call(&mut self, symbol: &'static str) -> Result<(), CompileError> {
         self.bytes.push(0xe8);
         self.frame_relocations.push((self.bytes.len() as u64, symbol, 0, true));
@@ -12,7 +45,7 @@ impl RootEncoder {
             "E-SYSTEMS-KERNEL-IMAGE: native preparation requires complete current-image sizing and source binding".into()))?;
         let pages = plan.pages();
         if plan.is_tables() != tables { return Err(CompileError::Tool("image preparation resource and native plan differ".into())); }
-        if !self.frame_allocator_created || self.frame_policy.is_none() || self.image_backing_live
+        if !self.frame_allocator_created || self.frame_policy.is_none() || self.image_backing_live || self.image_tables_retained
             || self.physical_frame_count.is_some() || self.kernel_mapping_live
             || self.translation != RootTranslationState::BootstrapActive
             || self.frame_policy.as_ref().unwrap().image_preparation.is_some()

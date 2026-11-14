@@ -8,7 +8,7 @@ def capture_boot_processors(row):
     if observed['phases']:
         assert registers==observed['phases'][0]['processor_registers']
     row['processor_registers']=registers
-    if row['phase'] not in [0,released]: return
+    if row['phase'] not in boot_capture_phases: return
     root=memory(registers[4],registers[5])
     regions=[('bda',1038,2),('bios',0xe0000,0x20000),
              ('rsdp',registers[1],registers[3]),('root',registers[4],registers[5]),

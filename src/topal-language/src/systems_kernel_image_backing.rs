@@ -38,12 +38,23 @@ fn analyze_kernel_image_backing_sequence(
     }
     let failure_message = translation_failure(source, failure, &failure_name, "kernel-image backing failure must enter fatal")?;
     let body = translation_block(source, success, span, "kernel-image backing requires an affine discard block")?;
-    let [reserved_marker, discard, discarded_marker, rest @ ..] = body else {
+    let [reserved_marker, discard, tail @ ..] = body else {
         return Err(translation_diagnostic(source, span, "kernel-image backing requires observation, exact discard and continuation"));
     };
     let reserved_marker = parse_static_image_marker(source, reserved_marker, context,
         if tables { "TOPAL_KERNEL_IMAGE_TABLES_PREPARED" } else { "TOPAL_KERNEL_IMAGE_BACKING_RESERVED" },
         "kernel-image preparation requires its exact observation")?;
+    if tables && let Statement::Expression(Expression::Application { items, .. }) = discard
+        && items.get(3).is_some_and(|word| identifier_is(source, word, "retain"))
+    {
+        if !tail.is_empty() {
+            return Err(translation_diagnostic(source, span, "scoped retention is the terminal preparation consumer"));
+        }
+        return analyze_kernel_image_retention(source, body, context, &owner, storage, failure_message, reserved_marker);
+    }
+    let [discarded_marker, rest @ ..] = tail else {
+        return Err(translation_diagnostic(source,span,"immediate discard requires its observation and continuation"));
+    };
     let Statement::Expression(Expression::Application { items, .. }) = discard else {
         return Err(translation_diagnostic(source, statement_span(discard), "kernel-image backing requires its consuming discard"));
     };
@@ -64,6 +75,46 @@ fn analyze_kernel_image_backing_sequence(
         if tables { CompilerSystemsOperation::DiscardKernelImageTables }
         else { CompilerSystemsOperation::DiscardKernelImageBacking },
         discarded_marker,
+    ]);
+    Ok(checked)
+}
+
+fn analyze_kernel_image_retention(
+    source: &SourceText,
+    body: &[Statement],
+    context: &str,
+    owner: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+    failure_message: String,
+    prepared: CompilerSystemsOperation,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
+    if owner==context {
+        return Err(translation_diagnostic(source,statement_span(&body[0]),"retention context and prepared owner must have distinct names"));
+    }
+    let [_, Statement::Expression(Expression::Application { items, span })] = body else {
+        return Err(translation_diagnostic(source, Span::new(0,0), "retention requires one scoped consumer after preparation observation"));
+    };
+    let [receiver,kernel,image,retain,tables,value,during,Expression::Block { statements, .. }] = items.as_slice() else {
+        return Err(translation_diagnostic(source,*span,"retention requires the exact owner and a checked `during` block"));
+    };
+    if ![receiver,kernel,image,retain,tables,value,during].into_iter()
+        .zip([context,"kernel","image","retain","tables",owner,"during"])
+        .all(|(item,word)|identifier_is(source,item,word))
+    {
+        return Err(translation_diagnostic(source,*span,"retention requires the exact context and prepared table owner"));
+    }
+    let [marker,continuation @ ..] = statements.as_slice() else {
+        return Err(translation_diagnostic(source,*span,"retention requires observation and an ordinary boot continuation"));
+    };
+    let marker=parse_static_image_marker(source,marker,context,"TOPAL_KERNEL_IMAGE_TABLES_RETAINED","retention requires its exact observation")?;
+    let mut checked=analyze_translation_sequence(source,continuation,context,storage)?;
+    checked.operations.splice(0..0,[
+        CompilerSystemsOperation::PrepareKernelImageTables { failure_message },prepared,
+        CompilerSystemsOperation::RetainKernelImageTables,marker,
+    ]);
+    checked.operations.extend([
+        CompilerSystemsOperation::DiscardRetainedKernelImageTables,
+        CompilerSystemsOperation::ConsoleWrite { text:"TOPAL_KERNEL_IMAGE_RETAINED_TABLES_DISCARDED".into() },
     ]);
     Ok(checked)
 }
