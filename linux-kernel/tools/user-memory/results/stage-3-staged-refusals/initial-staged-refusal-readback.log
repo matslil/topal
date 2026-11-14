@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/x86_64/readback-staged-refusals-initial.py", line 16, in <module>
+    assert all(native[key] == value for key, value in old.items())
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

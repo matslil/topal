@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "<string>", line 26, in <module>
+    a.audit(Path(build))
+    ~~~~~~~^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_copy_transfers.py", line 279, in audit
+    assert registers[endpoint] == candidate, ('copy/admission candidate mismatch', name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('copy/admission candidate mismatch', 'header-command')

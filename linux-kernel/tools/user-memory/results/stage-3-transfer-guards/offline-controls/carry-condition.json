@@ -1,0 +1,8 @@
+{
+  "name": "carry-condition",
+  "body_offset": 27154,
+  "replacement_hex": "83",
+  "rejected": true,
+  "error": "('missing immediate carry refusal', {'nearest_labels': ['static-process-shell-uname'], 'offset': 27139, 'source_column': 9, 'source_file': 'src/topal-compiler/src/systems_process_runtime.rs', 'source_line': 365, 'target': 'runtime-writable-extent'})",
+  "scope": "Offline compiler-owned object byte shape with rebound function digest; unchanged decoder listing; no native execution"
+}

@@ -162,7 +162,7 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
     }
 }
 
-fn llvm_value_type(value_type: &CompilerType) -> String {
+pub(crate) fn llvm_value_type(value_type: &CompilerType) -> String {
     match value_type {
         CompilerType::Identity
         | CompilerType::TypeView
@@ -200,7 +200,8 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Bag(_)
         | CompilerType::Map { .. }
         | CompilerType::Task(_)
-        | CompilerType::ExternalLocation(_) => "ptr".into(),
+        | CompilerType::ExternalLocation(_)
+        | CompilerType::KernelByteRegion => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
@@ -296,6 +297,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::ErrorCode => LlValue::ErrorCode(value),
         CompilerType::ErrorDomain => LlValue::ErrorDomain(value),
         CompilerType::SourceLocation => LlValue::SourceLocation(value),
+        CompilerType::KernelByteRegion => LlValue::KernelRegion(value),
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value,
             enumeration: enumeration.clone(),
@@ -372,7 +374,8 @@ fn llvm_string(value: &str) -> String {
         .collect()
 }
 
-const PLATFORM_RUNTIME: &str = include_str!("../runtime/linux_x86_64.ll");
+const VALUE_RUNTIME: &str = include_str!("../runtime/value_core.ll");
+const PLATFORM_RUNTIME: &str = concat!(include_str!("../runtime/linux_x86_64.ll"),include_str!("../runtime/value_core.ll"));
 const INFINITY_RESULT_RUNTIME: &str = include_str!("../runtime/infinity_result.ll");
 const LIST_BOOLEAN_CORE_RUNTIME: &str = include_str!("../runtime/list_boolean_core.ll");
 const LIST_BOOLEAN_STRING_PAIR_CORE_RUNTIME: &str =

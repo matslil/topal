@@ -1,0 +1,15 @@
+{
+  "environment": {
+    "TOPAL_TEST_EXTENT_OWNERS": "metadata",
+    "RUST_MIN_STACK": "16777216",
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "bounded": true,
+  "command": [
+    "python3",
+    "linux-kernel/.cache/x86_64/run-staging-focused-tests.py",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_metadata_lifetimes",
+    "--ignored"
+  ],
+  "scope": "Recorded outer invocation; actual generated debugger program also binds the nonempty owner profile"
+}

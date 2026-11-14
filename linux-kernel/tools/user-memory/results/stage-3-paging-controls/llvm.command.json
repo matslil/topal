@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "/home/mats/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-objdump",
+    "-d",
+    "-z",
+    "--x86-asm-syntax=intel",
+    "linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build/kernel.elf"
+  ],
+  "exit_code": 0
+}

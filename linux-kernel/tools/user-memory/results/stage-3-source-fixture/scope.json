@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "stage_complete": false,
+  "production_activation": false,
+  "source_executions": 4,
+  "source_syscalls": 56,
+  "covered": [
+    "runtime uname",
+    "console error and empty-transfer ordering",
+    "heap growth/restoration",
+    "normal source ABI and complete process retirement"
+  ],
+  "remaining": [
+    "direct startup/stat/directory/command native boundary cases",
+    "complete all-caller qualification",
+    "canonical production binding and cold reconstruction",
+    "full original kernel acceptance"
+  ],
+  "earlier_failure": "The original source variant timed out at legacy padding assertions after short reads. Its failed status is preserved. Source-variant checks now inspect delivered bytes only; the default constructor checksum remains unchanged."
+}

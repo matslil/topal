@@ -1,0 +1,6 @@
+{
+  "scope": "Offline exploratory assumptions, separate from the passing native run and from AI safeguard notices",
+  "initial_all_emitted_calls_assumption": "An exploratory assertion requiring all 91 emitted calls in the direct graph failed for offset 88236. Emission does not imply reachability. The final inventory reports this call outside its graph and separately requires every observed native call to be included; no security acceptance gate is removed.",
+  "linear_decode_gap": "Two real branch destinations, 162020 and 185049, required targeted decoding after linear decoding from embedded-data regions missed their instruction boundaries.",
+  "remaining": "Outside this selected graph is not a whole-program unreachability proof; direct source routing, external/indirect callees and alternate roots remain explicit obligations"
+}

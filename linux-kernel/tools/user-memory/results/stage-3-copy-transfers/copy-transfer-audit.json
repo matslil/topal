@@ -1,0 +1,2878 @@
+{
+  "passed": true,
+  "function": "topal_x86_systems_static_image_process_enter",
+  "kernel_sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+  "provider_sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+  "linked_function_sha256": "b5555dab7fa1f48e353051e0f6eddd2b5279ac5a9f32dee95177b65ceba1396b",
+  "graph_sha256": "afdacb7c3705041ec40dac4f9f6ab45fb58a62a64afe468c4c71d91768a4da32",
+  "origin_join_sha256": "69334db70692bda46c54789b356513aca31d51f70378bb645f2a2007e29ca263",
+  "census_sha256": "1408d6f9916bd5a0c37000b98ce1e8c38e6bad793e780366177b9af4e9136711",
+  "transfer_regions": 15,
+  "cases": [
+    {
+      "name": "header-command",
+      "census_label": "static-process-shell-read-fstat-ready",
+      "call_offset": 38450,
+      "prelude_start": 38441,
+      "carry_gate": 38464,
+      "success_offset": 38470,
+      "copy_offset": 38484,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        7
+      ],
+      "admitted_byte_count": [
+        "entry-register",
+        15
+      ],
+      "copy_element_count": [
+        "entry-register",
+        15
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-words",
+        [
+          "constant",
+          45795569
+        ],
+        [
+          "entry-register",
+          13
+        ]
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 38441,
+          "size": 3,
+          "bytes": "4889f8",
+          "instruction": "mov\trax, rdi",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 38444,
+          "size": 3,
+          "bytes": "4d89f9",
+          "instruction": "mov\tr9, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 38447,
+          "size": 3,
+          "bytes": "4989c0",
+          "instruction": "mov\tr8, rax",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 38470,
+          "size": 7,
+          "bytes": "488d35244f0100",
+          "instruction": "lea\trsi, [rip + 0x14f24]",
+          "mnemonic": "lea",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 38477,
+          "size": 3,
+          "bytes": "4c01ee",
+          "instruction": "add\trsi, r13",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 38480,
+          "size": 3,
+          "bytes": "4c89f9",
+          "instruction": "mov\trcx, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 38483,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 38484,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 38484,
+          "end": 38486,
+          "location": 2128
+        }
+      ]
+    },
+    {
+      "name": "refill-command",
+      "census_label": "static-process-shell-refill-command-read-facts-ready",
+      "call_offset": 39534,
+      "prelude_start": 39525,
+      "carry_gate": 39548,
+      "success_offset": 39554,
+      "copy_offset": 39568,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        7
+      ],
+      "admitted_byte_count": [
+        "entry-register",
+        15
+      ],
+      "copy_element_count": [
+        "entry-register",
+        15
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-words",
+        [
+          "constant",
+          45795580
+        ],
+        [
+          "entry-register",
+          13
+        ]
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 39525,
+          "size": 3,
+          "bytes": "4889f8",
+          "instruction": "mov\trax, rdi",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 39528,
+          "size": 3,
+          "bytes": "4d89f9",
+          "instruction": "mov\tr9, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 39531,
+          "size": 3,
+          "bytes": "4989c0",
+          "instruction": "mov\tr8, rax",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 39554,
+          "size": 7,
+          "bytes": "488d35f34a0100",
+          "instruction": "lea\trsi, [rip + 0x14af3]",
+          "mnemonic": "lea",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 39561,
+          "size": 3,
+          "bytes": "4c01ee",
+          "instruction": "add\trsi, r13",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 39564,
+          "size": 3,
+          "bytes": "4c89f9",
+          "instruction": "mov\trcx, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 39567,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 39568,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 39568,
+          "end": 39570,
+          "location": 2128
+        }
+      ]
+    },
+    {
+      "name": "root-command",
+      "census_label": "static-process-shell-root-test-command-read-profile-ready",
+      "call_offset": 40444,
+      "prelude_start": 40435,
+      "carry_gate": 40458,
+      "success_offset": 40464,
+      "copy_offset": 40478,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        7
+      ],
+      "admitted_byte_count": [
+        "entry-register",
+        15
+      ],
+      "copy_element_count": [
+        "entry-register",
+        15
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-words",
+        [
+          "constant",
+          45795585
+        ],
+        [
+          "entry-register",
+          13
+        ]
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 40435,
+          "size": 3,
+          "bytes": "4889f8",
+          "instruction": "mov\trax, rdi",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 40438,
+          "size": 3,
+          "bytes": "4d89f9",
+          "instruction": "mov\tr9, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 40441,
+          "size": 3,
+          "bytes": "4989c0",
+          "instruction": "mov\tr8, rax",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 40464,
+          "size": 7,
+          "bytes": "488d356a470100",
+          "instruction": "lea\trsi, [rip + 0x1476a]",
+          "mnemonic": "lea",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 40471,
+          "size": 3,
+          "bytes": "4c01ee",
+          "instruction": "add\trsi, r13",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 40474,
+          "size": 3,
+          "bytes": "4c89f9",
+          "instruction": "mov\trcx, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 40477,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 40478,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 40478,
+          "end": 40480,
+          "location": 2128
+        }
+      ]
+    },
+    {
+      "name": "pwd-command",
+      "census_label": "static-process-shell-pwd-command-read-profile-ready",
+      "call_offset": 42436,
+      "prelude_start": 42427,
+      "carry_gate": 42450,
+      "success_offset": 42456,
+      "copy_offset": 42470,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        7
+      ],
+      "admitted_byte_count": [
+        "entry-register",
+        15
+      ],
+      "copy_element_count": [
+        "entry-register",
+        15
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-words",
+        [
+          "constant",
+          45795879
+        ],
+        [
+          "entry-register",
+          13
+        ]
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 42427,
+          "size": 3,
+          "bytes": "4889f8",
+          "instruction": "mov\trax, rdi",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 42430,
+          "size": 3,
+          "bytes": "4d89f9",
+          "instruction": "mov\tr9, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 42433,
+          "size": 3,
+          "bytes": "4989c0",
+          "instruction": "mov\tr8, rax",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 42456,
+          "size": 7,
+          "bytes": "488d35c8400100",
+          "instruction": "lea\trsi, [rip + 0x140c8]",
+          "mnemonic": "lea",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 42463,
+          "size": 3,
+          "bytes": "4c01ee",
+          "instruction": "add\trsi, r13",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 42466,
+          "size": 3,
+          "bytes": "4c89f9",
+          "instruction": "mov\trcx, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 42469,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 42470,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 42470,
+          "end": 42472,
+          "location": 2128
+        }
+      ]
+    },
+    {
+      "name": "serial-command",
+      "census_label": "owned-shell-serial-copy",
+      "call_offset": 43425,
+      "prelude_start": 43416,
+      "carry_gate": 43439,
+      "success_offset": 43445,
+      "copy_offset": 43452,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        7
+      ],
+      "admitted_byte_count": [
+        "entry-register",
+        15
+      ],
+      "copy_element_count": [
+        "entry-register",
+        15
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "entry-register",
+        12
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 43416,
+          "size": 3,
+          "bytes": "4889f8",
+          "instruction": "mov\trax, rdi",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 43419,
+          "size": 3,
+          "bytes": "4d89f9",
+          "instruction": "mov\tr9, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 43422,
+          "size": 3,
+          "bytes": "4989c0",
+          "instruction": "mov\tr8, rax",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 43445,
+          "size": 3,
+          "bytes": "4c89e6",
+          "instruction": "mov\trsi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 43448,
+          "size": 3,
+          "bytes": "4c89f9",
+          "instruction": "mov\trcx, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 43451,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 43452,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 43452,
+          "end": 43454,
+          "location": 2128
+        }
+      ]
+    },
+    {
+      "name": "signal-action-input",
+      "census_label": "process-signal-action",
+      "call_offset": 145214,
+      "prelude_start": 145204,
+      "carry_gate": 145228,
+      "success_offset": 145234,
+      "copy_offset": 145258,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "read",
+      "candidate_expression": [
+        "entry-register",
+        8
+      ],
+      "admitted_byte_count": [
+        "constant",
+        32
+      ],
+      "copy_element_count": [
+        "constant",
+        32
+      ],
+      "user_endpoint_register": 6,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1408
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 145204,
+          "size": 10,
+          "bytes": "49b92000000000000000",
+          "instruction": "movabs\tr9, 0x20",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 145234,
+          "size": 3,
+          "bytes": "4c89c6",
+          "instruction": "mov\trsi, r8",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145237,
+          "size": 3,
+          "bytes": "4c89e7",
+          "instruction": "mov\trdi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145240,
+          "size": 7,
+          "bytes": "4881c780050000",
+          "instruction": "add\trdi, 0x580",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145247,
+          "size": 10,
+          "bytes": "48b92000000000000000",
+          "instruction": "movabs\trcx, 0x20",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145257,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 145258,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 145258,
+          "end": 145260,
+          "location": 5989
+        }
+      ]
+    },
+    {
+      "name": "signal-action-output",
+      "census_label": "process-signal-action-publish",
+      "call_offset": 145584,
+      "prelude_start": 145558,
+      "carry_gate": 145598,
+      "success_offset": 145604,
+      "copy_offset": 145628,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        14
+      ],
+      "admitted_byte_count": [
+        "constant",
+        32
+      ],
+      "copy_element_count": [
+        "constant",
+        32
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1472
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 145558,
+          "size": 3,
+          "bytes": "4d89f0",
+          "instruction": "mov\tr8, r14",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145561,
+          "size": 7,
+          "bytes": "4981f800000000",
+          "instruction": "cmp\tr8, 0x0",
+          "mnemonic": "cmp",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145568,
+          "size": 6,
+          "bytes": "0f84bd010000",
+          "instruction": "je\t0x2bb1de3 <topal_x86_frame_mm_cleanup_return_v1+0x903f>",
+          "mnemonic": "je",
+          "access_kinds": [],
+          "effect": {
+            "kind": "optional-null-side-exit",
+            "target": 146019
+          }
+        },
+        {
+          "offset": 145574,
+          "size": 10,
+          "bytes": "49b92000000000000000",
+          "instruction": "movabs\tr9, 0x20",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 145604,
+          "size": 3,
+          "bytes": "4c89f7",
+          "instruction": "mov\trdi, r14",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145607,
+          "size": 3,
+          "bytes": "4c89e6",
+          "instruction": "mov\trsi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145610,
+          "size": 7,
+          "bytes": "4881c6c0050000",
+          "instruction": "add\trsi, 0x5c0",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145617,
+          "size": 10,
+          "bytes": "48b92000000000000000",
+          "instruction": "movabs\trcx, 0x20",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145627,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 145628,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 145628,
+          "end": 145630,
+          "location": 6031
+        }
+      ]
+    },
+    {
+      "name": "signal-mask-input",
+      "census_label": "process-signal-mask",
+      "call_offset": 145783,
+      "prelude_start": 145773,
+      "carry_gate": 145797,
+      "success_offset": 145803,
+      "copy_offset": 145827,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "read",
+      "candidate_expression": [
+        "entry-register",
+        8
+      ],
+      "admitted_byte_count": [
+        "constant",
+        8
+      ],
+      "copy_element_count": [
+        "constant",
+        8
+      ],
+      "user_endpoint_register": 6,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1408
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 145773,
+          "size": 10,
+          "bytes": "49b90800000000000000",
+          "instruction": "movabs\tr9, 0x8",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 145803,
+          "size": 3,
+          "bytes": "4c89c6",
+          "instruction": "mov\trsi, r8",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145806,
+          "size": 3,
+          "bytes": "4c89e7",
+          "instruction": "mov\trdi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145809,
+          "size": 7,
+          "bytes": "4881c780050000",
+          "instruction": "add\trdi, 0x580",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145816,
+          "size": 10,
+          "bytes": "48b90800000000000000",
+          "instruction": "movabs\trcx, 0x8",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145826,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 145827,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 145827,
+          "end": 145829,
+          "location": 5989
+        }
+      ]
+    },
+    {
+      "name": "signal-mask-output",
+      "census_label": "process-signal-mask-publish",
+      "call_offset": 145968,
+      "prelude_start": 145942,
+      "carry_gate": 145982,
+      "success_offset": 145988,
+      "copy_offset": 146012,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        14
+      ],
+      "admitted_byte_count": [
+        "constant",
+        8
+      ],
+      "copy_element_count": [
+        "constant",
+        8
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1472
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 145942,
+          "size": 3,
+          "bytes": "4d89f0",
+          "instruction": "mov\tr8, r14",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145945,
+          "size": 7,
+          "bytes": "4981f800000000",
+          "instruction": "cmp\tr8, 0x0",
+          "mnemonic": "cmp",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145952,
+          "size": 6,
+          "bytes": "0f843d000000",
+          "instruction": "je\t0x2bb1de3 <topal_x86_frame_mm_cleanup_return_v1+0x903f>",
+          "mnemonic": "je",
+          "access_kinds": [],
+          "effect": {
+            "kind": "optional-null-side-exit",
+            "target": 146019
+          }
+        },
+        {
+          "offset": 145958,
+          "size": 10,
+          "bytes": "49b90800000000000000",
+          "instruction": "movabs\tr9, 0x8",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 145988,
+          "size": 3,
+          "bytes": "4c89f7",
+          "instruction": "mov\trdi, r14",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145991,
+          "size": 3,
+          "bytes": "4c89e6",
+          "instruction": "mov\trsi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 145994,
+          "size": 7,
+          "bytes": "4881c6c0050000",
+          "instruction": "add\trsi, 0x5c0",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 146001,
+          "size": 10,
+          "bytes": "48b90800000000000000",
+          "instruction": "movabs\trcx, 0x8",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 146011,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 146012,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 146012,
+          "end": 146014,
+          "location": 6031
+        }
+      ]
+    },
+    {
+      "name": "directory-output",
+      "census_label": "namespace-directory-copy",
+      "call_offset": 158576,
+      "prelude_start": 158564,
+      "carry_gate": 158590,
+      "success_offset": 158596,
+      "copy_offset": 158613,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "captured-field",
+        320
+      ],
+      "admitted_byte_count": [
+        "entry-register",
+        15
+      ],
+      "copy_element_count": [
+        "entry-register",
+        15
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1408
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 158564,
+          "size": 9,
+          "bytes": "654c8b042540010000",
+          "instruction": "mov\tr8, qword ptr gs:[0x140]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "gs-based"
+          ],
+          "effect": {
+            "kind": "captured-read",
+            "field": 320,
+            "width": 8
+          }
+        },
+        {
+          "offset": 158573,
+          "size": 3,
+          "bytes": "4d89f9",
+          "instruction": "mov\tr9, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 158596,
+          "size": 3,
+          "bytes": "4c89c7",
+          "instruction": "mov\trdi, r8",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 158599,
+          "size": 3,
+          "bytes": "4c89e6",
+          "instruction": "mov\trsi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 158602,
+          "size": 7,
+          "bytes": "4881c680050000",
+          "instruction": "add\trsi, 0x580",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 158609,
+          "size": 3,
+          "bytes": "4c89f9",
+          "instruction": "mov\trcx, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 158612,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 158613,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 158613,
+          "end": 158615,
+          "location": 6771
+        }
+      ]
+    },
+    {
+      "name": "named-directory-output",
+      "census_label": "named-directory-publish",
+      "call_offset": 161434,
+      "prelude_start": 161422,
+      "carry_gate": 161448,
+      "success_offset": 161454,
+      "copy_offset": 161471,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "captured-field",
+        320
+      ],
+      "admitted_byte_count": [
+        "entry-register",
+        15
+      ],
+      "copy_element_count": [
+        "entry-register",
+        15
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        277504
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 161422,
+          "size": 9,
+          "bytes": "654c8b042540010000",
+          "instruction": "mov\tr8, qword ptr gs:[0x140]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "gs-based"
+          ],
+          "effect": {
+            "kind": "captured-read",
+            "field": 320,
+            "width": 8
+          }
+        },
+        {
+          "offset": 161431,
+          "size": 3,
+          "bytes": "4d89f9",
+          "instruction": "mov\tr9, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 161454,
+          "size": 3,
+          "bytes": "4c89c7",
+          "instruction": "mov\trdi, r8",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 161457,
+          "size": 3,
+          "bytes": "4c89e6",
+          "instruction": "mov\trsi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 161460,
+          "size": 7,
+          "bytes": "4881c6003c0400",
+          "instruction": "add\trsi, 0x43c00",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 161467,
+          "size": 3,
+          "bytes": "4c89f9",
+          "instruction": "mov\trcx, r15",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 161470,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 161471,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 161471,
+          "end": 161473,
+          "location": 6962
+        }
+      ]
+    },
+    {
+      "name": "uname-output",
+      "census_label": "process-observations-uname",
+      "call_offset": 185975,
+      "prelude_start": 185962,
+      "carry_gate": 185989,
+      "success_offset": 185995,
+      "copy_offset": 186013,
+      "copy_size": 2,
+      "copy_width": 1,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        7
+      ],
+      "admitted_byte_count": [
+        "constant",
+        390
+      ],
+      "copy_element_count": [
+        "constant",
+        390
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "constant",
+        45795908
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 185962,
+          "size": 3,
+          "bytes": "4989f8",
+          "instruction": "mov\tr8, rdi",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 185965,
+          "size": 10,
+          "bytes": "49b98601000000000000",
+          "instruction": "movabs\tr9, 0x186",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 185995,
+          "size": 7,
+          "bytes": "488d353210ffff",
+          "instruction": "lea\trsi, [rip - 0xefce]",
+          "mnemonic": "lea",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 186002,
+          "size": 10,
+          "bytes": "48b98601000000000000",
+          "instruction": "movabs\trcx, 0x186",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 186012,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 186013,
+          "size": 2,
+          "bytes": "f3a4",
+          "instruction": "rep\t\tmovsb\tbyte ptr es:[rdi], byte ptr [rsi]",
+          "mnemonic": "movsb",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 1
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 186013,
+          "end": 186015,
+          "location": 7438
+        }
+      ]
+    },
+    {
+      "name": "clock-time-output",
+      "census_label": "process-time-gettime",
+      "call_offset": 186810,
+      "prelude_start": 186797,
+      "carry_gate": 186824,
+      "success_offset": 186830,
+      "copy_offset": 187079,
+      "copy_size": 3,
+      "copy_width": 8,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        3
+      ],
+      "admitted_byte_count": [
+        "constant",
+        16
+      ],
+      "copy_element_count": [
+        "constant",
+        2
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1408
+      ],
+      "other_memory_effects": [
+        {
+          "offset": 187039,
+          "kind": "other-memory-write",
+          "address": [
+            "add-word",
+            [
+              "entry-register",
+              12
+            ],
+            1408
+          ],
+          "width": 8
+        },
+        {
+          "offset": 187047,
+          "kind": "other-memory-write",
+          "address": [
+            "add-word",
+            [
+              "entry-register",
+              12
+            ],
+            1416
+          ],
+          "width": 8
+        }
+      ],
+      "prelude": [
+        {
+          "offset": 186797,
+          "size": 3,
+          "bytes": "4989d8",
+          "instruction": "mov\tr8, rbx",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 186800,
+          "size": 10,
+          "bytes": "49b91000000000000000",
+          "instruction": "movabs\tr9, 0x10",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 186830,
+          "size": 5,
+          "bytes": "e875090000",
+          "instruction": "call\t0x2bbc6c8 <topal_x86_frame_mm_cleanup_return_v1+0x13924>",
+          "mnemonic": "call",
+          "access_kinds": [
+            "implicit-stack"
+          ],
+          "effect": {
+            "kind": "checked-sampler-call",
+            "target": 189256
+          }
+        },
+        {
+          "offset": 186835,
+          "size": 7,
+          "bytes": "4881fa00e1f505",
+          "instruction": "cmp\trdx, 0x5f5e100",
+          "mnemonic": "cmp",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 186842,
+          "size": 6,
+          "bytes": "0f83360affff",
+          "instruction": "jae\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "jae",
+          "access_kinds": [],
+          "effect": {
+            "kind": "invariant-side-exit",
+            "target": 123926
+          }
+        },
+        {
+          "offset": 186848,
+          "size": 10,
+          "bytes": "49ba00e1f50500000000",
+          "instruction": "movabs\tr10, 0x5f5e100",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 186858,
+          "size": 3,
+          "bytes": "49f7f2",
+          "instruction": "div\tr10",
+          "mnemonic": "div",
+          "access_kinds": [],
+          "effect": {
+            "kind": "sample-arithmetic"
+          }
+        },
+        {
+          "offset": 186861,
+          "size": 7,
+          "bytes": "4881f800000000",
+          "instruction": "cmp\trax, 0x0",
+          "mnemonic": "cmp",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 186868,
+          "size": 6,
+          "bytes": "0f8c1c0affff",
+          "instruction": "jl\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "jl",
+          "access_kinds": [],
+          "effect": {
+            "kind": "invariant-side-exit",
+            "target": 123926
+          }
+        },
+        {
+          "offset": 186874,
+          "size": 4,
+          "bytes": "486bd20a",
+          "instruction": "imul\trdx, rdx, 0xa",
+          "mnemonic": "imul",
+          "access_kinds": [],
+          "effect": {
+            "kind": "sample-arithmetic"
+          }
+        },
+        {
+          "offset": 186878,
+          "size": 5,
+          "bytes": "e99c000000",
+          "instruction": "jmp\t0x2bbbe1f <topal_x86_frame_mm_cleanup_return_v1+0x1307b>",
+          "mnemonic": "jmp",
+          "access_kinds": [],
+          "effect": {
+            "kind": "shared-output-jump",
+            "target": 187039
+          }
+        },
+        {
+          "offset": 187039,
+          "size": 8,
+          "bytes": "4989842480050000",
+          "instruction": "mov\tqword ptr [r12 + 0x580], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ],
+          "effect": {
+            "kind": "other-memory-write",
+            "address": [
+              "add-word",
+              [
+                "entry-register",
+                12
+              ],
+              1408
+            ],
+            "width": 8
+          }
+        },
+        {
+          "offset": 187047,
+          "size": 8,
+          "bytes": "4989942488050000",
+          "instruction": "mov\tqword ptr [r12 + 0x588], rdx",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ],
+          "effect": {
+            "kind": "other-memory-write",
+            "address": [
+              "add-word",
+              [
+                "entry-register",
+                12
+              ],
+              1416
+            ],
+            "width": 8
+          }
+        },
+        {
+          "offset": 187055,
+          "size": 3,
+          "bytes": "4c89e6",
+          "instruction": "mov\trsi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187058,
+          "size": 7,
+          "bytes": "4881c680050000",
+          "instruction": "add\trsi, 0x580",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187065,
+          "size": 3,
+          "bytes": "4889df",
+          "instruction": "mov\trdi, rbx",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187068,
+          "size": 10,
+          "bytes": "48b90200000000000000",
+          "instruction": "movabs\trcx, 0x2",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187078,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 187079,
+          "size": 3,
+          "bytes": "f348a5",
+          "instruction": "rep\t\tmovsq\tqword ptr es:[rdi], qword ptr [rsi]",
+          "mnemonic": "movsq",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 8
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 187079,
+          "end": 187082,
+          "location": 7473
+        }
+      ]
+    },
+    {
+      "name": "clock-resolution-output",
+      "census_label": "process-time-getres",
+      "call_offset": 186999,
+      "prelude_start": 186986,
+      "carry_gate": 187013,
+      "success_offset": 187019,
+      "copy_offset": 187079,
+      "copy_size": 3,
+      "copy_width": 8,
+      "admitted_direction": "write",
+      "candidate_expression": [
+        "entry-register",
+        3
+      ],
+      "admitted_byte_count": [
+        "constant",
+        16
+      ],
+      "copy_element_count": [
+        "constant",
+        2
+      ],
+      "user_endpoint_register": 7,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1408
+      ],
+      "other_memory_effects": [
+        {
+          "offset": 187039,
+          "kind": "other-memory-write",
+          "address": [
+            "add-word",
+            [
+              "entry-register",
+              12
+            ],
+            1408
+          ],
+          "width": 8
+        },
+        {
+          "offset": 187047,
+          "kind": "other-memory-write",
+          "address": [
+            "add-word",
+            [
+              "entry-register",
+              12
+            ],
+            1416
+          ],
+          "width": 8
+        }
+      ],
+      "prelude": [
+        {
+          "offset": 186986,
+          "size": 3,
+          "bytes": "4989d8",
+          "instruction": "mov\tr8, rbx",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 186989,
+          "size": 10,
+          "bytes": "49b91000000000000000",
+          "instruction": "movabs\tr9, 0x10",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 187019,
+          "size": 10,
+          "bytes": "48b80000000000000000",
+          "instruction": "movabs\trax, 0x0",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187029,
+          "size": 10,
+          "bytes": "48ba0a00000000000000",
+          "instruction": "movabs\trdx, 0xa",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187039,
+          "size": 8,
+          "bytes": "4989842480050000",
+          "instruction": "mov\tqword ptr [r12 + 0x580], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ],
+          "effect": {
+            "kind": "other-memory-write",
+            "address": [
+              "add-word",
+              [
+                "entry-register",
+                12
+              ],
+              1408
+            ],
+            "width": 8
+          }
+        },
+        {
+          "offset": 187047,
+          "size": 8,
+          "bytes": "4989942488050000",
+          "instruction": "mov\tqword ptr [r12 + 0x588], rdx",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ],
+          "effect": {
+            "kind": "other-memory-write",
+            "address": [
+              "add-word",
+              [
+                "entry-register",
+                12
+              ],
+              1416
+            ],
+            "width": 8
+          }
+        },
+        {
+          "offset": 187055,
+          "size": 3,
+          "bytes": "4c89e6",
+          "instruction": "mov\trsi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187058,
+          "size": 7,
+          "bytes": "4881c680050000",
+          "instruction": "add\trsi, 0x580",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187065,
+          "size": 3,
+          "bytes": "4889df",
+          "instruction": "mov\trdi, rbx",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187068,
+          "size": 10,
+          "bytes": "48b90200000000000000",
+          "instruction": "movabs\trcx, 0x2",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187078,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 187079,
+          "size": 3,
+          "bytes": "f348a5",
+          "instruction": "rep\t\tmovsq\tqword ptr es:[rdi], qword ptr [rsi]",
+          "mnemonic": "movsq",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 8
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 187079,
+          "end": 187082,
+          "location": 7473
+        }
+      ]
+    },
+    {
+      "name": "sleep-interval-input",
+      "census_label": "process-time-copy-interval",
+      "call_offset": 187213,
+      "prelude_start": 187200,
+      "carry_gate": 187227,
+      "success_offset": 187233,
+      "copy_offset": 187257,
+      "copy_size": 3,
+      "copy_width": 8,
+      "admitted_direction": "read",
+      "candidate_expression": [
+        "entry-register",
+        3
+      ],
+      "admitted_byte_count": [
+        "constant",
+        16
+      ],
+      "copy_element_count": [
+        "constant",
+        2
+      ],
+      "user_endpoint_register": 6,
+      "counterpart_expression": [
+        "add-word",
+        [
+          "entry-register",
+          12
+        ],
+        1408
+      ],
+      "other_memory_effects": [],
+      "prelude": [
+        {
+          "offset": 187200,
+          "size": 3,
+          "bytes": "4989d8",
+          "instruction": "mov\tr8, rbx",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187203,
+          "size": 10,
+          "bytes": "49b91000000000000000",
+          "instruction": "movabs\tr9, 0x10",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        }
+      ],
+      "local_instructions": [
+        {
+          "offset": 187233,
+          "size": 3,
+          "bytes": "4889de",
+          "instruction": "mov\trsi, rbx",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187236,
+          "size": 3,
+          "bytes": "4c89e7",
+          "instruction": "mov\trdi, r12",
+          "mnemonic": "mov",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187239,
+          "size": 7,
+          "bytes": "4881c780050000",
+          "instruction": "add\trdi, 0x580",
+          "mnemonic": "add",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187246,
+          "size": 10,
+          "bytes": "48b90200000000000000",
+          "instruction": "movabs\trcx, 0x2",
+          "mnemonic": "movabs",
+          "access_kinds": [],
+          "effect": {
+            "kind": "register"
+          }
+        },
+        {
+          "offset": 187256,
+          "size": 1,
+          "bytes": "fc",
+          "instruction": "cld",
+          "mnemonic": "cld",
+          "access_kinds": [],
+          "effect": {
+            "kind": "clear-direction"
+          }
+        },
+        {
+          "offset": 187257,
+          "size": 3,
+          "bytes": "f348a5",
+          "instruction": "rep\t\tmovsq\tqword ptr es:[rdi], qword ptr [rsi]",
+          "mnemonic": "movsq",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand",
+            "string-operation"
+          ],
+          "effect": {
+            "kind": "copy",
+            "width": 8
+          }
+        }
+      ],
+      "byte_origins": [
+        {
+          "start": 187257,
+          "end": 187260,
+          "location": 7491
+        }
+      ]
+    }
+  ],
+  "copy_instructions": 14,
+  "copy_groups": [
+    {
+      "copy_offset": 38484,
+      "cases": [
+        "header-command"
+      ],
+      "admission_edges": [
+        [
+          38464,
+          38470
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 39568,
+      "cases": [
+        "refill-command"
+      ],
+      "admission_edges": [
+        [
+          39548,
+          39554
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 40478,
+      "cases": [
+        "root-command"
+      ],
+      "admission_edges": [
+        [
+          40458,
+          40464
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 42470,
+      "cases": [
+        "pwd-command"
+      ],
+      "admission_edges": [
+        [
+          42450,
+          42456
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 43452,
+      "cases": [
+        "serial-command"
+      ],
+      "admission_edges": [
+        [
+          43439,
+          43445
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 145258,
+      "cases": [
+        "signal-action-input"
+      ],
+      "admission_edges": [
+        [
+          145228,
+          145234
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 145628,
+      "cases": [
+        "signal-action-output"
+      ],
+      "admission_edges": [
+        [
+          145598,
+          145604
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 145827,
+      "cases": [
+        "signal-mask-input"
+      ],
+      "admission_edges": [
+        [
+          145797,
+          145803
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 146012,
+      "cases": [
+        "signal-mask-output"
+      ],
+      "admission_edges": [
+        [
+          145982,
+          145988
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 158613,
+      "cases": [
+        "directory-output"
+      ],
+      "admission_edges": [
+        [
+          158590,
+          158596
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 161471,
+      "cases": [
+        "named-directory-output"
+      ],
+      "admission_edges": [
+        [
+          161448,
+          161454
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 186013,
+      "cases": [
+        "uname-output"
+      ],
+      "admission_edges": [
+        [
+          185989,
+          185995
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 187079,
+      "cases": [
+        "clock-time-output",
+        "clock-resolution-output"
+      ],
+      "admission_edges": [
+        [
+          186824,
+          186830
+        ],
+        [
+          187013,
+          187019
+        ]
+      ],
+      "union_success_edges_dominate": true
+    },
+    {
+      "copy_offset": 187257,
+      "cases": [
+        "sleep-interval-input"
+      ],
+      "admission_edges": [
+        [
+          187227,
+          187233
+        ]
+      ],
+      "union_success_edges_dominate": true
+    }
+  ],
+  "sampler_contracts": [
+    {
+      "entry": 189256,
+      "nested_entry": 189284,
+      "instructions": [
+        {
+          "offset": 189256,
+          "bytes": "65488b3c25b0030000",
+          "register_writes": [
+            7
+          ]
+        },
+        {
+          "offset": 189265,
+          "bytes": "e80e000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189270,
+          "bytes": "4881f901000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189277,
+          "bytes": "0f85b300ffff",
+          "register_writes": []
+        },
+        {
+          "offset": 189283,
+          "bytes": "c3",
+          "register_writes": []
+        },
+        {
+          "offset": 189284,
+          "bytes": "4885ff",
+          "register_writes": []
+        },
+        {
+          "offset": 189287,
+          "bytes": "0f84b1000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189293,
+          "bytes": "40f6c707",
+          "register_writes": []
+        },
+        {
+          "offset": 189297,
+          "bytes": "0f85a7000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189303,
+          "bytes": "49b80000d0fe00000000",
+          "register_writes": [
+            8
+          ]
+        },
+        {
+          "offset": 189313,
+          "bytes": "498b00",
+          "register_writes": [
+            0
+          ]
+        },
+        {
+          "offset": 189316,
+          "bytes": "a900200000",
+          "register_writes": []
+        },
+        {
+          "offset": 189321,
+          "bytes": "0f848f000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189327,
+          "bytes": "4889c2",
+          "register_writes": [
+            2
+          ]
+        },
+        {
+          "offset": 189330,
+          "bytes": "48c1ea20",
+          "register_writes": [
+            2
+          ]
+        },
+        {
+          "offset": 189334,
+          "bytes": "81fa80969800",
+          "register_writes": []
+        },
+        {
+          "offset": 189340,
+          "bytes": "0f857c000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189346,
+          "bytes": "498b4010",
+          "register_writes": [
+            0
+          ]
+        },
+        {
+          "offset": 189350,
+          "bytes": "4883c801",
+          "register_writes": [
+            0
+          ]
+        },
+        {
+          "offset": 189354,
+          "bytes": "49894010",
+          "register_writes": []
+        },
+        {
+          "offset": 189358,
+          "bytes": "498b80f0000000",
+          "register_writes": [
+            0
+          ]
+        },
+        {
+          "offset": 189365,
+          "bytes": "807f1000",
+          "register_writes": []
+        },
+        {
+          "offset": 189369,
+          "bytes": "0f8512000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189375,
+          "bytes": "488907",
+          "register_writes": []
+        },
+        {
+          "offset": 189378,
+          "bytes": "31d2",
+          "register_writes": [
+            2
+          ]
+        },
+        {
+          "offset": 189380,
+          "bytes": "48895708",
+          "register_writes": []
+        },
+        {
+          "offset": 189384,
+          "bytes": "c6471001",
+          "register_writes": []
+        },
+        {
+          "offset": 189388,
+          "bytes": "e947000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189393,
+          "bytes": "488b5708",
+          "register_writes": [
+            2
+          ]
+        },
+        {
+          "offset": 189397,
+          "bytes": "483b07",
+          "register_writes": []
+        },
+        {
+          "offset": 189400,
+          "bytes": "0f8333000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189406,
+          "bytes": "4c8b0f",
+          "register_writes": [
+            9
+          ]
+        },
+        {
+          "offset": 189409,
+          "bytes": "49ba00000000000000c0",
+          "register_writes": [
+            10
+          ]
+        },
+        {
+          "offset": 189419,
+          "bytes": "4d39d1",
+          "register_writes": []
+        },
+        {
+          "offset": 189422,
+          "bytes": "0f822a000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189428,
+          "bytes": "49ba0000000000000040",
+          "register_writes": [
+            10
+          ]
+        },
+        {
+          "offset": 189438,
+          "bytes": "4c39d0",
+          "register_writes": []
+        },
+        {
+          "offset": 189441,
+          "bytes": "0f8317000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189447,
+          "bytes": "4883c201",
+          "register_writes": [
+            2
+          ]
+        },
+        {
+          "offset": 189451,
+          "bytes": "0f820d000000",
+          "register_writes": []
+        },
+        {
+          "offset": 189457,
+          "bytes": "488907",
+          "register_writes": []
+        },
+        {
+          "offset": 189460,
+          "bytes": "48895708",
+          "register_writes": []
+        },
+        {
+          "offset": 189464,
+          "bytes": "b901000000",
+          "register_writes": [
+            1
+          ]
+        },
+        {
+          "offset": 189469,
+          "bytes": "c3",
+          "register_writes": []
+        },
+        {
+          "offset": 189470,
+          "bytes": "31c9",
+          "register_writes": [
+            1
+          ]
+        },
+        {
+          "offset": 189472,
+          "bytes": "c3",
+          "register_writes": []
+        }
+      ],
+      "body_sha256": "fc5166fbf5aa362684b5b98a4427a4eb1639bba76b1295291733cd4c87f2cd33",
+      "preserved_registers": [
+        3,
+        12
+      ],
+      "scope": "RBX/R12 raw register preservation and balanced nonrecursive CALL/RET shape only; clock-owner/MMIO/stack effects and stable mapping contracts remain separate"
+    }
+  ],
+  "locations": {
+    "2128": {
+      "column": 16,
+      "file": "src/topal-compiler/src/systems_shell_input.rs",
+      "line": 70,
+      "source_line": "        self.0.bytes(&[0xfc, 0xf3, 0xa4]); // cld; rep movsb"
+    },
+    "5989": {
+      "column": 9,
+      "file": "src/topal-compiler/src/systems_process_signals.rs",
+      "line": 45,
+      "source_line": "    e.0.bytes(&[0xfc, 0xf3, 0xa4]);"
+    },
+    "6031": {
+      "column": 9,
+      "file": "src/topal-compiler/src/systems_process_signals.rs",
+      "line": 59,
+      "source_line": "    e.0.bytes(&[0xfc, 0xf3, 0xa4]);"
+    },
+    "6771": {
+      "column": 9,
+      "file": "src/topal-compiler/src/systems_process_namespace.rs",
+      "line": 613,
+      "source_line": "    e.0.bytes(&[0xfc, 0xf3, 0xa4]);"
+    },
+    "6962": {
+      "column": 9,
+      "file": "src/topal-compiler/src/systems_namespace_named.rs",
+      "line": 366,
+      "source_line": "    e.0.bytes(&[0xfc, 0xf3, 0xa4]);"
+    },
+    "7438": {
+      "column": 9,
+      "file": "src/topal-compiler/src/systems_process_observations.rs",
+      "line": 64,
+      "source_line": "    e.0.bytes(&[0xfc, 0xf3, 0xa4]);"
+    },
+    "7473": {
+      "column": 9,
+      "file": "src/topal-compiler/src/systems_process_time.rs",
+      "line": 122,
+      "source_line": "    e.0.bytes(&[0xfc, 0xf3, 0x48, 0xa5]);"
+    },
+    "7491": {
+      "column": 9,
+      "file": "src/topal-compiler/src/systems_process_time.rs",
+      "line": 145,
+      "source_line": "    e.0.bytes(&[0xfc, 0xf3, 0x48, 0xa5]);"
+    }
+  },
+  "scope": "Selected REP intervals: raw candidate/count dataflow through specified preserved registers, exact byte-count equality without scaled-count overflow, CLD, accounted local entries and nonvacuous admission-group success-edge dominance. Shared clock output covers both callers and the intervening sampler RBX/R12 effects. Counterparty expressions and additional writes are exposed, not granted ownership. Shared helper soundness/preservation, complete roots/callees/exceptions, captured-entry stability, counterparty bounds/ownership and stable user mappings remain conditional. No complete syscall/access, native execution or production qualification"
+}

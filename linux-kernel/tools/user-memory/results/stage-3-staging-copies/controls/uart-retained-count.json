@@ -1,0 +1,9 @@
+{
+  "name": "uart-retained-count",
+  "rejected": true,
+  "offset": 131718,
+  "expected_bytes": "ce",
+  "changed_bytes": "c6",
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+}

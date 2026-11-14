@@ -1,0 +1,45 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_exec_vector_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 162.21120877936482,
+  "resources": {
+    "memory.max": "3290742784",
+    "memory.swap.max": "0",
+    "memory.peak": "1131925504",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "AGENTS.md": "a0744879fcd5de2a5befbd9cdcc3346c86afd7233c7c0a8eb0bc7e8d6b92659d",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "444154968642fff002e9d0d5bec2c449e2746c879924b7b63d1043669fc78f00",
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "22ab82df25e6c31c24bf0eea2a5037f47fc731f8bec402a1e7eccb098f956172",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "0e175a202ff479487a64364a1b3d2971fc06489ea79c338c03a216788c929f3c",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "74563aa88b7aab8c1c4b9b3a8a9ac6ba1071809b21a9e8d30dbed45d9af8a313",
+    "linux-kernel/labs/qemu/x86_64/user_extent_exec_cases.c": "60605da3006e86b576892c157e83031061172466c121dde0a8a81a7977c6a634",
+    "linux-kernel/labs/qemu/x86_64/user_extent_exec_observer.py": "515a9b2bf726f36416ea2d86291595950cfaeaf5bf307985450fbb38aeccb5f6"
+  },
+  "modified_source_hashes_after": {
+    "AGENTS.md": "a0744879fcd5de2a5befbd9cdcc3346c86afd7233c7c0a8eb0bc7e8d6b92659d",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "444154968642fff002e9d0d5bec2c449e2746c879924b7b63d1043669fc78f00",
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "22ab82df25e6c31c24bf0eea2a5037f47fc731f8bec402a1e7eccb098f956172",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "0e175a202ff479487a64364a1b3d2971fc06489ea79c338c03a216788c929f3c",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "74563aa88b7aab8c1c4b9b3a8a9ac6ba1071809b21a9e8d30dbed45d9af8a313",
+    "linux-kernel/labs/qemu/x86_64/user_extent_exec_cases.c": "60605da3006e86b576892c157e83031061172466c121dde0a8a81a7977c6a634",
+    "linux-kernel/labs/qemu/x86_64/user_extent_exec_observer.py": "515a9b2bf726f36416ea2d86291595950cfaeaf5bf307985450fbb38aeccb5f6"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused source-built ordinary user-buffer cases; no production or complete all-caller qualification"
+}

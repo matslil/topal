@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_fixed_transfers.py", line 256, in <module>
+    audit(Path(sys.argv[1]).resolve())
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_fixed_transfers.py", line 171, in audit
+    nodes, roots, successors, predecessors = check_graph(graph, kernel, symbol, body)
+                                             ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_fixed_transfers.py", line 82, in check_graph
+    assert len(supplied) == len(set(supplied)) and set(supplied) == expected, 'graph edges'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: graph edges

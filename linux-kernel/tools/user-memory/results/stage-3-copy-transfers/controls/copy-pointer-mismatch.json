@@ -1,0 +1,6 @@
+{
+  "name": "copy-pointer-mismatch",
+  "rejected": true,
+  "exit_code": 1,
+  "scope": "Offline in-process checker configuration/effect fault injection; unchanged guest ELF/metadata and no VM execution or state mutation"
+}

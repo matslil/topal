@@ -1,0 +1,85 @@
+{
+  "schema": "topal.frame-allocator-model-validation/1",
+  "base_commit": "18bcaf1a1c39edd4fcf5644705801d80c86cdc95",
+  "scope": "reference model only; no native or VM qualification",
+  "complete": true,
+  "passed": true,
+  "sources": {
+    "src/topal-semantics/src/systems_frames.rs": "388c6323cabe7a0b7e26a375778a73deea26bc258df50bbd4eca8c62fb0e3a67",
+    "src/topal-semantics/src/systems_frames_validation_tests.rs": "4db3f8229e6a8cc438ae567967c50652b0aa16ca265d0082e4bd1997645145b2",
+    "scripts/run_bounded.py": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560"
+  },
+  "commands": [
+    {
+      "name": "semantics",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-semantics",
+        "--lib",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.5131446700543165,
+      "log": "semantics.log",
+      "sha256": "22b2fa85f9a61cc7a423462573a371db394c6ba1fb77fbd0e7fb5f3b0fd9cb05"
+    },
+    {
+      "name": "check",
+      "argv": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 47.88641220703721,
+      "log": "check.log",
+      "sha256": "0c094fb1400ed2488f55fc5024772dfd468bd87b3ae4b4917784be243c6b1130"
+    },
+    {
+      "name": "coverage",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-language",
+        "--test",
+        "core_language_coverage",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 20.846225800924003,
+      "log": "coverage.log",
+      "sha256": "0bcae1ab7321422e96aee223d73c2ae277223164c972181ee4e4d5959ec2bf11"
+    },
+    {
+      "name": "format",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.888176984153688,
+      "log": "format.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source-size",
+      "argv": [
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.13773259706795216,
+      "log": "source-size.log",
+      "sha256": "8db4cdb6759817728df4a07d9be35f2f839b2e2af6c976fc8913b0a10073e66f"
+    }
+  ]
+}

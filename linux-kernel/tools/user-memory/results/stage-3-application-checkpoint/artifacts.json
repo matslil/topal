@@ -1,0 +1,25 @@
+{
+  "artifacts": {
+    "kernel.elf": {
+      "bytes": 1665296,
+      "sha256": "b0cd5685fb82879a8466f657b431aeee911977f1f3773888c7cfb2ca5777e175"
+    },
+    "bzImage": {
+      "bytes": 45232768,
+      "sha256": "5732aa9a697f1e995fcafde331d42d966a06469c63baa31859751ddc2d7ead31"
+    },
+    "initramfs.cpio": {
+      "bytes": 2037200,
+      "sha256": "a279fb8053f540b6c11576a4cbeaea6207f4d92ff9a030b8a6cae6160ab625b1"
+    },
+    "static-elf-abi-fixture.elf": {
+      "bytes": 2024544,
+      "sha256": "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
+    },
+    "provider.o": {
+      "bytes": 1061624,
+      "sha256": "dc128426886ef18674b96c48dca73d90bd2fddae631e4f4eed1636e7c4ff3618"
+    }
+  },
+  "storage": "Digests only; application binary and containing initramfs stay in ignored external state"
+}

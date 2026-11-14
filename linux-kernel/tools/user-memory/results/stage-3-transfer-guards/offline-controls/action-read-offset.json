@@ -1,0 +1,8 @@
+{
+  "name": "action-read-offset",
+  "body_offset": 94779,
+  "replacement_hex": "20",
+  "rejected": true,
+  "error": "",
+  "scope": "Offline compiler-owned object byte shape with rebound function digest; unchanged decoder listing; no native execution"
+}

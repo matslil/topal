@@ -1,0 +1,142 @@
+{
+  "artifacts/historical/kernel.elf.gz": {
+    "bytes": 359819,
+    "sha256": "23054c0097b2a4de11ded5694112753a2aa307472098020e16322c11bfe30906"
+  },
+  "history/callback-shape/calendar_data.py.gz": {
+    "bytes": 2385,
+    "sha256": "17d9b37cbc48ed76bbb9945615bdfc6e6236a5ec7ab2d9727d3a9d2649ddd9f1"
+  },
+  "history/callback-shape/failure.txt.gz": {
+    "bytes": 347,
+    "sha256": "a127e359e662d18b67d4efaf0be835a6bbc879f3e8a8af13d692af482547835b"
+  },
+  "history/callback-shape/inspect_calendar_data.py.gz": {
+    "bytes": 2209,
+    "sha256": "fec21b7bc533e3282a30f383c47cbe764a37a7bc5bbbff72989eea507261d66f"
+  },
+  "history/callback-shape/run_calendar_data.py.gz": {
+    "bytes": 3182,
+    "sha256": "0798d08abeb619e4659f1b7bf0aea9a22ccb10af9943571afd764ea0725d4412"
+  },
+  "history/callback-shape/test_calendar_data.py.gz": {
+    "bytes": 1696,
+    "sha256": "5bec91c2dd0a1d2dfe46b9e489020db7469a354fe5824b66a61445f6075645ee"
+  },
+  "history/legacy-manifest/failed-closure-driver.py.gz": {
+    "bytes": 2952,
+    "sha256": "dbd50f6d177dcfd812a9a2a789ed3fed72273251fa0c027143a8305693a587e1"
+  },
+  "history/legacy-manifest/failure.txt.gz": {
+    "bytes": 315,
+    "sha256": "52a4036867227e23763cad82067fa9647bbf2dabc9bff89428e85e19bb43fd00"
+  },
+  "methods/collector.py.gz": {
+    "bytes": 2983,
+    "sha256": "51a139712359c141f3ec5ebcafbc316b9b009de3d851f2f99b78390a471880ef"
+  },
+  "methods/replay.py": {
+    "bytes": 4037,
+    "sha256": "9734135814429664f737f527f857ed45169ca5bd8277927da72369407597459e"
+  },
+  "observations/current/gnu-explicit.command.json.gz": {
+    "bytes": 204,
+    "sha256": "5cac3d279d1bc420ed522f65b86f660e1aa35434721da7237b15fc5052d5839d"
+  },
+  "observations/current/gnu-explicit.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "observations/current/gnu-explicit.stdout.log.gz": {
+    "bytes": 201,
+    "sha256": "629c5d814fa52ec97878030048432fa64c44f2c3f197a41920e4943c257e89b5"
+  },
+  "observations/current/llvm-explicit.command.json.gz": {
+    "bytes": 243,
+    "sha256": "67e9b395eed7547aab726b245afbbf7031b09404d58a6d7e7d547ee001bb286a"
+  },
+  "observations/current/llvm-explicit.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "observations/current/llvm-explicit.stdout.log.gz": {
+    "bytes": 195,
+    "sha256": "24b2fa6b6bc12f3ac4a5fe4fbfe26993d7baee8d96b6d2c3fc57b55eb0fe02d6"
+  },
+  "observations/historical/gnu-explicit.command.json.gz": {
+    "bytes": 204,
+    "sha256": "09c288a3e652b28092eb5341f028b39ad886913c73390aeaba59fbf58cf0b750"
+  },
+  "observations/historical/gnu-explicit.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "observations/historical/gnu-explicit.stdout.log.gz": {
+    "bytes": 203,
+    "sha256": "165bf30a195454e3743f82c47d1d2ba7765d41288554ec6e0f3a49a523bd3350"
+  },
+  "observations/historical/llvm-explicit.command.json.gz": {
+    "bytes": 246,
+    "sha256": "7e1e721e63d47e2e8bba51cd667e40314ce3615638fb4d488c4abc90ce9f995d"
+  },
+  "observations/historical/llvm-explicit.stderr.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "observations/historical/llvm-explicit.stdout.log.gz": {
+    "bytes": 198,
+    "sha256": "f7ec42a3cba4d61596e9be99c9f60180da87a6eae1bdfaaa154fdb6977fc0244"
+  },
+  "qualification/process.stderr.log.gz": {
+    "bytes": 56,
+    "sha256": "24440c6db7c1843c5e98c1688e648d2ae89e14889ebcf437512f001894f07f90"
+  },
+  "qualification/process.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "qualification/run.json.gz": {
+    "bytes": 78427,
+    "sha256": "20c2e3e3f8e8bed842fb620a93ab36744f54485bc9c0611fd7273202102e3a61"
+  },
+  "qualification/user.stderr.log.gz": {
+    "bytes": 57,
+    "sha256": "3c80158c940e8fc7483d38dd586997b3365db73358723dae60580921797a1c79"
+  },
+  "qualification/user.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "report.json": {
+    "bytes": 584963,
+    "sha256": "dc4d646e4792d15c8faf8d7a906fd301c8beafa1624362e15076fb175cb3ad6c"
+  },
+  "sources/linux-kernel/step-4-process-memory-ownership.md.gz": {
+    "bytes": 29515,
+    "sha256": "d53a7280bbac6c7e63da563ac85b91923c6f0df8c97122e503667539d9aa340c"
+  },
+  "sources/linux-kernel/step-4-status.md.gz": {
+    "bytes": 13657,
+    "sha256": "52d892a0fb0dc365f1ffa02107dc8941dc0bb54c2d101a215d3a6800bc14069f"
+  },
+  "sources/linux-kernel/tools/process-memory/README.md.gz": {
+    "bytes": 13240,
+    "sha256": "37c2771f6b4f6fa8ec0d4da2c4aa272f4f2768ed50bec7af7a08861550479a5d"
+  },
+  "sources/linux-kernel/tools/user-memory/calendar_data.py.gz": {
+    "bytes": 2389,
+    "sha256": "a80a64e750a7fbd907e69b4e4be83235a92253bdaf4b9c23f8e8d53930f367ac"
+  },
+  "sources/linux-kernel/tools/user-memory/inspect_calendar_data.py.gz": {
+    "bytes": 2209,
+    "sha256": "fec21b7bc533e3282a30f383c47cbe764a37a7bc5bbbff72989eea507261d66f"
+  },
+  "sources/linux-kernel/tools/user-memory/run_calendar_data.py.gz": {
+    "bytes": 3182,
+    "sha256": "0798d08abeb619e4659f1b7bf0aea9a22ccb10af9943571afd764ea0725d4412"
+  },
+  "sources/linux-kernel/tools/user-memory/test_calendar_data.py.gz": {
+    "bytes": 1709,
+    "sha256": "5073c36681c8641788ca65070ac7112b3cd50b886c58fd2fc06ee273b77811a3"
+  }
+}

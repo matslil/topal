@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "selected_sources": 3,
+  "inherited_artifacts": 2,
+  "reader_tests": 9,
+  "exact_inventory_equal": true,
+  "new_native_execution": false,
+  "full_decoder_control_agreement": false,
+  "scope": "Frozen Python-only inventory and targeted reader replay; unresolved decoder/entry/runtime qualifications remain"
+}

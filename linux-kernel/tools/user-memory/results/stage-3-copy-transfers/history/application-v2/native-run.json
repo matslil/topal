@@ -1,0 +1,41 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 93.65750606823713,
+  "resources": {
+    "memory.max": "3355856896",
+    "memory.swap.max": "0",
+    "memory.peak": "401137664",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "10166d8ef336d3520c63e0a2bcf1da44d66d2e43484f826dcd4202daccb551a9",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "cd6129a2ea1a9b21402fb170220cfbd8d0cf7556f2b07de01fd9507b1df3dcf1",
+    "linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py": "932f471f4c663625f98b29d17cef780c185cb4bfd2516ea35fd29494e8282fc4",
+    "linux-kernel/tools/user-memory/audit_copy_transfers.py": "dfd4989423365086bd60b04937ebaee6480b42967894b850ef6080a4a8542458",
+    "linux-kernel/tools/user-memory/test_copy_transfers.py": "dcb193f8801b9ebd9061c9e97c14ac66f8ad8fbcaf15efaf80dddeeb58a2d76f"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "10166d8ef336d3520c63e0a2bcf1da44d66d2e43484f826dcd4202daccb551a9",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "cd6129a2ea1a9b21402fb170220cfbd8d0cf7556f2b07de01fd9507b1df3dcf1",
+    "linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py": "932f471f4c663625f98b29d17cef780c185cb4bfd2516ea35fd29494e8282fc4",
+    "linux-kernel/tools/user-memory/audit_copy_transfers.py": "dfd4989423365086bd60b04937ebaee6480b42967894b850ef6080a4a8542458",
+    "linux-kernel/tools/user-memory/test_copy_transfers.py": "dcb193f8801b9ebd9061c9e97c14ac66f8ad8fbcaf15efaf80dddeeb58a2d76f"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused unchanged BusyBox first-image exit; no production or full-caller qualification"
+}

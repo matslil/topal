@@ -52,7 +52,8 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_)
         | CompilerType::Task(_)
-        | CompilerType::ExternalLocation(_) => true,
+        | CompilerType::ExternalLocation(_)
+        | CompilerType::KernelByteRegion => true,
         CompilerType::Range(endpoint)
         | CompilerType::Result(endpoint)
         | CompilerType::TaskResponse(endpoint)
@@ -110,6 +111,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         return true;
     }
     match &expression.kind {
+        CompilerExpressionKind::KernelRegion { .. } => true,
         CompilerExpressionKind::String(_)
         | CompilerExpressionKind::StringEmpty
         | CompilerExpressionKind::ErrorField { .. }
@@ -542,6 +544,11 @@ enum ScalarListRuntimeFragment {
 }
 
 struct Generator<'a> {
+    kernel_library_mode: bool,
+    kernel_parameter_debug_storage: bool,
+    kernel_function_prefix: &'a str,
+    kernel_tail_component: bool,
+    tail_readonly_integers: BTreeMap<String, u64>,
     program: &'a CompilerProgram,
     source_name: &'a str,
     globals: Vec<String>,

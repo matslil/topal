@@ -1,0 +1,56 @@
+{
+  "cpu-2413961.log": {
+    "snapshot": "history/global-nochain/observation/cpu-2413961.log.gz",
+    "sha256": "0935a15c76a400285db15fcf6ac4367d6623753c7d82cbebd92634399cac2336",
+    "bytes": 43085,
+    "snapshot_sha256": "272b2fdb1dfc48b3e92ffb7f38af56de2ea425b65d4527badff22953fbcdae26"
+  },
+  "gdb.stderr.log": {
+    "snapshot": "history/global-nochain/observation/gdb.stderr.log.gz",
+    "sha256": "8400593065b4d1b15c530448f3991117cc0615e51582f7eb58f2984efa203df1",
+    "bytes": 220,
+    "snapshot_sha256": "3371f4b8960facb8681217638b623e5ae60a646bbc9989149f8fdca1e21b19af"
+  },
+  "gdb.stdout.log": {
+    "snapshot": "history/global-nochain/observation/gdb.stdout.log.gz",
+    "sha256": "7718c199a27241e8d16a8f6d9bb77c86e65ebb1b2875ff8af34cacdc3d510d65",
+    "bytes": 28,
+    "snapshot_sha256": "0a4d4acf4facf69f73820129be3732c846c16d1d49388fc996831aed7ee4c90f"
+  },
+  "inspect.gdb": {
+    "snapshot": "history/global-nochain/observation/inspect.gdb.gz",
+    "sha256": "fa5f97a6fd5906e13d24bd1ba74ac9a2e78633f81d8aad3fa9d3a5edd739ed86",
+    "bytes": 1680762,
+    "snapshot_sha256": "ed2c1f44248961ac8881685f46b8dae2a5d84e21535f9719f51a144cc62bdf1b"
+  },
+  "observations.json.translation-progress.json": {
+    "snapshot": "history/global-nochain/observation/observations.json.translation-progress.json.gz",
+    "sha256": "33c9641e221ef00ea1c359b0832b67ff7e7e10960f540892c1df274dc049183e",
+    "bytes": 908507,
+    "snapshot_sha256": "c0dcf25cc532014fb090e997e79c471500b503b7fdb61e820089d859cb6af65a"
+  },
+  "qemu.command.json": {
+    "snapshot": "history/global-nochain/observation/qemu.command.json.gz",
+    "sha256": "dacf01f353ea80da0b6d5c00e295274ee558d6a7f1e5da2e112a2bf848bd9c23",
+    "bytes": 1439,
+    "snapshot_sha256": "7a7be22a1c20ef676e0b62219db85a025c7a684bd2e03b32c047f35f02521e7f"
+  },
+  "qemu.stderr.log": {
+    "snapshot": "history/global-nochain/observation/qemu.stderr.log.gz",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "qemu.stdout.log": {
+    "snapshot": "history/global-nochain/observation/qemu.stdout.log.gz",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "serial.log": {
+    "snapshot": "history/global-nochain/observation/serial.log.gz",
+    "sha256": "96f1011317da1e5cd33ae4a86cfcfd97d142b76a0511482b5bf46bf8424d51c9",
+    "bytes": 2560,
+    "snapshot_sha256": "5f414b1a160a9d6779d368110c387c9a79115ca5560c16395a059997576f4d17"
+  }
+}

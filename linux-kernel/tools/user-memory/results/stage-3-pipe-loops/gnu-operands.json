@@ -1,0 +1,60 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "71aad16031fe75f11ddd911c937dc8284ab60dd6468d27f359f9679837ed4787",
+  "graph_sha256": "407c27095ed319e6b2d90e10338ba4aa8f0b92c6b5c10cf2feca5490f82ba76a",
+  "gnu_transcript_sha256": "1284594d470f78c97820f59844220a52cd6f57360a53a03a703f44a008cea869",
+  "selected_instructions": 58,
+  "exact_operands_and_direct_targets_equal": true,
+  "reverse_guard_cuts": [
+    {
+      "name": "pipe-read-loop",
+      "removed_edge": [
+        204496,
+        204502
+      ],
+      "predecessors": 25
+    },
+    {
+      "name": "pipe-read-loop",
+      "removed_edge": [
+        204463,
+        204469
+      ],
+      "predecessors": 30
+    },
+    {
+      "name": "pipe-read-loop",
+      "removed_edge": [
+        204476,
+        204482
+      ],
+      "predecessors": 28
+    },
+    {
+      "name": "pipe-write-loop",
+      "removed_edge": [
+        205352,
+        205358
+      ],
+      "predecessors": 25
+    },
+    {
+      "name": "pipe-write-loop",
+      "removed_edge": [
+        205319,
+        205325
+      ],
+      "predecessors": 30
+    },
+    {
+      "name": "pipe-write-loop",
+      "removed_edge": [
+        205332,
+        205338
+      ],
+      "predecessors": 28
+    }
+  ],
+  "scope": "Independent selected GNU operands/targets and six reverse guard/admission cuts, bound to complete GNU graph readback. Not complete x86 semantics, native execution, actual private owners/nonalias/lifetime or production qualification"
+}

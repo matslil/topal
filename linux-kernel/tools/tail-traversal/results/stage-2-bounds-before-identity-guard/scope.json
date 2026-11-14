@@ -1,0 +1,5 @@
+{
+  "status": "historical preliminary command pass; not current qualification",
+  "limitation": "Review found that the identity ceiling must reserve both the initial identity and the representable next-counter state. Final bounds need the corrected admission calculation and independent finite-counter tests.",
+  "commands_passed": true
+}

@@ -1,0 +1,20 @@
+{
+  "committed-source-audit.py.txt": {
+    "file": "committed-source-audit.py.txt.gz",
+    "sha256": "a531b7f6d11eabccf070b4762dd46a9c21881322b355f6a05376bf53306781e9",
+    "uncompressed_sha256": "3b684d88e688ed15b586d7c27c7402466d276386923df5a9c3b2eb2c36b5b454",
+    "bytes": 1751
+  },
+  "production-binary-projection.py.txt": {
+    "file": "production-binary-projection.py.txt.gz",
+    "sha256": "015c9c4b53102251671ca3ca4b24bcd5e46da746a23befa64aeab855beac8283",
+    "uncompressed_sha256": "a2a8421a179a1c442ba1fda711784d13b8536d3feebd0fc52556b637acd3bb1c",
+    "bytes": 1960
+  },
+  "archive-audit.py.txt": {
+    "file": "archive-audit.py.txt.gz",
+    "sha256": "001aa7e10d29e4ae89bdaae0e0191aca7febc8dfe8fed88ea97bea26da57aeb0",
+    "uncompressed_sha256": "aba52838a8ba0fc00173af47786895c74d0abe877e25c93ad4249885b50c1f37",
+    "bytes": 1692
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "passed": true,
+  "reader_sha256": "79e034f4d20676635dbfc70c526a749b2936497d8b61d0e23292fcbac26db6a1",
+  "positive_report_sha256": "598a31450ea2a2baa51d113dbdc39629b1e102d494ff698dc77bc649f813f692",
+  "controls": [
+    {
+      "name": "cap-limit",
+      "offset": 142285,
+      "before": "01",
+      "after": "02",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "11b5a0ff8b838b7bf1572c531a6799537e9b9dfa624dca8e20cd8c4b1e6b4005",
+      "provider_sha256": "681c46713b8f2df9a6d992c72de768981dbbb08dcaebf3e1b947747440d7f25c",
+      "log_sha256": "cd6c8ff1d394f2a30cc92e30de9a836c6539a9e5914371f8d221ac2a89a3d705"
+    },
+    {
+      "name": "cap-zero",
+      "offset": 142297,
+      "before": "01",
+      "after": "00",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "520af6ba75c95c2d3847b88605ee880fb55cd8206f8afa9b68782ff2f39cf6ac",
+      "provider_sha256": "c5604e6741550399695ba82bb6012789d14e00a4e1909547f3025db212610a43",
+      "log_sha256": "0f7d2d2e4c37d8e0e31e87a21c2e93ef73b342c20dc05fcc30cc7b1ebefb9d24"
+    },
+    {
+      "name": "zero-guard",
+      "offset": 141255,
+      "before": "00",
+      "after": "01",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "ca74ce74155736b2c861b482f646a7ae9d8943b65b953a6fceb72d09a46a78fb",
+      "provider_sha256": "313f17fbe3be1613f1680de6b0314e644142b1788eaa6bd2b7a80969500d752f",
+      "log_sha256": "b675fcadaf19fb6e218738cfbb8047b94843f6d5bd01d7058278588502b66b49"
+    },
+    {
+      "name": "copy-candidate",
+      "offset": 142475,
+      "before": "c7",
+      "after": "cf",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "73f7a085daded1bafa3170585bea09fc383b03258e4ddd4fb75b191a936ba690",
+      "provider_sha256": "9bc784b3c36072bf486891de5b25aae087d2201cbfdf6887e989035016d3097b",
+      "log_sha256": "c2885cbacc6786abc3aaa8c7f817a7a71a0a6642957d8c450cfb26bc8e2cafb3"
+    },
+    {
+      "name": "copy-count",
+      "offset": 142478,
+      "before": "f9",
+      "after": "c9",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "04c0460151e2bd8cd283d4eb870066f87fb086c85d39aaf0be41a518d17ba23f",
+      "provider_sha256": "dfacc40719e5456843f786b0a47c18a094d78c0b399c13e1c5d441d1d6cb625f",
+      "log_sha256": "c2885cbacc6786abc3aaa8c7f817a7a71a0a6642957d8c450cfb26bc8e2cafb3"
+    },
+    {
+      "name": "received-origin",
+      "offset": 142399,
+      "before": "00",
+      "after": "01",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "dbd93fe1bb9bdffa9577f6d324dc5a8a0c669237b83321b841ee7c4b34785b40",
+      "provider_sha256": "0d83dde687a3373590a933fda260cffe76b431a1385484f6b989317ec312ded0",
+      "log_sha256": "354df69c63bfd2818b442af4e1f33e95cac303e157eb174630fb28d9d10baec1"
+    },
+    {
+      "name": "staging-increment",
+      "offset": 142430,
+      "before": "01",
+      "after": "02",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "a443a10ba8caee4b61f76a16ee7e1ffb985e08e5f865505bfcce8c501affa631",
+      "provider_sha256": "d0725f3bdf678d5aa265059f8e15a9f83d3b39cb8f1d2e74180594708b9374e6",
+      "log_sha256": "0e4f1462e5bbadd9de3ce004a74dce21c308e0f4a1afb7fdf29ce30648d7f115"
+    },
+    {
+      "name": "received-increment",
+      "offset": 142437,
+      "before": "01",
+      "after": "02",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "1eea53d73c5b9f48175e669c99116dc08f75c8ac86e9a3999aac42a046a75444",
+      "provider_sha256": "29f3134077d540f4972ac8e2bbf4ad6177951fa0b07a36ffd41b826a92cbeae0",
+      "log_sha256": "0e4f1462e5bbadd9de3ce004a74dce21c308e0f4a1afb7fdf29ce30648d7f115"
+    },
+    {
+      "name": "staging-destination",
+      "offset": 142426,
+      "before": "06",
+      "after": "07",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "fa52953b5cb1e0e7481ed701665d720edf3ff73fbc4354bc837792bf29020242",
+      "provider_sha256": "9a3344fa607dfd2d18bdd09ba08898ea9fffa2b03fb0a2e5e164049460399bbf",
+      "log_sha256": "0e4f1462e5bbadd9de3ce004a74dce21c308e0f4a1afb7fdf29ce30648d7f115"
+    },
+    {
+      "name": "receive-count-comparison",
+      "offset": 142443,
+      "before": "cf",
+      "after": "c7",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "6f8c3f6885173d1f6e8bfc5e7094068dac5904ac1c8521b7d30c5bfb24cafc14",
+      "provider_sha256": "03bad3e430a74bcde7b9e6723b60c9a9a27c410fbf6e15bf523d63e53eaf8ba0",
+      "log_sha256": "0e4f1462e5bbadd9de3ce004a74dce21c308e0f4a1afb7fdf29ce30648d7f115"
+    },
+    {
+      "name": "direction-flag",
+      "offset": 142354,
+      "before": "fc",
+      "after": "fd",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "0a51f28f9a43f48919081b3a97e9d17426a97e18f4e46a28461113f164afc2b6",
+      "provider_sha256": "0516fced030553f10ce41b193ac298847e1d0bbf4e44ad8a47b80e7b24e789ac",
+      "log_sha256": "ca00cc767db7c51bf2d003be9b912d563071bd4e38d91d88862f70565090526f"
+    },
+    {
+      "name": "carry-polarity",
+      "offset": 142319,
+      "before": "82",
+      "after": "83",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "289ec29a077747969b10889aebb2ac9f3c639af750a584e0bb623c5a992f3be4",
+      "provider_sha256": "f042cd88bd47a04241c5319d017068b6bafb78bdaec92815b6718362a0ce65b0",
+      "log_sha256": "5c54e6b51b5a2d66f1122ffbde54e1554248af88fdec4fff6b3365f786c5a18b"
+    }
+  ],
+  "scope": "Positive-backed offline first-party kernel/provider ELF changes with rebound outer identities; no changed image is executed, booted or loaded into a VM. Not source-provenance authentication or native fault/owner/lifetime qualification"
+}

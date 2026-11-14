@@ -1,0 +1,65 @@
+{
+  "schema": "topal-linux-user-memory-research/1",
+  "decision": "TK-DEC-283",
+  "architecture": "x86_64",
+  "linux_release": "7.2.9",
+  "archive": {
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.9.tar.xz",
+    "sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+    "actual_digest_verified": true
+  },
+  "source_files": {
+    "Documentation/mm/page_tables.rst": {
+      "sha256": "7794cd064c0664b37bab6664698ea2a7a104d7d3691555d4dda765cca874d1dc",
+      "bytes": 13718,
+      "archive_member": "linux-7.2.9/Documentation/mm/page_tables.rst",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "Page Tables"
+      ]
+    },
+    "arch/x86/include/asm/pgtable_types.h": {
+      "sha256": "795166fe877c926d9e3ae16c77e13cef16ec365b0a63e1b871b0cfd3a2409ada",
+      "bytes": 18319,
+      "archive_member": "linux-7.2.9/arch/x86/include/asm/pgtable_types.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "_PAGE_PRESENT",
+        "_PAGE_RW",
+        "_PAGE_USER",
+        "_PAGE_PSE",
+        "_PAGE_NX"
+      ]
+    },
+    "arch/x86/include/asm/uaccess_64.h": {
+      "sha256": "b14258a1d193f5c3d63af371466a6a8402808f470d76769e378141e7720f152d",
+      "bytes": 5526,
+      "archive_member": "linux-7.2.9/arch/x86/include/asm/uaccess_64.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "__access_ok",
+        "valid_user_address",
+        "__untagged_addr"
+      ]
+    },
+    "include/linux/uaccess.h": {
+      "sha256": "e4c5e50317ef7edec73dec66b7e5075305634184db3c0a123bf24b1193c9bba0",
+      "bytes": 31320,
+      "archive_member": "linux-7.2.9/include/linux/uaccess.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "raw_copy_to_user",
+        "raw_copy_from_user",
+        "copy_from_user"
+      ]
+    }
+  },
+  "facts": {
+    "range_filter_is_separate_from_residency_and_copy": true,
+    "raw_copy_result_is_remaining_byte_count": true,
+    "raw_copy_stays_inside_declared_extent": true,
+    "partial_copy_does_not_authorize_unwritten_suffix": true,
+    "tagging_is_mode_dependent": true
+  },
+  "scope": "Primary-source identities and interface facts only. No Linux implementation copied; no native or VM qualification."
+}

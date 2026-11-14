@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "source_sha256": "dbcf3ef6dce5ba0a28ed5db5ab8e394b6391d33c9f0c24e0c02ff87fbc98ade3",
+  "exception": "AssertionError: privileged listing disagreement",
+  "cause": "Unknown instruction lengths desynchronize the two linear decoders in bytes absent from the preceding reached process graph; LLVM lists CF as iretd while GNU consumes it as part of another instruction. Preserve both interpretations and the disagreement as unresolved rather than claim agreement",
+  "native_execution": false,
+  "exact_original_stderr_retained": false
+}

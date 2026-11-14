@@ -1,0 +1,1 @@
+{"passed": true, "transfers": 52, "boundary_observations": 156, "distinct_snapshots": 116, "distinct_inventories": 6, "user_pages_per_inventory": 572, "supervisor_leaves_per_inventory": 512, "leaves_per_inventory": 1084, "present_entries_per_inventory": 1089, "protected_ranges_per_inventory": 26}

@@ -1,0 +1,7 @@
+{
+  "complete": true,
+  "passed": false,
+  "scope": "Harness input enumeration before tests or native execution",
+  "error": "FileNotFoundError: src/topal-language/se-requirements.md",
+  "correction": "Remove nonexistent authority-input path; compiler tool requirements remain retained."
+}

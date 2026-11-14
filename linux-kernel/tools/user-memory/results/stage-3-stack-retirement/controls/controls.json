@@ -1,0 +1,184 @@
+{
+  "passed": true,
+  "reader_sha256": "08025fad0776dc95996839452484f16817ce32b3c8d6b1127a305ef40c5ae02c",
+  "positive_report_sha256": "c197e0748cd0025791b7b0e34c8065a7d5820762cc715d3fa0f35e77ceb5f688",
+  "controls": [
+    {
+      "name": "clock-leaf-return-wrong-slot",
+      "offset": 219946,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "50068d8c1564e0412633816f90cd6f7b8ed7daa98f0e834c09cabb0763d14a98",
+      "provider_sha256": "c4ca4f3382f31cd57aab0f889e3fea7a64540c8faaa8a96f457499b60386b097",
+      "log_sha256": "39ad5567294fe52495c9eaa5cf37d2363d93e129cb531568aa5192bbee20c921"
+    },
+    {
+      "name": "clock-saved-registers-wrong-slot",
+      "offset": 220109,
+      "before": "a0ffffff",
+      "after": "a8ffffff",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "1d1c494a243e4c1c2af79069abaca6030174bd1054b1a72b151a60d9c0ef17c6",
+      "provider_sha256": "3d14ddb9419c7932c89c4a64d21a86b063e38543ce04c1795fb7ee14c4646464",
+      "log_sha256": "f54097cb05a6398180f72f5a7fca2b73d7e534b6d72ce4250b40ef1e84b58234"
+    },
+    {
+      "name": "clock-caller-148223-wrong-slot",
+      "offset": 148232,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "31fce8d05cab3795974f13465dcdae6a86ae1051dd24ed17f5f80867bdee2757",
+      "provider_sha256": "938e2f0af58a83dbae258c322df55d65935cb3c9fb3099ee87095dc871aa91f1",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-159315-wrong-slot",
+      "offset": 159324,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "5ff25fa98598678c77455739fbaa7d6e7364c5a1457ea80c152a5c2a34e03a88",
+      "provider_sha256": "3f7713fdef8f25a6a7f8772a790386a7693cd025b9fb61ada6970e972d9d883b",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-160123-wrong-slot",
+      "offset": 160132,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "a01063ffd5e0582532290c9e61413eeb27f74c1a352f3f30083bbb6b81c7786f",
+      "provider_sha256": "418734a90b24694a84dee2a8f183439c164a21e9e25324d378cdab47f47fa102",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-163408-wrong-slot",
+      "offset": 163417,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "334b4668dd6a67ed8844e03c3180d6c1e6648f0bae10daebfb45f59df34be23b",
+      "provider_sha256": "76d8ebaa6ca4287ba62a47234f05c458762239b5dfb8e7bcd086c65a3b34d677",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-164174-wrong-slot",
+      "offset": 164183,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "4c763cf152ca848ae8cd7d3cab8ef4a117725c75bfa5bf2f7dd93b3f8ec9d5bb",
+      "provider_sha256": "86c9259e3d717e4f722246e3505795142f00ce372d47e45199b6ed4edf047a6c",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-223501-wrong-slot",
+      "offset": 223510,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "cf3ad1203246a09313cd54d319cf5f2c240f3c43fdada0f45c83bc1d14255a43",
+      "provider_sha256": "c5d8f25d1d4fdd0f910d96781445bef543ed1f90e6b2419ae00531b0541c95e7",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-224584-wrong-slot",
+      "offset": 224593,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "5a1d7fcb4856e8edbca801ae2d68623b58e53651fdab5ffc9d526e5bddcc26d0",
+      "provider_sha256": "ffe98f661917ccedd0716822e71b9035835f28fef73d1f4df7868f3fb330e1ae",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-226335-wrong-slot",
+      "offset": 226344,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "508f471b55e1fd6ce5785bcf3e4157501b82fa553ad2efd22ca90d458f0787bc",
+      "provider_sha256": "0e2ca2b00a81921de7de5da893140398c8b9ea01039bddf66c86b5c21b088098",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "clock-caller-227530-wrong-slot",
+      "offset": 227539,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "a78bc96be74c5b54154c1bfaeec49a165b9f8f5c3c883fad188081589f6550fb",
+      "provider_sha256": "06a6da481d28e3295fe60d02b301a5ae7c627d6e0a4e8d6a9d104c9a0bf325a4",
+      "log_sha256": "49f33f2925b4cadd537030cf604b26be8223839a9b8251a4f96090dda50ac5aa"
+    },
+    {
+      "name": "random-extract-return-wrong-slot",
+      "offset": 108336,
+      "before": "f8ffffff",
+      "after": "00000000",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "5257e5c84f62a75e72212e361857146ed784831a4e1fdaf7accff5182fdf8f16",
+      "provider_sha256": "c5c6bb15693de611119cb43adbf31bbc070c8adcbcc01f18716fedecf7e2460d",
+      "log_sha256": "788fc063e80ffd3513a0f4431035e771d7181d253f4408eafa44cbe6a577bfee"
+    },
+    {
+      "name": "random-saved-registers-wrong-slot",
+      "offset": 108389,
+      "before": "e0ffffff",
+      "after": "e8ffffff",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "d1d19a8a5a2c212125bdae39ad22879beff802d5234d060319f3aec57789fb50",
+      "provider_sha256": "c7c3698ce01794996767d350b346df40f45b470e4c1e1d1d215ce1dd5bb310f4",
+      "log_sha256": "788fc063e80ffd3513a0f4431035e771d7181d253f4408eafa44cbe6a577bfee"
+    },
+    {
+      "name": "nonzero-immediate",
+      "offset": 219950,
+      "before": "00",
+      "after": "01",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "c520c898ad6ff8402c3939296f8ddd7fccefe145e038a115a8c663c0d8aa807e",
+      "provider_sha256": "243ffb95ed667286c2fd2b09a07412a6523265b42f9eebde73f2905ca5f424aa",
+      "log_sha256": "39ad5567294fe52495c9eaa5cf37d2363d93e129cb531568aa5192bbee20c921"
+    },
+    {
+      "name": "wrong-base",
+      "offset": 219945,
+      "before": "24",
+      "after": "25",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "253706951f750638eba31ce093620f0f07f15e98636c1f56ad98dfaf87ac72ab",
+      "provider_sha256": "26212dc0e565fa1c26d6c09ba49c43587d5cb6de5a36f445ceae1033b7468b17",
+      "log_sha256": "39ad5567294fe52495c9eaa5cf37d2363d93e129cb531568aa5192bbee20c921"
+    },
+    {
+      "name": "flag-changing-opcode",
+      "offset": 219943,
+      "before": "c7",
+      "after": "81",
+      "rejected": true,
+      "exit_code": 1,
+      "kernel_sha256": "eac7ac29eb60f5b3b0ca20b24745e36035b068d1b8aff98e34a932ed4277404e",
+      "provider_sha256": "89c2908312b9063a2f556432aaa984be2c33e8cb678b908cb0772f8efcbc51ee",
+      "log_sha256": "39ad5567294fe52495c9eaa5cf37d2363d93e129cb531568aa5192bbee20c921"
+    }
+  ],
+  "scope": "Positive-backed offline first-party provider/kernel ELF mutations with rebound census/graph/origin/report identities. Changed artifacts are parsed only, never executed, booted or loaded into a VM. Not source authentication, actual owners/lifetime or production qualification"
+}

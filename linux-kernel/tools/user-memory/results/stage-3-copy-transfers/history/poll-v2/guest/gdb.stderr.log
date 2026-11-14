@@ -1,0 +1,8 @@
+warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-poll-2291796-1794409506881702951/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.
+Traceback (most recent call last):
+  File "<string>", line 39, in stop
+  File "<string>", line 1106, in observe
+AssertionError
+Traceback (most recent call last):
+  File "<string>", line 1661, in <module>
+AssertionError

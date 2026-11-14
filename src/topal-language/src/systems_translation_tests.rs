@@ -8,7 +8,10 @@ fn requires_sealed_affine_translation_lifecycle() {
             "must be `bootstrap-equivalent`",
         ),
         (
-            SOURCE.replace("page-policy is provider-selected", "page-policy is four-level"),
+            SOURCE.replace(
+                "page-policy is provider-selected",
+                "page-policy is four-level",
+            ),
             "must be `provider-selected`",
         ),
         (

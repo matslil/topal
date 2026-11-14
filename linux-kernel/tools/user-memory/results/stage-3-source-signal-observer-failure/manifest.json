@@ -1,0 +1,84 @@
+{
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 24,
+      "sha256": "45fb6649fd891d590100736ba94acef426f23223920447c41da4a7d7f276217b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 951,
+      "sha256": "c0d70cfd7560818f13302cfa013e5ce71ed1956cef55461c7a7cba16cfda64d7"
+    },
+    {
+      "path": "guest/gdb.stderr.log",
+      "bytes": 491,
+      "sha256": "0e97f8fa70f737cd8fd1556f510c31327fe17956833ee257b099df8a210ac608"
+    },
+    {
+      "path": "guest/gdb.stdout.log",
+      "bytes": 119,
+      "sha256": "f3d5a63231ae3539c1289d023742db4613eb695511bf3d436c8807d84bca864e"
+    },
+    {
+      "path": "guest/inspect.gdb",
+      "bytes": 37199,
+      "sha256": "becc4ae0846f0fe771d7a986651a9b19054be9383a41c6e98f34b5ddf875a74b"
+    },
+    {
+      "path": "guest/observations.json",
+      "bytes": 441,
+      "sha256": "73dc8d3dca5df5c6213f9769edbb46913a8d8cd8f50320a30ba07047196988e4"
+    },
+    {
+      "path": "guest/qemu.command.json",
+      "bytes": 1212,
+      "sha256": "095773828137d5ebb90833b57ff8b6a091872bdb80baa7b1531c981d62ec2983"
+    },
+    {
+      "path": "guest/serial.log",
+      "bytes": 2560,
+      "sha256": "96f1011317da1e5cd33ae4a86cfcfd97d142b76a0511482b5bf46bf8424d51c9"
+    },
+    {
+      "path": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_signal_cases.c",
+      "bytes": 5212,
+      "sha256": "72d650525751faebd14e997ab1e681d3e44fe5fa340f36cc3932ff37bfb95efd"
+    },
+    {
+      "path": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_signal_observer.py",
+      "bytes": 4204,
+      "sha256": "e35c3eae7af1dda3925f2bb83d6433afcdf919ac010138c09aabb3d1b8e88836"
+    },
+    {
+      "path": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py",
+      "bytes": 23081,
+      "sha256": "ab8bfa42562c8c8bf094c0d5a1a1453c330af0f875fe19d48ead882954c9c6db"
+    },
+    {
+      "path": "inputs/src/topal-compiler/src/systems_frame_root_tests.rs",
+      "bytes": 24884,
+      "sha256": "4adeeb4249bebf531b4da37847613dd57df6f9ec0963376ca6bf3f30b7c8e05e"
+    },
+    {
+      "path": "inputs/src/topal-compiler/src/systems_user_source_fixture.rs",
+      "bytes": 13641,
+      "sha256": "a69887c2c1b347f69de935412027ed1ca4295450840671a3f476fbc9d5716328"
+    },
+    {
+      "path": "native-run.json",
+      "bytes": 2123,
+      "sha256": "f22638208c3dd1196b1bc85c6bd6a67e816dbb2bd3a1bc6de2ce0c07daf50b9c"
+    },
+    {
+      "path": "native-test.log",
+      "bytes": 2664,
+      "sha256": "9c32d5eef5e7122891c6de5e86ece7191544a22db3cfa426f919f8fac1377619"
+    },
+    {
+      "path": "source-component.json",
+      "bytes": 1319,
+      "sha256": "392d2cf453c13958fb84eb3a5b99f31a542c3e9d6a661b3fa9216ecf25a783c0"
+    }
+  ]
+}

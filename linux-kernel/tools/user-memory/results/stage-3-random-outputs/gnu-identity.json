@@ -1,0 +1,14 @@
+{
+  "gnu-verification.json": {
+    "snapshot": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/gnu-graph/gnu-verification.json.gz",
+    "sha256": "f725d71f20464f9608ba833af87fd273734352bfadbb9724a293e81fc05ef5df",
+    "bytes": 740,
+    "snapshot_sha256": "c898ea031fa3f42a57d5001f6178dc53371932b655c6011a9178a258411a9ac7"
+  },
+  "gnu-decoder-transcript.json": {
+    "snapshot": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/gnu-graph/gnu-decoder-transcript.json.gz",
+    "sha256": "1284594d470f78c97820f59844220a52cd6f57360a53a03a703f44a008cea869",
+    "bytes": 2446921,
+    "snapshot_sha256": "c786140e4b90c4dda93f8a06bd4436d32d0c5a077730a325f48d5becc9c9d3a9"
+  }
+}

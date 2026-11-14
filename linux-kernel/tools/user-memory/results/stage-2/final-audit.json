@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "scope": "Frozen-source equality, compressed archive identities and changed-document local file links; no additional guest execution or full-stage completion",
+  "frozen_sources": 2157,
+  "compressed_records_checked": 7243,
+  "local_markdown_targets": 645,
+  "program_sha256": "622b971e06c8020073350f10598bd4b85a1ff7a2a92eb2e35f6abd3418e8d945"
+}

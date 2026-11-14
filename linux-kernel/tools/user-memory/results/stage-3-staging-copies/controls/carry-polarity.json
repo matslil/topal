@@ -1,0 +1,9 @@
+{
+  "name": "carry-polarity",
+  "rejected": true,
+  "offset": 131631,
+  "expected_bytes": "82",
+  "changed_bytes": "83",
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+}

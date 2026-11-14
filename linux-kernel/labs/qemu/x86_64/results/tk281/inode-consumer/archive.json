@@ -1,0 +1,244 @@
+{
+  "schema": "topal.inode-consumer-archive/1",
+  "machine_dispositions": 12,
+  "busybox_workloads": 5,
+  "logs": [
+    {
+      "path": "machine/bad-type/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/bad-type/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/bad-type/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "machine/dirty-arena/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/dirty-arena/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/dirty-arena/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "machine/false-after-mode/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/false-after-mode/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/false-after-mode/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "8227d155cccf78b486c486ec877ceaac91900e95c5145140c5b793ec7dd70c50"
+    },
+    {
+      "path": "machine/foreign-owner/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/foreign-owner/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/foreign-owner/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "machine/generation-exhausted/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/generation-exhausted/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/generation-exhausted/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "machine/inactive_terminal/serial.log.gz",
+      "uncompressed_bytes": 7336,
+      "uncompressed_sha256": "18b82668383ca8884de11f3efec7d07cf724c510d0abe523d7fcbcc306f80058"
+    },
+    {
+      "path": "machine/inactive_terminal/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/inactive_terminal/debug.log.gz",
+      "uncompressed_bytes": 106,
+      "uncompressed_sha256": "43df7dab455a5ef483fe26e8ec0e1163efacfd05db1a9e58dd67937016af0ad9"
+    },
+    {
+      "path": "machine/interrupts-enabled/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/interrupts-enabled/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/interrupts-enabled/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "machine/lifetime/serial.log.gz",
+      "uncompressed_bytes": 7606,
+      "uncompressed_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435"
+    },
+    {
+      "path": "machine/lifetime/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/lifetime/debug.log.gz",
+      "uncompressed_bytes": 140,
+      "uncompressed_sha256": "daee8ea54492cd5c1e1b2df8a6ae03e47f13c10cb297d24e5d92d4b65f8b2746"
+    },
+    {
+      "path": "machine/permissions-range/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/permissions-range/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/permissions-range/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "machine/primary/serial.log.gz",
+      "uncompressed_bytes": 7606,
+      "uncompressed_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435"
+    },
+    {
+      "path": "machine/primary/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/primary/debug.log.gz",
+      "uncompressed_bytes": 140,
+      "uncompressed_sha256": "daee8ea54492cd5c1e1b2df8a6ae03e47f13c10cb297d24e5d92d4b65f8b2746"
+    },
+    {
+      "path": "machine/record-stride/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/record-stride/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/record-stride/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "machine/wrong-mode/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/wrong-mode/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "806af9afb8ab03653e371dbef965a531fba1dc433fad0207e8b3bdc265ed0ef3"
+    },
+    {
+      "path": "machine/wrong-mode/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "b84f571d995a980fd3f3d7c46a31f88f4380ae8d11e3aa9859be9df7bdc89fd4"
+    },
+    {
+      "path": "busybox/mode-numeric/serial.log.gz",
+      "uncompressed_bytes": 7152,
+      "uncompressed_sha256": "e4a8d9d972ee382620b4fec48e2bf3e16f6a75a2c945bd2182994fc44347c02a"
+    },
+    {
+      "path": "busybox/mode-numeric/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "4199a937e27026e3b8c9122fe4523c9d12fe7e8cbd1aa150b3d44571fff31ccc"
+    },
+    {
+      "path": "busybox/mode-symbolic/serial.log.gz",
+      "uncompressed_bytes": 7151,
+      "uncompressed_sha256": "e494a09f28170ccf7d2cb6d60eb0aecd144df537517d0c1bcc1f5e29b99c075c"
+    },
+    {
+      "path": "busybox/mode-symbolic/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "4199a937e27026e3b8c9122fe4523c9d12fe7e8cbd1aa150b3d44571fff31ccc"
+    },
+    {
+      "path": "busybox/mode-directory/serial.log.gz",
+      "uncompressed_bytes": 7152,
+      "uncompressed_sha256": "b113ef6c9de1aba99d8e035143fb0e67d8b043832a3263d80c216caa344f767d"
+    },
+    {
+      "path": "busybox/mode-directory/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "4199a937e27026e3b8c9122fe4523c9d12fe7e8cbd1aa150b3d44571fff31ccc"
+    },
+    {
+      "path": "busybox/mode-retained-reader/serial.log.gz",
+      "uncompressed_bytes": 7155,
+      "uncompressed_sha256": "3fef142331f845801f8988fb177dddcb5849882929bda75e56f80e8f52312a4c"
+    },
+    {
+      "path": "busybox/mode-retained-reader/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "4199a937e27026e3b8c9122fe4523c9d12fe7e8cbd1aa150b3d44571fff31ccc"
+    },
+    {
+      "path": "busybox/mode-umask-independent/serial.log.gz",
+      "uncompressed_bytes": 7152,
+      "uncompressed_sha256": "b52c2abc83f02b3bc7231eda796da3acd8252a8b9d56ade4308806480e035820"
+    },
+    {
+      "path": "busybox/mode-umask-independent/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "4199a937e27026e3b8c9122fe4523c9d12fe7e8cbd1aa150b3d44571fff31ccc"
+    }
+  ],
+  "qualified_code_commit": "9e7875eb9731f231d74ed45e6e4c5b34efefddee",
+  "qualified_code_tree": "6e897b7c6181291b20d831c53688b33781003db2",
+  "rust_record_sha256": "9fbe4a86f0849109d78b4d18c3f515453b5959d9a90d519dae10e4cc56c57069",
+  "command_record_sha256": "b291a1653f32b34d6d7dd6bb8de175962f4d22f5b4f8b5261fd48b38bedf9eb2",
+  "corpus_record_sha256": "968849c3042ce049be35819e3ffb390932add760b60b6cf0106e83adcad49b4c",
+  "archiver_sha256": "e859f2248914304226c7c02eb94f01848442c303fcf3142b7e6a8c3fd66755ec",
+  "scope": "fresh V6 inode consumer machine and unchanged BusyBox proof; historical TK280 evidence remains intact"
+}

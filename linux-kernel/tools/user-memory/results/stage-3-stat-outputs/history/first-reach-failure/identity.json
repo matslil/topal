@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "terminal_status": "failed",
+  "inputs": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": {
+      "sha256": "e884f798b887a4a8a44b2ff90b99d73bef812f10201302435ed132286bbe157b",
+      "snapshot": "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py.gz"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py": {
+      "sha256": "4fb898734bb85ffa97c27f883dd109293aac7b3985dc51bb368e81cea6ad2610",
+      "snapshot": "linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py.gz"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": {
+      "sha256": "2e2cf71554d3e31afb3bd2a5abdd6a78db678f9e622dfb5c8db2ebe40241160a",
+      "snapshot": "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz"
+    },
+    "linux-kernel/tools/user-memory/test_staging_copies.py": {
+      "sha256": "e35c64d116bce44bf238b23976d3980d8e30eb9b425c3908666e6492c1710227",
+      "snapshot": "linux-kernel/tools/user-memory/test_staging_copies.py.gz"
+    },
+    "src/topal-compiler/src/systems_frame_root_tests.rs": {
+      "sha256": "d3d70460d085ce0fa42b6c9fc24b69fcd68d7a90e688f405b44d5355f2128a30",
+      "snapshot": "src/topal-compiler/src/systems_frame_root_tests.rs.gz"
+    },
+    "src/topal-compiler/src/systems_user_source_fixture.rs": {
+      "sha256": "197f8f7b4bd41e56b52e15a6c29aa380cfc1414db62d029740f01bb259d44c40",
+      "snapshot": "src/topal-compiler/src/systems_user_source_fixture.rs.gz"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_stat_cases.c": {
+      "sha256": "7ffdd3054421d81b7233e39c63bbd1e2d8a0e1faa9c51f0d4c1dcafe185f4d9a",
+      "snapshot": "linux-kernel/labs/qemu/x86_64/user_extent_stat_cases.c.gz"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_stat_observer.py": {
+      "sha256": "09d40c7d24da754401877fa6a2ecae4d5502637faeed7178814b10b68b960524",
+      "snapshot": "linux-kernel/labs/qemu/x86_64/user_extent_stat_observer.py.gz"
+    },
+    "linux-kernel/tools/user-memory/audit_stat_outputs.py": {
+      "sha256": "24e87a91711b75f013c725b482eb154ee1f04daeea0d045686589841a9dacb73",
+      "snapshot": "linux-kernel/tools/user-memory/audit_stat_outputs.py.gz"
+    },
+    "linux-kernel/tools/user-memory/stat_instruction_effects.py": {
+      "sha256": "23f337124f97c3453437614afc20e9cad83f2e0279da4c3d69c7fd3bbd0c00ed",
+      "snapshot": "linux-kernel/tools/user-memory/stat_instruction_effects.py.gz"
+    },
+    "linux-kernel/tools/user-memory/test_stat_instruction_effects.py": {
+      "sha256": "5a957d841bb1b688812e3a0793fa18019afd50ec9b45df26b412e47976cdd9de",
+      "snapshot": "linux-kernel/tools/user-memory/test_stat_instruction_effects.py.gz"
+    },
+    "linux-kernel/tools/user-memory/test_stat_saved_frames.py": {
+      "sha256": "d8792a4939067216913bcf88785fa38faa217386505cc63c18de183d996a3770",
+      "snapshot": "linux-kernel/tools/user-memory/test_stat_saved_frames.py.gz"
+    }
+  },
+  "scope": "Exact modified-source readback for failed first-reach observer bookkeeping; one source is reverse-derived and required to match its actual captured pre/post SHA. Not a passing native execution"
+}

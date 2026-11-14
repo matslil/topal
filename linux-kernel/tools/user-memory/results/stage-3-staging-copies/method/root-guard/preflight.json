@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "unit_tests": 7,
+  "positive_report_byte_identical": true,
+  "positive_report_sha256": "90782b4312b9ad61a6e30a03142b5771410ec7d2e2ce85cdd890a0576ee48a12",
+  "source_sha256": {
+    "linux-kernel/tools/user-memory/audit_staging_copies.py": "6fec74012264fdf5815f86c3f30c6180bb9dccc2ad56071b31ed1b8ea2d8317b",
+    "linux-kernel/tools/user-memory/test_staging_copies.py": "bb02bae411354d5a21f32d96997cc6679c0eeac6cba1609fb51533af2928f68d"
+  },
+  "scope": "Pure reader strengthening, synthetic graph controls and current-image report equivalence; no new native execution claim"
+}

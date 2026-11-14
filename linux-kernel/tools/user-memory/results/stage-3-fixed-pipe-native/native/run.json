@@ -1,0 +1,41 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_pipe_transfer_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 227.4451985321939,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794445505844594624/temporary",
+  "resources": {
+    "memory.max": "3314880512",
+    "memory.swap.max": "0",
+    "memory.peak": "477806592",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "6601abdce22f8cd9ae68da3a5b16629f35a7bbdc3b97d9e2ecb51d6099f498e5",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "cbbacf0618f83b6d8a52dc0f5340c79cd6916e8e8ebe7c66dd9edc3a44387dc3",
+    "linux-kernel/tools/user-memory/test_observer_selection.py": "25db1ca302279a2abc22b81893fc9bfcb3981f13cc1ddb5022af306920b04803",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_fixed_observer.py": "aafa89a01218bd325ec71b26686036126e1091c28b3bd4f46f47a75674728799",
+    "linux-kernel/tools/user-memory/test_pipe_fixed_observer.py": "f6919ed5e940314acc0033f575b75994548e62a11fea4706ec9073cfdc3fcd5f"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "6601abdce22f8cd9ae68da3a5b16629f35a7bbdc3b97d9e2ecb51d6099f498e5",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "cbbacf0618f83b6d8a52dc0f5340c79cd6916e8e8ebe7c66dd9edc3a44387dc3",
+    "linux-kernel/tools/user-memory/test_observer_selection.py": "25db1ca302279a2abc22b81893fc9bfcb3981f13cc1ddb5022af306920b04803",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_fixed_observer.py": "aafa89a01218bd325ec71b26686036126e1091c28b3bd4f46f47a75674728799",
+    "linux-kernel/tools/user-memory/test_pipe_fixed_observer.py": "f6919ed5e940314acc0033f575b75994548e62a11fea4706ec9073cfdc3fcd5f"
+  },
+  "source_changes_during_run": false
+}

@@ -1,0 +1,1412 @@
+{
+  "passed": true,
+  "function": "topal_x86_systems_static_image_process_enter",
+  "old_provider_sha256": "363b01c4f75056b0eca0e76628e480ff6dcbc1aad0db885ac8dd205e79f729c6",
+  "new_provider_sha256": "f667f2fb14e8826bc3bc29d91ec5b300821031d1e461ae5e3f1a55cf5ec51c14",
+  "old_function_sha256": "36bf3f8964bdff19d3b397dea68e060e5aac9c4b870bd78e9307b5713d99f64d",
+  "new_function_sha256": "b6f3187423a4e1dfe0342a5040eca744bbe49d95138729956100b9a86bb388f4",
+  "old_function_bytes": 231627,
+  "new_function_bytes": 231679,
+  "insertions": [
+    {
+      "old_offset": 204456,
+      "new_offset": 204456,
+      "bytes": "4981f9000000000f8461c5feff4981f9001000000f8754c5feff"
+    },
+    {
+      "old_offset": 205286,
+      "new_offset": 205312,
+      "bytes": "4981f9000000000f8409c2feff4981f9001000000f87fcc1feff"
+    }
+  ],
+  "adjusted_relative_displacements": [
+    {
+      "offset": 17585,
+      "field": 2,
+      "old_target": 225885,
+      "new_target": 225937
+    },
+    {
+      "offset": 17598,
+      "field": 2,
+      "old_target": 228055,
+      "new_target": 228107
+    },
+    {
+      "offset": 45001,
+      "field": 1,
+      "old_target": 231355,
+      "new_target": 231407
+    },
+    {
+      "offset": 134337,
+      "field": 1,
+      "old_target": 220224,
+      "new_target": 220276
+    },
+    {
+      "offset": 134373,
+      "field": 1,
+      "old_target": 208177,
+      "new_target": 208229
+    },
+    {
+      "offset": 134952,
+      "field": 2,
+      "old_target": 207384,
+      "new_target": 207436
+    },
+    {
+      "offset": 140176,
+      "field": 2,
+      "old_target": 221959,
+      "new_target": 222011
+    },
+    {
+      "offset": 140303,
+      "field": 2,
+      "old_target": 223789,
+      "new_target": 223841
+    },
+    {
+      "offset": 141115,
+      "field": 2,
+      "old_target": 222720,
+      "new_target": 222772
+    },
+    {
+      "offset": 141128,
+      "field": 2,
+      "old_target": 204966,
+      "new_target": 204992
+    },
+    {
+      "offset": 141177,
+      "field": 2,
+      "old_target": 221179,
+      "new_target": 221231
+    },
+    {
+      "offset": 142923,
+      "field": 2,
+      "old_target": 225185,
+      "new_target": 225237
+    },
+    {
+      "offset": 143587,
+      "field": 2,
+      "old_target": 226266,
+      "new_target": 226318
+    },
+    {
+      "offset": 143626,
+      "field": 2,
+      "old_target": 207281,
+      "new_target": 207333
+    },
+    {
+      "offset": 143639,
+      "field": 2,
+      "old_target": 207281,
+      "new_target": 207333
+    },
+    {
+      "offset": 144157,
+      "field": 2,
+      "old_target": 207768,
+      "new_target": 207820
+    },
+    {
+      "offset": 144170,
+      "field": 2,
+      "old_target": 207768,
+      "new_target": 207820
+    },
+    {
+      "offset": 144977,
+      "field": 1,
+      "old_target": 208489,
+      "new_target": 208541
+    },
+    {
+      "offset": 144982,
+      "field": 1,
+      "old_target": 220602,
+      "new_target": 220654
+    },
+    {
+      "offset": 148057,
+      "field": 1,
+      "old_target": 219790,
+      "new_target": 219842
+    },
+    {
+      "offset": 148077,
+      "field": 1,
+      "old_target": 207011,
+      "new_target": 207063
+    },
+    {
+      "offset": 148123,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 148163,
+      "field": 1,
+      "old_target": 219698,
+      "new_target": 219750
+    },
+    {
+      "offset": 153120,
+      "field": 1,
+      "old_target": 219424,
+      "new_target": 219476
+    },
+    {
+      "offset": 153521,
+      "field": 2,
+      "old_target": 226509,
+      "new_target": 226561
+    },
+    {
+      "offset": 153962,
+      "field": 2,
+      "old_target": 226698,
+      "new_target": 226750
+    },
+    {
+      "offset": 155330,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 155335,
+      "field": 1,
+      "old_target": 226271,
+      "new_target": 226323
+    },
+    {
+      "offset": 159182,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 159243,
+      "field": 1,
+      "old_target": 219698,
+      "new_target": 219750
+    },
+    {
+      "offset": 159257,
+      "field": 1,
+      "old_target": 220502,
+      "new_target": 220554
+    },
+    {
+      "offset": 160001,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 160039,
+      "field": 1,
+      "old_target": 219698,
+      "new_target": 219750
+    },
+    {
+      "offset": 160271,
+      "field": 1,
+      "old_target": 220085,
+      "new_target": 220137
+    },
+    {
+      "offset": 160282,
+      "field": 1,
+      "old_target": 220312,
+      "new_target": 220364
+    },
+    {
+      "offset": 160822,
+      "field": 1,
+      "old_target": 211952,
+      "new_target": 212004
+    },
+    {
+      "offset": 162871,
+      "field": 1,
+      "old_target": 219424,
+      "new_target": 219476
+    },
+    {
+      "offset": 162890,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 163086,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 163312,
+      "field": 1,
+      "old_target": 219698,
+      "new_target": 219750
+    },
+    {
+      "offset": 163468,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 163633,
+      "field": 1,
+      "old_target": 219790,
+      "new_target": 219842
+    },
+    {
+      "offset": 163919,
+      "field": 1,
+      "old_target": 219847,
+      "new_target": 219899
+    },
+    {
+      "offset": 163964,
+      "field": 1,
+      "old_target": 219622,
+      "new_target": 219674
+    },
+    {
+      "offset": 164066,
+      "field": 1,
+      "old_target": 219698,
+      "new_target": 219750
+    },
+    {
+      "offset": 164728,
+      "field": 1,
+      "old_target": 220085,
+      "new_target": 220137
+    },
+    {
+      "offset": 164739,
+      "field": 1,
+      "old_target": 220312,
+      "new_target": 220364
+    },
+    {
+      "offset": 165407,
+      "field": 1,
+      "old_target": 219424,
+      "new_target": 219476
+    },
+    {
+      "offset": 199507,
+      "field": 2,
+      "old_target": 207004,
+      "new_target": 207056
+    },
+    {
+      "offset": 202766,
+      "field": 2,
+      "old_target": 209907,
+      "new_target": 209959
+    },
+    {
+      "offset": 202789,
+      "field": 2,
+      "old_target": 210316,
+      "new_target": 210368
+    },
+    {
+      "offset": 202802,
+      "field": 2,
+      "old_target": 210725,
+      "new_target": 210777
+    },
+    {
+      "offset": 202878,
+      "field": 1,
+      "old_target": 208680,
+      "new_target": 208732
+    },
+    {
+      "offset": 202992,
+      "field": 2,
+      "old_target": 208680,
+      "new_target": 208732
+    },
+    {
+      "offset": 203099,
+      "field": 2,
+      "old_target": 209089,
+      "new_target": 209141
+    },
+    {
+      "offset": 203315,
+      "field": 2,
+      "old_target": 209498,
+      "new_target": 209550
+    },
+    {
+      "offset": 204215,
+      "field": 1,
+      "old_target": 207011,
+      "new_target": 207063
+    },
+    {
+      "offset": 204246,
+      "field": 2,
+      "old_target": 209498,
+      "new_target": 209550
+    },
+    {
+      "offset": 204259,
+      "field": 2,
+      "old_target": 205801,
+      "new_target": 205853
+    },
+    {
+      "offset": 204299,
+      "field": 2,
+      "old_target": 205801,
+      "new_target": 205853
+    },
+    {
+      "offset": 204326,
+      "field": 2,
+      "old_target": 211134,
+      "new_target": 211186
+    },
+    {
+      "offset": 204352,
+      "field": 1,
+      "old_target": 206696,
+      "new_target": 206748
+    },
+    {
+      "offset": 204362,
+      "field": 2,
+      "old_target": 210725,
+      "new_target": 210777
+    },
+    {
+      "offset": 204411,
+      "field": 1,
+      "old_target": 207011,
+      "new_target": 207063
+    },
+    {
+      "offset": 204456,
+      "field": 1,
+      "old_target": 133214,
+      "new_target": 133214
+    },
+    {
+      "offset": 204470,
+      "field": 2,
+      "old_target": 209498,
+      "new_target": 209550
+    },
+    {
+      "offset": 204532,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 204544,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 204622,
+      "field": 1,
+      "old_target": 206147,
+      "new_target": 206199
+    },
+    {
+      "offset": 204966,
+      "field": 1,
+      "old_target": 207011,
+      "new_target": 207063
+    },
+    {
+      "offset": 204992,
+      "field": 1,
+      "old_target": 141055,
+      "new_target": 141055
+    },
+    {
+      "offset": 204997,
+      "field": 2,
+      "old_target": 209498,
+      "new_target": 209550
+    },
+    {
+      "offset": 205010,
+      "field": 2,
+      "old_target": 205801,
+      "new_target": 205853
+    },
+    {
+      "offset": 205117,
+      "field": 2,
+      "old_target": 211134,
+      "new_target": 211186
+    },
+    {
+      "offset": 205143,
+      "field": 1,
+      "old_target": 206696,
+      "new_target": 206748
+    },
+    {
+      "offset": 205163,
+      "field": 2,
+      "old_target": 210316,
+      "new_target": 210368
+    },
+    {
+      "offset": 205169,
+      "field": 1,
+      "old_target": 211543,
+      "new_target": 211595
+    },
+    {
+      "offset": 205174,
+      "field": 1,
+      "old_target": 178790,
+      "new_target": 178790
+    },
+    {
+      "offset": 205179,
+      "field": 2,
+      "old_target": 210725,
+      "new_target": 210777
+    },
+    {
+      "offset": 205197,
+      "field": 1,
+      "old_target": 134121,
+      "new_target": 134121
+    },
+    {
+      "offset": 205202,
+      "field": 2,
+      "old_target": 137024,
+      "new_target": 137024
+    },
+    {
+      "offset": 205222,
+      "field": 2,
+      "old_target": 137024,
+      "new_target": 137024
+    },
+    {
+      "offset": 205228,
+      "field": 1,
+      "old_target": 207011,
+      "new_target": 207063
+    },
+    {
+      "offset": 205286,
+      "field": 1,
+      "old_target": 133209,
+      "new_target": 133209
+    },
+    {
+      "offset": 205379,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206200,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206278,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206324,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206361,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206374,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206444,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206464,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206487,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206669,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206689,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206753,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206792,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206886,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206929,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206942,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 206998,
+      "field": 2,
+      "old_target": 199513,
+      "new_target": 199513
+    },
+    {
+      "offset": 207025,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 207114,
+      "field": 1,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 207133,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 207153,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 207246,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 207274,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 207379,
+      "field": 1,
+      "old_target": 143698,
+      "new_target": 143698
+    },
+    {
+      "offset": 207411,
+      "field": 2,
+      "old_target": 137024,
+      "new_target": 137024
+    },
+    {
+      "offset": 207777,
+      "field": 2,
+      "old_target": 138754,
+      "new_target": 138754
+    },
+    {
+      "offset": 207796,
+      "field": 1,
+      "old_target": 133214,
+      "new_target": 133214
+    },
+    {
+      "offset": 208309,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208326,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208420,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208480,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208523,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208563,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208603,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208673,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 208737,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 209146,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 209555,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 209964,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 210373,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 210782,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 211191,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 211600,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 212005,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 212023,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 212036,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219705,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219718,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219740,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219765,
+      "field": 1,
+      "old_target": 178790,
+      "new_target": 178790
+    },
+    {
+      "offset": 219809,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219829,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219938,
+      "field": 1,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219957,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 219977,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220253,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220279,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220326,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220347,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220368,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220389,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220410,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220430,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220495,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220664,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220684,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220697,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220708,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220815,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220892,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 220982,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221003,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221024,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221052,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221092,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221162,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221212,
+      "field": 1,
+      "old_target": 141055,
+      "new_target": 141055
+    },
+    {
+      "offset": 221371,
+      "field": 1,
+      "old_target": 133214,
+      "new_target": 133214
+    },
+    {
+      "offset": 221448,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221614,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 221992,
+      "field": 1,
+      "old_target": 141055,
+      "new_target": 141055
+    },
+    {
+      "offset": 222153,
+      "field": 1,
+      "old_target": 133214,
+      "new_target": 133214
+    },
+    {
+      "offset": 222230,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 222375,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 222753,
+      "field": 1,
+      "old_target": 141055,
+      "new_target": 141055
+    },
+    {
+      "offset": 222949,
+      "field": 1,
+      "old_target": 133209,
+      "new_target": 133209
+    },
+    {
+      "offset": 223028,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 223147,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 223444,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 223822,
+      "field": 1,
+      "old_target": 141055,
+      "new_target": 141055
+    },
+    {
+      "offset": 224020,
+      "field": 1,
+      "old_target": 133209,
+      "new_target": 133209
+    },
+    {
+      "offset": 224099,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 224218,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 224494,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 225898,
+      "field": 1,
+      "old_target": 134121,
+      "new_target": 134121
+    },
+    {
+      "offset": 226170,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226504,
+      "field": 1,
+      "old_target": 143698,
+      "new_target": 143698
+    },
+    {
+      "offset": 226516,
+      "field": 2,
+      "old_target": 170108,
+      "new_target": 170108
+    },
+    {
+      "offset": 226529,
+      "field": 2,
+      "old_target": 170108,
+      "new_target": 170108
+    },
+    {
+      "offset": 226542,
+      "field": 2,
+      "old_target": 171452,
+      "new_target": 171452
+    },
+    {
+      "offset": 226565,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226578,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226600,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226669,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226705,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226726,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226747,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226760,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226783,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226820,
+      "field": 2,
+      "old_target": 172796,
+      "new_target": 172796
+    },
+    {
+      "offset": 226901,
+      "field": 1,
+      "old_target": 172796,
+      "new_target": 172796
+    },
+    {
+      "offset": 226933,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226954,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 226970,
+      "field": 2,
+      "old_target": 172796,
+      "new_target": 172796
+    },
+    {
+      "offset": 227030,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 227098,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 227171,
+      "field": 2,
+      "old_target": 173468,
+      "new_target": 173468
+    },
+    {
+      "offset": 227345,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 227408,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 227593,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 228495,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 228913,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 229331,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 229749,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 230167,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 230585,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 231003,
+      "field": 2,
+      "old_target": 123926,
+      "new_target": 123926
+    },
+    {
+      "offset": 231426,
+      "field": 1,
+      "old_target": 133209,
+      "new_target": 133209
+    },
+    {
+      "offset": 231440,
+      "field": 2,
+      "old_target": 45011,
+      "new_target": 45011
+    },
+    {
+      "offset": 231473,
+      "field": 2,
+      "old_target": 46244,
+      "new_target": 46244
+    },
+    {
+      "offset": 231503,
+      "field": 2,
+      "old_target": 46244,
+      "new_target": 46244
+    },
+    {
+      "offset": 231522,
+      "field": 1,
+      "old_target": 133209,
+      "new_target": 133209
+    },
+    {
+      "offset": 231536,
+      "field": 2,
+      "old_target": 45011,
+      "new_target": 45011
+    },
+    {
+      "offset": 231574,
+      "field": 2,
+      "old_target": 45011,
+      "new_target": 45011
+    },
+    {
+      "offset": 231599,
+      "field": 2,
+      "old_target": 45011,
+      "new_target": 45011
+    }
+  ],
+  "process_relocations": 19,
+  "unchanged_component_objects": [
+    {
+      "path": "root.o",
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8",
+      "bytes": 359056
+    },
+    {
+      "path": "source.o",
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8",
+      "bytes": 155832
+    },
+    {
+      "path": "runtime.o",
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f",
+      "bytes": 35264
+    },
+    {
+      "path": "owner.o",
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5",
+      "bytes": 6280
+    },
+    {
+      "path": "controller.o",
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84",
+      "bytes": 16784
+    },
+    {
+      "path": "target.o",
+      "sha256": "0c365ec9114c14e1699f75e4d8f2a74f5bcc0041628cf125e5039fbf685fdecd",
+      "bytes": 27384
+    },
+    {
+      "path": "dispatch.o",
+      "sha256": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457",
+      "bytes": 12832
+    },
+    {
+      "path": "gateway.o",
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37",
+      "bytes": 8904
+    },
+    {
+      "path": "boundary.o",
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8",
+      "bytes": 9384
+    },
+    {
+      "path": "extent.o",
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993",
+      "bytes": 1808
+    },
+    {
+      "path": "extent-callers.o",
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda",
+      "bytes": 2544
+    },
+    {
+      "path": "extent-bridge.o",
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c",
+      "bytes": 1176
+    },
+    {
+      "path": "predecessor-provider.o",
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae",
+      "bytes": 1069736
+    },
+    {
+      "path": "predecessor-gateway.o",
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc",
+      "bytes": 8008
+    }
+  ],
+  "scope": "Complete provider process-body reconstruction by two exact guarded count insertions and mechanically derived direct/RIP-relative displacement changes, with equal shifted relocation identities and fourteen byte-identical components including predecessor provider/gateway. Not whole producer, native semantics or ownership/lifetime qualification"
+}

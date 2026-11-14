@@ -46,7 +46,7 @@ code. Their implementation organization is not copied.
 | --- | --- | --- |
 | `TK-MAP-PHYS-001` | firmware memory map, memblock, page ownership | validated physical ranges feed bootstrap and steady-state frame allocators with explicit reservations |
 | `TK-MAP-VM-001` | page tables, VMAs, faults, COW, `mmap` | address-space service owns mappings and fault protocol; user-visible operations adapt Linux flags and results |
-| `TK-MAP-USERCOPY-001` | `copy_*_user`, access checks, exception fixup | fault-contained typed user transfer; no direct user-pointer dereference |
+| `TK-MAP-USERCOPY-001` | `copy_*_user`, access checks, exception fixup | affine fault-contained typed user transfer tied to the exact syscall entry; complete or copied-prefix outcome; no direct user-pointer dereference or partial input-layout exposure; initial output and input slices in [TK-DEC-033](user-copy-to-uname.md) and [TK-DEC-034](user-copy-from-timespec.md) |
 | `TK-MAP-ALLOC-001` | slab/page/vmalloc and allocation contexts | pool/region capabilities state fallibility, context legality, alignment, address family, and reclaim policy |
 | `TK-MAP-CACHE-001` | page cache, writeback, reclaim | VFS/memory shared page-object protocol with explicit dirty/writeback/reclaim states |
 | `TK-MAP-SYNC-001` | atomics, spinlocks, mutexes, seqlocks, refcounts | minimal atomic/critical elements plus verified synchronization libraries scoped by context and protected invariant |

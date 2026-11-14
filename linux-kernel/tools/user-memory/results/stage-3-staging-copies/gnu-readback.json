@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "gnu_instructions": 218,
+  "gnu_windows": 15,
+  "selected_copies": [
+    {
+      "name": "console-input",
+      "copy_offset": 131711,
+      "user_endpoint": "rsi",
+      "count_register": "r9",
+      "maximum_bytes": 256,
+      "reverse_success_cut": true
+    },
+    {
+      "name": "descriptor-pread-output",
+      "copy_offset": 140651,
+      "user_endpoint": "rdi",
+      "count_register": "r9",
+      "maximum_bytes": 256,
+      "reverse_success_cut": true
+    },
+    {
+      "name": "descriptor-read-output",
+      "copy_offset": 141503,
+      "user_endpoint": "rdi",
+      "count_register": "r9",
+      "maximum_bytes": 256,
+      "reverse_success_cut": true
+    },
+    {
+      "name": "cwd-output",
+      "copy_offset": 156966,
+      "user_endpoint": "rdi",
+      "count_register": "r15",
+      "maximum_bytes": 5,
+      "reverse_success_cut": true
+    },
+    {
+      "name": "sparse-read-output",
+      "copy_offset": 221531,
+      "user_endpoint": "rdi",
+      "count_register": "rbp",
+      "maximum_bytes": 256,
+      "reverse_success_cut": true
+    },
+    {
+      "name": "sparse-pread-output",
+      "copy_offset": 222313,
+      "user_endpoint": "rdi",
+      "count_register": "rbp",
+      "maximum_bytes": 256,
+      "reverse_success_cut": true
+    }
+  ],
+  "backward_success_edge_cuts": 6,
+  "scope": "Separate GNU byte boundaries and operands with reverse graph cuts. Conditional local intervals only; complete counterpart ownership and continuous mapping stability remain open"
+}

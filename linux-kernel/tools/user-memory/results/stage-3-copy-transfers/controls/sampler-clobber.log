@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "<string>", line 26, in <module>
+    a.audit(Path(build))
+    ~~~~~~~^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_copy_transfers.py", line 246, in audit
+    callee_contracts[target] = sampler_contract(body, nodes, successors, target)
+                               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_copy_transfers.py", line 126, in sampler_contract
+    assert not writes & {3, 12}, 'clock sampler must preserve buffer/staging registers'
+           ^^^^^^^^^^^^^^^^^^^^
+AssertionError: clock sampler must preserve buffer/staging registers

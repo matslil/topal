@@ -1,0 +1,58 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_storage_transfer_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "selected_tests": 0,
+  "exit_code": 101,
+  "elapsed_seconds": 3.523792276158929,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794462074607779495/temporary",
+  "resources": {
+    "memory.max": "3255726080",
+    "memory.swap.max": "0",
+    "memory.peak": "867647488",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "341e81feb4f4bb4f124f326c354f8fd9ff2585004c8f0bbe6cb8fa6b9fee73a4",
+    "linux-kernel/tools/user-memory/audit_file_inputs.py": "19f23f88d0328a928e98fbd9efe62160b68524353202a5270d22273a01a68003",
+    "linux-kernel/tools/user-memory/audit_random_outputs.py": "bae675df9145759ae8902f78804a8dcb75b4d7482c9fdcf7b8c0fbbd8e04b5c9",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "801bb7495919a52c97f87519e472be897d98c24c94772f27f93b6cd3daf3bbe4",
+    "src/topal-compiler/src/systems_process_entry_completion.rs": "5f6a793e909525a6363f6b2dd0bb21d44b1d2da2dd3b43684f7ca9b6d774ed1b",
+    "src/topal-compiler/src/systems_volatile_create.rs": "6ee6a8061f4c53ea46bb4d06ac4fdbdd3fc742d488ed4112199ab8bd79fc4a80",
+    "src/topal-compiler/src/systems_volatile_files.rs": "94ba8898afd3115ede9aa2a13d71df7c2743c6d232e3d69ce32d9ff732c87158",
+    "src/topal-compiler/src/systems_volatile_transfer.rs": "c7d25e65f911afaf6df11185cb0240e39230c52a474816a8494f9c057d377d1b",
+    "src/topal-compiler/src/systems_x86_function.rs": "c47acf747a953d71c964b0b01a5f78ccb85b9142efeee21804001a36169fde8a",
+    "linux-kernel/labs/qemu/x86_64/user_extent_stack_observer.py": "94013a3e84eda337fd41813095e535c977a662661c787e5dcaac14002a42731c",
+    "linux-kernel/tools/user-memory/audit_stack_retirement.py": "cb82ff59179821ce11da1452b8968c804573357cb8335d94d4bff96dbcd65500",
+    "linux-kernel/tools/user-memory/retired_stack_words.py": "88d761ae2b8dd5e823c306c48cf9033d8995f762b70c3f62cfb494b838c42bd3",
+    "linux-kernel/tools/user-memory/test_stack_retirement.py": "736f4d9cc6972d62ffb974c29c36de8aefc075ebeccd32a24723d456b7b9475a"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "341e81feb4f4bb4f124f326c354f8fd9ff2585004c8f0bbe6cb8fa6b9fee73a4",
+    "linux-kernel/tools/user-memory/audit_file_inputs.py": "19f23f88d0328a928e98fbd9efe62160b68524353202a5270d22273a01a68003",
+    "linux-kernel/tools/user-memory/audit_random_outputs.py": "bae675df9145759ae8902f78804a8dcb75b4d7482c9fdcf7b8c0fbbd8e04b5c9",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "801bb7495919a52c97f87519e472be897d98c24c94772f27f93b6cd3daf3bbe4",
+    "src/topal-compiler/src/systems_process_entry_completion.rs": "5f6a793e909525a6363f6b2dd0bb21d44b1d2da2dd3b43684f7ca9b6d774ed1b",
+    "src/topal-compiler/src/systems_volatile_create.rs": "6ee6a8061f4c53ea46bb4d06ac4fdbdd3fc742d488ed4112199ab8bd79fc4a80",
+    "src/topal-compiler/src/systems_volatile_files.rs": "94ba8898afd3115ede9aa2a13d71df7c2743c6d232e3d69ce32d9ff732c87158",
+    "src/topal-compiler/src/systems_volatile_transfer.rs": "c7d25e65f911afaf6df11185cb0240e39230c52a474816a8494f9c057d377d1b",
+    "src/topal-compiler/src/systems_x86_function.rs": "c47acf747a953d71c964b0b01a5f78ccb85b9142efeee21804001a36169fde8a",
+    "linux-kernel/labs/qemu/x86_64/user_extent_stack_observer.py": "94013a3e84eda337fd41813095e535c977a662661c787e5dcaac14002a42731c",
+    "linux-kernel/tools/user-memory/audit_stack_retirement.py": "cb82ff59179821ce11da1452b8968c804573357cb8335d94d4bff96dbcd65500",
+    "linux-kernel/tools/user-memory/retired_stack_words.py": "88d761ae2b8dd5e823c306c48cf9033d8995f762b70c3f62cfb494b838c42bd3",
+    "linux-kernel/tools/user-memory/test_stack_retirement.py": "736f4d9cc6972d62ffb974c29c36de8aefc075ebeccd32a24723d456b7b9475a"
+  },
+  "source_changes_during_run": false
+}

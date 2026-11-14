@@ -1,0 +1,95 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.9214182049036026
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_user_extent::source_fixture::",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.6258409274742007
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.0589230861514807
+    },
+    {
+      "command": [
+        "rustfmt",
+        "--check",
+        "--edition",
+        "2024",
+        "src/topal-compiler/src/systems_frame_root_tests.rs",
+        "src/topal-compiler/src/systems_user_source_fixture.rs"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.03417771030217409
+    },
+    {
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.611739539541304
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.27360194083303213
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.06334685254842043
+    }
+  ],
+  "resources": {
+    "memory.max": "3346276352",
+    "memory.swap.max": "0",
+    "memory.peak": "565604352",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  }
+}

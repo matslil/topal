@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/x86_64/readback-owner-boundaries.py", line 62, in <module>
+    assert json.loads(json.dumps(evidence))==row['evidence']
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

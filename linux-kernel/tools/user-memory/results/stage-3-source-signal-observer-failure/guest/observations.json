@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "executions": [],
+  "startup_executions": [],
+  "file_executions": [],
+  "shell_executions": [],
+  "command_executions": [],
+  "bridge_returns": [],
+  "observer_failure": "Traceback (most recent call last):\n  File \"<string>\", line 35, in stop\n  File \"<string>\", line 145, in observe\n  File \"<string>\", line 592, in observe_signal_request\nAssertionError\n",
+  "active_startup": null,
+  "active_bridge": null
+}

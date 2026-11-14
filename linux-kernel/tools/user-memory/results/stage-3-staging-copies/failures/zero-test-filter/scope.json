@@ -1,0 +1,4 @@
+{
+  "native_acceptance": false,
+  "reason": "Exact module-prefix filter selected zero tests; compilation only. The subsequent actual three-test component run is separate."
+}

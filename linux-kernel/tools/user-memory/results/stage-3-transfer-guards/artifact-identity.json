@@ -1,0 +1,14 @@
+{
+  "provider.o": {
+    "bytes": 1061624,
+    "sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+    "snapshot": "artifacts/provider.o.gz",
+    "snapshot_sha256": "0fa9eed786f0d604fd047cddc84ef7dab48789b0ebd3f7eccfe20b64a7c5390a"
+  },
+  "extent-call-disassembly.stdout.log": {
+    "bytes": 8896329,
+    "sha256": "033b6665f00e76a9a402d5df1e1e301d30995573634cc51970ce8f21e6165331",
+    "snapshot": "artifacts/extent-call-disassembly.stdout.log.gz",
+    "snapshot_sha256": "fb41c83121e029640c2784be6a172ed8991b11550da6f080c0db3f2bf5f75bf7"
+  }
+}

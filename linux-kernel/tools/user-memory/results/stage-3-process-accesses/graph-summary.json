@@ -1,0 +1,306 @@
+{
+  "passed": true,
+  "function": "topal_x86_systems_static_image_process_enter",
+  "function_address": 45671296,
+  "function_bytes": 231663,
+  "linked_function_sha256": "b5555dab7fa1f48e353051e0f6eddd2b5279ac5a9f32dee95177b65ceba1396b",
+  "kernel_sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+  "provider_sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+  "extent_inventory_sha256": "1408d6f9916bd5a0c37000b98ce1e8c38e6bad793e780366177b9af4e9136711",
+  "roots": [
+    {
+      "offset": 0,
+      "source": "selected function entry"
+    },
+    {
+      "offset": 14561,
+      "source": "actual RIP-relative LSTAR setup",
+      "setup_offset": 14161
+    },
+    {
+      "offset": 22013,
+      "source": "exported symbol",
+      "symbol": "topal_x86_frame_mm_brk_return_v1"
+    },
+    {
+      "offset": 109092,
+      "source": "exported symbol",
+      "symbol": "topal_x86_frame_mm_cleanup_return_v1"
+    },
+    {
+      "offset": 49094,
+      "source": "exported symbol",
+      "symbol": "topal_x86_frame_mm_exec_return_v1"
+    },
+    {
+      "offset": 14370,
+      "source": "exported symbol",
+      "symbol": "topal_x86_user_extent_wp_before_v1"
+    },
+    {
+      "offset": 14379,
+      "source": "exported symbol",
+      "symbol": "topal_x86_user_extent_wp_ready_v1"
+    }
+  ],
+  "reached_instructions": 31016,
+  "reached_bytes": 221656,
+  "unvisited_bytes": 10007,
+  "linear_instruction_rows": 32778,
+  "unknown_reached_instructions": 0,
+  "overlapping_reached_instructions": 0,
+  "recovered_windows": [
+    {
+      "offset": 185049,
+      "label": "process-access-recovery-0",
+      "decoded_offsets": [
+        185049,
+        185059,
+        185064,
+        185074,
+        185079,
+        185089,
+        185091,
+        185098,
+        185104,
+        185111,
+        185117,
+        185126,
+        185135,
+        185143,
+        185150,
+        185156,
+        185166,
+        185175
+      ]
+    },
+    {
+      "offset": 162020,
+      "label": "process-access-recovery-1",
+      "decoded_offsets": [
+        162020,
+        162030,
+        162033,
+        162043,
+        162046,
+        162056,
+        162066,
+        162071,
+        162081,
+        162084,
+        162094,
+        162097,
+        162107,
+        162117,
+        162122,
+        162132,
+        162135,
+        162138,
+        162141,
+        162144
+      ]
+    }
+  ],
+  "access_kind_counts": {
+    "explicit-addressed-operand": 13994,
+    "general-address-operand": 4351,
+    "gs-based": 8640,
+    "implicit-stack": 590,
+    "stack-base-operand": 1003,
+    "string-operation": 557
+  },
+  "access_instruction_count": 14584,
+  "extent_calls_in_graph": 90,
+  "extent_calls_outside_graph": [
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-condition-write-clean",
+        "static-process-shell-named-root-condition-write-profile-ready"
+      ],
+      "offset": 88236,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    }
+  ],
+  "external_transfers": [
+    {
+      "offset": 22008,
+      "address": 45163424,
+      "symbols": [
+        "topal_x86_frame_gateway_v1"
+      ],
+      "instruction": "call\t0x2b123a0 <topal_x86_frame_gateway_v1>"
+    },
+    {
+      "offset": 49089,
+      "address": 45163424,
+      "symbols": [
+        "topal_x86_frame_gateway_v1"
+      ],
+      "instruction": "call\t0x2b123a0 <topal_x86_frame_gateway_v1>"
+    },
+    {
+      "offset": 109087,
+      "address": 45163424,
+      "symbols": [
+        "topal_x86_frame_gateway_v1"
+      ],
+      "instruction": "call\t0x2b123a0 <topal_x86_frame_gateway_v1>"
+    },
+    {
+      "offset": 133227,
+      "address": 46184592,
+      "symbols": [
+        "topal_x86_user_extent_readable_v1"
+      ],
+      "instruction": "jmp\t0x2c0b890 <topal_x86_user_extent_readable_v1>"
+    },
+    {
+      "offset": 133232,
+      "address": 46184736,
+      "symbols": [
+        "topal_x86_user_extent_writable_v1"
+      ],
+      "instruction": "jmp\t0x2c0b920 <topal_x86_user_extent_writable_v1>"
+    },
+    {
+      "offset": 141549,
+      "address": 45669424,
+      "symbols": [
+        "topal_x86_systems_file_position_apply_v1"
+      ],
+      "instruction": "call\t0x2b8dc30 <topal_x86_systems_file_position_apply_v1>"
+    },
+    {
+      "offset": 145061,
+      "address": 45671040,
+      "symbols": [
+        "topal_x86_systems_file_position_finalize_v1"
+      ],
+      "instruction": "call\t0x2b8e280 <topal_x86_systems_file_position_finalize_v1>"
+    },
+    {
+      "offset": 145066,
+      "address": 45669152,
+      "symbols": [
+        "topal_x86_systems_ram_page_finalize_v1"
+      ],
+      "instruction": "call\t0x2b8db20 <topal_x86_systems_ram_page_finalize_v1>"
+    },
+    {
+      "offset": 145071,
+      "address": 45640400,
+      "symbols": [
+        "topal_x86_systems_inode_mode_finalize_v1"
+      ],
+      "instruction": "call\t0x2b86ad0 <topal_x86_systems_inode_mode_finalize_v1>"
+    },
+    {
+      "offset": 145076,
+      "address": 45651568,
+      "symbols": [
+        "topal_x86_systems_namespace_finalize_v1"
+      ],
+      "instruction": "call\t0x2b89670 <topal_x86_systems_namespace_finalize_v1>"
+    },
+    {
+      "offset": 148222,
+      "address": 45637792,
+      "symbols": [
+        "topal_x86_systems_inode_mode_apply_v1"
+      ],
+      "instruction": "call\t0x2b860a0 <topal_x86_systems_inode_mode_apply_v1>"
+    },
+    {
+      "offset": 164666,
+      "address": 45648048,
+      "symbols": [
+        "topal_x86_systems_namespace_apply_v1"
+      ],
+      "instruction": "call\t0x2b888b0 <topal_x86_systems_namespace_apply_v1>"
+    },
+    {
+      "offset": 220601,
+      "address": 45661232,
+      "symbols": [
+        "topal_x86_systems_ram_page_apply_v1"
+      ],
+      "instruction": "call\t0x2b8bc30 <topal_x86_systems_ram_page_apply_v1>"
+    },
+    {
+      "offset": 221581,
+      "address": 45669424,
+      "symbols": [
+        "topal_x86_systems_file_position_apply_v1"
+      ],
+      "instruction": "call\t0x2b8dc30 <topal_x86_systems_file_position_apply_v1>"
+    },
+    {
+      "offset": 223290,
+      "address": 45661232,
+      "symbols": [
+        "topal_x86_systems_ram_page_apply_v1"
+      ],
+      "instruction": "call\t0x2b8bc30 <topal_x86_systems_ram_page_apply_v1>"
+    },
+    {
+      "offset": 223374,
+      "address": 45669424,
+      "symbols": [
+        "topal_x86_systems_file_position_apply_v1"
+      ],
+      "instruction": "call\t0x2b8dc30 <topal_x86_systems_file_position_apply_v1>"
+    },
+    {
+      "offset": 224361,
+      "address": 45661232,
+      "symbols": [
+        "topal_x86_systems_ram_page_apply_v1"
+      ],
+      "instruction": "call\t0x2b8bc30 <topal_x86_systems_ram_page_apply_v1>"
+    },
+    {
+      "offset": 226240,
+      "address": 45661232,
+      "symbols": [
+        "topal_x86_systems_ram_page_apply_v1"
+      ],
+      "instruction": "call\t0x2b8bc30 <topal_x86_systems_ram_page_apply_v1>"
+    }
+  ],
+  "indirect_transfers": [
+    {
+      "offset": 15011,
+      "instruction": "call\trax",
+      "obligation": "Callee provenance/body/effects are not discharged by this graph"
+    },
+    {
+      "offset": 47427,
+      "instruction": "call\trax",
+      "obligation": "Callee provenance/body/effects are not discharged by this graph"
+    },
+    {
+      "offset": 153895,
+      "instruction": "call\trax",
+      "obligation": "Callee provenance/body/effects are not discharged by this graph"
+    },
+    {
+      "offset": 187631,
+      "instruction": "call\trax",
+      "obligation": "Callee provenance/body/effects are not discharged by this graph"
+    },
+    {
+      "offset": 191561,
+      "instruction": "call\trax",
+      "obligation": "Callee provenance/body/effects are not discharged by this graph"
+    },
+    {
+      "offset": 226667,
+      "instruction": "call\trax",
+      "obligation": "Callee provenance/body/effects are not discharged by this graph"
+    }
+  ],
+  "scope": "Selected linked process function direct-control overapproximation from listed roots, with call-return assumptions and explicit external/indirect boundaries. Address-bearing instructions are not classified as proven user accesses. No full-kernel/exception/callee graph, path feasibility, pointer authority, admission dominance, mapping lifetime or native coverage qualification"
+}

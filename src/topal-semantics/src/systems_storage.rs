@@ -3,6 +3,8 @@
 use std::collections::BTreeMap;
 
 use crate::SystemsModelError;
+#[path = "systems_storage_tail.rs"]
+mod tail;
 
 pub const SYSTEMS_BOOTSTRAP_STORAGE_PROVISION: &str = "topal.systems.storage.bootstrap.provision/1";
 pub const SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE: &str = "topal.systems.storage.bootstrap.allocate/1";
@@ -85,6 +87,10 @@ impl BootstrapStorageErrorCode {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BootstrapStorageTransition {
+    OpaqueLibraryEffect {
+        allocation_id: u64,
+        generation: u64,
+    },
     Provisioned {
         capacity_bytes: u64,
         alignment_bytes: u64,
@@ -118,6 +124,7 @@ impl BootstrapStorageTransition {
     #[must_use]
     pub const fn semantic_identity(&self) -> &'static str {
         match self {
+            Self::OpaqueLibraryEffect { .. } => crate::systems::SYSTEMS_REGION_LIBRARY_APPLY,
             Self::Provisioned { .. } => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             Self::Allocated { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::AllocationFailed { code, .. } => code.semantic_identity(),
@@ -140,6 +147,10 @@ pub struct BootstrapRegion {
 }
 
 impl BootstrapRegion {
+    pub(crate) fn library_owner_identity(&self) -> (String, u64) {
+        (self.execution_identity.clone(), self.allocation_id)
+    }
+
     #[must_use]
     pub const fn offset_bytes(&self) -> u64 {
         self.offset_bytes
@@ -167,8 +178,15 @@ pub struct BootstrapStorageState {
     execution_identity: String,
     next_offset: u64,
     next_allocation_id: u64,
+    next_library_generation: u64,
+    // Allocation-owned traversal history: next frame, next loan, fatal state.
+    // This is separate from the unchanged ordinary region-library profile.
+    tail_histories: BTreeMap<u64, (u64, u64, bool)>,
     live_regions: BTreeMap<u64, (u64, u64)>,
     contents: BTreeMap<(u64, u64), u8>,
+    // Reference-domain knowledge only: opaque compiled source has not been
+    // executed by this model. Entries in contents override unknown bytes.
+    opaque_regions: std::collections::BTreeSet<u64>,
     transitions: Vec<BootstrapStorageTransition>,
     complete: bool,
 }
@@ -200,8 +218,11 @@ impl BootstrapStorageState {
             execution_identity,
             next_offset: 0,
             next_allocation_id: 0,
+            next_library_generation: 0,
+            tail_histories: BTreeMap::new(),
             live_regions: BTreeMap::new(),
             contents: BTreeMap::new(),
+            opaque_regions: std::collections::BTreeSet::new(),
             complete: false,
         })
     }
@@ -342,11 +363,12 @@ impl BootstrapStorageState {
         offset_bytes: u64,
     ) -> Result<u8, SystemsModelError> {
         let allocation_id = self.validate_byte_access(region, offset_bytes)?;
-        let value = self
-            .contents
-            .get(&(allocation_id, offset_bytes))
-            .copied()
-            .unwrap_or(0);
+        let value = self.known_byte(region, offset_bytes)?.ok_or_else(|| {
+            SystemsModelError::new(
+                "E-SYSTEMS-STORAGE-UNKNOWN",
+                "opaque source result requires a runtime byte observation",
+            )
+        })?;
         self.transitions
             .push(BootstrapStorageTransition::LoadedByte {
                 allocation_id,
@@ -354,6 +376,52 @@ impl BootstrapStorageState {
                 value,
             });
         Ok(value)
+    }
+
+    /// Bounds/lifetime checked abstract byte observation. None means that this
+    /// model has not executed the opaque helper which may have written it.
+    pub fn known_byte(
+        &self,
+        region: &BootstrapRegion,
+        offset_bytes: u64,
+    ) -> Result<Option<u8>, SystemsModelError> {
+        let allocation_id = self.validate_byte_access(region, offset_bytes)?;
+        Ok(self
+            .contents
+            .get(&(allocation_id, offset_bytes))
+            .copied()
+            .or_else(|| (!self.opaque_regions.contains(&allocation_id)).then_some(0)))
+    }
+
+    pub(crate) fn opaque_library_effect(
+        &mut self,
+        region: &BootstrapRegion,
+    ) -> Result<u64, SystemsModelError> {
+        let generation = self.begin_library_generation(region)?;
+        self.contents
+            .retain(|(owner, _), _| *owner != region.allocation_id);
+        self.opaque_regions.insert(region.allocation_id);
+        self.transitions
+            .push(BootstrapStorageTransition::OpaqueLibraryEffect {
+                allocation_id: region.allocation_id,
+                generation,
+            });
+        Ok(generation)
+    }
+
+    pub(crate) fn begin_library_generation(
+        &mut self,
+        region: &BootstrapRegion,
+    ) -> Result<u64, SystemsModelError> {
+        self.validate_byte_access(region, 0)?;
+        let generation = self.next_library_generation.checked_add(1).ok_or_else(|| {
+            SystemsModelError::new(
+                "E-SYSTEMS-REGION-LIBRARY-GENERATION",
+                "region-library invocation identity exhausted",
+            )
+        })?;
+        self.next_library_generation = generation;
+        Ok(generation)
     }
 
     fn validate_byte_access(
@@ -384,6 +452,16 @@ impl BootstrapStorageState {
                 ),
             ));
         }
+        if self
+            .tail_histories
+            .get(&region.allocation_id)
+            .is_some_and(|h| h.2)
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-TAIL-FATAL",
+                "a fatal traversal owner admits terminal reclamation only",
+            ));
+        }
         Ok(region.allocation_id)
     }
 
@@ -409,6 +487,16 @@ impl BootstrapStorageState {
         let allocation_id = self.validate_word_access(region, offset_bytes)?;
         let mut bytes = [0_u8; 8];
         for (index, byte) in bytes.iter_mut().enumerate() {
+            if self.opaque_regions.contains(&allocation_id)
+                && !self
+                    .contents
+                    .contains_key(&(allocation_id, offset_bytes + index as u64))
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-STORAGE-UNKNOWN",
+                    "atomic read cannot predict opaque source bytes",
+                ));
+            }
             *byte = self
                 .contents
                 .get(&(allocation_id, offset_bytes + index as u64))
@@ -468,6 +556,8 @@ impl BootstrapStorageState {
         }
         self.contents
             .retain(|(owner, _), _| *owner != allocation_id);
+        self.opaque_regions.remove(&allocation_id);
+        self.tail_histories.remove(&allocation_id);
         self.transitions
             .push(BootstrapStorageTransition::Released { allocation_id });
         Ok(())
@@ -704,5 +794,27 @@ mod tests {
             .code,
             "E-SYSTEMS-STORAGE-PROVENANCE"
         );
+    }
+
+    #[test]
+    fn region_library_generation_exhaustion_preserves_storage() {
+        // TOPAL-SYSTEMS-REGION-LIBRARY-BINDING-001.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 4096,
+                alignment_bytes: 8,
+            },
+            "library-generations",
+        )
+        .unwrap();
+        let region = storage.allocate(request(16, 8)).unwrap();
+        storage.next_library_generation = u64::MAX - 1;
+        assert_eq!(storage.begin_library_generation(&region).unwrap(), u64::MAX);
+        let before = format!("{storage:?}");
+        assert_eq!(
+            storage.begin_library_generation(&region).unwrap_err().code,
+            "E-SYSTEMS-REGION-LIBRARY-GENERATION",
+        );
+        assert_eq!(format!("{storage:?}"), before);
     }
 }

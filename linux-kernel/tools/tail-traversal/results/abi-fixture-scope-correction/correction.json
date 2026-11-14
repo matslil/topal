@@ -1,0 +1,40 @@
+{
+  "schema": "topal.tail-abi-fixture-scope-correction/1",
+  "scope": "Factual label correction only. These privileged component VMs use the clean-room static-ELF ABI fixture, not the pinned external BusyBox executable. Original snapshots, machine inputs, results and code remain unchanged. No BusyBox/application compatibility pass follows from these VM observations.",
+  "path": "linux-kernel/design/tail-kernel-root.md",
+  "old_sha256": "4d993406bcb551818cb200a33f3c7abd91a59d79a2c4034a1e7b682d109f4a5e",
+  "current_sha256": "e52c6f24678a9bbe95e684c3db72daad527f38533e877e3db7f987e1d14d2f2d",
+  "old_text": "It executes the real boot setup and initial BusyBox process before the root loan,\n",
+  "new_text": "It executes the boot setup and clean-room static-ELF ABI fixture before the root loan,\n",
+  "affected_records": {
+    "stage-2-kernel-experiment": {
+      "qualification_sha256": "d78af46531caa2011d06e43f45c52bfa9629f896a09246ffc36151c29794f3fa",
+      "original_source_snapshot": {
+        "file": "source-snapshots/4d993406bcb551818cb200a33f3c7abd91a59d79a2c4034a1e7b682d109f4a5e.txt.gz",
+        "sha256": "9700c9266fcc393b6cf274c95174a9c423c0cc8fed77248b7618d30d913a6284",
+        "uncompressed_sha256": "4d993406bcb551818cb200a33f3c7abd91a59d79a2c4034a1e7b682d109f4a5e"
+      }
+    },
+    "stage-2-publication-binding": {
+      "qualification_sha256": "12fe9a1ee8c66cfae8c325a72f243b3ecc98649714101fbb446e51e63285cc4c",
+      "original_source_snapshot": {
+        "file": "source-snapshots/4d993406bcb551818cb200a33f3c7abd91a59d79a2c4034a1e7b682d109f4a5e.txt.gz",
+        "sha256": "9700c9266fcc393b6cf274c95174a9c423c0cc8fed77248b7618d30d913a6284",
+        "uncompressed_sha256": "4d993406bcb551818cb200a33f3c7abd91a59d79a2c4034a1e7b682d109f4a5e"
+      }
+    }
+  },
+  "corrected_design": {
+    "file": "corrected-design.md.gz",
+    "sha256": "d97f003464880e5833dc3590894e9205839fbd97d22633e886537b09a56bf000",
+    "uncompressed_sha256": "e52c6f24678a9bbe95e684c3db72daad527f38533e877e3db7f987e1d14d2f2d"
+  },
+  "fixture_definition_path": "src/topal-compiler/src/systems_artifact_static_image.rs",
+  "fixture_definition": {
+    "file": "fixture-definition.rs.gz",
+    "sha256": "aa716bccc23947c990100322a12732484c40634c6425c1938f4f2d5144798308",
+    "uncompressed_sha256": "4f6d5807cc5352f45073227167ed8b8265ea1c7ab5ac046f307ad2dc91281ee8"
+  },
+  "static_user_fixture_sha256": "41a3dcd7b7e42a2f77ad995e6259e43ef84f7abf95e2dfd36cff7bea187c9fda",
+  "pinned_busybox_sha256": "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
+}

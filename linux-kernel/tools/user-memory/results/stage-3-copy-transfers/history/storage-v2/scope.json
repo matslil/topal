@@ -1,0 +1,8 @@
+{
+  "status": "stopped",
+  "reason": "Explicitly stopped the confirmed own bounded scope topal-bounded-2292167-5cf581d9.scope after diagnosing the same observer lifecycle defect; no result or resource-completion record exists and no pass is claimed",
+  "process_exit_code": 241,
+  "observer_override": "../observer-v2.py",
+  "tests_override": "../tests-v1.py",
+  "scope": "Preceding diagnostic cohort, not final-source qualification; unchanged kernel bytes verified"
+}

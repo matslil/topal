@@ -1,0 +1,76 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "dad9f028a9e79e5c7b696e398dd22daa7ff44c69c5ff342b4b4151ba3b21678d",
+  "graph_sha256": "407c27095ed319e6b2d90e10338ba4aa8f0b92c6b5c10cf2feca5490f82ba76a",
+  "gnu_transcript_sha256": "1284594d470f78c97820f59844220a52cd6f57360a53a03a703f44a008cea869",
+  "selected_instructions": 74,
+  "exact_selector_count_candidate_setup_equal": true,
+  "preparation_has_no_rdx_or_selector_writes": true,
+  "scalar_operands": [
+    {
+      "offset": 76973,
+      "assembly": "mov (%rsi),%r8d",
+      "selector": 196865,
+      "admitted_bytes": 4,
+      "candidate_offset": 0,
+      "width": 4
+    },
+    {
+      "offset": 77437,
+      "assembly": "mov (%rsi),%r8",
+      "selector": 16974081,
+      "admitted_bytes": 40,
+      "candidate_offset": 0,
+      "width": 8
+    },
+    {
+      "offset": 77440,
+      "assembly": "mov 0x8(%rsi),%r9",
+      "selector": 16974081,
+      "admitted_bytes": 40,
+      "candidate_offset": 8,
+      "width": 8
+    },
+    {
+      "offset": 77444,
+      "assembly": "mov 0x10(%rsi),%r10",
+      "selector": 16974081,
+      "admitted_bytes": 40,
+      "candidate_offset": 16,
+      "width": 8
+    },
+    {
+      "offset": 77448,
+      "assembly": "mov 0x18(%rsi),%r11",
+      "selector": 16974081,
+      "admitted_bytes": 40,
+      "candidate_offset": 24,
+      "width": 8
+    },
+    {
+      "offset": 77452,
+      "assembly": "mov 0x20(%rsi),%r12",
+      "selector": 16974081,
+      "admitted_bytes": 40,
+      "candidate_offset": 32,
+      "width": 8
+    },
+    {
+      "offset": 78895,
+      "assembly": "mov (%rsi),%r8b",
+      "selector": 33751297,
+      "admitted_bytes": 1,
+      "candidate_offset": 0,
+      "width": 1
+    }
+  ],
+  "reverse_admission_cut": {
+    "removed_edge": [
+      76929,
+      76935
+    ],
+    "predecessors": 13
+  },
+  "scope": "Independent warning selector/count/candidate operands, no RDX/selector writes in the selected inline prelude, scalar addresses/widths and reverse success-edge cut using the prior identical-kernel GNU transcript. Not new decoding, native execution, helper preservation, actual owners/lifetime or complete warning/production qualification"
+}

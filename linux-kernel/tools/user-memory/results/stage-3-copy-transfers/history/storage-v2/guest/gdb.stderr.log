@@ -1,0 +1,4 @@
+warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-storage-2292205-1794409701583390915/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.
+Cannot execute this command while the target is running.
+Use the "interrupt" command to stop the target
+and then try again.

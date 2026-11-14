@@ -1,0 +1,4 @@
+{
+  "scope": "Historical failed validation retained unchanged: all functional suites, workspace checks and coverage passed, but included-format failed on one Rust line wrap; not a final qualification.",
+  "passed": false
+}

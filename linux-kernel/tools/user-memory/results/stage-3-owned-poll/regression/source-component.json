@@ -1,0 +1,29 @@
+{
+  "base": 5701632,
+  "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+  "conservative_user_stack_bytes": 1720,
+  "entry": 5701888,
+  "exec_source_sha256": null,
+  "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+  "image_sha256": "89cf2e7d208044fc7f91da2ba6964a13e562be586e3cfa503b47275cde281cba",
+  "linked_sha256": "c28a9f0af52e235d6e0be1119960325026a444c70c1168cf2bc8dd5005bad1f2",
+  "mode": "transfers",
+  "poll_source_sha256": null,
+  "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+  "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+  "signal_source_sha256": null,
+  "source_sha256": "4350abed34fe56b3961d52ec3d73532a03de56320cf08f84d0cac5688538d70b",
+  "stack_frame_costs": {
+    "command-cases": 104,
+    "file-cases": 400,
+    "shell-cases": 168,
+    "source-cases": 496,
+    "startup-cases": 168
+  },
+  "startup": 5702592,
+  "startup_call": 5708704,
+  "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+  "syscall": 5708656,
+  "syscall4": 5708672,
+  "text_bytes": 7200
+}

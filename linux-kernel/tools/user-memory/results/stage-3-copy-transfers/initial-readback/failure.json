@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "exit_code": 1,
+  "cause": "The preceding source-poll build predates process-access-origins.json; the initial reader named that absent metadata file",
+  "correction": "Compare mode-specific executable/application/boot/console bytes with their preceding source cohort and compare graph/origin metadata with the explicitly verified byte-identical common-kernel application baseline",
+  "scope": "Readback path-selection failure, not native failure or a safeguard notice; original GNU outputs retained, Python traceback reported in the session but not captured as a log"
+}

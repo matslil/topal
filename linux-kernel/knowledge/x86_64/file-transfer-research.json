@@ -1,0 +1,82 @@
+{
+  "schema": "topal-file-transfer-primary-research/1",
+  "decision": "TK-DEC-283",
+  "architecture": "x86_64",
+  "linux_release": "7.2.9",
+  "archive": {
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.9.tar.xz",
+    "sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+    "actual_digest_verified": true
+  },
+  "source_files": {
+    "arch/x86/include/asm/page_64.h": {
+      "sha256": "0d0d8b7e1c8701be6e3492dbd9e9df8ad9e6b064c8dc45353f29142d29b9df20",
+      "archive_member": "linux-7.2.9/arch/x86/include/asm/page_64.h"
+    },
+    "arch/x86/include/asm/page_64_types.h": {
+      "sha256": "fc9b57203f78df9f4b5e5e94a915965a2fc733cfa09555b881435ea9f2cdeaaf",
+      "archive_member": "linux-7.2.9/arch/x86/include/asm/page_64_types.h"
+    },
+    "arch/x86/include/asm/uaccess_64.h": {
+      "sha256": "b14258a1d193f5c3d63af371466a6a8402808f470d76769e378141e7720f152d",
+      "archive_member": "linux-7.2.9/arch/x86/include/asm/uaccess_64.h"
+    },
+    "arch/x86/kernel/cpu/common.c": {
+      "sha256": "30349c07f858c85b8ea08409bc12beb0e1874d32027aedc9a662f056def20211",
+      "archive_member": "linux-7.2.9/arch/x86/kernel/cpu/common.c"
+    },
+    "fs/read_write.c": {
+      "sha256": "e4ec5a66e2ec46954340195d9d90daa97fe292f84133977d0ddc84a8aaadbb05",
+      "archive_member": "linux-7.2.9/fs/read_write.c"
+    },
+    "fs/readdir.c": {
+      "sha256": "739c29fadbb79aea2ce1f667805869a3a05a3bc3802b86bf73a62da0c2ae1542",
+      "archive_member": "linux-7.2.9/fs/readdir.c"
+    }
+  },
+  "observations": [
+    {
+      "id": "LK-X64-DIRENT-COPY-001",
+      "path": "fs/readdir.c",
+      "line_start": 341,
+      "line_end": 382,
+      "fact": "filldir64 derives the aligned record length and checks remaining capacity before using the destination for that record."
+    },
+    {
+      "id": "LK-X64-DIRENT-EOF-001",
+      "path": "fs/readdir.c",
+      "line_start": 384,
+      "line_end": 415,
+      "fact": "getdents64 checks descriptor liveness before iteration. It writes the final cookie only after a record was emitted. EOF without records does not access the destination. Linux can return a completed prefix when a later copy fails."
+    },
+    {
+      "id": "LK-X64-READ-RANGE-001",
+      "path": "fs/read_write.c",
+      "line_start": 554,
+      "line_end": 582,
+      "fact": "vfs_read checks mode and the requested address range before delegating to the file operation that can report EOF. The range check does not translate or write any destination byte."
+    },
+    {
+      "id": "LK-X64-READ-RANGE-002",
+      "path": "arch/x86/include/asm/uaccess_64.h",
+      "line_start": 98,
+      "line_end": 107,
+      "fact": "The variable-size range check compares the unsigned sum of the address and count against USER_PTR_MAX and rejects wraparound."
+    },
+    {
+      "id": "LK-X64-READ-RANGE-003",
+      "path": "arch/x86/kernel/cpu/common.c",
+      "line_start": 2642,
+      "line_end": 2650,
+      "fact": "The x86-64 boot code sets USER_PTR_MAX from TASK_SIZE_MAX. The alternative LAM assignment is commented out in this release."
+    },
+    {
+      "id": "LK-X64-READ-RANGE-004",
+      "path": "arch/x86/include/asm/page_64.h",
+      "line_start": 138,
+      "line_end": 149,
+      "fact": "For four-level x86-64 paging task_size_max is (1 << 47) minus one page."
+    }
+  ],
+  "scope": "Source evidence for bounded directory transfers and the independent read range check. The owned profile retains its complete-record copy contract."
+}

@@ -1,0 +1,23 @@
+{
+  "review_complete": true,
+  "risk": "high",
+  "authority": [
+    "TK-DEC-283",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "kernel_behavior_changed": false,
+  "core_language_meaning_changed": false,
+  "model_provider_safeguard_notices": [],
+  "method": "Single-agent higher-authority/source/diff review, exact native-layout templates, fresh ordinary whole-guest retirement, complete selected raw-image-header coverage, shared model/parser readback, 196 tests, sixteen image and eighteen heap saved-data controls, and exact frozen replay. No independent human security review claimed.",
+  "remaining": [
+    "all mapping editors, entry/callee effects and runtime-generated/boot/AP code",
+    "continuous paging mode and complete TLB history",
+    "AP, DMA and asynchronous-entry exclusion and general stable lifetime",
+    "remaining caller/private-counterpart and complete syscall/fatal/exception effects",
+    "unrun native paths and all fallback gates",
+    "canonical clean production reconstruction and activation",
+    "full Linux distribution, container and VM-host acceptance"
+  ]
+}

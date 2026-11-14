@@ -1,0 +1,12 @@
+{
+  "stage_complete": false,
+  "production_activation": false,
+  "remaining": [
+    "complete callee/exception/alternate-entry closure and ownership",
+    "all direct/shared user-pointer classification, admission dominance and stable access lifetime",
+    "all caller length/error/staging/cleanup and native mode/stale-state/ownership qualification",
+    "three fallback coverage/reachability obligations",
+    "canonical production binding and exact committed cold reconstruction",
+    "all remaining original MM/distribution/device/driver/container/VM-host acceptance"
+  ]
+}

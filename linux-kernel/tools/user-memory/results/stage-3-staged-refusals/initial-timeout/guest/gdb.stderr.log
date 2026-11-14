@@ -1,0 +1,1 @@
+warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-2299427-1794415578131768033/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.

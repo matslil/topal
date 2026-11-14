@@ -1,0 +1,13 @@
+{
+  "stage_complete": false,
+  "production_activation": false,
+  "remaining": [
+    "complete all-kernel/callee/exception entry graph and body/owner bindings",
+    "classify potential memory operations by pointer origin and transfer direction",
+    "complete admission dominance, length/error/staging and stable access lifetime proof",
+    "three fallback native coverage/reachability obligations",
+    "native ownership/mode/stale-state/stability qualification",
+    "canonical production binding and exact committed cold reconstruction",
+    "all remaining original MM/distribution/driver/container/VM-host acceptance"
+  ]
+}

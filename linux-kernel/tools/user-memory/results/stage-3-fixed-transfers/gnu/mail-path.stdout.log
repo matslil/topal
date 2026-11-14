@@ -1,0 +1,17 @@
+
+linux-kernel/.cache/x86_64/user-extent-application-2288582-1794408354908502754/kernel.elf:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000002ba756d <topal_x86_frame_mm_exec_return_v1+0xd227>:
+ 2ba756d:	65 48 8b 0c 25 28 01 00 00                      	mov    rcx,QWORD PTR gs:0x128
+ 2ba7576:	48 b8 2f 76 61 72 2f 73 70 6f                   	movabs rax,0x6f70732f7261762f
+ 2ba7580:	48 39 06                                        	cmp    QWORD PTR [rsi],rax
+ 2ba7583:	0f 85 0d 52 00 00                               	jne    2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2ba7589:	48 b8 6f 6c 2f 6d 61 69 6c 2f                   	movabs rax,0x2f6c69616d2f6c6f
+ 2ba7593:	48 39 46 08                                     	cmp    QWORD PTR [rsi+0x8],rax
+ 2ba7597:	0f 85 f9 51 00 00                               	jne    2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2ba759d:	81 7e 10 72 6f 6f 74                            	cmp    DWORD PTR [rsi+0x10],0x746f6f72
+ 2ba75a4:	0f 85 ec 51 00 00                               	jne    2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2ba75aa:	80 7e 14 00                                     	cmp    BYTE PTR [rsi+0x14],0x0

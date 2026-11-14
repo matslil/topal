@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/x86_64/readback-owner-intervals.py", line 74, in <module>
+    assert row['kind']=='ordinary-brk-positive-control' and row['epoch'][1]==12 and row['cs']&3==0
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

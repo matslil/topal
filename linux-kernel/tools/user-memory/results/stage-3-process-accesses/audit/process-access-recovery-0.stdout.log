@@ -1,0 +1,24 @@
+
+/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-application-2279338-1794402953201096759/kernel.elf:	file format elf64-x86-64
+
+Disassembly of section .text:
+
+0000000002ba8da4 <topal_x86_frame_mm_cleanup_return_v1>:
+ 2bbb659: 49 b9 0d 00 00 00 00 00 00 00	movabs	r9, 0xd
+ 2bbb663: e9 28 00 00 00               	jmp	0x2bbb690 <topal_x86_frame_mm_cleanup_return_v1+0x128ec>
+ 2bbb668: 49 b9 0f 00 00 00 00 00 00 00	movabs	r9, 0xf
+ 2bbb672: e9 0a 00 00 00               	jmp	0x2bbb681 <topal_x86_frame_mm_cleanup_return_v1+0x128dd>
+ 2bbb677: 49 b9 0e 00 00 00 00 00 00 00	movabs	r9, 0xe
+ 2bbb681: 89 ff                        	mov	edi, edi
+ 2bbb683: 48 81 ff 00 00 00 00         	cmp	rdi, 0x0
+ 2bbb68a: 0f 85 06 11 ff ff            	jne	0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bbb690: 49 81 fb 0f 00 00 00         	cmp	r11, 0xf
+ 2bbb697: 0f 87 09 00 00 00            	ja	0x2bbb6a6 <topal_x86_frame_mm_cleanup_return_v1+0x12902>
+ 2bbb69d: 65 44 88 0c 25 68 00 00 00   	mov	byte ptr gs:[0x68], r9b
+ 2bbb6a6: 65 4c 8b 24 25 a0 03 00 00   	mov	r12, qword ptr gs:[0x3a0]
+ 2bbb6af: 49 8b 84 24 30 00 00 00      	mov	rax, qword ptr [r12 + 0x30]
+ 2bbb6b7: 48 81 f8 01 00 00 00         	cmp	rax, 0x1
+ 2bbb6be: 0f 85 d2 10 ff ff            	jne	0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bbb6c4: 48 b8 00 00 00 00 00 00 00 00	movabs	rax, 0x0
+ 2bbb6ce: 65 48 8b 0c 25 28 01 00 00   	mov	rcx, qword ptr gs:[0x128]
+ 2bbb6d7: 65 4c 8b 1c 25 30 01 00 00   	mov	r11, qword ptr gs:[0x130]

@@ -1,0 +1,122 @@
+{
+  "passed": true,
+  "gnu_instructions": 172,
+  "gnu_windows": 31,
+  "backward_admission_groups": 14,
+  "native_counts": {
+    "attempts": 288,
+    "admitted": 170,
+    "refused": 118,
+    "completed": 170,
+    "bytes": 12325
+  },
+  "reached_cases": [
+    "clock-resolution-output",
+    "clock-time-output",
+    "directory-output",
+    "header-command",
+    "pwd-command",
+    "refill-command",
+    "root-command",
+    "serial-command",
+    "signal-action-input",
+    "signal-action-output",
+    "signal-mask-input",
+    "signal-mask-output",
+    "sleep-interval-input",
+    "uname-output"
+  ],
+  "unreached": [
+    "named-directory-output"
+  ],
+  "kernel_comparisons": [
+    {
+      "path": "root.o",
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8",
+      "bytes": 359056
+    },
+    {
+      "path": "source.o",
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8",
+      "bytes": 155832
+    },
+    {
+      "path": "runtime.o",
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f",
+      "bytes": 35264
+    },
+    {
+      "path": "owner.o",
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5",
+      "bytes": 6280
+    },
+    {
+      "path": "controller.o",
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84",
+      "bytes": 16784
+    },
+    {
+      "path": "target.o",
+      "sha256": "b7abc95d8f6d85a69adb77ff0759193b40642e74cb29350e0908e80ce47a0a2e",
+      "bytes": 27320
+    },
+    {
+      "path": "dispatch.o",
+      "sha256": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457",
+      "bytes": 12832
+    },
+    {
+      "path": "gateway.o",
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37",
+      "bytes": 8904
+    },
+    {
+      "path": "boundary.o",
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8",
+      "bytes": 9384
+    },
+    {
+      "path": "extent.o",
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993",
+      "bytes": 1808
+    },
+    {
+      "path": "extent-bridge.o",
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c",
+      "bytes": 1176
+    },
+    {
+      "path": "extent-callers.o",
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda",
+      "bytes": 2544
+    },
+    {
+      "path": "provider.o",
+      "sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+      "bytes": 1061624
+    },
+    {
+      "path": "predecessor-provider.o",
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae",
+      "bytes": 1069736
+    },
+    {
+      "path": "predecessor-gateway.o",
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc",
+      "bytes": 8008
+    },
+    {
+      "path": "kernel.elf",
+      "sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+      "bytes": 1665328
+    },
+    {
+      "path": "bzImage",
+      "sha256": "dde754f580fe7784a0238c90f34b07984e0883f8a4ad815e76c0176fd1c9eae5",
+      "bytes": 45232800
+    }
+  ],
+  "serial_bytes": 7606,
+  "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+  "scope": "Independent GNU boundaries, backward admission cuts, retained native count/permission/sample consistency and unchanged artifacts; payload equality and per-invocation checks rely on the frozen observer. Not continuous stability, complete owner/lifetime or production qualification"
+}

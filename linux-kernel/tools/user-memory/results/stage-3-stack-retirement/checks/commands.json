@@ -1,0 +1,84 @@
+[
+  {
+    "label": "models",
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "linux-kernel/tools/user-memory",
+      "-v"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.535149090923369
+  },
+  {
+    "label": "all-targets",
+    "command": [
+      "cargo",
+      "check",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "-j1"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.16796013992279768
+  },
+  {
+    "label": "format",
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.2320500388741493
+  },
+  {
+    "label": "emitter-format",
+    "command": [
+      "rustfmt",
+      "--edition",
+      "2024",
+      "--check",
+      "--config",
+      "skip_children=true,reorder_imports=false",
+      "src/topal-compiler/src/systems_frame_root_tests.rs",
+      "src/topal-compiler/src/systems_inode_services.rs",
+      "src/topal-compiler/src/systems_namespace_named.rs",
+      "src/topal-compiler/src/systems_namespace_transactions_native.rs",
+      "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "src/topal-compiler/src/systems_volatile_create.rs",
+      "src/topal-compiler/src/systems_volatile_files.rs",
+      "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "src/topal-compiler/src/systems_x86_function.rs"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06663394626230001
+  },
+  {
+    "label": "source-size",
+    "command": [
+      "/usr/bin/python3",
+      "scripts/check_rust_file_sizes.py"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.3026895634829998
+  },
+  {
+    "label": "whitespace",
+    "command": [
+      "git",
+      "-c",
+      "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0661636246368289
+  }
+]

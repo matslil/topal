@@ -1,0 +1,15 @@
+{
+  "stage_complete": false,
+  "production_activation": false,
+  "systems_only": true,
+  "native_scope": "120-call source poll cohort, 796-call existing source regression, unchanged pinned external first-image exit, and exact rebuild equivalence",
+  "remaining": [
+    "complete direct/shared caller and user-access inventory, including fallback reachability",
+    "full native ownership/mode/stability qualification",
+    "complete caller/source/native/load/boot binding",
+    "canonical production activation",
+    "exact committed production qualification and cold reconstruction",
+    "general poll descriptor/event/count/timeout behavior",
+    "full original kernel goal"
+  ]
+}

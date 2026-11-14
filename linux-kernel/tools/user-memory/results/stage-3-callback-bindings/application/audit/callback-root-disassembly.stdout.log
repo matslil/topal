@@ -1,0 +1,38 @@
+
+/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-application-2283179-1794404769980810728/kernel.elf:	file format elf64-x86-64
+
+Disassembly of section .text:
+
+0000000002aebb20 <_topal_kernel_entry>:
+ 2afa7ca: 48 8d 05 2f d8 f6 ff         	lea	rax, [rip - 0x927d1]    # 0x2a68000 <topal_x86_systems_identity_value_store>
+ 2afa7d1: 50                           	push	rax
+ 2afa7d2: 48 8d 05 47 13 12 00         	lea	rax, [rip + 0x121347]   # 0x2c1bb20 <topal_kernel_structured_process_identity_policy_v1>
+ 2afa7d9: 50                           	push	rax
+ 2afa7da: 48 8d 05 8f 4f 12 00         	lea	rax, [rip + 0x124f8f]   # 0x2c1f770 <topal_kernel_static_linux_dispatch_policy_v6>
+ 2afa7e1: 50                           	push	rax
+ 2afa7e2: 48 8d 05 a7 08 12 00         	lea	rax, [rip + 0x1208a7]   # 0x2c1b090 <topal_kernel_static_elf64_header_policy_v1>
+ 2afa7e9: 50                           	push	rax
+ 2afa7ea: 48 8d 05 0f d8 f5 ff         	lea	rax, [rip - 0xa27f1]    # 0x2a58000 <topal_x86_systems_numeric_arena>
+ 2afa7f1: 50                           	push	rax
+ 2afa7f2: 48 8d 05 87 ec 11 00         	lea	rax, [rip + 0x11ec87]   # 0x2c19480 <topal_kernel_sleep_deadline_policy_v1>
+ 2afa7f9: 50                           	push	rax
+ 2afa7fa: 48 8d 05 9f 5f 12 00         	lea	rax, [rip + 0x125f9f]   # 0x2c207a0 <topal_kernel_file_open_policy_v1>
+ 2afa801: 50                           	push	rax
+ 2afa802: 48 8d 05 0f e8 f6 ff         	lea	rax, [rip - 0x917f1]    # 0x2a69018 <topal_bootstrap_storage+0x18>
+ 2afa809: 50                           	push	rax
+ 2afa80a: 41 55                        	push	r13
+ 2afa80c: 48 8d 05 ed d7 f9 ff         	lea	rax, [rip - 0x62813]    # 0x2a98000 <topal_x86_static_process_descriptor_table>
+ 2afa813: 50                           	push	rax
+ 2afa814: 4c 89 f7                     	mov	rdi, r14
+ 2afa817: 4c 89 e6                     	mov	rsi, r12
+ 2afa81a: ba f7 01 00 00               	mov	edx, 0x1f7
+ 2afa81f: 48 89 e9                     	mov	rcx, rbp
+ 2afa822: 4d 89 f8                     	mov	r8, r15
+ 2afa825: 49 89 d9                     	mov	r9, rbx
+ 2afa828: 48 8d 05 d1 27 f9 ff         	lea	rax, [rip - 0x6d82f]    # 0x2a8d000 <topal_x86_static_process_exec_snapshot>
+ 2afa82f: 50                           	push	rax
+ 2afa830: 48 8d 05 c9 27 f9 ff         	lea	rax, [rip - 0x6d837]    # 0x2a8d000 <topal_x86_static_process_exec_snapshot>
+ 2afa837: 50                           	push	rax
+ 2afa838: 48 8d 05 c1 e9 f6 ff         	lea	rax, [rip - 0x9163f]    # 0x2a69200 <topal_bootstrap_storage+0x200>
+ 2afa83f: 50                           	push	rax
+ 2afa840: e8 3b 3b 09 00               	call	0x2b8e380 <topal_x86_systems_static_image_process_enter>

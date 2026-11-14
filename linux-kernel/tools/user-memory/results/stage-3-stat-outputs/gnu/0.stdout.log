@@ -1,0 +1,52 @@
+
+linux-kernel/.cache/x86_64/user-extent-source-stat-2373431-1794449036311016637/kernel.elf:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000002bb13e1 <topal_x86_frame_mm_cleanup_return_v1+0x861d>:
+ 2bb13e1:	49 89 f0                                        	mov    r8,rsi
+ 2bb13e4:	49 b9 90 00 00 00 00 00 00 00                   	movabs r9,0x90
+ 2bb13ee:	e8 0b d8 ff ff                                  	call   2baebfe <topal_x86_frame_mm_cleanup_return_v1+0x5e3a>
+ 2bb13f3:	48 c7 44 24 f8 00 00 00 00                      	mov    QWORD PTR [rsp-0x8],0x0
+ 2bb13fc:	0f 82 ec ea ff ff                               	jb     2bafeee <topal_x86_frame_mm_cleanup_return_v1+0x712a>
+ 2bb1402:	4c 89 e7                                        	mov    rdi,r12
+ 2bb1405:	48 81 c7 80 05 00 00                            	add    rdi,0x580
+ 2bb140c:	48 b8 00 00 00 00 00 00 00 00                   	movabs rax,0x0
+ 2bb1416:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bb1420:	fc                                              	cld
+ 2bb1421:	f3 48 ab                                        	rep stos QWORD PTR [rdi],rax
+ 2bb1424:	4c 89 e7                                        	mov    rdi,r12
+ 2bb1427:	48 81 c7 80 05 00 00                            	add    rdi,0x580
+ 2bb142e:	48 b9 20 00 00 00 00 00 00 00                   	movabs rcx,0x20
+ 2bb1438:	f3 48 af                                        	repz scas rax,QWORD PTR [rdi]
+ 2bb143b:	0f 85 75 b3 ff ff                               	jne    2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>
+ 2bb1441:	48 b8 01 00 00 00 00 00 00 00                   	movabs rax,0x1
+ 2bb144b:	49 89 84 24 80 05 00 00                         	mov    QWORD PTR [r12+0x580],rax
+ 2bb1453:	49 89 84 24 88 05 00 00                         	mov    QWORD PTR [r12+0x588],rax
+ 2bb145b:	49 89 84 24 90 05 00 00                         	mov    QWORD PTR [r12+0x590],rax
+ 2bb1463:	48 b8 00 10 00 00 00 00 00 00                   	movabs rax,0x1000
+ 2bb146d:	49 89 84 24 b8 05 00 00                         	mov    QWORD PTR [r12+0x5b8],rax
+ 2bb1475:	49 8b 86 00 00 00 00                            	mov    rax,QWORD PTR [r14+0x0]
+ 2bb147c:	48 81 f8 07 00 00 00                            	cmp    rax,0x7
+ 2bb1483:	0f 84 f1 42 01 00                               	je     2bc577a <topal_x86_frame_mm_cleanup_return_v1+0x1c9b6>
+ 2bb1489:	48 81 f8 03 00 00 00                            	cmp    rax,0x3
+ 2bb1490:	0f 84 50 00 00 00                               	je     2bb14e6 <topal_x86_frame_mm_cleanup_return_v1+0x8722>
+ 2bb1496:	48 81 f8 04 00 00 00                            	cmp    rax,0x4
+ 2bb149d:	0f 84 43 00 00 00                               	je     2bb14e6 <topal_x86_frame_mm_cleanup_return_v1+0x8722>
+ 2bb14a3:	48 81 f8 05 00 00 00                            	cmp    rax,0x5
+ 2bb14aa:	0f 84 a1 f8 00 00                               	je     2bc0d51 <topal_x86_frame_mm_cleanup_return_v1+0x17f8d>
+ 2bb14b0:	48 81 f8 06 00 00 00                            	cmp    rax,0x6
+ 2bb14b7:	0f 84 94 f8 00 00                               	je     2bc0d51 <topal_x86_frame_mm_cleanup_return_v1+0x17f8d>
+ 2bb14bd:	48 b8 80 21 00 00 00 00 00 00                   	movabs rax,0x2180
+ 2bb14c7:	49 89 84 24 98 05 00 00                         	mov    QWORD PTR [r12+0x598],rax
+ 2bb14cf:	48 b8 00 44 00 00 00 00 00 00                   	movabs rax,0x4400
+ 2bb14d9:	49 89 84 24 a8 05 00 00                         	mov    QWORD PTR [r12+0x5a8],rax
+ 2bb14e1:	e9 0c 00 00 00                                  	jmp    2bb14f2 <topal_x86_frame_mm_cleanup_return_v1+0x872e>
+ 2bb14e6:	4d 8b be 20 00 00 00                            	mov    r15,QWORD PTR [r14+0x20]
+ 2bb14ed:	e8 84 2d 00 00                                  	call   2bb4276 <topal_x86_frame_mm_cleanup_return_v1+0xb4b2>
+ 2bb14f2:	4c 89 e6                                        	mov    rsi,r12
+ 2bb14f5:	48 81 c6 80 05 00 00                            	add    rsi,0x580
+ 2bb14fc:	4c 89 c7                                        	mov    rdi,r8
+ 2bb14ff:	48 b9 90 00 00 00 00 00 00 00                   	movabs rcx,0x90
+ 2bb1509:	f3 a4                                           	rep movs BYTE PTR [rdi],BYTE PTR [rsi]

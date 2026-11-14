@@ -1,0 +1,4 @@
+0x000000000000fff0 in ?? ()
+
+Thread 1 hit Breakpoint -44, 0x0000000002b979d4 in topal_x86_systems_static_image_process_enter ()
+[Inferior 1 (process 1) detached]

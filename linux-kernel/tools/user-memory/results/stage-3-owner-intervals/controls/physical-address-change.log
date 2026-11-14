@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/x86_64/readback-owner-intervals.py", line 58, in <module>
+    expected=compare(before,after,profile['bindings'],profile['kernel_spans'],row['start'],row['length'],row['direction'])
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/owner_interval.py", line 34, in compare
+    last=check(after,bindings,kernel_spans,start,length,write)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/owner_snapshot.py", line 103, in check
+    assert table==selected['span'][0]+offset
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

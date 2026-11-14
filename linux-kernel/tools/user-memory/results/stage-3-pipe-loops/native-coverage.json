@@ -1,0 +1,197 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "fresh_first_reach_sites": {
+    "pipes": 79,
+    "source": 18,
+    "pinned": 38
+  },
+  "matching_kernel_union": 81,
+  "reached": [
+    27139,
+    27861,
+    28626,
+    29345,
+    29969,
+    33496,
+    33583,
+    36023,
+    36684,
+    38450,
+    39534,
+    40444,
+    41322,
+    42436,
+    43425,
+    44431,
+    44792,
+    44888,
+    52962,
+    55270,
+    56053,
+    56936,
+    57843,
+    58659,
+    59435,
+    60174,
+    62337,
+    64531,
+    68177,
+    70022,
+    75142,
+    76007,
+    76915,
+    80006,
+    81477,
+    82375,
+    83237,
+    84283,
+    85284,
+    86299,
+    87305,
+    89191,
+    90027,
+    91024,
+    92125,
+    93521,
+    95395,
+    95961,
+    98915,
+    99039,
+    99332,
+    102873,
+    103476,
+    107362,
+    108204,
+    131616,
+    141378,
+    143438,
+    144249,
+    145178,
+    145548,
+    145747,
+    145932,
+    151717,
+    155234,
+    156794,
+    158540,
+    177543,
+    185939,
+    186774,
+    186963,
+    187177,
+    190208,
+    194595,
+    196521,
+    203301,
+    204482,
+    205338,
+    207848,
+    231478,
+    231574
+  ],
+  "unreached": [
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-condition-write-clean",
+        "static-process-shell-named-root-condition-write-profile-ready"
+      ],
+      "offset": 88236,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-execve-signal-number-ready"
+      ],
+      "offset": 94708,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-root-directory-stat-profile-ready"
+      ],
+      "offset": 101802,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-pread-count-ready"
+      ],
+      "offset": 140524,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_positional_transfer.rs",
+      "source_line": 60,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-serial-count-ready"
+      ],
+      "offset": 142304,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "source_line": 518,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "named-directory-publish"
+      ],
+      "offset": 161398,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_namespace_named.rs",
+      "source_line": 360,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-read-end"
+      ],
+      "offset": 221423,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 59,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-pread-end"
+      ],
+      "offset": 222205,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 59,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-write-end"
+      ],
+      "offset": 223001,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-pwrite-end"
+      ],
+      "offset": 224072,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    }
+  ],
+  "scope": "Only three actual current-kernel first-reach cohorts; earlier kernel coverage is not relabeled"
+}

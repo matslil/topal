@@ -1,0 +1,50 @@
+{
+  "qemu.command.json": {
+    "snapshot": "native/observation/qemu.command.json.gz",
+    "snapshot_sha256": "29a48f00015eca32d6237042e6a6642a280337672f74189823a31fe310d47e7c",
+    "sha256": "12864807060647dbee61887fa8daa4ccec4abf5acccd66bf153146205e3c9bfa",
+    "bytes": 1208
+  },
+  "inspect.gdb": {
+    "snapshot": "native/observation/inspect.gdb.gz",
+    "snapshot_sha256": "8be00a1953a560fa95b88ad0023cf1274468cce8e49c44976b39b5360356573e",
+    "sha256": "dc851eec44481f9b1c6d422f9730234661accc21488e18a3bdcc2b54f3987442",
+    "bytes": 560626
+  },
+  "qemu.stdout.log": {
+    "snapshot": "native/observation/qemu.stdout.log.gz",
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "qemu.stderr.log": {
+    "snapshot": "native/observation/qemu.stderr.log.gz",
+    "snapshot_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "gdb.stdout.log": {
+    "snapshot": "native/observation/gdb.stdout.log.gz",
+    "snapshot_sha256": "f4a5dd3f1f413fe84cbcf4bb8e77297804aab4381dd5e992d18c991f72815e66",
+    "sha256": "5192eb4bae8716de64dbcccef3cf68b31093a45d4cd56b205f1f7f80b002dcbd",
+    "bytes": 274
+  },
+  "gdb.stderr.log": {
+    "snapshot": "native/observation/gdb.stderr.log.gz",
+    "snapshot_sha256": "de000291901b2dfbeb615d780bccdc341e43458b67e8463f31e9fda412320ba9",
+    "sha256": "cc19a7f9dc1be7bf6bdd6ad6906bf3c867cca5c89c148582842ced92048c9540",
+    "bytes": 217
+  },
+  "serial.log": {
+    "snapshot": "native/observation/serial.log.gz",
+    "snapshot_sha256": "6e124432abf990a1c8fcca955ef14875f427bd04592b09a7bc1744900466f66c",
+    "sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+    "bytes": 7606
+  },
+  "observations.json": {
+    "snapshot": "native/observation/observations.json.gz",
+    "snapshot_sha256": "a83e3c11114a47d549370a8473f9abdc53b8ca802d477e98fee8909d8b1ee24d",
+    "sha256": "6f19db023e00ec420027d7d58023eb54f25a16cdbca8e134332261dd7df5b27b",
+    "bytes": 472812
+  }
+}

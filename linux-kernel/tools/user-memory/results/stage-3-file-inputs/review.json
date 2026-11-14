@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-SYSTEMS-VOLATILE-FILE-TRANSFER-001",
+    "TOPAL-SYSTEMS-POSITIONAL-FILE-TRANSFER-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High: conditional user input interval, callee effects, stack/nonalias and evidence accuracy; executable kernel, authority meaning and core language unchanged; no owned production activation",
+  "review": "Single-agent higher-authority/source/full-diff review, saved independent GNU RTC effects/frame/cuts, twenty-one offline controls, 100 models/readers, three fresh native regressions and two fixture build tests",
+  "selected_inputs": 155,
+  "changed_inputs_stable_in_all_four_commands": 9,
+  "model_reader_tests": 100,
+  "source_syscalls": 248,
+  "input_admissions": 40,
+  "input_completions": 16,
+  "input_refusals": 24,
+  "input_bytes": 1136,
+  "resident_missing_variants": 4,
+  "user_stack_bound_bytes": 1320,
+  "user_stack_limit_bytes": 2048,
+  "selected_clock_stack_bytes": 112,
+  "retired_clock_spill_bytes": 96,
+  "retired_spill_erasure_verified": false,
+  "conditional_sites": 88,
+  "user_access_instructions": 316,
+  "remaining_sites": 3,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "executable_kernel_changed": false,
+  "failures": [
+    "history/static-wipe-prefix/failure.json",
+    "history/gnu-comment-parser/failure.json"
+  ],
+  "safeguard_notices": [],
+  "core_language_or_authority_meaning_changed": false,
+  "remaining": [
+    "Actual owners/nonaliasing and continuous lifetime",
+    "Retired clock spill cleanup and complete helper/entry/callee/return/fatal/exception/post-copy effects",
+    "Three sites, fallback obligations, further native profiles and canonical clean production reconstruction",
+    "Complete original Linux-compatible kernel acceptance"
+  ]
+}

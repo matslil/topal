@@ -1,0 +1,503 @@
+{
+  "complete": false,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "emitted_helper_calls": 91,
+  "calls_with_selected_local_intervals": 84,
+  "distinct_user_access_instructions": 311,
+  "selected_intervals": [
+    {
+      "call_offset": 27139,
+      "name": "uname-loop",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 27861,
+      "name": "cwd",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 28626,
+      "name": "chdir",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 29345,
+      "name": "pwd-cwd",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 29969,
+      "name": "initial-cwd",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 33496,
+      "name": "poll-input",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 33583,
+      "name": "poll-result",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 36023,
+      "name": "default-signal",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 36684,
+      "name": "quit-signal",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 38450,
+      "name": "header-command",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 39534,
+      "name": "refill-command",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 40444,
+      "name": "root-command",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 41322,
+      "name": "header-byte",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 42436,
+      "name": "pwd-command",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 43425,
+      "name": "serial-command",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 44431,
+      "name": "exec-path-byte",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 44792,
+      "name": "exec-vector-word",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 44888,
+      "name": "exec-argument-byte",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 52962,
+      "name": "console-stat",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 55270,
+      "name": "tty-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 56053,
+      "name": "profile-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 56936,
+      "name": "open-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 57843,
+      "name": "reopen-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 58659,
+      "name": "root-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 59435,
+      "name": "bin-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 60174,
+      "name": "root-stat",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 62337,
+      "name": "empty-bin-stat",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 64531,
+      "name": "profile-stat",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 68177,
+      "name": "root-directory",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 70022,
+      "name": "empty-bin-directory",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 75142,
+      "name": "newline",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 76007,
+      "name": "close-message",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 80006,
+      "name": "prompt",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 81477,
+      "name": "refill-prompt",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 82375,
+      "name": "root-condition",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 83237,
+      "name": "empty-bin-message",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 84283,
+      "name": "executable-message",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 85284,
+      "name": "nonempty-message",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 86299,
+      "name": "open-message",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 87305,
+      "name": "header-message",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 89191,
+      "name": "pwd-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 90027,
+      "name": "third-prompt",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 91024,
+      "name": "fourth-prompt",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 92125,
+      "name": "banner",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 93521,
+      "name": "echo",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 94708,
+      "name": "exec-signal-reset",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 95395,
+      "name": "sigchld-install",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 95961,
+      "name": "process-name",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 98915,
+      "name": "stat-executable-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 99039,
+      "name": "stat-directory-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 99332,
+      "name": "named-stat",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 101802,
+      "name": "missing-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 102873,
+      "name": "mail-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 103476,
+      "name": "config-path",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 107362,
+      "name": "stack-limit",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 131616,
+      "name": "console-input",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "call_offset": 140524,
+      "name": "descriptor-pread-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "call_offset": 141378,
+      "name": "descriptor-read-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "call_offset": 142304,
+      "name": "serial-prefix-output",
+      "audit": "artifacts/serial-prefix-audit.json.gz"
+    },
+    {
+      "call_offset": 143438,
+      "name": "descriptor-stat-output",
+      "audit": "../stage-3-stat-outputs/artifacts/stat-output-audit.json.gz"
+    },
+    {
+      "call_offset": 144249,
+      "name": "descriptor-limit",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 145178,
+      "name": "signal-action-input",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 145548,
+      "name": "signal-action-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 145747,
+      "name": "signal-mask-input",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 145932,
+      "name": "signal-mask-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 151717,
+      "name": "namespace-byte",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 155234,
+      "name": "namespace-stat-output",
+      "audit": "../stage-3-stat-outputs/artifacts/stat-output-audit.json.gz"
+    },
+    {
+      "call_offset": 156794,
+      "name": "cwd-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "call_offset": 158540,
+      "name": "directory-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 161398,
+      "name": "named-directory-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 177543,
+      "name": "seconds",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 185939,
+      "name": "uname-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 186774,
+      "name": "clock-time-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 186963,
+      "name": "clock-resolution-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 187177,
+      "name": "sleep-interval-input",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 190208,
+      "name": "thread-local-base",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 194595,
+      "name": "clear-registration",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 196521,
+      "name": "wait-status",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 203301,
+      "name": "pipe-pair-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/artifacts/pipe-fixed-output-audit.json.gz"
+    },
+    {
+      "call_offset": 207796,
+      "name": "pipe-readable-count-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/artifacts/pipe-fixed-output-audit.json.gz"
+    },
+    {
+      "call_offset": 221371,
+      "name": "sparse-read-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "call_offset": 222153,
+      "name": "sparse-pread-output",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "call_offset": 231426,
+      "name": "environment-word",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "call_offset": 231522,
+      "name": "environment-byte",
+      "audit": "../stage-3-stat-outputs/../stage-3-fixed-pipe-native/../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz"
+    }
+  ],
+  "calls_without_selected_local_intervals": [
+    {
+      "nearest_labels": [
+        "static-process-shell-warning-candidate"
+      ],
+      "offset": 76915,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-condition-write-clean",
+        "static-process-shell-named-root-condition-write-profile-ready"
+      ],
+      "offset": 88236,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-getrandom"
+      ],
+      "offset": 108204,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-read-count-ready"
+      ],
+      "offset": 204456,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_transfer.rs",
+      "source_line": 56,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-write-count-ready"
+      ],
+      "offset": 205286,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_transfer.rs",
+      "source_line": 131,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-write-end"
+      ],
+      "offset": 222949,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-pwrite-end"
+      ],
+      "offset": 224020,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    }
+  ],
+  "scope": "Eight matching-kernel conditional local reports; complete owners/lifetime/callers/fallbacks and production remain open"
+}

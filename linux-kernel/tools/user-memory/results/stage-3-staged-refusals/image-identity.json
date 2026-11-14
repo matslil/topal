@@ -1,0 +1,6 @@
+{
+  "bytes": 2024544,
+  "sha256": "89cf2e7d208044fc7f91da2ba6964a13e562be586e3cfa503b47275cde281cba",
+  "first_party_snapshot": "source-user-image.elf.gz",
+  "boot_resource_sha256": "d920843ab8b486cfc11503cf2cd839cd26ad632585b9f979e700bf61dfb67d77"
+}

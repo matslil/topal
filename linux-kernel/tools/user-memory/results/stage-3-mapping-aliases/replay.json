@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "selected_sources": 183,
+  "artifacts": 93,
+  "models": 164,
+  "exact_thirteen_reports_equal": true,
+  "exact_source_join_equal": true,
+  "exact_saved_interval_owner_metadata_readbacks_equal": true,
+  "inherited_fourteen_controls_rejected": true,
+  "exact_alias_report_equal": true,
+  "exact_independent_readback_equal": true,
+  "exact_twenty_alias_controls_equal": true,
+  "new_native_execution": false,
+  "scope": "Frozen selected sources/artifacts and Python-only saved-record/model replay; no ELF, compiler, GNU decoder, GDB or VM execution, TLB/DMA/asynchronous exclusion, general lifetime or clean production qualification"
+}

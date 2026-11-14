@@ -1,0 +1,38 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "3ec2352ace9d658ee0940313b1e68aed65d320a6f3982987951d0a79134d01d2",
+  "graph_sha256": "407c27095ed319e6b2d90e10338ba4aa8f0b92c6b5c10cf2feca5490f82ba76a",
+  "gnu_transcript_sha256": "1284594d470f78c97820f59844220a52cd6f57360a53a03a703f44a008cea869",
+  "selected_instructions": 1900,
+  "extract_effect_instructions": 1843,
+  "exact_gnu_register_memory_stack_effects_equal": true,
+  "exact_count_candidate_stack_switch_and_loop_operands_equal": true,
+  "reverse_guard_cuts": [
+    {
+      "name": "admission",
+      "removed_edge": [
+        108218,
+        108224
+      ],
+      "predecessors": 43
+    },
+    {
+      "name": "count-cap",
+      "removed_edge": [
+        108154,
+        108160
+      ],
+      "predecessors": 55
+    },
+    {
+      "name": "positive-count",
+      "removed_edge": [
+        108163,
+        108169
+      ],
+      "predecessors": 53
+    }
+  ],
+  "scope": "Independent register/memory/scratch effects for every selected extractor instruction, saved-word order, GS stack switch/restore, count/candidate and indexed byte-loop operands, and three reverse cuts using the preceding identical-kernel GNU transcript. Not new decoding, a second frame-dataflow algorithm, native owners/nonalias/lifetime/retired outer spills or production qualification"
+}

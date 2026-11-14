@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "linux-kernel/.cache/x86_64/readback-staged-refusals-initial.py",
+    "linux-kernel/.cache/x86_64/user-extent-source-2300920-1794416622046484664",
+    "linux-kernel/.cache/x86_64/user-extent-source-2264433-1794396085975218237",
+    "linux-kernel/.cache/x86_64/user-extent-source-storage-2296061-1794411555659865899",
+    "linux-kernel/.cache/x86_64/initial-staged-refusal-readback.json"
+  ],
+  "exit_code": 1
+}

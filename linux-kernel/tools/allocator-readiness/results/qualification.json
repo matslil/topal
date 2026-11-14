@@ -1,0 +1,140 @@
+{
+  "schema": "topal.frame-allocator-model-validation/1",
+  "base_commit": "18bcaf1a1c39edd4fcf5644705801d80c86cdc95",
+  "scope": "reference model only; no native or VM qualification",
+  "complete": true,
+  "passed": true,
+  "sources": {
+    "src/topal-semantics/src/systems_frames.rs": "388c6323cabe7a0b7e26a375778a73deea26bc258df50bbd4eca8c62fb0e3a67",
+    "src/topal-semantics/src/systems_frames_validation_tests.rs": "4db3f8229e6a8cc438ae567967c50652b0aa16ca265d0082e4bd1997645145b2",
+    "scripts/run_bounded.py": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560"
+  },
+  "commands": [
+    {
+      "name": "semantics",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-semantics",
+        "--lib",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.5131446700543165,
+      "log": "semantics.log.gz",
+      "sha256": "30d096ad1b6b4bb7d25025f63c1f666cbf1af4a09c8185ace00636424a2c1433",
+      "encoding": "gzip",
+      "uncompressed_sha256": "22b2fa85f9a61cc7a423462573a371db394c6ba1fb77fbd0e7fb5f3b0fd9cb05"
+    },
+    {
+      "name": "check",
+      "argv": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 47.88641220703721,
+      "log": "check.log.gz",
+      "sha256": "a87c9f9f7a66012cd639064307b715d3f45e16c78652ad73ccd600ecd920f87f",
+      "encoding": "gzip",
+      "uncompressed_sha256": "0c094fb1400ed2488f55fc5024772dfd468bd87b3ae4b4917784be243c6b1130"
+    },
+    {
+      "name": "coverage",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-language",
+        "--test",
+        "core_language_coverage",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 20.846225800924003,
+      "log": "coverage.log.gz",
+      "sha256": "9fcd3c9c3f63ccb72a2cee3669bbbfaabd214558e71699527ba7e72d030a6cff",
+      "encoding": "gzip",
+      "uncompressed_sha256": "0bcae1ab7321422e96aee223d73c2ae277223164c972181ee4e4d5959ec2bf11"
+    },
+    {
+      "name": "format",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.888176984153688,
+      "log": "format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "encoding": "gzip",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source-size",
+      "argv": [
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.13773259706795216,
+      "log": "source-size.log.gz",
+      "sha256": "ec2081fbbd4cb149c4e4e646f81381a93e7dde0d218193d6f9f9c9fc1f8e52cc",
+      "encoding": "gzip",
+      "uncompressed_sha256": "8db4cdb6759817728df4a07d9be35f2f839b2e2af6c976fc8913b0a10073e66f"
+    }
+  ],
+  "storage": {
+    "schema": "topal.lossless-log-storage/1",
+    "producer_record": "raw-qualification.json",
+    "producer_sha256": "7d0c34e92a4caf29c169d49fc59ddf9ac8396283b48c188a4d9fc3ea03843688",
+    "runner": "validation-runner.py.txt",
+    "runner_sha256": "6008f9b9ad4007fab345a69dddb396bc985e783a61ede7e741199d1d5915c8cd",
+    "logs": {
+      "before-fix.log": {
+        "file": "before-fix.log.gz",
+        "sha256": "b5fb50d81c5a83bfa0c51479992352f7c3d45a989ec21ad9a0a9050d65df49f3",
+        "uncompressed_sha256": "f1412cbd284529e54d2e6833507f4050637b499d33a7423e8945272a40b3e2a1",
+        "bytes": 3831
+      },
+      "check.log": {
+        "file": "check.log.gz",
+        "sha256": "a87c9f9f7a66012cd639064307b715d3f45e16c78652ad73ccd600ecd920f87f",
+        "uncompressed_sha256": "0c094fb1400ed2488f55fc5024772dfd468bd87b3ae4b4917784be243c6b1130",
+        "bytes": 1021
+      },
+      "coverage.log": {
+        "file": "coverage.log.gz",
+        "sha256": "9fcd3c9c3f63ccb72a2cee3669bbbfaabd214558e71699527ba7e72d030a6cff",
+        "uncompressed_sha256": "0bcae1ab7321422e96aee223d73c2ae277223164c972181ee4e4d5959ec2bf11",
+        "bytes": 824
+      },
+      "format.log": {
+        "file": "format.log.gz",
+        "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+        "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "semantics.log": {
+        "file": "semantics.log.gz",
+        "sha256": "30d096ad1b6b4bb7d25025f63c1f666cbf1af4a09c8185ace00636424a2c1433",
+        "uncompressed_sha256": "22b2fa85f9a61cc7a423462573a371db394c6ba1fb77fbd0e7fb5f3b0fd9cb05",
+        "bytes": 25381
+      },
+      "source-size.log": {
+        "file": "source-size.log.gz",
+        "sha256": "ec2081fbbd4cb149c4e4e646f81381a93e7dde0d218193d6f9f9c9fc1f8e52cc",
+        "uncompressed_sha256": "8db4cdb6759817728df4a07d9be35f2f839b2e2af6c976fc8913b0a10073e66f",
+        "bytes": 45
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_random_outputs.py", line 206, in <module>
+    if __name__=='__main__': audit(Path(sys.argv[1]).resolve())
+                             ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_random_outputs.py", line 146, in audit
+    callee=extract_contract(body,nodes,roots,successors,predecessors,extract_entry)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_random_outputs.py", line 54, in extract_contract
+    assert depth==128 and dirty==0, 'extraction retires uncleared scratch'
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: extraction retires uncleared scratch

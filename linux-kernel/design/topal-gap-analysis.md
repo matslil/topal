@@ -8,6 +8,14 @@ Topal's existing design supplies useful foundations; the missing pieces are
 concentrated at privileged entry, shared kernel synchronization, address-space
 control, fault recovery, context transfer, and kernel artifact publication.
 
+This inventory records the initial readiness assessment. Step 4 has since
+qualified selected systems elements, bootable compiler artifacts and bounded
+static userspace execution. The [current implementation status](../step-4-status.md)
+separates those executed profiles from their remaining generalization and full
+Linux, distribution, container and virtualization obligations. An initial gap
+listed here is not evidence that every part of that facility is still missing;
+equally, a qualified bounded profile does not close its full kernel requirement.
+
 The gaps are not solved by writing ordinary library code because current
 source cannot create the required authority or express the required machine
 transition. They also do not justify a general assembly or unsafe-pointer
@@ -96,6 +104,8 @@ not permission to introduce an unchecked intrinsic locally.
 | container | separate rootful/rootless Docker and Podman profiles |
 | virtualization | QEMU software host, then separately qualified KVM API and optional nested profile |
 
-Therefore “can Topal implement the kernel?” currently has a qualified answer:
-the design has a credible route, but Topal is missing mandatory approved
-semantics and qualified backend support before kernel code can begin safely.
+The initial assessment established a credible route and mandatory semantic and
+backend work. Current Step 4 kernel code exercises qualified parts of that
+route. General kernel readiness still requires the complete feasibility gates
+above; the executed profiles and outstanding work are recorded in the status
+report rather than inferred from this initial inventory.

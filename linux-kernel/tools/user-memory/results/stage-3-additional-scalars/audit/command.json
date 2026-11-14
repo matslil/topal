@@ -1,0 +1,8 @@
+{
+  "argv": [
+    "python3",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/audit_additional_scalars.py",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-application-2304790-1794418256907813314"
+  ],
+  "exit_code": 0
+}

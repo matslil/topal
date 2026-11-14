@@ -1,0 +1,6 @@
+{
+  "exit_code": 1,
+  "stage": "strengthened RTC staging-wipe validation",
+  "reason": "The reset of RDI before SCAS matched the short wipe-start prefix; require the complete zero-RAX wipe prefix",
+  "reported_offset": 178833
+}

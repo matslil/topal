@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "rtk",
+    "proxy",
+    "python3",
+    "-B",
+    "linux-kernel/tools/process-memory/readback_publication.py",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/process-mm-owners-2565660-1794601215274392311"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 24.97536923456937
+}

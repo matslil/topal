@@ -1,0 +1,542 @@
+{
+  "calls": {
+    "f.available": [
+      "f.cell",
+      "f.pointer",
+      "f.word"
+    ],
+    "f.cell": [],
+    "f.copy": [
+      "f.put",
+      "f.word"
+    ],
+    "f.delta": [
+      "f.cell",
+      "f.pointer",
+      "f.word"
+    ],
+    "f.fatal": [
+      "f.pointer",
+      "f.put",
+      "topal_frame_kernel_fatal_v1"
+    ],
+    "f.invoke": [
+      "f.copy",
+      "f.fatal",
+      "f.pointer",
+      "f.put",
+      "f.result",
+      "f.word",
+      "topal_tail_owner_invoke_v1"
+    ],
+    "f.pointer": [
+      "f.word"
+    ],
+    "f.put": [],
+    "f.record": [],
+    "f.result": [
+      "f.fatal",
+      "f.word"
+    ],
+    "f.retire_query": [
+      "f.pointer",
+      "f.put",
+      "f.zero"
+    ],
+    "f.span": [
+      "f.cell",
+      "f.pointer",
+      "f.word"
+    ],
+    "f.token": [
+      "f.pointer",
+      "f.record",
+      "f.word"
+    ],
+    "f.word": [],
+    "f.zero": [
+      "f.put"
+    ],
+    "g.lease": [
+      "g.memory_context",
+      "t.word"
+    ],
+    "g.memory_context": [
+      "t.word",
+      "u.syscall_context"
+    ],
+    "m.clean_facts": [
+      "m.put"
+    ],
+    "m.context": [],
+    "m.copy": [],
+    "m.erase": [],
+    "m.hierarchy": [
+      "m.context",
+      "m.require",
+      "m.word"
+    ],
+    "m.pte": [
+      "m.context",
+      "m.word"
+    ],
+    "m.publish": [
+      "m.pte"
+    ],
+    "m.put": [],
+    "m.require": [
+      "topal_frame_kernel_fatal_v1"
+    ],
+    "m.resolve": [
+      "m.clean_facts",
+      "m.require",
+      "m.word",
+      "topal_frame_allocator_resolve_v1"
+    ],
+    "m.validate": [
+      "m.hierarchy",
+      "m.pte",
+      "m.require"
+    ],
+    "m.word": [],
+    "mm.previous_token_domain": [
+      "r.pool_token_domain"
+    ],
+    "r.pool_token_domain": [
+      "t.word"
+    ],
+    "t.allocatable": [
+      "t.load32",
+      "t.load64"
+    ],
+    "t.bootstrap": [
+      "g.lease"
+    ],
+    "t.clean": [],
+    "t.load32": [],
+    "t.load64": [],
+    "t.next": [
+      "t.load64"
+    ],
+    "t.put": [],
+    "t.word": [],
+    "t.zero": [],
+    "topal_frame_allocator_allocate_v1": [
+      "f.available",
+      "f.cell",
+      "f.delta",
+      "f.fatal",
+      "f.invoke",
+      "f.pointer",
+      "f.put",
+      "f.record",
+      "f.retire_query",
+      "f.span",
+      "f.word",
+      "topal_frame_kernel_admit_v1",
+      "topal_frame_kernel_token_domain_v1",
+      "topal_frame_kernel_zero_v1"
+    ],
+    "topal_frame_allocator_pin_v1": [
+      "f.put",
+      "f.token",
+      "f.word",
+      "topal_frame_kernel_admit_v1",
+      "topal_frame_kernel_token_domain_v1"
+    ],
+    "topal_frame_allocator_release_v1": [
+      "f.delta",
+      "f.fatal",
+      "f.invoke",
+      "f.put",
+      "f.retire_query",
+      "f.span",
+      "f.token",
+      "f.word",
+      "f.zero",
+      "topal_frame_kernel_admit_v1",
+      "topal_frame_kernel_token_domain_v1"
+    ],
+    "topal_frame_allocator_resolve_v1": [
+      "f.cell",
+      "f.pointer",
+      "f.put",
+      "f.token",
+      "f.word",
+      "topal_frame_kernel_admit_v1",
+      "topal_frame_kernel_facts_domain_v1",
+      "topal_frame_kernel_token_domain_v1"
+    ],
+    "topal_frame_kernel_admit_v1": [
+      "t.bootstrap",
+      "t.clean",
+      "t.word"
+    ],
+    "topal_frame_kernel_boot_dispatch_v1": [
+      "topal_frame_allocator_allocate_v1",
+      "topal_frame_allocator_pin_v1",
+      "topal_frame_allocator_release_v1",
+      "topal_frame_allocator_resolve_v1",
+      "topal_x86_frame_allocator_create_v1"
+    ],
+    "topal_frame_kernel_dispatch_v1": [
+      "m.require",
+      "topal_frame_kernel_boot_dispatch_v1",
+      "topal_frame_memory_request_v1",
+      "topal_x86_owned_user_extent_v1"
+    ],
+    "topal_frame_kernel_facts_domain_v1": [],
+    "topal_frame_kernel_fatal_v1": [
+      "t.put",
+      "t.zero",
+      "topal_x86_frame_target_halt_v1"
+    ],
+    "topal_frame_kernel_token_domain_v1": [
+      "mm.previous_token_domain"
+    ],
+    "topal_frame_kernel_zero_v1": [
+      "t.bootstrap",
+      "t.word",
+      "t.zero"
+    ],
+    "topal_frame_memory_request_v1": [
+      "m.context",
+      "m.copy",
+      "m.erase",
+      "m.publish",
+      "m.put",
+      "m.require",
+      "m.resolve",
+      "m.validate",
+      "m.word",
+      "topal_frame_allocator_allocate_v1",
+      "topal_frame_allocator_pin_v1",
+      "topal_frame_allocator_release_v1",
+      "topal_frame_kernel_admit_v1"
+    ],
+    "topal_tail_boundary_fatal_v1": [
+      "f.fatal"
+    ],
+    "topal_x86_frame_allocator_create_v1": [
+      "t.allocatable",
+      "t.bootstrap",
+      "t.load32",
+      "t.load64",
+      "t.next",
+      "t.put",
+      "t.word",
+      "t.zero"
+    ],
+    "topal_x86_frame_target_halt_v1": [
+      "topal_x86_frame_gateway_abort_v1"
+    ],
+    "topal_x86_owned_user_extent_v1": [
+      "topal_x86_user_extent_backing_v1",
+      "topal_x86_user_extent_begin_v1",
+      "topal_x86_user_extent_end_v1",
+      "topal_x86_user_extent_fatal_v1",
+      "topal_x86_user_extent_root_v1",
+      "topal_x86_user_extent_table_v1"
+    ],
+    "topal_x86_user_extent_backing_v1": [
+      "t.word",
+      "topal_x86_user_extent_root_v1",
+      "u.heap_owner",
+      "u.require",
+      "u.static_owner"
+    ],
+    "topal_x86_user_extent_begin_v1": [
+      "t.word",
+      "u.check",
+      "u.msr"
+    ],
+    "topal_x86_user_extent_end_v1": [
+      "topal_x86_user_extent_root_v1",
+      "u.require"
+    ],
+    "topal_x86_user_extent_fatal_v1": [
+      "topal_frame_kernel_fatal_v1"
+    ],
+    "topal_x86_user_extent_root_v1": [
+      "t.word",
+      "u.check",
+      "u.require",
+      "u.static_owner"
+    ],
+    "topal_x86_user_extent_table_v1": [
+      "topal_x86_user_extent_root_v1",
+      "u.require",
+      "u.static_owner"
+    ],
+    "u.check": [
+      "t.word",
+      "topal_frame_kernel_admit_v1",
+      "u.require"
+    ],
+    "u.heap_owner": [
+      "t.word",
+      "u.owner",
+      "u.require"
+    ],
+    "u.msr": [],
+    "u.owner": [
+      "t.word",
+      "u.require"
+    ],
+    "u.require": [
+      "topal_x86_user_extent_fatal_v1"
+    ],
+    "u.static_owner": [
+      "topal_x86_user_extent_fatal_v1",
+      "u.owner"
+    ],
+    "u.syscall_context": [
+      "t.word",
+      "u.msr"
+    ]
+  },
+  "fatal_callback_contribution": 96,
+  "frames_with_inline_push": {
+    "f.available": 88,
+    "f.cell": 8,
+    "f.copy": 40,
+    "f.delta": 136,
+    "f.fatal": 24,
+    "f.invoke": 136,
+    "f.pointer": 8,
+    "f.put": 8,
+    "f.record": 8,
+    "f.result": 72,
+    "f.retire_query": 40,
+    "f.span": 88,
+    "f.token": 72,
+    "f.word": 8,
+    "f.zero": 40,
+    "g.lease": 24,
+    "g.memory_context": 120,
+    "m.clean_facts": 24,
+    "m.context": 8,
+    "m.copy": 8,
+    "m.erase": 8,
+    "m.hierarchy": 56,
+    "m.pte": 24,
+    "m.publish": 56,
+    "m.put": 8,
+    "m.require": 8,
+    "m.resolve": 72,
+    "m.validate": 56,
+    "m.word": 8,
+    "mm.previous_token_domain": 24,
+    "r.pool_token_domain": 24,
+    "t.allocatable": 72,
+    "t.bootstrap": 32,
+    "t.clean": 8,
+    "t.load32": 8,
+    "t.load64": 8,
+    "t.next": 72,
+    "t.put": 8,
+    "t.word": 8,
+    "t.zero": 8,
+    "topal_frame_allocator_allocate_v1": 120,
+    "topal_frame_allocator_pin_v1": 40,
+    "topal_frame_allocator_release_v1": 104,
+    "topal_frame_allocator_resolve_v1": 56,
+    "topal_frame_kernel_admit_v1": 120,
+    "topal_frame_kernel_boot_dispatch_v1": 8,
+    "topal_frame_kernel_dispatch_v1": 40,
+    "topal_frame_kernel_facts_domain_v1": 8,
+    "topal_frame_kernel_fatal_v1": 24,
+    "topal_frame_kernel_token_domain_v1": 24,
+    "topal_frame_kernel_zero_v1": 88,
+    "topal_frame_memory_request_v1": 104,
+    "topal_tail_boundary_fatal_v1": 8,
+    "topal_x86_frame_allocator_create_v1": 104,
+    "topal_x86_frame_target_halt_v1": 8,
+    "topal_x86_owned_user_extent_v1": 72,
+    "topal_x86_user_extent_backing_v1": 56,
+    "topal_x86_user_extent_begin_v1": 40,
+    "topal_x86_user_extent_end_v1": 24,
+    "topal_x86_user_extent_fatal_v1": 8,
+    "topal_x86_user_extent_root_v1": 24,
+    "topal_x86_user_extent_table_v1": 40,
+    "u.check": 40,
+    "u.heap_owner": 40,
+    "u.msr": 8,
+    "u.owner": 136,
+    "u.require": 8,
+    "u.static_owner": 8,
+    "u.syscall_context": 72
+  },
+  "normal_owner_contribution": 1568,
+  "paths": {
+    "f.available": 128,
+    "f.cell": 16,
+    "f.copy": 64,
+    "f.delta": 176,
+    "f.fatal": 80,
+    "f.invoke": 1808,
+    "f.pointer": 32,
+    "f.put": 16,
+    "f.record": 16,
+    "f.result": 160,
+    "f.retire_query": 112,
+    "f.span": 128,
+    "f.token": 112,
+    "f.word": 16,
+    "f.zero": 64,
+    "g.lease": 256,
+    "g.memory_context": 224,
+    "m.clean_facts": 48,
+    "m.context": 16,
+    "m.copy": 16,
+    "m.erase": 16,
+    "m.hierarchy": 128,
+    "m.pte": 48,
+    "m.publish": 112,
+    "m.put": 16,
+    "m.require": 64,
+    "m.resolve": 568,
+    "m.validate": 192,
+    "m.word": 16,
+    "mm.previous_token_domain": 80,
+    "r.pool_token_domain": 48,
+    "t.allocatable": 96,
+    "t.bootstrap": 296,
+    "t.clean": 16,
+    "t.load32": 16,
+    "t.load64": 16,
+    "t.next": 96,
+    "t.put": 16,
+    "t.word": 16,
+    "t.zero": 16,
+    "topal_frame_allocator_allocate_v1": 1936,
+    "topal_frame_allocator_pin_v1": 472,
+    "topal_frame_allocator_release_v1": 1920,
+    "topal_frame_allocator_resolve_v1": 488,
+    "topal_frame_kernel_admit_v1": 424,
+    "topal_frame_kernel_boot_dispatch_v1": 1952,
+    "topal_frame_kernel_dispatch_v1": 2096,
+    "topal_frame_kernel_facts_domain_v1": 16,
+    "topal_frame_kernel_fatal_v1": 48,
+    "topal_frame_kernel_token_domain_v1": 112,
+    "topal_frame_kernel_zero_v1": 392,
+    "topal_frame_memory_request_v1": 2048,
+    "topal_tail_boundary_fatal_v1": 96,
+    "topal_tail_owner_invoke_v1": 1664,
+    "topal_x86_frame_allocator_create_v1": 408,
+    "topal_x86_frame_gateway_abort_v1": 0,
+    "topal_x86_frame_target_halt_v1": 16,
+    "topal_x86_owned_user_extent_v1": 648,
+    "topal_x86_user_extent_backing_v1": 568,
+    "topal_x86_user_extent_begin_v1": 520,
+    "topal_x86_user_extent_end_v1": 536,
+    "topal_x86_user_extent_fatal_v1": 64,
+    "topal_x86_user_extent_root_v1": 504,
+    "topal_x86_user_extent_table_v1": 552,
+    "u.check": 472,
+    "u.heap_owner": 272,
+    "u.msr": 16,
+    "u.owner": 224,
+    "u.require": 80,
+    "u.static_owner": 240,
+    "u.syscall_context": 96
+  },
+  "raw_frames": {
+    "f.available": 88,
+    "f.cell": 8,
+    "f.copy": 40,
+    "f.delta": 136,
+    "f.fatal": 24,
+    "f.invoke": 136,
+    "f.pointer": 8,
+    "f.put": 8,
+    "f.record": 8,
+    "f.result": 72,
+    "f.retire_query": 40,
+    "f.span": 88,
+    "f.token": 72,
+    "f.word": 8,
+    "f.zero": 40,
+    "g.lease": 24,
+    "g.memory_context": 120,
+    "m.clean_facts": 24,
+    "m.context": 8,
+    "m.copy": 8,
+    "m.erase": 8,
+    "m.hierarchy": 56,
+    "m.pte": 24,
+    "m.publish": 56,
+    "m.put": 8,
+    "m.require": 8,
+    "m.resolve": 72,
+    "m.validate": 56,
+    "m.word": 8,
+    "mm.previous_token_domain": 24,
+    "r.pool_token_domain": 24,
+    "t.allocatable": 72,
+    "t.bootstrap": 24,
+    "t.clean": 8,
+    "t.load32": 8,
+    "t.load64": 8,
+    "t.next": 72,
+    "t.put": 8,
+    "t.word": 8,
+    "t.zero": 8,
+    "topal_frame_allocator_allocate_v1": 120,
+    "topal_frame_allocator_pin_v1": 40,
+    "topal_frame_allocator_release_v1": 104,
+    "topal_frame_allocator_resolve_v1": 56,
+    "topal_frame_kernel_admit_v1": 120,
+    "topal_frame_kernel_boot_dispatch_v1": 8,
+    "topal_frame_kernel_dispatch_v1": 40,
+    "topal_frame_kernel_facts_domain_v1": 8,
+    "topal_frame_kernel_fatal_v1": 24,
+    "topal_frame_kernel_token_domain_v1": 24,
+    "topal_frame_kernel_zero_v1": 88,
+    "topal_frame_memory_request_v1": 104,
+    "topal_tail_boundary_fatal_v1": 8,
+    "topal_x86_frame_allocator_create_v1": 104,
+    "topal_x86_frame_target_halt_v1": 8,
+    "topal_x86_owned_user_extent_v1": 72,
+    "topal_x86_user_extent_backing_v1": 56,
+    "topal_x86_user_extent_begin_v1": 40,
+    "topal_x86_user_extent_end_v1": 24,
+    "topal_x86_user_extent_fatal_v1": 8,
+    "topal_x86_user_extent_root_v1": 24,
+    "topal_x86_user_extent_table_v1": 40,
+    "u.check": 40,
+    "u.heap_owner": 40,
+    "u.msr": 8,
+    "u.owner": 136,
+    "u.require": 8,
+    "u.static_owner": 8,
+    "u.syscall_context": 72
+  },
+  "roots": {
+    "topal_frame_allocator_allocate_v1": 1936,
+    "topal_frame_allocator_pin_v1": 472,
+    "topal_frame_allocator_release_v1": 1920,
+    "topal_frame_allocator_resolve_v1": 488,
+    "topal_frame_kernel_dispatch_v1": 2096,
+    "topal_x86_frame_allocator_create_v1": 408
+  },
+  "scope": "native dispatch/controller/target paths including a conservative owner fatal-callback contribution; machine gateway retirement, entry fixture and publication require separate proof",
+  "syscall_adapter": {
+    "caller_reserve_bytes": 4096,
+    "combined_stack_bound_bytes": 2176,
+    "physical_retirement_bytes": 4000,
+    "return_and_adapter_bytes": 16,
+    "zero_alignment_bytes": 8
+  },
+  "user_extent_callers": {
+    "complete_physical_bytes": 4088,
+    "complete_stack_bytes": 2248,
+    "inner_retirement_bytes": 3952,
+    "outer_bytes": 88,
+    "reserve_bytes": 4096
+  },
+  "user_extent_component": {
+    "included_in_complete_dispatch_path": true,
+    "scope": "native walk/target/caller path costs; actual owning entry, physical retirement and runtime qualification remain separate"
+  }
+}

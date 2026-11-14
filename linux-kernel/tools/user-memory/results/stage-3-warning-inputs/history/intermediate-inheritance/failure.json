@@ -1,0 +1,5 @@
+{
+  "exit_code": 1,
+  "stage": "Intermediate fixture artifact inheritance",
+  "reason": "The source-user.elf intermediate differs while every other inherited artifact matches; retain its new identity and inspect changed sections"
+}

@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "exact_callback_binding_equal": true,
+  "controllers": 5,
+  "functions": 389,
+  "sections": 357,
+  "scope": "Offline archived first-party callback/root/object-to-linked binding; no kernel rebuild, new VM/native execution, full source authentication or callee-effect qualification"
+}

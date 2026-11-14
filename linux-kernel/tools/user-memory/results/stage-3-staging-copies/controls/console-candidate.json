@@ -1,0 +1,9 @@
+{
+  "name": "console-candidate",
+  "rejected": true,
+  "offset": 131612,
+  "expected_bytes": "f0",
+  "changed_bytes": "f8",
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer identities; never executed, booted or loaded into a VM. Not source-provenance authentication"
+}

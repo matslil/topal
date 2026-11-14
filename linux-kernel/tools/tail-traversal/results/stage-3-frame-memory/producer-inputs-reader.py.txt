@@ -1,0 +1,56 @@
+from pathlib import Path
+import gzip, hashlib, json, subprocess
+
+root = Path('/home/mats/git/topal')
+out = root / 'linux-kernel/tools/tail-traversal/results/stage-3-frame-memory'
+r = json.loads((out / 'qualification.json').read_text())
+assert not (out / 'producer-inputs.json').exists()
+sha = lambda b: hashlib.sha256(b).hexdigest()
+base = r['base_commit']
+paths = ['src', 'Cargo.toml', 'Cargo.lock', '.cargo', 'scripts',
+         'linux-kernel/kernel', 'linux-kernel/labs/qemu/x86_64']
+tree = subprocess.check_output(['git', 'ls-tree', '-rz', base, '--', *paths], cwd=root)
+entries = {}
+for row in tree.split(b'\0'):
+    if not row:
+        continue
+    meta, raw_path = row.split(b'\t', 1)
+    mode, kind, blob = meta.decode().split()
+    assert kind == 'blob'
+    name = raw_path.decode()
+    if name.startswith('linux-kernel/labs/qemu/x86_64/results/'):
+        continue # old evidence archives are outputs, not native producers
+    data = (root / name).read_bytes()
+    if name in r['sources']:
+        assert sha(data) == r['sources'][name]
+        info = r['source_snapshots'][name]
+        origin = 'frozen before validation'
+    else:
+        # The original record already identifies this immutable commit. Extend
+        # its explicit inventory with the exact committed producer bytes, rather
+        # than treating an uncaptured working-tree version as an input.
+        assert hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest() == blob, name
+        compressed = gzip.compress(data, mtime=0)
+        dest = out / 'producer-snapshots' / (sha(data) + '.gz')
+        dest.parent.mkdir(exist_ok=True)
+        if dest.exists():
+            assert dest.read_bytes() == compressed
+        else:
+            dest.write_bytes(compressed)
+        info = dict(file=str(dest.relative_to(out)), sha256=sha(compressed),
+                    uncompressed_sha256=sha(data))
+        origin = 'immutable original base commit'
+    entries[name] = dict(mode=mode, git_base_blob=blob, sha256=sha(data),
+                         origin=origin, snapshot=info)
+for name, digest in r['sources'].items():
+    if name not in entries:
+        assert sha((root / name).read_bytes()) == digest
+        entries[name] = dict(sha256=digest, origin='frozen before validation',
+                             snapshot=r['source_snapshots'][name])
+record = dict(schema='topal.frame-memory-producer-inputs/1', base_commit=base,
+    base_tree=subprocess.check_output(['git', 'rev-parse', base + '^{tree}'], cwd=root, text=True).strip(),
+    scope='Complete committed workspace source/configuration, build scripts, kernel sources and x86 lab inputs, excluding prior result archives and overlaid only by individually frozen changed/new inputs. Additional unchanged producers are recovered from the immutable commit already identified before validation; no new working-tree source version is admitted.',
+    initial_source_count=len(r['sources']), paths=paths, entries=entries)
+(out / 'producer-inputs.json').write_text(json.dumps(record, indent=2) + '\n')
+(out / 'producer-inputs-reader.py.txt').write_bytes(Path(__file__).read_bytes())
+print('PRODUCER_INPUTS_PASS', len(entries), 'including', len(r['sources']), 'initial frozen sources')

@@ -1,0 +1,11 @@
+{
+  "name": "dispatch_library-instruction",
+  "kernel_file_offset": 1292144,
+  "original_byte": 85,
+  "changed_byte": 84,
+  "corrected_outer_kernel_sha256": "a0bc0c5c6ab513ec2765c47feb63a6bc2cdf62844deaf9037ad21ca81162c404",
+  "exit_code": 1,
+  "rejected": true,
+  "expected_gate": "linked allocated payload differs",
+  "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+}

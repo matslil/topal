@@ -1,0 +1,2656 @@
+{
+  "actual_observed_syscalls": [
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    59,
+    60,
+    231,
+    60,
+    60,
+    60
+  ],
+  "actual_process_syscall_entry": {
+    "function": 45741712,
+    "setup_bytes": "488d0589010000b9820000c04889c248c1ea200f30",
+    "setup_offset": 14161,
+    "target": 45756273
+  },
+  "allocated_contributions": 925,
+  "backing_regression": {
+    "actual_final_bootstrap": {
+      "bank_sha256": "b30814ef4137f8d0a2a8557179951584d8897f5a1b64f8640c7bdb6116db934d",
+      "base": 46284800,
+      "controls": {
+        "cr0": 2147549201,
+        "cr3": 46284800,
+        "cr4": 32
+      },
+      "record": [
+        1,
+        4,
+        0,
+        5,
+        1,
+        1,
+        1,
+        1
+      ],
+      "token": [
+        1,
+        4,
+        0
+      ]
+    },
+    "banks": 2,
+    "checked_console_copies": 8,
+    "completed_programs": 4,
+    "discarded_bytes": 65536,
+    "kernel_sha256": "064058b5c8fb800137cf055b971dbc1cf258ab3729ba93cfda005bc4ea805b19",
+    "native_execution": true,
+    "native_execution_attempted": true,
+    "observations": "image-backing-native/observations.json",
+    "pages_per_bank": 8,
+    "passed": true,
+    "production_qualified": false,
+    "protected_context": false,
+    "qemu_version": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+    "resources": {
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.max": "3276083200",
+      "memory.peak": "2020220928",
+      "memory.swap.max": "0"
+    },
+    "scope": "Actual image-sized whole-owner reserve/zero/erase/release, with read-only hardware-breakpoint observations; no protected activation",
+    "zeroed_bytes": 65536
+  },
+  "commands": {
+    "predecessor/Rust-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.47933993581682444,
+      "state": "finished"
+    },
+    "predecessor/backing-component": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_image_backing::",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 6.132393566891551,
+      "state": "finished"
+    },
+    "predecessor/backing-readback": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "linux-kernel/tools/user-memory/readback_image_backing.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-interface-regression-2702424-1794661780963460178"
+      ],
+      "exit_code": 0,
+      "seconds": 0.0987128121778369,
+      "state": "finished"
+    },
+    "predecessor/backing-regression": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "kernel_image_backing_allocates_and_discards_actual_image_sized_banks",
+        "--",
+        "--ignored",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 268.29593942221254,
+      "state": "finished"
+    },
+    "predecessor/default-ABI": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "exit_code": 0,
+      "seconds": 0.18772186804562807,
+      "state": "finished"
+    },
+    "predecessor/format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 1.260846653021872,
+      "state": "finished"
+    },
+    "predecessor/image-layout": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_kernel_image_layout::tests",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 86.46411352977157,
+      "state": "finished"
+    },
+    "predecessor/legacy-owners": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_ownership::tests",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "seconds": 3.069572406820953,
+      "state": "finished"
+    },
+    "predecessor/legacy-private-build": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::process_mm_closed_link_reconstructs_complete_private_image",
+        "--",
+        "--exact",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 22.651092727668583,
+      "state": "finished"
+    },
+    "predecessor/native-readback": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "linux-kernel/tools/user-memory/readback_image_tables.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-interface-regression-2700208-1794661373957937943"
+      ],
+      "exit_code": 0,
+      "seconds": 1.2335523273795843,
+      "state": "finished"
+    },
+    "predecessor/ordinary-guest": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "image_tables_construct_and_discard_both_final_image_banks_with_separate_low_leaf",
+        "--",
+        "--ignored",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 315.2747014546767,
+      "state": "finished"
+    },
+    "predecessor/process-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.0159971751272678,
+      "state": "finished"
+    },
+    "predecessor/source-and-model": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-language",
+        "-p",
+        "topal-semantics",
+        "--lib",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "seconds": 163.68053216207772,
+      "state": "finished"
+    },
+    "predecessor/user-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 2.067423952743411,
+      "state": "finished"
+    },
+    "predecessor/workspace": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "seconds": 16.786027742549777,
+      "state": "finished"
+    },
+    "retained-guest": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "retained_tables_cross_ordinary_exec_and_restore_before_whole_retirement",
+        "--",
+        "--ignored",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 323.2661446509883,
+      "state": "finished"
+    },
+    "retained-readback": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "linux-kernel/tools/user-memory/readback_retained_image_tables.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-interface-regression-2697619-1794660878486274851"
+      ],
+      "exit_code": 0,
+      "seconds": 1.6863632779568434,
+      "state": "finished"
+    }
+  },
+  "component": {
+    "acyclic": true,
+    "boot_stack_allowance_bytes": 8192,
+    "calls": {
+      "k.boot.cpuid": [],
+      "k.boot.cr0": [],
+      "k.boot.cr4": [],
+      "k.boot.cs": [],
+      "k.boot.descriptors": [
+        "k.boot.record",
+        "k.image.require",
+        "t.word"
+      ],
+      "k.boot.flags": [],
+      "k.boot.handoff": [
+        "k.boot.record",
+        "k.image.require",
+        "t.word"
+      ],
+      "k.boot.msr": [
+        "topal_x86_image_boot_read_observe_v1"
+      ],
+      "k.boot.record": [
+        "k.image.require"
+      ],
+      "k.boot.sp": [],
+      "k.boot.tables": [
+        "k.image.require",
+        "t.word"
+      ],
+      "k.boot.transition": [
+        "k.image.require"
+      ],
+      "k.boot.verify": [
+        "k.boot.cpuid",
+        "k.boot.cr0",
+        "k.boot.cr4",
+        "k.boot.cs",
+        "k.boot.descriptors",
+        "k.boot.flags",
+        "k.boot.handoff",
+        "k.boot.msr",
+        "k.boot.record",
+        "k.boot.sp",
+        "k.boot.tables",
+        "k.boot.transition",
+        "k.fw.verify",
+        "k.image.active_root",
+        "k.image.require",
+        "t.word"
+      ],
+      "k.cover.extent": [
+        "k.cover.fact",
+        "k.cover.page",
+        "k.image.require"
+      ],
+      "k.cover.fact": [
+        "k.image.require"
+      ],
+      "k.cover.page": [
+        "k.image.require",
+        "t.word"
+      ],
+      "k.cover.verify": [
+        "k.cover.extent",
+        "k.cover.fact",
+        "k.image.require",
+        "t.word"
+      ],
+      "k.fw.bind": [
+        "k.fw.u8",
+        "k.image.require"
+      ],
+      "k.fw.bsp": [
+        "k.boot.cpuid",
+        "k.fw.u32",
+        "k.image.require",
+        "topal_x86_image_boot_read_observe_v1"
+      ],
+      "k.fw.checked_copy": [
+        "k.fw.checksum",
+        "k.fw.u32",
+        "k.image.require"
+      ],
+      "k.fw.checksum": [
+        "k.fw.u8"
+      ],
+      "k.fw.equal": [
+        "k.fw.u8",
+        "k.image.require"
+      ],
+      "k.fw.processors": [
+        "k.fw.record",
+        "k.fw.u16",
+        "k.fw.u32",
+        "k.fw.u64",
+        "k.fw.u8",
+        "k.image.require"
+      ],
+      "k.fw.range": [
+        "k.fw.u32",
+        "k.fw.u64",
+        "k.fw.u8",
+        "k.image.require",
+        "t.word"
+      ],
+      "k.fw.record": [
+        "k.image.require"
+      ],
+      "k.fw.rsdp": [
+        "k.fw.range",
+        "k.fw.scan",
+        "k.image.require"
+      ],
+      "k.fw.scan": [
+        "k.fw.checksum",
+        "k.fw.u64"
+      ],
+      "k.fw.table": [
+        "k.fw.checksum",
+        "k.fw.range",
+        "k.fw.u32",
+        "k.image.require"
+      ],
+      "k.fw.u16": [],
+      "k.fw.u32": [],
+      "k.fw.u64": [],
+      "k.fw.u8": [],
+      "k.fw.verify": [
+        "k.fw.bind",
+        "k.fw.bsp",
+        "k.fw.checked_copy",
+        "k.fw.checksum",
+        "k.fw.equal",
+        "k.fw.processors",
+        "k.fw.range",
+        "k.fw.record",
+        "k.fw.rsdp",
+        "k.fw.table",
+        "k.fw.u16",
+        "k.fw.u32",
+        "k.fw.u64",
+        "k.fw.u8",
+        "k.image.require",
+        "t.word"
+      ],
+      "k.image.active_root": [],
+      "k.image.owner": [
+        "k.image.require",
+        "t.word"
+      ],
+      "k.image.owners": [
+        "k.image.active_root",
+        "k.image.owner",
+        "k.image.query",
+        "k.image.require"
+      ],
+      "k.image.query": [
+        "k.image.require",
+        "t.word",
+        "topal_x86_frame_gateway_v1"
+      ],
+      "k.image.require": [
+        "topal_x86_systems_fatal"
+      ],
+      "k.image.seed": [],
+      "k.image.store": [],
+      "k.image.verify_zero": [
+        "k.image.require"
+      ],
+      "k.image.zero": [],
+      "k.tables.empty": [
+        "k.image.require",
+        "t.word"
+      ],
+      "k.tables.erase": [
+        "k.image.verify_zero",
+        "k.image.zero"
+      ],
+      "k.tables.identity": [
+        "k.image.require",
+        "k.image.store",
+        "t.word"
+      ],
+      "k.tables.owners": [
+        "k.image.owner",
+        "k.image.owners",
+        "k.image.query",
+        "k.image.require"
+      ],
+      "k.tables.verify": [
+        "k.cover.verify",
+        "k.image.require",
+        "k.image.verify_zero",
+        "topal_x86_image_table_verify_data_v1"
+      ],
+      "r.fact": [
+        "k.image.require"
+      ],
+      "r.owner": [
+        "r.fact",
+        "t.word"
+      ],
+      "r.verify": [
+        "k.image.require",
+        "k.tables.owners",
+        "r.fact",
+        "r.owner",
+        "t.word"
+      ],
+      "t.word": [],
+      "topal_x86_image_boot_read_observe_v1": [],
+      "topal_x86_image_table_prepare_data_v1": [],
+      "topal_x86_image_table_verify_data_v1": [],
+      "topal_x86_image_tables_discard_v1": [
+        "k.boot.verify",
+        "k.image.require",
+        "k.image.store",
+        "k.tables.erase",
+        "k.tables.identity",
+        "k.tables.owners",
+        "k.tables.verify",
+        "t.word",
+        "topal_x86_image_tables_observe_v1"
+      ],
+      "topal_x86_image_tables_observe_v1": [],
+      "topal_x86_image_tables_prepare_v1": [
+        "k.boot.verify",
+        "k.image.require",
+        "k.image.seed",
+        "k.image.store",
+        "k.tables.erase",
+        "k.tables.identity",
+        "k.tables.owners",
+        "k.tables.verify",
+        "t.word",
+        "topal_x86_image_table_prepare_data_v1",
+        "topal_x86_image_tables_observe_v1"
+      ],
+      "topal_x86_image_tables_released_v1": [
+        "k.image.require",
+        "k.image.store",
+        "k.tables.empty",
+        "t.word",
+        "topal_x86_image_tables_observe_v1"
+      ],
+      "topal_x86_image_tables_retain_v1": [
+        "k.boot.verify",
+        "k.image.require",
+        "k.image.store",
+        "k.tables.identity",
+        "k.tables.owners",
+        "k.tables.verify",
+        "r.verify",
+        "t.word",
+        "topal_x86_image_tables_observe_v1"
+      ],
+      "topal_x86_retained_tables_discard_v1": [
+        "k.image.require",
+        "k.image.store",
+        "k.tables.erase",
+        "k.tables.verify",
+        "r.verify",
+        "t.word",
+        "topal_x86_image_tables_observe_v1"
+      ],
+      "topal_x86_retained_tables_released_v1": [
+        "k.image.require",
+        "k.image.store",
+        "k.tables.empty",
+        "r.fact",
+        "t.word",
+        "topal_x86_image_tables_observe_v1"
+      ]
+    },
+    "combined_boot_stack_bytes": 7320,
+    "conservative_helper_stack_bytes": 3224,
+    "frames": {
+      "k.boot.cpuid": 16,
+      "k.boot.cr0": 8,
+      "k.boot.cr4": 8,
+      "k.boot.cs": 8,
+      "k.boot.descriptors": 88,
+      "k.boot.flags": 8,
+      "k.boot.handoff": 72,
+      "k.boot.msr": 24,
+      "k.boot.record": 8,
+      "k.boot.sp": 8,
+      "k.boot.tables": 24,
+      "k.boot.transition": 24,
+      "k.boot.verify": 216,
+      "k.cover.extent": 72,
+      "k.cover.fact": 8,
+      "k.cover.page": 88,
+      "k.cover.verify": 104,
+      "k.fw.bind": 56,
+      "k.fw.bsp": 40,
+      "k.fw.checked_copy": 24,
+      "k.fw.checksum": 40,
+      "k.fw.equal": 56,
+      "k.fw.processors": 120,
+      "k.fw.range": 104,
+      "k.fw.record": 8,
+      "k.fw.rsdp": 24,
+      "k.fw.scan": 40,
+      "k.fw.table": 24,
+      "k.fw.u16": 8,
+      "k.fw.u32": 8,
+      "k.fw.u64": 8,
+      "k.fw.u8": 8,
+      "k.fw.verify": 184,
+      "k.image.active_root": 8,
+      "k.image.owner": 120,
+      "k.image.owners": 56,
+      "k.image.query": 56,
+      "k.image.require": 8,
+      "k.image.seed": 8,
+      "k.image.store": 8,
+      "k.image.verify_zero": 40,
+      "k.image.zero": 8,
+      "k.tables.empty": 40,
+      "k.tables.erase": 40,
+      "k.tables.identity": 40,
+      "k.tables.owners": 56,
+      "k.tables.verify": 56,
+      "r.fact": 8,
+      "r.owner": 56,
+      "r.verify": 88,
+      "t.word": 8,
+      "topal_x86_image_boot_read_observe_v1": 8,
+      "topal_x86_image_table_prepare_data_v1": 80,
+      "topal_x86_image_table_verify_data_v1": 40,
+      "topal_x86_image_tables_discard_v1": 104,
+      "topal_x86_image_tables_observe_v1": 8,
+      "topal_x86_image_tables_prepare_v1": 72,
+      "topal_x86_image_tables_released_v1": 24,
+      "topal_x86_image_tables_retain_v1": 104,
+      "topal_x86_retained_tables_discard_v1": 40,
+      "topal_x86_retained_tables_released_v1": 8
+    },
+    "gateway_window_bytes": 4096,
+    "imports": [
+      "_topal_kernel_entry",
+      "topal_x86_frame_context_v1",
+      "topal_x86_frame_details_v1",
+      "topal_x86_frame_gateway_v1",
+      "topal_x86_frame_handoff_v1",
+      "topal_x86_frame_registry_v1",
+      "topal_x86_frame_root_tokens_v1",
+      "topal_x86_frame_table_v1",
+      "topal_x86_kernel_reservation_end_v1",
+      "topal_x86_systems_deadline_entry",
+      "topal_x86_systems_debug_break_entry",
+      "topal_x86_systems_fatal",
+      "topal_x86_systems_local_notification_entry",
+      "topal_x86_systems_user_copy_page_fault"
+    ],
+    "inactive_tables": true,
+    "inline_flags_stack_bytes": 8,
+    "object_sha256": "bbf111c532cd5f51169f79e7d895969f9d9e205ec5d14f1400aa69ce00c9aa55",
+    "production_qualified": false,
+    "protected_context": false,
+    "scope": "Private inactive-preparation direct-call closure and conservative normal boot-stack bound; fatal recovery and production publication excluded"
+  },
+  "event_issued_identity_history": [
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    152,
+    154,
+    154,
+    154,
+    154,
+    154,
+    154,
+    154,
+    168,
+    168,
+    182,
+    182,
+    196,
+    197,
+    198,
+    199,
+    200,
+    200
+  ],
+  "image_layout": {
+    "address_limit": 1073741824,
+    "image_leaf_storage_bytes": 12288,
+    "kernel_sha256": "1f44d987abb3cc2cd19e7821f900242992e10bd1be6485ff694e89db9e11f94e",
+    "large_granule": 2097152,
+    "minimum_granule": 4096,
+    "schema": "topal.kernel-image-layout.x86_64/1",
+    "spans": [
+      {
+        "end": 2101248,
+        "role": "immutable",
+        "start": 2097152
+      },
+      {
+        "end": 44986368,
+        "role": "mutable",
+        "start": 8388608
+      },
+      {
+        "end": 45072384,
+        "role": "immutable",
+        "start": 44986368
+      },
+      {
+        "end": 46354432,
+        "role": "code",
+        "start": 45072384
+      },
+      {
+        "end": 46358528,
+        "role": "immutable",
+        "start": 46354432
+      }
+    ],
+    "subdivided_regions": [
+      2097152,
+      44040192,
+      46137344
+    ]
+  },
+  "inactive_only": true,
+  "initial_boot_registers": [
+    1,
+    2147483665,
+    1052672,
+    32,
+    1280,
+    4276095232,
+    1974748653749254,
+    1288,
+    3078,
+    1064960,
+    47,
+    1069056,
+    4095,
+    1572544,
+    16,
+    2,
+    65536,
+    668917760,
+    670954960,
+    46358528,
+    395049981,
+    2147491841,
+    563346429,
+    151992,
+    2048,
+    512,
+    126,
+    256,
+    8,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    434041037028460038,
+    434041037028460038,
+    0,
+    361700864190383365,
+    361700864190383365,
+    361700864190383365,
+    361700864190383365,
+    361700864190383365,
+    361700864190383365,
+    361700864190383365,
+    361700864190383365,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3221225472,
+    1098437888000,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "legacy_private_build": {
+    "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+    "native_execution": false
+  },
+  "limitations": [
+    "Pinned inactive ownership and boundary/event snapshots do not grant activation, effective hardware permissions or continuous exclusion.",
+    "Initial boot comparisons complete at the retention boundary; later control/descriptor state is not asserted equal to historical snapshots.",
+    "All active/restorable root, alias, CPU/asynchronous writer, mode, publication, invalidation, fatal and protected-lifetime integration remains required.",
+    "Invalid internal owner/generation/journal/table refusals have model/offline coverage; native failure-path execution remains an acceptance gap.",
+    "The historical full compiler suite and 51-workload third-party corpus were not rerun for this source snapshot.",
+    "The receipt binds local evidence and source hashes; it is not a closed archive or production publisher proof.",
+    "Full Linux UAPI, DTS, distribution, Docker/Podman and VM-host acceptance remain unfinished."
+  ],
+  "local_run": "linux-kernel/.cache/x86_64/retained-image-tables-stage-3/run.json",
+  "native": {
+    "actual_final_bootstrap": {
+      "bank_sha256": "c46cf35dd4137c2039958ce5f9bb9ae0133b34fc7712e21ee824bb1fd0f35426",
+      "base": 46428160,
+      "controls": {
+        "cr0": 2147549201,
+        "cr3": 46428160,
+        "cr4": 32
+      },
+      "record": [
+        1,
+        5,
+        17,
+        5,
+        1,
+        1,
+        1,
+        1
+      ],
+      "token": [
+        1,
+        5,
+        3
+      ]
+    },
+    "banks": 2,
+    "checked_console_copies": 8,
+    "completed_programs": 4,
+    "constructed_table_bytes": 65536,
+    "discarded_bytes": 69632,
+    "exec_attempts": 28,
+    "extents": 3,
+    "kernel_sha256": "1f44d987abb3cc2cd19e7821f900242992e10bd1be6485ff694e89db9e11f94e",
+    "low_user_leaf_bytes": 4096,
+    "native_execution": true,
+    "native_execution_attempted": true,
+    "observations": "image-tables-native/observations.json",
+    "pages_per_bank": 8,
+    "passed": true,
+    "production_qualified": false,
+    "protected_context": false,
+    "qemu_version": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+    "resources": {
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.max": "3276083200",
+      "memory.peak": "655474688",
+      "memory.swap.max": "0"
+    },
+    "retained": true,
+    "retention_events": 33,
+    "scope": "Actual pinned inactive owners across initial user execution, three execs and ordinary root restoration; same-owner byte checks and whole retirement, no activation",
+    "successful_execs": 3,
+    "zeroed_bytes": 69632
+  },
+  "native_artifacts": {
+    "bzImage": {
+      "bytes": 45312512,
+      "sha256": "5673d344d6fd9e6796ab8e3912f8d013d32e09673d6903983dd1ff740b85f1ae"
+    },
+    "image-backing-bindings.json": {
+      "bytes": 531,
+      "sha256": "14178c02c29e39ac3aaa13a0e0a1fbf458279b5040bcc11be87097563d6c6c93"
+    },
+    "image-tables-component.json": {
+      "bytes": 8527,
+      "sha256": "0d0bbd82189a22934d852a3543aa9c1503f61d25243a386645b79c515b5dff45"
+    },
+    "image-tables-native/bank-0-0.bin": {
+      "bytes": 32768,
+      "sha256": "496540dc0e0a84f9a130ae4fbc2ef9bf0ab720573c71058df6e1b64e4d2442f3"
+    },
+    "image-tables-native/bank-0-1.bin": {
+      "bytes": 32768,
+      "sha256": "9767feff72e4dd421ea4d0429e8dbc1ee15608a6210e55332725c49aea938132"
+    },
+    "image-tables-native/bank-0-2.bin": {
+      "bytes": 4096,
+      "sha256": "0b1acc6a99c543263ec75db61e7692c2f86c7fd87e8ab4fd317bdf390421bb6b"
+    },
+    "image-tables-native/bank-1-0.bin": {
+      "bytes": 32768,
+      "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    "image-tables-native/bank-1-1.bin": {
+      "bytes": 32768,
+      "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    "image-tables-native/bank-1-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/bank-2-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/bank-2-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/bank-2-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/bank-3-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/bank-3-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/bank-3-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/bank-4-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/bank-4-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/bank-4-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/bank-5-0.bin": {
+      "bytes": 32768,
+      "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    "image-tables-native/bank-5-1.bin": {
+      "bytes": 32768,
+      "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    "image-tables-native/bank-5-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/bank-6-0.bin": {
+      "bytes": 32768,
+      "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    "image-tables-native/bank-6-1.bin": {
+      "bytes": 32768,
+      "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    "image-tables-native/bank-6-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/boot-0-entry-tables.bin": {
+      "bytes": 16384,
+      "sha256": "947abe0edc2b2f925cf4a60711c41b85334a02d52dcb74c011e618407b328c28"
+    },
+    "image-tables-native/boot-0-gdt.bin": {
+      "bytes": 48,
+      "sha256": "965f048fc2fb96fc13bcebf5d0e47caae68309e8b59f80b017ce83789e563c51"
+    },
+    "image-tables-native/boot-0-idt-pointer.bin": {
+      "bytes": 10,
+      "sha256": "7a4ff260d6ede05f22136c73e75559bd62505a79108b863229536251b90e77a0"
+    },
+    "image-tables-native/boot-0-idt.bin": {
+      "bytes": 4096,
+      "sha256": "67c75d0e31dc69e2fd50082732121550b1dc027f3d9ff1c44638804947198c29"
+    },
+    "image-tables-native/boot-0-transition.bin": {
+      "bytes": 126,
+      "sha256": "86a8feced7468cd2b8f8a53fd84f7d42d69a0860c46c5338591647ec94b74dcb"
+    },
+    "image-tables-native/boot-3-entry-tables.bin": {
+      "bytes": 16384,
+      "sha256": "947abe0edc2b2f925cf4a60711c41b85334a02d52dcb74c011e618407b328c28"
+    },
+    "image-tables-native/boot-3-gdt.bin": {
+      "bytes": 48,
+      "sha256": "965f048fc2fb96fc13bcebf5d0e47caae68309e8b59f80b017ce83789e563c51"
+    },
+    "image-tables-native/boot-3-idt-pointer.bin": {
+      "bytes": 10,
+      "sha256": "7a4ff260d6ede05f22136c73e75559bd62505a79108b863229536251b90e77a0"
+    },
+    "image-tables-native/boot-3-idt.bin": {
+      "bytes": 4096,
+      "sha256": "67c75d0e31dc69e2fd50082732121550b1dc027f3d9ff1c44638804947198c29"
+    },
+    "image-tables-native/boot-3-transition.bin": {
+      "bytes": 126,
+      "sha256": "86a8feced7468cd2b8f8a53fd84f7d42d69a0860c46c5338591647ec94b74dcb"
+    },
+    "image-tables-native/final-bootstrap-bank.bin": {
+      "bytes": 20480,
+      "sha256": "c46cf35dd4137c2039958ce5f9bb9ae0133b34fc7712e21ee824bb1fd0f35426"
+    },
+    "image-tables-native/firmware-0-bda.bin": {
+      "bytes": 2,
+      "sha256": "881d02f66ee6b53ceb528c0aeb3d96dc50cd8e611865d141ec040eb3d0f1b0b1"
+    },
+    "image-tables-native/firmware-0-bios.bin": {
+      "bytes": 131072,
+      "sha256": "64fbda74a7de7d2a4dac1352a383b6c64cbf38aaebf0df3c1f10c3654622dc90"
+    },
+    "image-tables-native/firmware-0-ebda.bin": {
+      "bytes": 1024,
+      "sha256": "91fd9dbe4d5a5fd8a32c47425d44e07358443d88ddc196ecd52b491fd32382b9"
+    },
+    "image-tables-native/firmware-0-header-0.bin": {
+      "bytes": 36,
+      "sha256": "2fa30fbda9938e144c352909ed767c16b0ef6236fef0f563819df2eb21d807e3"
+    },
+    "image-tables-native/firmware-0-header-1.bin": {
+      "bytes": 36,
+      "sha256": "99c1c33d0b5d0ded3931490bc15618b129657b0451409c67da723e9618205513"
+    },
+    "image-tables-native/firmware-0-header-2.bin": {
+      "bytes": 36,
+      "sha256": "2c739a898468f7bab9aa6b0d0586414d2a3abbeff611fe48c2540771d2db1d1c"
+    },
+    "image-tables-native/firmware-0-header-3.bin": {
+      "bytes": 36,
+      "sha256": "626bb733906d07847eb777de0e45a59954c8efb864a1d6ffa4dc48ce4f1293d1"
+    },
+    "image-tables-native/firmware-0-header-4.bin": {
+      "bytes": 36,
+      "sha256": "d55d5416ed61b22edc000d3438e7aaddff35230f08cca8a2f2241cc216699142"
+    },
+    "image-tables-native/firmware-0-madt.bin": {
+      "bytes": 128,
+      "sha256": "441794f0b4bd74feb6f4fc1adf82048023a612ba676dc308c8173e449c0ccdbb"
+    },
+    "image-tables-native/firmware-0-retained.bin": {
+      "bytes": 8192,
+      "sha256": "0af369bea94b16cbca1905e40e2c0a336fd692ff7ade521099ad271e4fb6876c"
+    },
+    "image-tables-native/firmware-0-root.bin": {
+      "bytes": 56,
+      "sha256": "3fa0ae5732fa7349f070b4605c3a0e86d091627e07dca46548e47199f7b0d743"
+    },
+    "image-tables-native/firmware-0-rsdp.bin": {
+      "bytes": 20,
+      "sha256": "7754591fd8f56bce381e01b107c5612d231b5ab3fc74ef7043d8b5d670a43db3"
+    },
+    "image-tables-native/firmware-3-bda.bin": {
+      "bytes": 2,
+      "sha256": "881d02f66ee6b53ceb528c0aeb3d96dc50cd8e611865d141ec040eb3d0f1b0b1"
+    },
+    "image-tables-native/firmware-3-bios.bin": {
+      "bytes": 131072,
+      "sha256": "64fbda74a7de7d2a4dac1352a383b6c64cbf38aaebf0df3c1f10c3654622dc90"
+    },
+    "image-tables-native/firmware-3-ebda.bin": {
+      "bytes": 1024,
+      "sha256": "91fd9dbe4d5a5fd8a32c47425d44e07358443d88ddc196ecd52b491fd32382b9"
+    },
+    "image-tables-native/firmware-3-header-0.bin": {
+      "bytes": 36,
+      "sha256": "2fa30fbda9938e144c352909ed767c16b0ef6236fef0f563819df2eb21d807e3"
+    },
+    "image-tables-native/firmware-3-header-1.bin": {
+      "bytes": 36,
+      "sha256": "99c1c33d0b5d0ded3931490bc15618b129657b0451409c67da723e9618205513"
+    },
+    "image-tables-native/firmware-3-header-2.bin": {
+      "bytes": 36,
+      "sha256": "2c739a898468f7bab9aa6b0d0586414d2a3abbeff611fe48c2540771d2db1d1c"
+    },
+    "image-tables-native/firmware-3-header-3.bin": {
+      "bytes": 36,
+      "sha256": "626bb733906d07847eb777de0e45a59954c8efb864a1d6ffa4dc48ce4f1293d1"
+    },
+    "image-tables-native/firmware-3-header-4.bin": {
+      "bytes": 36,
+      "sha256": "d55d5416ed61b22edc000d3438e7aaddff35230f08cca8a2f2241cc216699142"
+    },
+    "image-tables-native/firmware-3-madt.bin": {
+      "bytes": 128,
+      "sha256": "441794f0b4bd74feb6f4fc1adf82048023a612ba676dc308c8173e449c0ccdbb"
+    },
+    "image-tables-native/firmware-3-retained.bin": {
+      "bytes": 8192,
+      "sha256": "0af369bea94b16cbca1905e40e2c0a336fd692ff7ade521099ad271e4fb6876c"
+    },
+    "image-tables-native/firmware-3-root.bin": {
+      "bytes": 56,
+      "sha256": "3fa0ae5732fa7349f070b4605c3a0e86d091627e07dca46548e47199f7b0d743"
+    },
+    "image-tables-native/firmware-3-rsdp.bin": {
+      "bytes": 20,
+      "sha256": "7754591fd8f56bce381e01b107c5612d231b5ab3fc74ef7043d8b5d670a43db3"
+    },
+    "image-tables-native/observations.json": {
+      "bytes": 1088913,
+      "sha256": "26bbd51c6f23fb5cd8309258bf1945bcd65e8563f9b11453d43822043e267182"
+    },
+    "image-tables-native/retention-0-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-0-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-0-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-1-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-1-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-1-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-10-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-10-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-10-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-11-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-11-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-11-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-12-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-12-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-12-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-13-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-13-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-13-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-14-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-14-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-14-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-15-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-15-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-15-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-16-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-16-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-16-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-17-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-17-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-17-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-18-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-18-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-18-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-19-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-19-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-19-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-2-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-2-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-2-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-20-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-20-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-20-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-21-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-21-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-21-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-22-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-22-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-22-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-23-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-23-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-23-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-24-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-24-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-24-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-25-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-25-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-25-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-26-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-26-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-26-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-27-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-27-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-27-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-28-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-28-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-28-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-29-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-29-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-29-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-3-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-3-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-3-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-30-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-30-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-30-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-31-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-31-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-31-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-32-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-32-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-32-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-4-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-4-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-4-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-5-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-5-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-5-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-6-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-6-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-6-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-7-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-7-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-7-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-8-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-8-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-8-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/retention-9-bank-0.bin": {
+      "bytes": 32768,
+      "sha256": "e61f3c0b8b25a15bbb292d876cc930a312775d63af9ad635dbd1a0888b61f924"
+    },
+    "image-tables-native/retention-9-bank-1.bin": {
+      "bytes": 32768,
+      "sha256": "e75481321216e5870cb61f5dffc820cd0ef7f52935296276e14fa41f4b4d62c9"
+    },
+    "image-tables-native/retention-9-bank-2.bin": {
+      "bytes": 4096,
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+    },
+    "image-tables-native/serial.log": {
+      "bytes": 7910,
+      "sha256": "0df91597011a0fce9bf6063c7e4d50e3c68de180f22bf42b648ed28d5897217e"
+    },
+    "image-tables-observations.json": {
+      "bytes": 1457,
+      "sha256": "a4b1f3cda4335db8863f08a3d1c51454228ba0f16f6c78efb0ef9c0066229b0a"
+    },
+    "image-tables-plan-binding.json": {
+      "bytes": 1686,
+      "sha256": "e79c337b1246970d09f6241f1d0b221bfbe10b706a216d386b8d2de3a993ffcd"
+    },
+    "image-tables.o": {
+      "bytes": 97992,
+      "sha256": "bbf111c532cd5f51169f79e7d895969f9d9e205ec5d14f1400aa69ce00c9aa55"
+    },
+    "initramfs.cpio": {
+      "bytes": 2037200,
+      "sha256": "802f7a9bea52ed056ba13c48c082dc8294ad66b6a65727c71249806c54f19b3b"
+    },
+    "kernel-image-boot-binding.json": {
+      "bytes": 2377,
+      "sha256": "1b4ba56a8d96248d7f8b55a4d5798c5c5f485ed3977b96ead1cb288fe429ba20"
+    },
+    "kernel.elf": {
+      "bytes": 1845680,
+      "sha256": "1f44d987abb3cc2cd19e7821f900242992e10bd1be6485ff694e89db9e11f94e"
+    },
+    "private-image-binding.json": {
+      "bytes": 226834,
+      "sha256": "9d76574face3cd3554b6324ae21f93db8617a92942c67a0f48a7d967598bf123"
+    },
+    "retained-image-tables-readback.json": {
+      "bytes": 2489,
+      "sha256": "5fc2e68dfde657026bac527366f9815acff0a7a7bb46448fb07caa05e9d48947"
+    },
+    "root-backing-owners.json": {
+      "bytes": 767,
+      "sha256": "a90809ebbcab1dc872fead8d914c24db03cefaba27b052a53fda8fb1a9508641"
+    },
+    "root.o": {
+      "bytes": 365544,
+      "sha256": "ad0ce7b80f96f2606edc04ab7c9c9093794a4d04e708938427f74a5349728e5f"
+    },
+    "source-component.json": {
+      "bytes": 1844,
+      "sha256": "1145557817d1d8ca8f1808a3562ca99691a95f49769bb06628ad44afdbc1f8c5"
+    },
+    "static-elf-abi-fixture.elf": {
+      "bytes": 2024544,
+      "sha256": "5ca28f128861c3cffb3b6bd7b2696e0fc292d04d2263d867df13c6f086b33fd7"
+    },
+    "target.ll": {
+      "bytes": 49107,
+      "sha256": "7df2223b024bd8dc809a7b0abdcc543a9a20a2750050bf23414bf491bbb4259e"
+    }
+  },
+  "native_build": "linux-kernel/.cache/x86_64/process-mm-interface-regression-2697619-1794660878486274851",
+  "orchestration_commands": {
+    "predecessor-matrix": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "linux-kernel/tools/user-memory/run_image_backing.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/retained-image-tables-stage-3/predecessors",
+        "--tables"
+      ],
+      "exit_code": 0,
+      "seconds": 889.1464757490903,
+      "state": "finished"
+    },
+    "retained-guest": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "retained_tables_cross_ordinary_exec_and_restore_before_whole_retirement",
+        "--",
+        "--ignored",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 323.2661446509883,
+      "state": "finished"
+    },
+    "retained-readback": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "linux-kernel/tools/user-memory/readback_retained_image_tables.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-interface-regression-2697619-1794660878486274851"
+      ],
+      "exit_code": 0,
+      "seconds": 1.6863632779568434,
+      "state": "finished"
+    }
+  },
+  "ordinary_owners": {
+    "bootstrap": {
+      "alignment": 1,
+      "count": 5,
+      "pins": 1,
+      "purpose": "bootstrap-hierarchy",
+      "slot": 4
+    },
+    "roles": [
+      {
+        "alignment": 1,
+        "count": 5,
+        "pins": 1,
+        "purpose": "static-image-hierarchy",
+        "slot": 10
+      },
+      {
+        "alignment": 1,
+        "count": 1,
+        "pins": 1,
+        "purpose": "static-image-leaf",
+        "slot": 9
+      },
+      {
+        "alignment": 1,
+        "count": 503,
+        "pins": 1,
+        "purpose": "static-image-payload",
+        "slot": 8
+      },
+      {
+        "alignment": 1,
+        "count": 2,
+        "pins": 2,
+        "purpose": "static-image-stack",
+        "slot": 11
+      }
+    ],
+    "root_object_sha256": "ad0ce7b80f96f2606edc04ab7c9c9093794a4d04e708938427f74a5349728e5f",
+    "token_bytes": 408
+  },
+  "original_inputs": [
+    {
+      "file": "root.o",
+      "sha256": "ad0ce7b80f96f2606edc04ab7c9c9093794a4d04e708938427f74a5349728e5f"
+    },
+    {
+      "file": "source.o",
+      "sha256": "118e61ccccb7e4a73fb359df907a81fe2d62ac25b8b6ae8bc3c6628c7202a464"
+    },
+    {
+      "file": "runtime.o",
+      "sha256": "510dd1ff64e13afa6ae22bd9ee8e91b317834560324600a1e0572eb04b086653"
+    },
+    {
+      "file": "owner.o",
+      "sha256": "ed45f987f8dc61d34deb89e7f79e3a7cc918362f52ba773f30134844a5be80ea"
+    },
+    {
+      "file": "controller.o",
+      "sha256": "558cae9fcbf473842926c609c9b4b753377f534199f7477fcc7c10e9ea137d18"
+    },
+    {
+      "file": "target.o",
+      "sha256": "7484826e5499e471ca6b033a7f5583cb05f91fed9d8f01f11dbd4e90715fcb77"
+    },
+    {
+      "file": "dispatch.o",
+      "sha256": "643169aa568372a9365e24429a07858915cd0266bf06dfd99652119e83b5eb32"
+    },
+    {
+      "file": "gateway.o",
+      "sha256": "90a36a143780dc140c4e7a8bf7b0a925602db9ce555dd4e53d62e0be165162d9"
+    },
+    {
+      "file": "boundary.o",
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    {
+      "file": "provider.o",
+      "sha256": "800cc3435940ed83d510152540c035d384b745194663da62e8548cea7dcd98d2"
+    },
+    {
+      "file": "extent.o",
+      "sha256": "ecaa00e9bae335b11bf7e3174f7329db8f20dc1db6eae6c55c0bb7df22ad0e8a"
+    },
+    {
+      "file": "extent-bridge.o",
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    {
+      "file": "extent-callers.o",
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    {
+      "file": "image-tables.o",
+      "sha256": "bbf111c532cd5f51169f79e7d895969f9d9e205ec5d14f1400aa69ce00c9aa55"
+    },
+    {
+      "file": "kernel-library.o",
+      "sha256": "79caaddf1de51ce3a785230598a7c564e152753be22fa45a689a6419d299e547"
+    },
+    {
+      "file": "time-library.o",
+      "sha256": "2aa0190faa295e8a44a686207170f900ab9df3ae35295534efef25e0061244e1"
+    },
+    {
+      "file": "image-library.o",
+      "sha256": "79b5ee89f1ca8a9d487399fae2fdf9c2f8e38fe744dc58cd5fbef358e060e726"
+    },
+    {
+      "file": "dispatch-library.o",
+      "sha256": "7526d4ef0eb14d76afa80ada15676405815bfa2d2caaf4d6e5a8dd30736d0503"
+    },
+    {
+      "file": "process-identity-library.o",
+      "sha256": "3323aadfdbed1bd5864219050376a37afc5b4bedaefb9be56386fb8cc337cf20"
+    },
+    {
+      "file": "region-library.o",
+      "sha256": "aa17154a36f836d0f17f2258ec5253f7d626061a37406994ebbf5d098034f98d"
+    },
+    {
+      "file": "file-position-library.o",
+      "sha256": "e3ef3327fe54d84a5d213512cc22ab00c6711206b4a8547656a9e09df1c638e1"
+    },
+    {
+      "file": "ram-page-pool-library.o",
+      "sha256": "977fd9fe0bd926a7cb021da700da7088a550d3c893f202277fed28728aefbede"
+    },
+    {
+      "file": "inode-mode-library.o",
+      "sha256": "8c2dc128eaf0727fcd9bb0e75fcedce5e55f5542aa21d916e9b96ff31b177bbb"
+    },
+    {
+      "file": "namespace-library.o",
+      "sha256": "da4f351d6be77f1bc2350b973a564d099a41aa4be05b65385cedc521e023528a"
+    }
+  ],
+  "passed": true,
+  "plan": {
+    "bindings": {
+      "banks": [
+        {
+          "alignment": 1,
+          "count": 8,
+          "pins": 1,
+          "purpose": "prepared-image-bootstrap",
+          "slot": 1
+        },
+        {
+          "alignment": 1,
+          "count": 8,
+          "pins": 1,
+          "purpose": "prepared-image-process",
+          "slot": 2
+        }
+      ],
+      "low_user_leaf": {
+        "alignment": 1,
+        "count": 1,
+        "pins": 1,
+        "purpose": "prepared-image-low-user-leaf",
+        "slot": 3
+      },
+      "root_object_sha256": "ad0ce7b80f96f2606edc04ab7c9c9093794a4d04e708938427f74a5349728e5f",
+      "token_bytes": 408
+    },
+    "kernel_sha256": "1f44d987abb3cc2cd19e7821f900242992e10bd1be6485ff694e89db9e11f94e",
+    "layout": {
+      "address_limit": 1073741824,
+      "image_leaf_storage_bytes": 12288,
+      "kernel_sha256": "1f44d987abb3cc2cd19e7821f900242992e10bd1be6485ff694e89db9e11f94e",
+      "large_granule": 2097152,
+      "minimum_granule": 4096,
+      "schema": "topal.kernel-image-layout.x86_64/1",
+      "spans": [
+        {
+          "end": 2101248,
+          "role": "immutable",
+          "start": 2097152
+        },
+        {
+          "end": 44986368,
+          "role": "mutable",
+          "start": 8388608
+        },
+        {
+          "end": 45072384,
+          "role": "immutable",
+          "start": 44986368
+        },
+        {
+          "end": 46354432,
+          "role": "code",
+          "start": 45072384
+        },
+        {
+          "end": 46358528,
+          "role": "immutable",
+          "start": 46354432
+        }
+      ],
+      "subdivided_regions": [
+        2097152,
+        44040192,
+        46137344
+      ]
+    },
+    "matched_final_partition_and_template": true,
+    "production_qualified": false,
+    "protected_context": false,
+    "retained": true
+  },
+  "predecessor_native": {
+    "actual_final_bootstrap": {
+      "bank_sha256": "b7383ffb2be791fe95bddbb16556cabea0a25599aeb8952b779e8a5ba7677405",
+      "base": 46354432,
+      "controls": {
+        "cr0": 2147549201,
+        "cr3": 46354432,
+        "cr4": 32
+      },
+      "record": [
+        1,
+        5,
+        0,
+        5,
+        1,
+        1,
+        1,
+        1
+      ],
+      "token": [
+        1,
+        5,
+        0
+      ]
+    },
+    "banks": 2,
+    "checked_console_copies": 8,
+    "completed_programs": 4,
+    "constructed_table_bytes": 65536,
+    "discarded_bytes": 69632,
+    "extents": 3,
+    "kernel_sha256": "d86386762f9842244870d593ebf3c073d2244e8110e8f93e7806085151b12a6e",
+    "low_user_leaf_bytes": 4096,
+    "native_execution": true,
+    "native_execution_attempted": true,
+    "observations": "image-tables-native/observations.json",
+    "pages_per_bank": 8,
+    "passed": true,
+    "production_qualified": false,
+    "protected_context": false,
+    "qemu_version": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+    "resources": {
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.max": "3276083200",
+      "memory.peak": "1662414848",
+      "memory.swap.max": "0"
+    },
+    "scope": "Actual image-bound inactive bootstrap/process table construction and separate zero low USER leaf; whole erase/release, no activation",
+    "zeroed_bytes": 69632
+  },
+  "predecessor_readback": {
+    "banks": 2,
+    "boot_binding": {
+      "boot_snapshots": 2,
+      "cache_indices_preserved": true,
+      "cpus_observed": 2,
+      "efer": 1280,
+      "entry_table_words": 2048,
+      "fixed_mtrrs": 11,
+      "gdt_words": 6,
+      "idt_pointer_bytes": 10,
+      "idt_words": 512,
+      "independently_observed_msr_reads": 64,
+      "native_execution": false,
+      "passed": true,
+      "production_qualified": false,
+      "protected_context": false,
+      "rejected_offline_controls": [
+        "cr4",
+        "efer",
+        "capabilities",
+        "mtrr-count",
+        "reserved-observation",
+        "resource",
+        "missing-msr",
+        "reordered-msr",
+        "changed-msr",
+        "retained-state",
+        "cpu-count",
+        "cpu-identity",
+        "bsp-control",
+        "monitor-efer",
+        "handler",
+        "adapter-hash",
+        "nonleaf-dirty",
+        "absent-accessed",
+        "null-descriptor-accessed",
+        "code-descriptor-type",
+        "unused-idt-gate",
+        "retained-idt-pointer",
+        "handoff-entry"
+      ],
+      "scope": "Actual retained boot bytes, capabilities and complete advertised memory-attribute state; snapshots do not qualify CPU/writer lifetime or activation",
+      "variable_mtrrs": 8
+    },
+    "boot_coverage": {
+      "inactive_only": true,
+      "journal_words": 64,
+      "native_completed_checks": 2,
+      "native_execution": false,
+      "pages_checked": 3302,
+      "pages_per_bank": 1651,
+      "passed": true,
+      "production_qualified": false,
+      "protected_context": false,
+      "rejected_offline_controls": [
+        "missing-role",
+        "changed-role",
+        "changed-device",
+        "missing-completion",
+        "premature-completion",
+        "changed-count",
+        "changed-extent",
+        "unused-journal",
+        "0-absent",
+        "0-read-only",
+        "0-executable",
+        "0-alias",
+        "0-cache",
+        "0-external-pointer",
+        "0-unsupported-granule",
+        "1-absent",
+        "1-read-only",
+        "1-executable",
+        "1-alias",
+        "1-cache",
+        "1-external-pointer",
+        "1-unsupported-granule"
+      ],
+      "roles": 11,
+      "scope": "Independent walks of actual inactive table bytes; counters do not establish effective hardware permissions, activation, CPU participation or lifetime",
+      "views": 22
+    },
+    "extents": 3,
+    "kernel_sha256": "d86386762f9842244870d593ebf3c073d2244e8110e8f93e7806085151b12a6e",
+    "native_execution": false,
+    "pages_per_bank": 8,
+    "passed": true,
+    "phases": 5,
+    "processor_inventory": {
+      "boot_snapshots": 2,
+      "enabled": 2,
+      "independent_identity_reads": 4,
+      "inventory_only": true,
+      "madt_bytes": 128,
+      "native_execution": false,
+      "online_capable": 0,
+      "participants": [
+        [
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          1,
+          1
+        ]
+      ],
+      "passed": true,
+      "production_qualified": false,
+      "protected_context": false,
+      "rejected_offline_controls": [
+        "inventory-count",
+        "bsp-identity",
+        "enabled-count",
+        "root-identity",
+        "retained-length",
+        "reserved-journal",
+        "processor-identity",
+        "missing-madt",
+        "firmware-ram-conflict",
+        "cache-encoding",
+        "vm-cpu-count",
+        "retained-copy",
+        "missing-identity-read",
+        "changed-controller-read",
+        "changed-cpuid-read",
+        "reordered-identity-reads",
+        "duplicate-uid",
+        "duplicate-controller",
+        "processor-flags",
+        "unsupported-record",
+        "record-length",
+        "balanced-discard-change",
+        "unsupported-rsdp-revision",
+        "bad-rsdp-checksum"
+      ],
+      "retained_bytes": 386,
+      "root_entries": 5,
+      "scope": "Actual bounded initial firmware processor inventory; no startup, parking, hotplug or lifetime authority"
+    },
+    "production_qualified": false,
+    "protected_context": false,
+    "rejected_controls": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "scope": "Replay of current native bytes/owners/control registers and final actual bootstrap bank; altered records are offline controls, not injected guest execution"
+  },
+  "preparation_context": [
+    1,
+    1,
+    5,
+    151992
+  ],
+  "preparation_controls": {
+    "cr0": 2147483665,
+    "cr3": 1052672,
+    "cr4": 32
+  },
+  "production_qualified": false,
+  "protected_context": false,
+  "readback": {
+    "actual_process_syscall_entry": {
+      "function": 45741712,
+      "setup_bytes": "488d0589010000b9820000c04889c248c1ea200f30",
+      "setup_offset": 14161,
+      "target": 45756273
+    },
+    "banks": 2,
+    "completed_coverage_checks": 3,
+    "exec_attempts": 28,
+    "extents": 3,
+    "inactive_only": true,
+    "initial_boot_binding": {
+      "boot_snapshots": 2,
+      "cache_indices_preserved": true,
+      "comparison_boundary": "retention-before-ordinary-work",
+      "cpus_observed": 2,
+      "efer": 1280,
+      "entry_table_words": 2048,
+      "fixed_mtrrs": 11,
+      "gdt_words": 6,
+      "idt_pointer_bytes": 10,
+      "idt_words": 512,
+      "independently_observed_msr_reads": 64,
+      "native_execution": false,
+      "passed": true,
+      "production_qualified": false,
+      "protected_context": false,
+      "scope": "Actual retained boot bytes, capabilities and complete advertised memory-attribute state; snapshots do not qualify CPU/writer lifetime or activation",
+      "variable_mtrrs": 8
+    },
+    "initial_processor_inventory": {
+      "boot_snapshots": 2,
+      "enabled": 2,
+      "independent_identity_reads": 4,
+      "inventory_only": true,
+      "madt_bytes": 128,
+      "native_execution": false,
+      "online_capable": 0,
+      "participants": [
+        [
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          1,
+          1
+        ]
+      ],
+      "passed": true,
+      "production_qualified": false,
+      "protected_context": false,
+      "retained_bytes": 386,
+      "root_entries": 5,
+      "scope": "Actual bounded initial firmware processor inventory; no startup, parking, hotplug or lifetime authority"
+    },
+    "native_execution": false,
+    "page_views_per_check": 3302,
+    "pages_per_bank": 8,
+    "passed": true,
+    "phases": 7,
+    "production_qualified": false,
+    "protected_context": false,
+    "rejected_offline_controls": [
+      "lost-phase",
+      "retired-early",
+      "issuer",
+      "generation",
+      "unpinned",
+      "changed-cell",
+      "next-regressed",
+      "stale-context",
+      "retained-while-released",
+      "lost-event",
+      "wrong-syscall",
+      "event-generation",
+      "event-unpinned",
+      "event-alias",
+      "event-root",
+      "ordinary-owner",
+      "ordinary-pins",
+      "live-journal",
+      "unused-journal",
+      "event-ordinal",
+      "changed-bank"
+    ],
+    "retention_events": 33,
+    "roles": 11,
+    "scope": "Independent actual-byte/owner replay through ordinary exec/exit and restored-root retirement; not effective protection, continuous exclusion or activation",
+    "whole_retired_bytes": 69632
+  },
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3276083200",
+    "memory.peak": "2020220928",
+    "memory.swap.max": "0"
+  },
+  "retention_journals": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      5,
+      0,
+      1052672,
+      0,
+      8,
+      0,
+      46358528,
+      2,
+      0,
+      1,
+      46391296,
+      3,
+      1,
+      1,
+      46424064,
+      4,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      5,
+      204,
+      1052672,
+      46428160,
+      8,
+      0,
+      46358528,
+      2,
+      0,
+      1,
+      46391296,
+      3,
+      1,
+      1,
+      46424064,
+      4,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      1,
+      5,
+      204,
+      1052672,
+      46428160,
+      8,
+      0,
+      46358528,
+      2,
+      0,
+      1,
+      46391296,
+      3,
+      1,
+      1,
+      46424064,
+      4,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      3,
+      1,
+      5,
+      204,
+      1052672,
+      46428160,
+      8,
+      0,
+      46358528,
+      2,
+      0,
+      1,
+      46391296,
+      3,
+      1,
+      1,
+      46424064,
+      4,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "retirement_context": [
+    1,
+    1,
+    204,
+    151992
+  ],
+  "retirement_controls": {
+    "cr0": 2147549201,
+    "cr3": 46428160,
+    "cr4": 32
+  },
+  "run_sha256": "7827417fe533d60565516821a561b159e9ff617f2deb367c56387cf42d041c63",
+  "scope": "Actual whole pinned inactive banks through ordinary user exec/exit and restored-root retirement, plus complete immediate-discard/backing predecessor matrix; no protected activation or continuous exclusion",
+  "seconds": 1214.1592389913276,
+  "source_stability": {
+    "inputs": 998,
+    "post_validation_reporting_updates": {
+      "linux-kernel/README.md": {
+        "scope": "Descriptive reporting after the terminal frozen matrix",
+        "sha256": "c80485c0114699c83291fb6a3c0e8e931c892944391d6519d0c5e66170e0fb92",
+        "tested_sha256": null
+      },
+      "linux-kernel/step-4-retained-image-tables.md": {
+        "scope": "Descriptive reporting after the terminal frozen matrix",
+        "sha256": "3789e8c70e2aabf89f84fc1877f542f89a080c344a50af52a65e067af70fb422",
+        "tested_sha256": null
+      },
+      "linux-kernel/step-4-status.md": {
+        "scope": "Descriptive reporting after the terminal frozen matrix",
+        "sha256": "cc87290177ffed6a46c3307bed2d25ee63ce9cbdec830eecef8f12091ef2e9a8",
+        "tested_sha256": "b9416480558b635dbfa5088b388ae76a454cc24c6fbe23db47281161a0637e69"
+      },
+      "linux-kernel/traceability.md": {
+        "scope": "Descriptive reporting after the terminal frozen matrix",
+        "sha256": "3a9b62ef25f76a127ac57ccf379af1799e6b21c038a2b930cb4e590291015cf5",
+        "tested_sha256": null
+      }
+    },
+    "tested_changed_inputs": {
+      "docs/systems-profile.md": "b105be12fa623543ec7096ff29fc301c8553f615df06192cd9231cc9f299feb5",
+      "linux-kernel/design/decision-register.md": "708b90450029a68c8839371c56ee0518a68be11b08f794de1f5c2291e32645fe",
+      "linux-kernel/design/retained-image-tables.md": "3167252096297aec99cb62cab700b1ef3b52fb1b22bcafaf710e793a28cfc7f5",
+      "linux-kernel/labs/qemu/x86_64/boot_processors_inspect.py": "c2c4ee7cc3fbd6694c4a521525806e3678e22ba701ffc4891f464d07260032c9",
+      "linux-kernel/labs/qemu/x86_64/image_backing_inspect.py": "2b30d035ba2931877f1c4166c86c2e4a515cb78f848e2faa981a08a36ca2829d",
+      "linux-kernel/labs/qemu/x86_64/retained_image_tables_inspect.py": "382eea7d23e65a268e6c7589716b1bdde35c405455032fd631df7e17fed03967",
+      "linux-kernel/labs/qemu/x86_64/retained_tables_inspect.py": "9f1e8e3094ea056fb800ecac04201383a403aec8f4dec38f5bcbe35aa1a0d580",
+      "linux-kernel/tools/user-memory/boot_image_binding.py": "6265a63818890357329500fbe1e8fa013abed69382db3f03ca3ef7c52c16c900",
+      "linux-kernel/tools/user-memory/image_backing_source.rs": "0776eb04c93d1bb354ed556ea038e97dde03542d56e413a26ddc54d3ed325727",
+      "linux-kernel/tools/user-memory/readback_retained_image_tables.py": "281c302dc73ef299a9c502f2ff9bfbc83f63cccd3315033b2807517203ec7b12",
+      "linux-kernel/tools/user-memory/retained_image_tables.py": "c576f1832140e31c7333de1874014c982e739cfb261c6fc8a146463b2acb9d8d",
+      "linux-kernel/tools/user-memory/run_retained_image_tables.py": "ff0db05155909ccdc270a41eb2f13154afe620413322eb4ec073d64ee08f7862",
+      "linux-kernel/tools/user-memory/test_retained_image_tables.py": "3e6d8f7bcef64e07d350a1ec59c4dec1b812122b5d72f0026bcdbdfff5793913",
+      "se/requirements.md": "83983b3117ac49598cf9bf600b113d0d29200bab1a0e4d52da7507f64e05e812",
+      "spec/systems-profile.md": "c2de48c280edfc2a7afa8a6bba443e1f579b944606b6f9ba8b22c67261e40dc6",
+      "src/topal-compiler/se-requirements.md": "491228b0b0a2e1110dfa4c0dbdcd8d373ccd245c7d2380d1e2498badb4547ed0",
+      "src/topal-compiler/src/runtime/kernel_retained_tables.ll": "2e8acae317f68facaa208bca54d8639ab7c15c2c3fab4328dff2a1743b78a180",
+      "src/topal-compiler/src/systems_artifact_operations.rs": "36799f62b45b5b0385fccf5017219c43138adcd59b0f0d76ceb027f2cd28dc1f",
+      "src/topal-compiler/src/systems_artifact_root_state.rs": "a49d6f2b66f5fed71a6f76c5b1a7d18f1f151aeab05ca50e0a2432bef8e55996",
+      "src/topal-compiler/src/systems_artifact_trace.rs": "614cf2c576ec1a05d3436fcf0c41adcc8387c104288df216e2e251eca05d6615",
+      "src/topal-compiler/src/systems_frame_root_tests.rs": "c0e4ddd7badfd950dd792261a1d4e4fb0f7ee571a6849d154b8e649d8ca86a25",
+      "src/topal-compiler/src/systems_image_backing.rs": "fb7f64d5c2e3885dbb023d2bda5621944a338707bfada378c52147bcf052f278",
+      "src/topal-compiler/src/systems_image_tables_native.rs": "98c4cd05fb112711566447476e73b0d9cbf6296dccfb84bbb54c30defc8e51ba",
+      "src/topal-compiler/src/systems_provider.rs": "2b523caaed46dc9fcfbb252fb8429156434b3a05f4410abeb75b53e6ff662e3a",
+      "src/topal-compiler/src/systems_retained_tables_tests.rs": "d75f97e987c93aee4450e99132f1ad5e9ef09833eba044a2c0415679a48b9adc",
+      "src/topal-compiler/src/systems_root_encoder_image_backing.rs": "e3fb080ae33fd59a1e41c50aab11d322b1efa8b06c7784b1023ba0322859b633",
+      "src/topal-compiler/src/systems_root_encoder_translation_completion.rs": "45934f4200c20ca54b935159ab084ecbc2fc9e088e4ffd8708836599772bad7b",
+      "src/topal-language/src/systems.rs": "b2d52396cb36e14843da7dfa70545d939f5a039ba7c10e4a3cedd61fc0758ba1",
+      "src/topal-language/src/systems_kernel_image_backing.rs": "342a319f758948eb88e2785e9d0ea73e682f3d68ecf94ade694f58e3482e5967",
+      "src/topal-language/src/systems_source_tests_image_backing.rs": "aba822cbdae2729c36cf2f995e792124007486b71ef3b3d2309688fef0568150",
+      "src/topal-semantics/src/systems.rs": "9e0f654676cfba91e367ebc4a30be40759125c6f55ca80bee6fa85294d57875a",
+      "src/topal-semantics/src/systems_frames.rs": "fb31d358918311d1e55b9fe4d078704e2149f10e6f4cf606f4735204dba7ddaa",
+      "src/topal-semantics/src/systems_model_authority.rs": "578b9ca68720a593326184cc5528d4bdae34018576afe9c1c4b8706bffd995b2",
+      "src/topal-semantics/src/systems_model_authority_protocols.rs": "b002a17c8cd78bc179306af92b72c03bcf0dd344b14195f175c745951cde7691",
+      "src/topal-semantics/src/systems_model_program.rs": "9238eda6923bc19889edbd6f89427b6ef13876cd8105b720b8680bc854a5fb2b",
+      "src/topal-semantics/src/systems_model_storage_transitions.rs": "0fe0df16ca91cc2ba65c44f0c787918479b6d1001e077782d22aa079d286ea93",
+      "src/topal-semantics/src/systems_model_tests_image_backing.rs": "0c75e06067535b1caa6bd93fce398ab492e061f68a10ca7c49e67aabb7a8a7e3",
+      "src/topal-semantics/src/systems_model_transitions.rs": "7295b3d34b3ee2304bdf889d7d373f2a7b23de8c67e38daf42db60ffb1738ee1"
+    },
+    "unchanged": true
+  },
+  "verification": {
+    "canonical_layout_tests": 5,
+    "component_tests": 6,
+    "frontend_tests": 656,
+    "leaf_commands": 17,
+    "legacy_owner_tests": 4,
+    "native_vm_protocols": 3,
+    "old_backing_controls": 12,
+    "old_boot_controls": 23,
+    "old_coverage_controls": 22,
+    "old_processor_controls": 24,
+    "old_table_controls": 22,
+    "process_memory_models": 83,
+    "retained_record_controls": 21,
+    "semantics_tests": 259,
+    "user_memory_models": 296
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High if overstated as a complete safety proof; this change only adds conditional readers and test integration, not executable kernel behavior or authority design",
+  "review": "Single-agent source/authority review with separate GNU instruction/effect and reverse-graph readback, positive-backed offline ELF counterexamples, eight graph/operand models and a fresh ordinary source-pipe VM regression",
+  "inherited_frozen_artifacts": 5,
+  "selected_inputs": 137,
+  "local_source_snapshots": 3,
+  "conditional_regions": 2,
+  "user_access_instructions": 3,
+  "lookup_instructions": 45,
+  "gnu_instructions": 135,
+  "gnu_windows": 3,
+  "offline_rejections": 12,
+  "model_reader_tests": 60,
+  "native_regression_passed": true,
+  "native_new_per_access_observation": false,
+  "native_helper_union_unchanged": "88/91",
+  "published_caller_index_unchanged": "79/91; 306 instructions",
+  "kernel_and_provider_and_three_metadata_files_equal": true,
+  "authority_meaning_changed": false,
+  "canonical_production_unchanged": true,
+  "previous_failures": [
+    {
+      "kind": "control-harness expected-offset error",
+      "terminal_status": "failed",
+      "detail": "Initial GS displacement offset was off by one; no rejected action or AI notice"
+    },
+    {
+      "kind": "GNU-reader operand formatting mismatch",
+      "terminal_status": "failed",
+      "detail": "The decoder spells zero displacement as [r8+0x0]; no kernel or AI failure"
+    }
+  ],
+  "remaining": [
+    "Fresh per-access/helper-preservation/permission observation for both outputs",
+    "Actual table/output/stack owner and nonalias evidence; continuous lifetime",
+    "Complete helper/entry/return/fatal/exception contracts",
+    "Twelve sites without published intervals, including these two, and all fallback obligations",
+    "Canonical source/native/boot and full Step-4 qualification"
+  ]
+}

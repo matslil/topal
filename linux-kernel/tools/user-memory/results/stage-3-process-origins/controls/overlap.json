@@ -1,0 +1,6 @@
+{
+  "name": "overlap",
+  "rejected": true,
+  "exit_code": 1,
+  "scope": "Offline JSON origin/graph diagnostic mutation only; unchanged first-party ELF and no VM execution or guest-state mutation"
+}

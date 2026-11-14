@@ -1,0 +1,6 @@
+{
+  "passed": false,
+  "reason": "Replay restored only observations and debugger input but omitted the recorded QEMU command required by inherited interval readback. Restore all unchanged native observation attachments before replaying; no VM was executed.",
+  "reader_sha256": "c4dcb2046f284ccdf6c4fc3efda52cc4f6c7c927af2e0363d83458328ec48b83",
+  "log_sha256": "c0b4cb792a8f86d98b1b43a2dd543e072bfc0308027992690af9f00e6079aa84"
+}

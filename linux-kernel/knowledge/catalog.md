@@ -14,6 +14,7 @@ in the linked record has been examined. None means implemented or qualified.
 | `LK-UAPI-SYSCALL-001` | native syscall protocol ledger | x86-64 | source-indexed | [UAPI](common/linux-uapi.md), [inventory](../inventory/7.2.9/x86_64/syscalls.json) |
 | `LK-UAPI-PROCESS-001` | process/ELF/signal ABI family | x86-64 | mapped | [UAPI](common/linux-uapi.md) |
 | `LK-UAPI-FD-001` | file descriptor and VFS ABI | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |
+| `LK-X64-INODE-MODE-001` | chmod-family source semantics | Linux 7.2.9/x86-64, existing root credential | source-indexed | [exact source hashes/facts](x86_64/inode-mode-research.json), [implementation design](../design/shared-inode-mode-actions.md); reference VM/error-order qualification remains |
 | `LK-UAPI-NET-001` | socket and Netlink ABI | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |
 | `LK-UAPI-DEVICE-001` | ioctl and device ABI | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |
 | `LK-UAPI-PSEUDOFS-001` | proc/sys/dev/cgroup surfaces | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |
@@ -37,7 +38,11 @@ in the linked record has been examined. None means implemented or qualified.
 | `LK-DT-003` | binding, population, lifecycle | cross-architecture | reviewed | [Device Tree](common/device-tree.md) |
 | `LK-DT-004` | architecture relationship | cross-architecture | reviewed | [Device Tree](common/device-tree.md) |
 | `LK-X64-ABI-001` | native processor ABI | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
+| `LK-X64-USER-MEMORY-001` | user-range, transfer and translation-permission boundary | Linux 7.2.9/x86-64 | source-indexed | [facts](x86_64/user-memory.md), [exact source identities](x86_64/user-memory-research.json), [owned-extent design](../design/owned-user-extents.md); native and complete syscall qualification remain |
 | `LK-X64-SYSCALL-001` | syscall register/error contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
+| `LK-X64-STAT-ORDER-001` | stat pathname lookup before metadata copy | Linux 7.2.9/x86-64 | source-reviewed | [exact source identities and ordering](x86_64/newfstatat-research.json); runtime qualification remains separate |
+| `LK-X64-DIRENT-EOF-001`, `LK-X64-READ-RANGE-001` | directory record copy, EOF and numeric read range | Linux 7.2.9/x86-64 | source-reviewed | [source identities and ordering](x86_64/file-transfer-research.json) |
+| `LK-X64-CHDIR-PATH-001`, `LK-X64-SIGACTION-COPY-001`, `LK-X64-POLL-COPY-001`, `LK-X64-IOCTL-UNUSED-001` | shell pathname, signal action, poll record and unused terminal argument | Linux 7.2.9/x86-64 | source-reviewed | [source identities and ordering](x86_64/shell-io-research.json) |
 | `LK-X64-PROCESS-001` | ELF/process/TLS contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
 | `LK-X64-SIGNAL-001` | native signal/restart contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
 | `LK-X64-DEBUG-001` | ptrace/regset/core contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
@@ -49,6 +54,7 @@ in the linked record has been examined. None means implemented or qualified.
 | `LK-X64-DISCOVERY-001` | discovery and authority order | x86-64 | reviewed | [platform](x86_64/platform-and-board.md) |
 | `LK-X64-VIRTIO-001` | initial virtual devices | x86-64 QEMU | proposed | [platform](x86_64/platform-and-board.md) |
 | `TK-ELEMENT-001` | kernel-element design rules | cross-architecture | proposed | [Topal elements](../design/topal-kernel-primitives.md) |
+| `LK-X64-NAMESPACE-TRANSACTIONS-001` | rename/link adapters, shared names, temporary-link eligibility and metadata laws | x86-64 | source-indexed | [verified primary files](x86_64/namespace-transactions-research.json), [design](../design/shared-namespace-transactions.md) |
 
 The broad UAPI boundary is source-indexed, but most semantic families remain
 `mapped`. They advance only when their command/layout/state ledgers reconcile

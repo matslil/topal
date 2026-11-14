@@ -1,0 +1,317 @@
+# Shared namespace transactions for owned regular inodes
+
+`TK-DEC-281`; systems-only refinement under standing chat authorization.
+
+## Purpose and authority
+
+Add rename and hard links to the existing owned RAM filesystem, enabling ordinary
+`mv` and `ln` through shared filesystem services. Keep the
+[Step 2 architecture](topal-kernel-architecture.md),
+[named files](named-volatile-files.md),
+[shared inode modes](shared-inode-mode-actions.md),
+[borrowed regions](borrowed-kernel-regions.md),
+[instance isolation](instance-scoped-region-actions.md) and
+[core resource meaning](../../docs/resources.md).
+This advances `TK-KERNEL-OBJECT-001`, `TK-KERNEL-STATE-001` and
+`TK-KERNEL-UAPI-001` without changing the core language.
+
+The selected filesystem retains four regular inodes, four directory-entry
+slots, eight resident pages and 255-byte raw components. Entry capacity and
+inode capacity are independent resource budgets: four names may refer to one
+inode. Anonymous or open-unlinked inodes consume inode capacity without consuming
+entry capacity. This is the next implementation increment, not a reduction of
+the full distribution, containers, virtualization or retained-UAPI goal.
+Directory creation/moves, symlinks, whiteout device nodes, other mounts,
+credentials beyond the prepared root and general VFS remain required work.
+
+## Names and inode lifetime
+
+The directory owns entries containing copied component bytes and stable inode
+identity. An inode owns contents, metadata, temporary-link eligibility and page
+associations; an open description owns rights, flags and its shared position.
+Neither the numeric inode identity nor a copied name is an authority. Lookup
+must match a live object generation in the actual filesystem owner.
+
+Replace the one-name-per-object representation with independently allocated
+entry slots. Derive link count from all live entries naming an inode, or verify
+an explicitly stored count against that table before admission. Every existing
+lookup, create, unlink, stat, getdents, chmod, close, exec/fork restoration and
+terminal consumer must use the same table. Reclaim an inode only when it has
+neither directory entries nor open descriptions. Reusing an entry slot must
+not reuse or resurrect an inode identity. Erase retired names and all released
+object/page state; terminal cancellation erases all entries as well as objects.
+
+Cookies enumerate dot/dot-dot, then the four entry slots, ending at six. They
+are independent of object slots and inode identities. A fresh directory read
+reports every current hard link with the same inode and exact raw name. Keep
+the existing qualified no-snapshot-across-mutation contract, 280-byte maximum
+native record, complete-copy-before-cursor publication and erased staging.
+The preceding native evidence retains its earlier object-slot-based layout;
+the new table needs a new exact native evidence version before qualification.
+
+## Semantic transactions
+
+All recoverable owner, name, reference, flags, lookup, capacity and clock checks
+precede mutation. Names compare as raw bytes; no command identity or host lookup
+selects behavior. One exclusive filesystem operation publishes each transaction;
+future SMP requires an explicit admitted synchronization domain.
+
+Hard link resolves an existing regular inode and a missing destination name.
+It consumes one clean entry slot, adds one link, clears initial temporary-link
+eligibility, sets inode ctime and parent mtime/ctime, and preserves contents,
+size, allocation, permissions, atime/mtime, rights and description positions.
+An existing destination is EEXIST. Entry exhaustion is ENOSPC even if inode
+slots remain; it is not an invented maximum-link-count error. A path-selected
+source requires a current entry. An empty-path descriptor may select an inode
+with existing links, or a never-linked eligible anonymous temporary inode.
+An O_TMPFILE|O_EXCL inode is ineligible. After the initial successful link and
+subsequent removal of every link, a retained descriptor cannot resurrect it:
+return ENOENT. Same-label foreign pools and stale descriptors cannot link it.
+
+Rename with flags zero moves a source entry to an absent name using its current
+slot, even when all entry slots are full. If a destination exists, atomically
+replace that entry and remove the source entry; the victim loses exactly one
+link and remains alive through other names or open descriptions. Update source
+and surviving victim ctime and parent mtime/ctime; preserve data, size, mode,
+atime/mtime, allocation and all positions/rights. A destination naming the same
+inode is a complete successful no-op, preserving both names, all metadata and
+invocation history. This applies to identical pathnames and distinct hard links.
+
+RENAME_NOREPLACE returns EEXIST for every existing destination, including the
+same spelling or inode, before the same-inode no-op. RENAME_EXCHANGE requires
+both entries and exchanges their inode associations while preserving names,
+link counts, contents, rights and positions; both inode ctimes and parent times
+change. Exchange of two names for the same inode is a complete no-op. Missing
+source or missing exchange destination is ENOENT. Invalid or incompatible native
+flags are EINVAL. RENAME_WHITEOUT remains explicitly unqualified until device
+nodes are implemented; do not disguise it as ordinary rename success or claim
+that a fallback implements it.
+
+## Linux adapters and research obligations
+
+X86-64 uses rename 82, link 86, renameat 264, linkat 265 and renameat2 316.
+Extend the current source dispatch in a new version; preserve the exact first
+five vocabularies, tags and named adapters. Root declaration selects a distinct
+`namespace-metadata` instance using the existing two-Nat/Boolean frame ABI.
+
+Adapt fd and flags through declared native 32-bit types. Rename's admitted
+flags are zero, NOREPLACE and EXCHANGE; invalid bits and EXCHANGE combined with
+NOREPLACE/WHITEOUT have Linux's invalid-argument priority. Linkat admits
+AT_SYMLINK_FOLLOW and AT_EMPTY_PATH; no symlink traversal is implemented by
+merely accepting FOLLOW in a namespace without symlinks. Empty old pathname
+requires EMPTY_PATH and the existing prepared-root authority. A null pointer
+still has copied-string EFAULT semantics. Absolute paths ignore their dirfd;
+relative old and new paths resolve against their separate checked directories.
+Both path copies and intermediate/final component classifications must retain
+their actual native error order, including dot/root/trailing-slash cases.
+
+Research and then execute pinned Linux controls for cross-mount EXDEV, target
+parent write denial, existing destination, old-target lookup, same-inode cases,
+invalid flags and bad paths. Rename checks parent mounts before final target
+disposition; hard-link creation has its own lookup/write ordering. Do not reuse
+chmod or unlink ordering without evidence. Immutable boot objects/directories
+cannot gain mutation through aliases or dirfds. Unimplemented object kinds and
+flags remain separately recorded acceptance work.
+
+## Ordinary source and native placement
+
+Use actual persistent metadata, not a candidate map followed by native mutation.
+Keep the existing 36864-byte filesystem and 311296-byte process backing. Reserve
+four 16-byte entry records at filesystem offsets 64..127, holding inode identity
+and name length; retain the four 256-byte names at offset 1536. Object offset 56
+becomes a checked link count, offset 64 carries explicit temporary-link intent,
+and the former per-object name-length word at 72 becomes reserved zero.
+Object and metadata/page/payload placements stay disjoint and unchanged.
+
+The portable owner uses that encoded 4096-byte metadata page from construction
+onward. Normal lookup, inode observation, link counts, directory entries, page
+map/associations and scoped loans use the same authoritative bytes. Decoded
+observations may support direct portable model transitions; an opaque loan
+always writes the actual page. A completion oracle is comparison-only and must
+never be copied back, whether an action succeeds or fails. Preserve the existing
+32-byte page-record encoding: owner identity at zero, logical page at eight and
+reserved zero at sixteen through thirty-one; there is no separate live word.
+
+The exclusive controller lends the actual first metadata page, not file payload
+pages. It places independently checked operation inputs and the copied new
+component in the existing 512-byte directory staging at offset 3072 before
+entry; these remain immutable input by the selected source contract. The two
+ordinary Nat frame facts are admitted operation and realtime seconds. Source
+reads checked semantic entry/object indexes and bytes from that staged input,
+validates the full fixed geometry and all preconditions before stores, and
+performs the real entry/name/link-count/ctime/parent-time changes with ordinary
+checked byte codecs. It constructs no address or authority. All other metadata
+and allocation-map bytes must remain exact. Source code must not implement
+lookup by recognizing caller command text.
+
+Staged-input immutability is a contract of the exact bound source: the metadata
+view retains its existing read/write authority, and qualified source performs
+no stores to input staging. It is not a new read-only-view facility or transport
+ABI. Component/source-access evidence must establish that no-write property;
+the independent controller also checks the complete unchanged input bytes.
+
+The controller independently checks the complete expected persistent delta,
+true completion and untouched immutable input, then erases staging, input frame,
+arena, control and retired stack before owner resumption. Entry cleanup and
+last-reference page reclamation occur under the same exclusive operation.
+False, malformed state or cleanup failure after admitted writes is fatal after
+reclamation, without rollback or owner resumption. Histories do not rewind on
+rename, link, object reuse, exec or child restoration. Keep separate instance
+code/data/hooks/storage; overlapping filesystem loans conflict with existing
+position/page/inode actions. No-op and pre-admission failures issue no action.
+The existing 65536/4096 source temporary/stack limits remain; prove complete
+source and owning-controller costs before native binding.
+
+For the first native caller, `namespace-library` selects the existing instance
+action interface and the fixed `namespace-metadata` context. It requires the
+instance position, page and inode controllers so that filesystem exclusion
+checks have concrete, independently bound domains. The declaration alone adds
+no syscall tag or reinterpretation of an older dispatch's file tables. V6 and
+its versioned entry consumers remain a separate selection. Kernel-controller
+components may supply a canonical page under the actual live owner, but cannot
+claim those later Linux entry paths or final victim reclamation from that test.
+
+V6 selects the separate entry-table layout independently of the presence of a
+namespace callback. It also requires `kernel-library` to select the existing
+`file-open-decision-v1`, as required by the named-file profile: create, reopen,
+truncate and unlink must use the same independently owned entry table. A missing
+or frozen boot-only open policy cannot select this mutable profile. Namespace
+controller components with older dispatch versions retain their existing
+selection rules. Its two-path adapters validate native flags first. Rename
+resolves both parents before mount comparison, final-component classification,
+write admission and final lookup; link resolves its old object before destination
+creation, whose existing-target/trailing-name errors can precede mount-write or
+cross-mount denial. The pinned Linux execution baseline is recorded in
+[native dispositions](../knowledge/x86_64/namespace-native-dispositions.json).
+The existing open/unlink walker modes cannot substitute for those different
+orders, particularly for a missing final source or trailing regular component.
+
+The two-path construction can retain the old final component in the first
+256 bytes of the existing 512-byte directory staging and its checked parent/
+length/type/trailing facts in the next 64 bytes. The second copied path still
+uses the private 4096-byte pathname buffer. No source loan or history is issued
+during this admission phase. Before invocation, derive the complete plan under
+the same exclusive operation, retain its scalar facts across clock observation,
+copy the new component from the private path buffer into the final input's
+offset 128, write the eight admitted words and clear all input padding. Retire
+the pre-admission representation completely; neither it nor an added live
+pathname frame may silently enlarge the complete source/caller stack bound.
+Every recoverable refusal erases directory staging, private pathname and normal
+transfer staging before returning. The final source input representation and
+ordinary two-Nat/Boolean transport remain unchanged.
+
+The V6 native evidence uses volatile-file profile version 6 with an explicit
+entry-table record; older profiles omit that record. The record binds four
+16-byte entries at offset 64, link count at inode offset 56, initial-link intent
+at offset 64, and the complete native lookup and namespace caller bounds. Native
+lookup verifies canonical metadata before consuming entry/inode associations.
+This read-only consistency check grants no owner, credential or source authority.
+Its eight saved registers and return word require 72 stack bytes; the private
+controller wrapper requires 88 and a lookup/free caller requires 96. Restore
+registers and erase/read back popped spills and completed inner return words
+before returning. These costs are separate from the later source invocation.
+The parent walker and final-name lookup each add one enclosing return word;
+bind their complete metadata-lookup maximum as 104 bytes. Recoverable V6 exits
+restore the trusted captured kernel-entry stack position, validate its owned
+extent and erase/read back the retired 4096-byte call area before resuming user
+code. No-op exits retire the same area without issuing a source action. Retire
+completed clock calls before source entry, including on clock failure; a live
+helper frame must not survive by jumping directly into a user-return path.
+
+V6 inode-mode admission also selects a distinct binding version: a regular
+inode may have zero through four current names. Validate the complete canonical
+entry/inode page through the same closed read-only metadata leaf before the
+32-byte inode loan, and refuse an overlapping position/page/namespace loan.
+Bind this additional leaf, its 72-byte complete stack cost and the maximum
+link count. Retire its completed return word as well as its popped spills.
+The leaf's admission path is sequential with ordinary source invocation; use
+the larger complete cost rather than adding the two paths. Preserve earlier
+inode-mode code and bindings under earlier dispatch selection. The mode action
+still receives the same actual 32-byte block and two ordinary Nat facts.
+
+The namespace entry adapter's additional live return word makes the complete
+source/caller allowance 256 bytes, including the existing 184-byte controller
+and 64-byte alignment allowance. Together with the normal 3824-byte source this
+is 4080 bytes; the wrong-association witness reaches exactly 4096. Independently
+check the sum before boot packaging; the source limit remains unchanged.
+
+The x86-64 controller keeps a private 32-byte recovery record: trusted caller
+frame, consumed epoch, admitted operation and admitted clock. Establish the
+frame under the private stack/interrupt preconditions before entering source;
+consume the nonwrapping history before the source call. Preserve these facts
+outside the borrowed page and compare them with the source frame on return.
+An aborting callee is not obliged to restore its frame or saved registers, so
+fatal recovery uses this private record rather than live callee registers.
+Attempt every erasure before a failed readback can prevent cleanup of another
+region. Clear staging, oracle, arena, control, the retired reserve and abandoned
+caller frame before the bound fatal halt, without copying persistent bytes back.
+On normal return, restore caller registers and erase their popped spill slots
+as well as source temporaries before clearing the recovery record. The normal
+caller return-address word remains part of its calling convention; fatal
+recovery additionally erases that abandoned word. Other architectures must
+preserve the same recovery/retirement laws using their own calling conventions.
+
+The V6 owning commit helper adds one outer return word beyond the component
+caller's frame. Its fatal continuation uses a separately selected namespace
+owner/invocation evidence version 2. After the existing recovery has attempted
+all source-domain erasures, this continuation loads the protected captured
+kernel-entry stack position, validates its bounds/alignment and erases/read backs
+the retired 4096-byte admission call area, including the outer return word.
+It then clears registers and halts without owner resumption or persistent
+rollback. An invalid captured address authorizes no erasure. Bind this geometry
+and the final halt-instruction offset to the exact native code; observe fatal
+cleanup after that continuation, rather than at its entry. Older component
+selection retains all seven earlier templates and evidence version 1.
+
+Bind the oracle and recovery storage to exact zero-initialized, writable,
+disjoint ELF allocations along with code, immutable inputs and stack costs.
+This profile's added code/storage no longer fits below the reserved x86 user
+window at 4..8 MiB, so selection places supervisor BSS at or above 8 MiB.
+Keep the same filesystem/process extents and offsets and retain the overlap
+guards; a low placement that crosses that user window is invalid. Older roots
+without the declaration retain their prior placement. The 3824-byte source,
+184-byte live caller and 64-byte alignment allowance total 4072 bytes; the
+qualified wrong-association witness totals 4088 bytes. Neither increases the
+4096-byte complete stack limit. Sequential comparison helpers have eight-byte
+leaf bounds and require no extra simultaneous source frame.
+
+Ordinary helper composition must not consume the 64-function qualification
+budget merely by duplicating equivalent checked instances. For closures that
+would exceed that budget, first validate the complete original closed graph,
+then share equivalent instances of the same source declaration after removing
+analysis-only integer-range annotations. Preserve types, literals, operation
+and call order, arguments, effects, source/module identity and captures; rewrite
+callee references only to an equivalent retained instance. Revalidate the
+retained closure and enforce the same 64-function budget. Charge each actual
+call in resource proofs even when its code is shared. Smaller existing closures
+must retain their exact prior representations. This is a systems-profile
+compiler strategy, not new core meaning, authority or larger runtime limits.
+
+This describes required source integration; the first stage is a direct
+portable ownership model, not opaque source execution or physical cleanup.
+AArch64/RISC-V use their own syscall numbers, argument conventions and native
+encodings. Ownership, transactions, byte comparison, generation and cleanup
+laws do not depend on x86 registers or raw addresses.
+
+## Risk and staged delivery
+
+Risk is high: name/inode identity, replacement lifetime, complete failure
+atomicity, source grants, native error order and reclamation interact. Review
+uses authority order, full-state model oracles, pinned source and Linux controls,
+independent C/guarded-byte tests and physical GDB/QMP observations. Self-review
+does not claim independent human review. No delegation is required.
+
+Use four staged commits in the existing initial Step 4 PR:
+
+1. Systems design/rules/traceability, pinned primary research and separate-name
+   ownership model: alias/link counts, replacement/exchange/no-op, independent
+   capacity, exact metadata/data preservation, foreign/stale refusal and cleanup.
+2. Ordinary namespace source and actual-owner loan model; exact code/data/input/
+   cost bindings and independent guarded native/GDB components, including
+   false-after-store, changed association and complete temporary erasure.
+3. All five Linux adapters, current versioned entry-table consumers, actual
+   source-controlled mutation, pinned Linux comparisons, physical lifecycle/
+   refusal controls and unmodified BusyBox mv/ln workloads. Preserve all frozen
+   dispatch controls and distinguish unsupported device/directory operations.
+4. Complete affected committed Rust/lab/native/VM qualification, lossless evidence,
+   accurate remaining-scope records, all-open-PR conflict audit and publication.

@@ -1,0 +1,21 @@
+{
+  "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+  "gdb": "GNU gdb (Fedora Linux) 17.2-2.fc44",
+  "documentation": [
+    {
+      "url": "https://www.qemu.org/docs/master/system/gdb.html",
+      "consulted": "2026-11-12",
+      "fact": "TCG system emulation advertises hardware breakpoints/watchpoints; this does not itself qualify installed-version coverage."
+    },
+    {
+      "url": "https://sourceware.org/gdb/current/onlinedocs/gdb.html/Set-Watchpoints.html",
+      "consulted": "2026-11-12",
+      "fact": "Write watchpoints detect changed values; hardware and software implementations differ."
+    },
+    {
+      "url": "https://www.sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Configuration.html",
+      "consulted": "2026-11-12",
+      "fact": "Remote watchpoint count/length settings are debugger capabilities, not kernel ownership or isolation mechanisms."
+    }
+  ]
+}

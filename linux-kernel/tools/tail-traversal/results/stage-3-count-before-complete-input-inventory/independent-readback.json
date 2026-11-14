@@ -1,0 +1,11 @@
+{
+  "schema": "topal.tail-count-input-readback/1",
+  "exit_code": 0,
+  "scope": "Exact current/frozen source and log/native identity readback, guarded direct/imported Count clients, existing raw kernel observations and separate ELF relocation/load replay of the two canonical regression artifacts. Does not establish larger privileged ownership or general allocation.",
+  "files": {
+    "qualification.json": "b6925ee5dd93dad6c39540606d60f059cd83267d326814f37d7415caca8e9533",
+    "independent-readback.py.txt": "d362570fbdd965839c797c1f317fa4815fe0826120d7240ecfbb6e66ebb7906e",
+    "independent-readback.stdout.log": "0184d86ed279c03d7ae4701bf971f8573bd8e9e342581870c390576301e8b5e0",
+    "independent-readback.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

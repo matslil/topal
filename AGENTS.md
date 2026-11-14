@@ -92,6 +92,44 @@ limit when necessary to retain host memory. A validation killed by that cgroup
 is a failed validation to investigate; do not bypass the wrapper or raise its
 limit merely to make the command pass.
 
+## Kernel and systems validation
+
+For kernel, compiler systems features, and their validation:
+
+- Prefer small, source-built programs exercising ordinary application interfaces
+  over patching machine instructions into existing application binaries. Preserve
+  pinned third-party binaries unchanged for compatibility testing. This does not
+  prohibit native instruction generation by the compiler.
+- Exercise invalid application buffers through normal syscall arguments where
+  sufficient. Use model-level tests for inconsistent internal states where
+  appropriate, and distinguish their evidence from native execution. Record any
+  remaining native coverage gaps as acceptance blockers; do not weaken security
+  requirements or claim an unrun check passed.
+- Before activating a replacement memory-validation mechanism, review the
+  complete security invariants and verify that the replacement preserves the
+  required protections. Removing a historical check requires evidence that its
+  obligations remain covered.
+- Keep guest workloads inside the authorized test VM and retain host protections,
+  filesystem and network boundaries, and bounded resource limits. Kernel testing
+  does not authorize relaxing host security or accessing unrelated targets.
+- Treat AI safety interruptions separately from build failures, guest assertions,
+  sandbox errors, and resource exhaustion. Use the reported notice and public
+  provider guidance when available; distinguish confirmed reasons from hypotheses
+  and do not infer a hidden safeguard decision from the code being edited.
+  Repository defects, resource failures and successful retries cannot establish
+  why a model or service safeguard intervened. Preserve the exact notice and
+  proposed operation when available; label any inferred explanation as such.
+  Monitoring can be asynchronous: inspect the preceding actions without assuming
+  the final command triggered the interruption. Lack of visible findings does
+  not establish whether the decision came from the model or a service monitor.
+  Consult [official provider guidance](https://learn.chatgpt.com/docs/cyber-safety#false-positives)
+  for documented behavior; do not present possible dual-use concerns as a
+  confirmed explanation of a particular interruption.
+- Respect explicit safeguard denials. Do not disguise, obfuscate, or indirectly
+  execute the same denied operation. Continue independent permitted work and use
+  a materially safer approach consistent with the stated reason when possible;
+  otherwise report the blocker and the remaining validation obligations.
+
 ## Pull requests
 
 Every change ends in a PR and requires a human merge decision. Package PRs by

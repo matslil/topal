@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/tail-traversal/results/stage-3-count-inputs/independent-readback.py.txt", line 11, in <module>
+    assert record['complete'] and record['passed']
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "fresh_first_reach_sites": 79,
+  "matching_kernel_union": 88,
+  "fresh_sites_subset_of_preceding_matching_kernel_union": true,
+  "preceding_record": "../stage-3-staging-copies/native-summary.json",
+  "scope": "Matching executable helper-first-reach union only; not transfer, ownership, lifetime or production qualification"
+}

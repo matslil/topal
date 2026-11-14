@@ -1,0 +1,13 @@
+{
+  "schema": "topal.qualification-external-payload-projection/1",
+  "policy": "TK-BINARY-001",
+  "external_payload_sha256": "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd",
+  "external_payload_bytes": 2024544,
+  "raw_index_sha256": "6d91739d99a203c3712eb01807f9e17b2d78e11bf5719de9da084f0d84db433c",
+  "raw_record_sha256": "a950898cb29c9745e977f35a25586462226b647b5dd2cf222f3a7f2f1c20c5dc",
+  "raw_record_filename": "raw-archive.json",
+  "publication_tool_sha256": "cfdd3fcba3485c125a89deb6f2f31c29264fa26e55ceec6b4291d46d824190f9",
+  "logical_files": 4352,
+  "logical_blobs": 1166,
+  "external_blobs": {}
+}

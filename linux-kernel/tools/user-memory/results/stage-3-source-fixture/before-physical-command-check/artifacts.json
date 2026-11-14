@@ -1,0 +1,25 @@
+{
+  "artifacts": {
+    "kernel.elf": {
+      "bytes": 1665296,
+      "sha256": "b0cd5685fb82879a8466f657b431aeee911977f1f3773888c7cfb2ca5777e175"
+    },
+    "bzImage": {
+      "bytes": 45232768,
+      "sha256": "5732aa9a697f1e995fcafde331d42d966a06469c63baa31859751ddc2d7ead31"
+    },
+    "initramfs.cpio": {
+      "bytes": 2037200,
+      "sha256": "03df64c3aebce6473204d43d43a405a46a24a55c9db225ad4ab6f0e2a446a4fa"
+    },
+    "static-elf-abi-fixture.elf": {
+      "bytes": 2024544,
+      "sha256": "5d69ea37e78d63e64760b4e4900136caacf6ef953e1485de3e125eb12f828d6d"
+    },
+    "source-user.elf": {
+      "bytes": 9896,
+      "sha256": "52994834f2a96c25c93a03341464b49feac7e13dfee415dd421f48a4210e4104"
+    }
+  },
+  "storage": "Digests only; binaries remain in ignored experiment state"
+}

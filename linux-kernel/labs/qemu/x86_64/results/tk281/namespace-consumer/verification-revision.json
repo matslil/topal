@@ -1,0 +1,29 @@
+{
+  "schema": "topal.post-run-verification-revision/1",
+  "qualified_code_commit": "9e7875eb9731f231d74ed45e6e4c5b34efefddee",
+  "origin_cohort_sha256": "d7c1206a7d8a59850f21761670a870454fb8a3d85f7227f2b73d697ad7c6244a",
+  "experiment_source_set_sha256": "1d4ea52cadd06d0417f3e90dab5f6d44fe3b9da976f1e4a3f3dc703dd4057b97",
+  "changes": {
+    "linux-kernel/labs/qemu/x86_64/qualification_archive.py": {
+      "role": "post-run archive verifier",
+      "experiment_sha256": "7b53aa65bad4236bd7dc5b8ee1dbaf396391fea01d471e843e1307ea4a8d3d11",
+      "verification_sha256": "a18726d5b1052d1f8bc62ffcb507c5f282ba108f1f53c0d675edd43dd5e1b70a",
+      "verification_snapshot": "verification-sources/qualification_archive.py"
+    },
+    "linux-kernel/labs/qemu/x86_64/test_namespace_gate.py": {
+      "role": "publication contract",
+      "experiment_sha256": "fbb83e7eb62716113dc0b49c43dd4f2d5e71eeab554d8429d356736ed7bb53ce",
+      "verification_sha256": "877c8d326590d698308fb2e217fa890d1201004673cc1e5b51962bcc8f8a96fc",
+      "verification_snapshot": "verification-sources/test_namespace_gate.py"
+    },
+    "linux-kernel/labs/qemu/x86_64/test_topal_gate.py": {
+      "role": "publication contract",
+      "experiment_sha256": "8fe41ffed935f263994067622672aecf62fdfaef28bb83d6a10cd97794a8ba78",
+      "verification_sha256": "e853b46e355d44c45cb5f21ce195cbe6689a2e080283bed5a25313e7db85405a",
+      "verification_snapshot": "verification-sources/test_topal_gate.py"
+    }
+  },
+  "failed_verification_log_sha256": "6234f04be33348c64082eaa1b0cb4b76bf89735fe9d6e4146294ca46cb794b1a",
+  "verifier_sha256": "8ecbc81a0137ebab7c10725488face13a3a4b4d1f487da4c8c6b3554e468a1e8",
+  "reason": "Correct exact V6 publication schemas and distinguish unentered source frames from admitted clock/source frames; preserve all experiment inputs and outcomes"
+}

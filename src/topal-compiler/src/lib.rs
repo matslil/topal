@@ -3,15 +3,106 @@
 mod artifact;
 mod backend;
 mod codegen;
+mod systems_retained_layout;
+pub use systems_retained_layout::{
+    RetainedBoolean, RetainedNumber, RetainedRecordOrder, RetainedValueLayout, RetainedZeroMask,
+};
 mod frontend;
 mod optimization;
 mod pipeline;
 mod standard_library;
 mod systems_artifact;
 mod systems_boot_image;
+mod systems_boot_resource;
+mod systems_file_region_boot;
+mod systems_frame_controller;
+mod systems_frame_ownership;
+mod systems_frame_policy_binding;
+mod systems_frame_publication;
+mod systems_image_backing;
+mod systems_kernel_image_layout;
+pub use systems_frame_publication::{
+    Binding as SystemsFrameRootBinding, Bounds as SystemsFrameRootBounds,
+    LinkerExtent as SystemsFrameLinkerExtent,
+};
+pub use systems_kernel_image_layout::{
+    SystemsKernelImageLayout, SystemsKernelImageRole, SystemsKernelImageSpan,
+    plan_x86_64_systems_frame_kernel_image,
+};
+mod systems_frame_target;
+mod systems_inode_region_boot;
+mod systems_library;
+mod systems_namespace_region_boot;
+mod systems_numeric_library;
+mod systems_policy_inputs;
+mod systems_ram_page_region_boot;
+mod systems_region_library;
+#[cfg(test)]
+mod systems_region_root_tests;
+mod systems_root_region_boot;
+mod systems_tail_component;
+mod systems_tail_linked;
+mod systems_tail_model;
+mod systems_tail_owner;
+mod systems_tail_publication;
+mod systems_user_extent;
+pub use systems_tail_linked::{
+    Placement as SystemsTailInputPlacement, Section as SystemsTailInputSection,
+};
+pub use systems_tail_publication::{
+    Binding as SystemsTailRootBinding, InputObject as SystemsTailRootObject,
+    NativeBounds as SystemsTailRootBounds, Source as SystemsTailRootSource,
+};
+mod systems_tail_runtime;
+pub use systems_tail_model::inspect_systems_tail_session_binding;
+pub use systems_tail_owner::{
+    SystemsTailOwnerComponent, emit_systems_tail_nat_owner_component,
+    emit_systems_tail_owner_component,
+};
+pub use systems_tail_runtime::{
+    SystemsTailRuntimeComponent, SystemsTailRuntimeLayout, emit_systems_tail_runtime_component,
+};
+/// Emit an experimental private stack-boundary object; not a kernel publication certificate.
+///
+/// # Errors
+/// Returns an error if target code, CFI or ELF construction fails.
+pub fn emit_systems_tail_boundary_component() -> Result<Vec<u8>, CompileError> {
+    systems_provider_object::tail_boundary::component_object()
+}
+mod systems_tail_plan;
+pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
+pub use systems_provider_object::inode_region::{
+    SystemsInodeNamespaceAdmission, SystemsInodeRegionBinding,
+};
+pub use systems_provider_object::namespace_region::{
+    SystemsNamespaceAdmissionRetirement, SystemsNamespaceRegionBinding,
+};
+pub use systems_provider_object::ram_page_region::SystemsRamPageRegionBinding;
+pub use systems_provider_object::root_region::{
+    SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage,
+};
+pub use systems_region_library::{
+    CompiledSystemsRegionLibrary, SystemsRegionEffect, SystemsRegionLibraryArtifact,
+    SystemsRegionReadOnlyBinding, SystemsRegionReadOnlyData, build_systems_region_action_library,
+    build_systems_region_framed_action_library, build_systems_region_instance_library,
+    build_systems_region_library, inspect_systems_region_action_data,
+    inspect_systems_region_read_only_data, verify_systems_region_action_library,
+    verify_systems_region_framed_action_library, verify_systems_region_instance_library,
+    verify_systems_region_library,
+};
+pub use systems_tail_component::{
+    SystemsTailComponentFunction, SystemsTailReadonlyRoot, SystemsTailStepComponent,
+    emit_systems_tail_step_component,
+};
+pub use systems_tail_plan::{
+    SystemsTailDependency, SystemsTailEdge, SystemsTailFunction, SystemsTailTraversalPlan,
+    analyze_systems_tail_traversal,
+};
 mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
+mod systems_volatile_profile;
+pub use systems_volatile_profile::{SystemsNamespaceEntryTableProfile, SystemsVolatileFileProfile};
 mod toolchain;
 
 use std::fmt;
@@ -32,12 +123,20 @@ pub use standard_library::{
     StandardLibrarySlice, build_standard_library, standard_library_manifest_path,
 };
 pub use systems_artifact::{
-    PublishedSystemsArtifact, SYSTEMS_DEBUG_FILE, SYSTEMS_KERNEL_FILE, SYSTEMS_MAP_FILE,
-    SYSTEMS_PROVENANCE_FILE, SystemsArtifactPlacement, SystemsArtifactProvenance,
+    PublishedSystemsArtifact, SYSTEMS_DEBUG_FILE, SYSTEMS_INITIAL_USER_IMAGE_FILE,
+    SYSTEMS_KERNEL_FILE, SYSTEMS_MAP_FILE, SYSTEMS_PROVENANCE_FILE, SYSTEMS_STATIC_USER_IMAGE_FILE,
+    SystemsArtifactPlacement, SystemsArtifactProvenance, SystemsKernelLibraries,
     X86_SYSTEMS_ARTIFACT_REVISION, X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_KERNEL_THREAD_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_ROOT_OBJECT_REVISION,
     X86_SYSTEMS_ROOT_TEXT_SECTION, publish_x86_64_systems_artifact,
+    publish_x86_64_systems_artifact_with_initial_user_image,
+    publish_x86_64_systems_artifact_with_kernel_libraries,
+    publish_x86_64_systems_artifact_with_libraries,
+    publish_x86_64_systems_artifact_with_source_library,
+    publish_x86_64_systems_artifact_with_static_user_image,
+    publish_x86_64_systems_artifact_with_user_images, publish_x86_64_systems_frame_artifact,
+    publish_x86_64_systems_tail_artifact, qualified_x86_64_static_user_image_fixture,
 };
 pub use systems_boot_image::{
     GeneratedX86LinuxBootImage, PublishedX86LinuxBootImage, X86_BOOT_IMAGE_FILE,
@@ -45,6 +144,22 @@ pub use systems_boot_image::{
     X86_KERNEL_MINIMUM_ADDRESS, X86_LINUX_BOOT_ADAPTER_REVISION, X86_LINUX_BOOT_PROTOCOL,
     X86_LINUX_SETUP_SECTORS, X86_PROTECTED_PAYLOAD_ADDRESS, X86LinuxBootImageProvenance,
     generate_x86_64_linux_boot_image, publish_x86_64_linux_boot_image,
+};
+pub use systems_boot_resource::{
+    X86_INITIAL_BOOT_RESOURCE_FILE, X86_INITIAL_BOOT_RESOURCE_MEMBER,
+    X86_INITIAL_BOOT_RESOURCE_REVISION, X86_STATIC_BOOT_RESOURCE_MEMBER,
+};
+pub use systems_library::{
+    SystemsLibraryFunctionStack, SystemsSourceLibraryArtifact, SystemsSourceLibraryInput,
+    SystemsSourceModuleArtifact, SystemsSourceModuleInput,
+};
+pub use systems_numeric_library::{
+    SystemsNumericAllocationBound, SystemsNumericLibraryArtifact, SystemsRegionAllocationBound,
+    SystemsRetainedStateBound, SystemsTailStorageBound, SystemsTailValueBound,
+    analyze_systems_tail_storage,
+};
+pub use systems_policy_inputs::{
+    SystemsPolicyLinkedInputs, SystemsPolicyLinkedSection, SystemsPolicySection,
 };
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,
@@ -61,15 +176,111 @@ pub use systems_provider_object::{
     X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
     X86_SYSTEMS_DEADLINE_ARM_SYMBOL, X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
-    X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL, X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL, X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL, X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_DMA_STORAGE_SECTION, X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL,
+    X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL, X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL,
+    X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL,
+    X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL,
+    X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL,
+    X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL, X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL,
+    X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL, X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+    X86_SYSTEMS_ENTROPY_STORAGE_SECTION, X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
+    X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
+    X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
+    X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL,
+    X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL, X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
+    X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL, X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
     X86_SYSTEMS_PROVIDER_NOTE_SECTION, X86_SYSTEMS_PROVIDER_OBJECT_REVISION,
-    X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-    generate_x86_64_systems_provider_object,
+    X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ACTIVATE_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CLOCK_TICK_RATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_ENTRY_FACT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_EXECUTABLE_NAME_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PLATFORM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_INITIALIZE_STACK_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DEVICE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_POOL_LIFECYCLE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ACTIVATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_QUALITY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_TRANSPORT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CLOCK_TICK_RATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_ENTRY_FACT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_EXECUTABLE_NAME_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PLATFORM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_EXEC_SNAPSHOT_SYMBOL, X86_SYSTEMS_STATIC_PROCESS_STORAGE_SECTION,
+    X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL, X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL, X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;
@@ -107,6 +318,8 @@ pub struct CompileOptions {
     pub target: TargetSelection,
     pub optimization: OptimizationRequest,
     pub standard_library: Option<PathBuf>,
+    pub initial_user_image: Option<PathBuf>,
+    pub static_user_image: Option<PathBuf>,
 }
 
 #[derive(Debug)]

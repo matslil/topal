@@ -1,0 +1,42 @@
+[
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f410a",
+    "payload_hex": "5561626364656667",
+    "serial_offset": 2560
+  },
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f420a",
+    "payload_hex": "3132333435363738",
+    "serial_offset": 2582
+  },
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f410a",
+    "payload_hex": "5561626364656667",
+    "serial_offset": 2641
+  },
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f420a",
+    "payload_hex": "3132333435363738",
+    "serial_offset": 2663
+  },
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f410a",
+    "payload_hex": "5561626364656667",
+    "serial_offset": 2722
+  },
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f420a",
+    "payload_hex": "3132333435363738",
+    "serial_offset": 2744
+  },
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f410a",
+    "payload_hex": "5561626364656667",
+    "serial_offset": 2803
+  },
+  {
+    "marker_hex": "544f50414c5f534f555243455f53455249414c5f420a",
+    "payload_hex": "3132333435363738",
+    "serial_offset": 2825
+  }
+]

@@ -1,0 +1,8 @@
+   Compiling topal-compiler v0.1.0 (/home/mats/git/topal/src/topal-compiler)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.32s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 391 filtered out; finished in 0.00s
+

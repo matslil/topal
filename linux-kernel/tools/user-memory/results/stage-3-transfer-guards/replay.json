@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "exact_archived_audit_equal": true,
+  "carry_gates": 91,
+  "fallback_local_reads": 3,
+  "scope": "Offline archived first-party object audit; no kernel rebuild, VM execution or full access proof"
+}

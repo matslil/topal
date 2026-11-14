@@ -1,0 +1,8 @@
+{
+  "name": "pathname-terminator-offset",
+  "body_offset": 101852,
+  "replacement_hex": "09",
+  "rejected": true,
+  "error": "",
+  "scope": "Offline compiler-owned object byte shape with rebound function digest; unchanged decoder listing; no native execution"
+}

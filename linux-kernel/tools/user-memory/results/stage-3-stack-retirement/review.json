@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "risk": "high",
+  "executable_kernel_changed": true,
+  "core_language_or_authority_meaning_changed": false,
+  "predecessor_provider_and_gateway_bytes_equal": true,
+  "actual_owners_nonalias_or_continuous_lifetime_qualified": false,
+  "complete_fatal_exception_whole_syscall_retirement_qualified": false,
+  "production_selection_activated": false,
+  "authorities": [
+    "docs/systems-profile.md",
+    "se/requirements.md",
+    "src/topal-compiler/se-requirements.md",
+    "spec/systems-profile.md",
+    "linux-kernel/design/owned-user-extents.md",
+    "AGENTS.md"
+  ],
+  "review": "Single-agent higher-authority/source/full-diff review with independent GNU length/edge/operand decoding, complete changed-process reconstruction, predecessor/component/function comparison, model controls and saved native-record interpretation. No independent human security review is claimed.",
+  "native_input_versions": 17,
+  "native_sources_changed_during_commands": false,
+  "memory_swap_guest_or_host_protections_changed": false,
+  "debugger_deadline": {
+    "previous": 300,
+    "intermediate_failed": 420,
+    "current": 480,
+    "applies_to": "ordinary transfer cohort only when the new stack-retirement audit/observer is selected",
+    "other_cohort_deadlines_unchanged": true,
+    "all_cleanup_activations_still_observed": true
+  },
+  "failures": [
+    "history/compile/run.json",
+    "history/reader/run.json",
+    "history/deadline-300/run.json",
+    "history/deadline-420/run.json",
+    "history/emission-first.log.gz"
+  ],
+  "safeguard_notices": [],
+  "remaining": [
+    "actual key/output/stack/table/backing owners and nonalias",
+    "continuous stable entry/access lifetime",
+    "complete helper/entry/callee/return/fatal/exception/whole-syscall effects",
+    "unreached cleanup blocks and random native lengths/failure paths",
+    "remaining interval and all fallback obligations",
+    "canonical production selection and complete clean source/native/load/boot reconstruction",
+    "full original Linux UAPI/distribution/container/VM-host compatibility"
+  ]
+}

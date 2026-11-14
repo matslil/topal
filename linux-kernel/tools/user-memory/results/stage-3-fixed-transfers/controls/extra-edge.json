@@ -1,0 +1,6 @@
+{
+  "name": "extra-edge",
+  "rejected": true,
+  "exit_code": 1,
+  "scope": "Diagnostic graph/join JSON mutation only, including updated outer graph digest; unchanged first-party ELF, no VM or guest-state mutation"
+}

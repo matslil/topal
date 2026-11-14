@@ -218,10 +218,25 @@ library policy so long as these observations are preserved.
 X86-64 base pages, AArch64 translation granules, and RISC-V page/Sv modes are
 provider facts. Portable source counts the profile-selected complete frames;
 it does not name page-table formats, numeric byte addresses, or target page
-sizes. The first executable x86-64 slice admits one statically proved frame
-aligned to one frame. Multiple live extents, dynamic requests, and reclamation
-remain unavailable. Mapping is admitted only through the separately qualified
-opaque capability below.
+sizes. The executable x86-64 slice admits statically proved extents of one,
+two, three, or exactly 503 frames aligned to one frame. The 503-frame shape is
+derived from the pinned static-ELF page plan. Its mapping-resource refinement
+keeps that payload extent live while allocating one separate metadata frame,
+then releases metadata before payload. The provider proves the two complete
+extents disjoint without exposing either base. Each request still returns one
+indivisible affine extent. Other counts, other simultaneously live source-
+owned shapes, extent splitting, dynamic requests, and reclamation remain
+unavailable. Mapping is admitted only through separately qualified opaque
+capabilities below; simultaneous ownership alone grants no mapping authority.
+
+The bounded static-image construction refinement consumes that exact payload
+and metadata pair into one opaque affine owner. A provider prepares all planned
+pages as initially writable and non-executable inside an inactive translation
+object, with page ordinal matched to frame ordinal. Source can observe only
+successful whole-plan publication. It must revoke the object, release the
+returned metadata, reclaim the unchanged payload, and release it before
+continuing. Table levels, entry encodings, addresses, and target ordering or
+invalidation instructions remain provider-private.
 
 ### Opaque kernel mapping
 
@@ -350,6 +365,243 @@ counters and RISC-V time sources constrain the same clock identity and
 monotonic meaning without becoming source spellings. This increment makes no
 wall-clock, periodic, sleep, timeout, latency, rate-accuracy, SMP, suspend,
 migration, userspace-ABI, or real-time guarantee.
+
+### Freestanding pure source libraries
+
+A systems artifact may bind an explicitly supplied Topal source-library unit
+through a versioned semantic interface. The ordinary shared language checker
+resolves and checks its exported function and complete reachable helper graph;
+the kernel backend does not reinterpret function bodies as privileged syntax.
+The first qualification admits Boolean/nominal-Enum values, local bindings,
+exhaustive decisions and direct acyclic helper calls. Other otherwise valid
+Topal forms remain unqualified for this freestanding library profile.
+
+The library receives ordinary semantic facts and returns an ordinary semantic
+choice. It receives no context, address, resource or ambient machine authority.
+The artifact owns the immutable code binding; a process may retain a scoped
+borrow across exec and must erase that binding on terminal return. Native ABI
+translation remains at the boundary, including private Enum representation
+adaptation. A policy result cannot create rights absent from the caller's owned
+resources. Source Enum declaration order does not become a machine ABI.
+
+Publication must prove the closed effect-free/nonallocating call graph, absence
+of hosted runtime or foreign dependencies, target calling convention, bounded
+stack use and safe kernel code-generation settings. The initial x86-64 backend
+uses ordinary shared function lowering with a generated private adapter,
+disables red-zone/implicit floating-point use and checks LLVM stack-size
+metadata against its declared caller reserve. Source names and ordinary helper
+calls remain represented in debug information. This adds systems artifact
+linking and qualification, without changing core-language function, Enum,
+publication, effect or termination meaning.
+
+A further systems qualification may freeze a closed set of ordinary imported
+source modules for these policy interfaces. Selection and checking retain the
+existing library/version, visibility, type identity and direct-call meanings.
+Both filesystem and explicit in-memory inputs must bind exact dependency
+identities, relative paths and bytes; no ambient source or unchecked object may
+enter publication. Initial imported units contain functions
+over the qualified Boolean/numeric values, with nominal Enum adaptation retained
+at the finite root. Imported type declarations and cross-unit nominal values
+remain unqualified. Complete cross-module closure, initializer/effect rejection,
+native restrictions and stack/allocation proofs still apply. Discovery budgets
+and dependency-tree restrictions belong to the systems profile and do not limit
+otherwise valid core programs. See the kernel's `TK-DEC-257` design.
+
+### Owned runtime for pure numeric libraries
+
+A further systems profile may execute ordinary numeric policy over a root-owned,
+bounded temporary arena. The first interface computes relative-sleep deadlines
+from ordinary `Nat` inputs and a wrapped-clock Boolean, returning an `Int` which
+the private boundary validates before native use. Arithmetic keeps its existing
+arbitrary-precision meaning. It must reuse ordinary frontend/function lowering
+and the shared numeric algorithms with qualified kernel allocation/fatal services.
+There is no hosted allocation or syscall dependency.
+
+The artifact explicitly binds the source/interface, complete runtime closure,
+4096-byte stack limit and 65536-byte temporary-storage limit. Source receives no
+resource, context or pointer. One invocation exclusively borrows the arena; no
+allocated value escapes. Complete storage/state erasure precedes return, and
+binding erasure precedes terminal process return. Reentrant activation, wrong
+ownership, exhausted storage or invalid results fail closed. Publication must
+prove stack and allocation bounds, including runtime iteration/allocation costs;
+measurements alone are insufficient. Missing proof or unsupported source fails
+before publication. Existing finite libraries retain their contracts.
+
+A further numeric systems qualification may group those values in recursively
+closed immutable Records. Ordinary construction, static field selection,
+reconstruction, decisions and helper parameter/result transport retain their
+existing semantics and actual field-order metadata. Complete allocation bounds
+must charge all evaluated fields, receivers, bases and replacements exactly once
+per evaluation, and complete stack evidence must cover aggregate transport.
+The invocation owns every nested numeric value until scalar result extraction
+and full erasure. This introduces no new allocator, persistent state, native
+layout, resource authority or core-language meaning; see `TK-DEC-258`.
+
+The numeric profile may separately qualify finite ordinary `List Int`
+construction, fixed `Array (N, Int)` collection and checked constant-index
+access with `Optional Int` decisions. Exact sequence lengths and per-entry
+bounds must prove traversal and allocation costs for the shared collection
+runtime; unsupported forms remain profile diagnostics. Every node, header,
+wrapper and payload belongs to the existing exclusive invocation and its
+complete erasure. This adds no native-memory access or core-language meaning;
+see `TK-DEC-259`.
+
+A further qualification may supply a pure ELF64 header policy with an ordinary
+`(Array (64, Int), Nat, Nat) -> Boolean` interface. A qualified adapter copies
+64 bytes from a caller-owned immutable file extent; the source sees integer
+byte values and bounded machine/count facts, never the address or resource.
+Refusal precedes destructive exec changes and preserves retained state.
+Header and deadline policies may execute independently or share one exclusively
+borrowed arena, with distinct private code bindings and complete invocation/
+terminal erasure. Every copied input and generated bridge must enter the
+allocation/stack proof. This is not general addressed-storage access or a new
+core buffer type; see `TK-DEC-260`.
+
+A systems qualification may move syscall operation selection into an ordinary
+`Nat -> StaticLinuxOperation` source export over one ABI-normalized untrusted
+selector. The payload-free nominal Enum names semantic operations; declaration
+order and native handler encodings do not define their identity. Source sees
+no argument pointers or execution authority. A qualified scalar adapter selects
+the native handler only after complete invocation cleanup; it may not redispatch
+the original selector or silently replace a declared source policy. Unsupported
+selectors retain the existing native ENOSYS behavior. Dispatch, header and time
+policies work independently or share an exclusively borrowed arena with distinct
+bindings and complete bounds/erasure. Architecture-specific Linux number mappings
+belong in source ABI modules; target entry/normalization remains a qualified
+mechanism. Existing handler constraints and errors remain unchanged. This extends
+only systems qualification of ordinary nominal Enum values, not core type,
+effect, authority or error meaning; see `TK-DEC-261`.
+
+A further systems qualification may apply a pure source transition to the copied
+next-ID state of the existing bounded process resource. An ordinary
+`Record (next : Nat) -> Record (allocated : Nat, next : Nat)` export proposes the
+existing initial/increment/wrap transition. A qualified adapter extracts actual
+primitive fields by logical name and source layout, validates their numeric
+representation/range and returns only native scalar words. No source Record,
+allocated value, address or process authority escapes. The owning resource applies
+the result only after validation, complete temporary cleanup and preservation of
+its existing construction/lifetime protocol. All selected policies operate alone
+or through sequential exclusive borrowing, with complete transport/frame/copy
+bounds and terminal erasure. This qualifies a value-level state transition and
+flat numeric Record result, not general persistent allocation, mutation/effects
+or new core Record meaning; see `TK-DEC-262`.
+
+A separately qualified systems profile may retain an ordinary immutable state
+value in an explicitly owned kernel store across source calls. The first schema
+is the existing process-identity `Record (next : Nat)`, with a separate bounded
+state reserve. Source borrows the published value and returns its ordinary named
+proposal; a checked semantic copy prepares an independently owned successor
+without retaining invocation pointers. Complete temporary cleanup precedes owned
+publication, and the old value is reclaimed after its last borrow. Creation,
+exec/child history, cancellation and terminal erasure retain explicit ownership.
+The temporary-only profiles remain unchanged. This qualifies kernel-owned value
+retention, not a general persistent heap, source mutation, core `AllocationRegion`
+syntax or a new language revision; see `TK-DEC-263`.
+
+A further selected systems interface may retain a complete source-produced
+nested state Record containing bounded Nat and Boolean fields. The checked
+projection must follow ordinary aggregate layout and preserve all value fields,
+numeric limbs and per-value Record order, with complete private bounds. Source
+borrows the actual published graph and returns its complete successor; temporary
+cleanup, exclusive owner publication and last-borrow retirement retain their
+existing meanings. The first structured identity schema adds ordinary creation
+count/wrap history without granting authority to those facts. Earlier identity
+interfaces retain their contracts and share one semantic slot. This qualifies
+only the selected systems schema, not arbitrary persistent types, effects or
+core Record/Boolean/Nat changes; see `TK-DEC-264`.
+
+This is a systems-only runtime qualification. It changes no core numeric,
+function, effect, type or error semantics and grants no general allocator,
+general-container, concurrent invocation or general module support.
+
+### Borrowed plain regions in ordinary functions
+
+A further systems qualification may lend an existing exclusively owned plain
+kernel region into a synchronous closed ordinary function graph. Sealed scoped
+views carry contained byte windows and narrowed read/write rights; aliases
+retain the same resource identity for effect ordering. The owner is unavailable
+until invocation completion. Helper entry suspends caller access; helper return
+revokes callee-local views before resuming the caller. Views cannot escape,
+become numeric addresses, acquire unrelated memory domains or outlive the
+invocation. Checked byte access precedes mutation. Completion and cancellation
+revoke views while preserving successful changes to the owner's bytes; they do
+not imply rollback. Initial qualification excludes concurrent access, suspension,
+callbacks and recursion. This is systems resource borrowing, not mutable core
+references or a new core allocator. `TK-DEC-269` defines the boundary and budgets;
+its first implementation stage is a portable model. Source/native integration
+and physical erasure evidence remain unqualified.
+
+The source/object refinement in `TK-DEC-270` admits a sealed `KernelByteRegion`
+parameter in a qualified systems-library context. Ordinary functions may query
+its extent, perform checked byte reads/writes and derive contained views with
+narrowed rights. Dynamic Nat inputs retain arbitrary-precision meaning; failed
+loads/window derivations return None and failed stores return false without an
+access. Entry selection checks a declared `(KernelByteRegion) -> Unit` signature
+without constructing fake source authority. The complete closed call graph must
+prove nonescape and owner-relative Read/Write effects, reject false `Effects ()`
+bounds and retain complete resource/representation proofs. The first source
+object still requires qualified kernel-root binding and physical reclamation
+before being usable as a kernel capability. This adds systems qualification,
+not core mutable references, allocator syntax or new ordinary function meaning.
+
+A further systems qualification may transport a bounded number of ordinary Nat
+facts alongside one borrowed region through a caller-owned private input frame.
+The expected declared signature determines the exact count; the initial profile
+admits zero to sixteen unsigned-64-bit facts with a Boolean result. Values retain
+ordinary arbitrary-precision meaning after transport. Existing explicit operand
+packaging still applies. Source receives no frame constructor, pointer or address.
+The caller must prove mapped immutable input
+storage, complete disjointness/lifetime and cleanup; the object and kernel must
+bind exact transport, code/data, ownership and complete stack/allocation evidence.
+Older Unit and two-fact action contexts retain their contracts. This changes
+systems qualification and target-private transport, not core function, value,
+Memory, effect or error meaning; see `TK-DEC-275`.
+
+Separate framed source instances may serve independently owned kernel callers.
+The `borrowed-byte-region-instance-action-v1` context keeps earlier context
+selection intact while adding instance-bound qualification.
+An instance binds its source/code/data, native entry/hooks and caller-owned
+temporary/lifetime evidence; its label is link identity rather than authority.
+The same frame ABI and ordinary value/effect meanings apply to each instance.
+The root region caller may select a zero-fact Boolean instance, require true
+after complete temporary cleanup and retain its separate dynamic byte guard.
+The persistent-position caller retains its two facts and owner contract.
+Unit, two-fact action and unscoped framed contexts remain explicit alternatives.
+This adds systems qualification without a core value, allocator or function
+construct; see `TK-DEC-276`.
+
+A further kernel caller may lend the actual reusable RAM-page allocation map
+to an independently bound ordinary instance. The two Nat facts select allocate
+or release and the release slot; they carry no address or memory authority.
+Ordinary source selects and updates a map byte. The exclusive controller
+validates the complete admitted delta, payload cleanliness, association identity
+and actual Boolean after full temporary reclamation before publishing ownership.
+Linux admission/error order and the existing filesystem capacity/lifetime laws
+remain unchanged. False or malformed admitted completion stops without owner
+resumption or promised rollback. This qualifies a kernel subsystem over existing
+borrowed regions and frame transport; it adds no core allocator, Memory, resource,
+function or effect meaning. `TK-DEC-278` defines the eight-slot owner and staged
+model/source/native qualification; its design alone is not executable evidence.
+
+Qualified ordinary region functions may also access unsigned byte fields through
+`region unsigned load` and `region unsigned store`. A static `byte-count` from
+one through eight and explicit `little-endian` or `big-endian` `byte-order`
+describe the encoding independently of architecture word size and alignment.
+Dynamic offsets and values retain ordinary arbitrary-precision Nat meaning.
+Load returns Optional Nat; store returns Boolean. Complete view/range/rights and
+value preflight precedes owner-payload access. Invalid ranges, read-only stores
+and values outside the complete encoding refuse without payload access or
+partial mutation. Existing generation, helper-frame, alias/effect and temporary
+reclamation laws apply unchanged. Source fact expressions retain ordinary
+evaluation order, and their earlier effects are not rolled back by refusal.
+
+This provides plain-memory encoding, with no source address/cast, new core
+integer, alignment or atomic guarantee. Machine, MMIO, DMA and user-memory
+protocols remain separate. It changes systems qualification, not core value,
+Memory, function, effect or destruction meaning. See
+[unsigned region fields](../linux-kernel/design/unsigned-region-fields.md),
+`TK-DEC-279`. The portable-model stage does not qualify source lowering or native
+execution; complete object/caller/cost and machine evidence remain required.
 
 ### One-shot deadline event
 
@@ -505,6 +757,517 @@ remain source policy. The initial profile admits one deadline-preempted worker
 on one processor and address space. It excludes cancellation, rearming,
 periodic ticks, general timeslices, priority, blocking, wakeup, nested
 preemption, migration, SMP, userspace, and extended-state switching.
+
+The one-shot kernel-completion extension introduces matching affine wait and
+signal endpoints. A worker may consume its wait endpoint to block once while a
+transfer has already registered the exact dispatcher. If blocking wins, that
+dispatcher receives an opaque blocked-context outcome. Consuming the matching
+signal endpoint then yields the suspended worker for source-owned enqueue; a
+later transfer resumes immediately after the block operation.
+
+Completion readiness is persistent. If signalling wins before the block
+linearizes, the worker observes completion and does not sleep. This explicit
+blocked-or-already-complete choice prevents a lost wakeup without defining a
+general predicate wait queue. The initial profile admits one waiter and one
+signal on one processor and address space. Multiple waiters, repeated signals,
+timeouts, cancellation, process signals, priority wakeups, cross-processor
+wakeups, SMP, and user contexts remain excluded.
+
+### User execution and syscall entry
+
+A validated user state is an opaque affine semantic continuation tied to one
+user address space and ABI personality. It proves executable user entry,
+writable non-executable stack state, and target return invariants without
+exposing instruction addresses, stack pointers, registers, descriptor values,
+privilege numbers, entry frames, or return instructions. A suspended user
+context additionally retains its processor and thread identity.
+
+Entering user execution consumes the running kernel context and the exact
+suspended user context. A syscall creates an affine typed entry whose accessors
+expose the ABI syscall number and six arguments as untrusted semantic machine
+words. Kernel source owns dispatch. It must consume that entry by either
+returning one ABI result to the exact revalidated user continuation or
+terminating the user context and restoring its registered kernel
+continuation. Neither path is an ordinary function return.
+
+User-address-space preparation consumes an affine physical-frame extent and
+returns an opaque prepared address space with fresh identity. User-state
+preparation consumes that space into the returned suspended user context,
+which owns it until terminal completion revokes every derived user mapping and
+performs the provider translation-completion contract. Completion returns an
+opaque revoked address space; reclaiming only that revoked state returns the
+exact original extent. Source cannot access, split, release, or otherwise reuse
+backing while either address-space or user-execution state owns it. Target
+page-table roles, virtual placement, publication, invalidation, and entry
+mechanics remain provider-private.
+
+The bounded allocator may return one additional opaque unit-aligned extent
+while the initial prepared address space owns its three-frame backing. The
+sealed image profile admits a two-frame code extent or a one-frame data extent.
+The allocator
+must prove the complete extents disjoint. Source must release the additional
+extent before transferring the prepared space into user execution. This closed
+qualification does not expose either base, permit a third live extent, split
+address-space backing, or define a general concurrent allocator.
+
+The initial prepared address space may consume that additional extent through
+one sealed `probe-guard` mapping round trip. The provider installs an opaque
+read-write, non-executable user mapping, confirms one fixed byte store and
+load, revokes every derived access, completes target-required translation
+invalidation, and returns the exact extent. Source must release the returned
+extent before user-state preparation. Placement, addresses, page-table form,
+and invalidation mechanics remain provider-private.
+
+The bounded affine refinement expresses that round trip as four distinct
+systems operations. `user address space map` consumes the disjoint extent into
+one opaque mapping; `user mapping store byte` and `user mapping load byte`
+consume and return successively refined mapping authority; and `user address
+space unmap` consumes the verified mapping and returns the exact extent after
+revocation and target completion. The address space cannot enter user
+execution while any mapping refinement is live. The fixed layout, rights, and
+byte remain sealed provider policy; this is not a general address or mapping
+API.
+
+The initial reuse refinement permits the exact extent returned by unmap to
+enter one second complete affine lifecycle. Each map produces a fresh opaque
+mapping identity. The second publication cannot begin until the first mapping
+has been revoked and target translation completion has finished; no access or
+refinement from the first generation survives. Source releases the extent and
+prepares user execution only after the second unmap. This remains a bounded
+two-generation qualification, not simultaneous mapping or image policy.
+
+Each admitted generation then tightens its populated mapping before
+verification. `user mapping protect read only` consumes the stored RW/NX
+refinement and returns an opaque read-only/NX refinement only after write
+authority is revoked and target translation completion finishes. Load consumes
+that protected refinement. Protection preserves identity, placement, contents,
+user accessibility, and non-executable policy; it cannot widen authority or
+expose target permission representation.
+
+After verification, `user mapping permit execute` consumes the exact RO/NX
+refinement and returns an opaque RO/X refinement only after executable
+authority publication and the target's translation and instruction-
+observation completion. Promotion preserves read-only authority, identity,
+placement, contents, and user accessibility. It cannot restore write
+authority, create W+X access, or expose target permission representation.
+Unmap consumes the executable refinement.
+
+The bounded image-role refinement uses executable promotion only for the first
+generation, classifying it as immutable code. The second generation remains
+RO/NX: `user mapping seal immutable data` consumes its verified refinement and
+returns an opaque immutable-data refinement after the provider proves the
+completed read-only, non-executable authority is unchanged. Code and data
+refinements are distinct and cannot be substituted at unmap.
+
+An explicitly mutable data role uses `user mapping permit writable data` only
+after that same RO/NX verification boundary. It consumes the verified mapping
+and returns an opaque writable-data refinement for the same identity, backing,
+placement, contents, and user accessibility after the provider restores write
+authority, proves executable authority remains absent, and completes the
+target translation-observation requirement. This controlled RO/NX-to-RW/NX
+transition is available only for a declared writable-data role; it is not a
+general protection interface and cannot produce W+X authority. Unmap consumes
+the writable-data refinement exactly as it does other final role owners.
+
+The bounded residency refinement replaces sequential backing reuse with two
+separately allocated disjoint extents and sealed `probe-code` and `probe-data`
+placements. The current code role consumes one indivisible two-frame extent;
+the data role consumes one frame. Executable code remains mapped while
+immutable or writable data is built, so both role-specific affine refinements
+coexist. Source then unmaps and releases data before unmapping and releasing
+the complete code extent. User preparation requires both mappings revoked and
+both returned extents released. This is exactly a two-mapping construction
+proof, not a general mapping collection or image loader.
+
+The bounded multipage-executable refinement publishes both frames of the code
+extent as adjacent virtual base pages. Copy, read-only protection, complete
+content verification, executable promotion, translation and instruction
+observation, invalidation, unmap, and affine return apply to the whole extent.
+The initial x86-64 image places its entry and successful terminal path in the
+second page and emits `TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` only after
+exact return. This refines the sealed image role; it exposes no page-table
+entry, physical address, target instruction, general segment size, or W+X
+state.
+
+The bounded static-ELF planning refinement validates a complete supplied
+ELF64 file before deriving immutable load facts. It separates four ordered
+read-only, executable, read-only-data, and writable-data/BSS load roles;
+contains entry, TLS, RELRO, and stack policy within those checked roles; and
+computes page-rounded intervals without granting mapping authority. The
+initial x86-64 bound admits at most 512 pages inside one aligned 2 MiB
+leaf-table window. This compiler-owned plan is portable file policy plus a
+target qualification bound, not a source-visible ELF parser, allocator, page
+table, or executable-selection operation.
+
+The bounded page-realization refinement converts only those checked facts into
+one ordered record per declared page. It requires adjacent load-page roles,
+names a future single affine extent with one frame per page, zeroes that whole
+extent before four exact segment copies, and assigns RW/NX construction plus
+entry-stage RO/NX, RO/X, or RW/NX permissions. GNU RELRO pages remain RW/NX
+within the writable role until the exact checked process protection transition
+seals them RO/NX. This remains an immutable compiler plan, not frame ownership,
+mapping authority, executable selection, or a source-visible page-table API.
+
+The bounded external-process refinement may select one digest-pinned static
+executable without storing or redistributing its bytes. The provider still owns
+the native privilege boundary: it derives the complete initial stack, creates a
+fresh target SIMD context, preserves the Linux syscall register contract and
+its own calling convention, and restores all private state before returning the
+affine completed-process owner. The first x86-64 external qualification invokes
+the pinned BusyBox `true` applet; it is evidence for that exact executable and
+startup path, not a general ELF execution or userspace compatibility claim.
+
+A separately qualified reusable static-process refinement may transport
+runtime argument values for that same executable. It copies a bounded
+argument aggregate under the process user-transfer authority before consuming
+the old image, returns declared input errors with the original owner unchanged,
+and builds a fresh ABI stack from the copied values. Its console adapter may
+publish bounded caller-owned bytes through live standard descriptions and its
+terminal adapter retains the observable process status. These remain systems
+services with provider-owned ABI layout and entry mechanisms; they do not add
+source pointers, assembly, a general executable namespace, dynamic linking or
+ordinary Topal effects. Payload-specific qualification cases do not authorize
+the provider to substitute constant arguments or output for runtime values.
+
+A separately qualified file-description refinement may place live process
+descriptors in a bounded owned table. Slots have independent descriptor flags
+and retain shared open descriptions with rights, status and position. Aliases
+share description state; closing the last alias destroys that description.
+Checked byte and metadata transfers may borrow a sealed immutable boot-resource
+member independently of the process's mutable loaded image. Native descriptor
+operations, exec filtering and terminal reclamation adapt this object model to
+Linux observations; the provider owns integer widths, addresses, layouts and
+entry mechanisms. Rejected operations preserve the table's prior authority.
+These systems services do not introduce core-language aliasing, raw references,
+assembly, arbitrary path selection or a general VFS merely from bounded evidence.
+
+A repeated static-exec refinement may replace successive images under one
+retained executable/process owner after each admitted startup. It validates
+current authority rather than an earlier shell-command phase, copies before
+commit, preserves process resources and filters/resets image resources on each
+transition. Every entry constructs fresh stack/auxiliary/random identity and
+terminal cleanup releases retained execution authority once. Bounded mapping
+and executable qualifications remain explicit; repetition grants no new
+executable, process or core-language authority.
+
+A reusable prepared-process observation refinement may expose retained
+process/thread/parent identity and the selected immutable system-information
+view repeatedly after qualified startup. Observations do not advance a chosen
+shell sequence or derive authority from mutable user bytes. Native record
+publication requires a complete checked destination; exec retains process and
+system views, and terminal reclamation erases their private witness. Broader
+process creation and mutable namespace identities remain separately qualified.
+
+A separately qualified child-process refinement may create a distinct process
+with private image/thread state, copied descriptor slots retaining shared open
+descriptions, and an owned parent/child relationship. The initial serialized
+schedule may park the parent while a finite child runs, provided an inactive
+owned snapshot preserves all parent state and restoration precedes its return.
+Child exec consumes only child image state; child exit retains a waitable status
+without releasing the outer owner. Checked wait publication consumes that
+relationship once, and rejected output preserves it. Every snapshot and retained
+thread value has an explicit erasure path. This qualifies no vfork/shared-VM,
+preemptive fairness, signal delivery, arbitrary process count or core-language
+Task behavior; other architectures need their own context/backing evidence.
+
+A separately qualified prepared-process timing refinement may borrow the
+bootstrap owner's initial monotonic clock view for the complete process
+lifetime. Native monotonic observations and resolution queries use that same
+clock identity, scale and wrap extension, publish normalized records through
+checked user transfers and retain no user pointer. Exec retains the borrowed
+view; terminal cleanup erases the private binding and returns the clock owner
+with its legitimate observation history intact.
+
+Relative native sleeps may copy and validate a complete interval, construct a
+deadline on that borrowed clock and return success only when a later observation
+reaches it. Native interval conversion and deadline addition retain the pinned
+ABI's saturating time range; the resulting deadline is rounded upward to the
+provider's resolution and must not wrap into an earlier deadline. A sole-thread implementation may wait by
+observing its clock without granting another runnable context or claiming
+signal interruption, scheduler fairness, absolute-time or realtime-clock
+semantics. Invalid interval/copy errors preserve process resources. The provider
+owns native selectors, records, counter representation and return mechanisms;
+source gains no address, assembly, generic blocking effect or core meaning.
+
+The immutable boot-root namespace may decode ordinary open access intents
+without granting writable authority. Lookup and object-type errors precede
+denial of write access to an existing read-only filesystem object. Rejected
+requests preserve process state and publish no handle. Native access flags
+remain ABI data; a writable filesystem or device requires separate authority.
+This refinement permits ordinary missing-object probes by replacement shells
+without interpreting application names or prompt text.
+
+A separately qualified process-signal refinement may retain native action
+registrations and a blocked set as process-owned ABI state. Complete checked
+input and old-value transfers preserve native overlap and commit/error behavior.
+Handler/restorer fields remain opaque values until a separately qualified user
+delivery transition; registration grants no privileged call authority. Exec
+preserves ignored handler dispositions and the blocked set while resetting
+action metadata and other handlers. This systems service does not change
+ordinary Topal effects or establish asynchronous delivery merely from setup calls.
+
+The bounded initial-configuration refinement may answer one optional
+configuration-file metadata probe for a sealed initial process. It recognizes
+the complete immutable path `/etc/busybox.conf`, requires a complete writable
+native metadata destination, and reports that the path is absent without
+publishing output or retaining either user pointer. Portable policy observes
+only an absent optional configuration object; the provider owns the native
+directory-relative selector, metadata layout, syscall number, registers, and
+address validation. This is one startup compatibility fact, not a filesystem,
+pathname resolver, descriptor namespace, metadata service, or general `stat`
+interface. The later owned-user-memory profile applies stat lookup ordering:
+absence uses no metadata destination. The preceding sealed profile retains the
+writable-destination witness described here.
+
+The bounded startup-credential-tail refinement completes the credential
+normalization needed after that optional lookup. It observes the sealed real
+group ID, then admits exact idempotent group-ID and user-ID selections only
+when the requested value equals the corresponding immutable root credential.
+Each operation is pointer-free, revalidates the complete initial credential
+group, retains no argument or mutable credential state, and leaves the group
+unchanged. Native syscall numbers, argument registers, and result registers
+remain provider-owned. This completes one ordered startup sequence; it does
+not introduce credential mutation, supplementary groups, namespaces,
+capabilities, a process table, or a reusable identity service.
+
+The bounded static-applet-output refinement publishes one line-feed byte after
+that credential normalization. It requires standard output, length one, an
+executable continuation, and the header-profile-bound byte in its proved
+readable stack or anonymous process mapping. The provider revalidates the
+active address space and exact backing, stages the byte privately before
+output, verifies the sealed line-feed value, returns one, and retains no
+pointer or staging state. Native
+syscall selectors, registers, page tables, and console mechanics remain
+provider-owned. This is one applet-startup effect, not a descriptor table,
+general write service, file, pipe, socket, or prompt.
+
+The resident-image readiness refinement emits the exact
+`TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
+and before either mapping is unmapped. At that boundary one RO/X code mapping
+and one role-qualified RO/NX or RW/NX data mapping coexist with pairwise-disjoint
+backing. Console output preserves both affine owners: the marker grants no
+mapping or access authority and exposes no address, permission encoding, or
+target representation. It is a bounded physical witness, not an application
+image, loader, or transfer into user execution.
+
+The bounded execution-residency refinement preserves both finalized mapping
+owners while the existing sealed user probe is prepared, entered, services its
+fixed syscall and fault-recovery sequence, exits, and returns to the exact
+kernel continuation. The probe does not access or execute constructed image
+contents. After return, source emits the exact
+`TOPAL_KERNEL_USER_IMAGE_RETAINED` marker while both mappings remain live,
+then revokes and releases data before code and only afterward completes and
+reclaims the address space. Provider-private construction placements cannot
+alias probe code, stack, transfer candidates, or its deliberate fault guard.
+
+The backend owns privilege transition, kernel entry stack, saved state,
+security sequence, result placement, return validation, and selection of a
+legal fast or general return mechanism. The provider cannot select a syscall
+or invent its result. The first x86-64 qualification uses a generated ring-3
+probe with real Linux `getpid`, `uname`, and `exit_group` numbers. Its sealed
+`initial-probe` address-space layout and allocator-backed RX and RW/NX mappings
+are physical evidence, not a general mapping API, application format, or ELF
+loader. Pointer-bearing syscalls other than the sealed `uname`
+qualification, general user-copy recovery, signals, restart, TLS, multiple
+threads, user preemption, migration, and SMP remain excluded.
+
+The bounded initial-process output refinement additionally permits one sealed
+Linux-compatible `write` from already-owned readable user-stack memory to
+descriptor one. Dispatch first copies the complete declared extent into
+private kernel staging and only then publishes it through the selected board's
+console effect. The pointer is not retained, the exact byte-count result is
+returned to the same user continuation, and terminal execution remains
+fail-closed. This is one standard-output qualification, not a descriptor table,
+VFS write path, arbitrary buffer interface, or partial-write policy.
+
+The matching bounded input refinement permits one sealed Linux-compatible
+`read` from descriptor zero into one byte of already-owned writable user-stack
+memory. The provider receives one checked console byte into private kernel
+staging, copies it to the exact candidate under fault recovery, retains no
+pointer, and returns the exact byte count to the same continuation. This is one
+qualification observation, not a byte stream, blocking policy, line
+discipline, terminal interface, or general VFS read path.
+
+The bounded general-output refinement removes the provider's embedded payload
+and single-call-site equality checks. Descriptor one may write one through 256
+caller-selected bytes only when the return continuation lies in the finalized
+executable mapping and the complete overflow-free candidate lies in an already-
+mapped readable user extent. Invalid candidates are rejected before access;
+valid bytes are completely staged in private kernel memory before output. The
+adapter returns the requested count and retains no pointer. The explicit cap,
+fixed mapped-set validation, and lack of partial-write behavior remain profile
+limits rather than Linux-wide semantics.
+
+The bounded general-input refinement likewise removes the provider's single-
+byte, exact-candidate, and single-call-site oracle. Descriptor zero may read
+one through 256 bytes only when the return continuation lies in the finalized
+executable mapping and the complete overflow-free destination lies in an
+already-mapped writable user extent. The adapter waits for the requested
+bounded count, stages all received bytes privately, and only then copies the
+complete prefix to user memory under fault recovery. Invalid arguments are
+rejected before input consumption. The adapter returns the requested count
+and retains no pointer. The fixed mapping set, exact-fill behavior, and lack of
+signals, partial reads, and terminal policy remain profile limits rather than
+Linux-wide semantics.
+
+The initial descriptor-close refinement gives the Linux personality a bounded
+private descriptor table for the three inherited standard descriptors. A
+successful `close` changes exactly one live descriptor to closed and returns
+zero; an invalid or already closed descriptor returns `-EBADF` without state
+change. The existing bounded `read` and `write` paths consult the same state
+before input, user-memory access, or output, and terminal process teardown
+clears it. Portable source selects the descriptor count and error policy but
+does not observe the provider's table representation, native syscall number,
+or register convention. This is a process-lifetime compatibility refinement,
+not a VFS object model or general descriptor-allocation interface.
+
+The bounded initial-heap refinement gives the initial process one byte-granular
+program-break state within the already-owned RW/NX data page. Its initial value
+is derived from the validated ELF data-memory extent; zero requests query that
+value, in-range requests replace it, and unsupported requests return the prior
+break as Linux `brk` does. The provider zero-initializes the complete page tail
+before user entry and retains the current break in private process state. This
+does not grant a source-visible address, allocate another page, define virtual-
+memory areas, or admit `mmap`, overcommit, resource limits, concurrent address-
+space edits, or general heap policy.
+
+The scalar initial-identity refinement exposes the already-sealed PID-one root
+identity through Linux-compatible `getpid`, `getppid`, `gettid`, `getuid`,
+`geteuid`, `getgid`, and `getegid` results. Dispatch requires the live initial
+context and a return continuation in the finalized executable mapping, returns
+PID and TID one, parent PID zero, and coherent real/effective UID/GID zero, and
+retains no argument or pointer. These constants must agree with the initial
+credential auxiliary-vector facts. This is not a process table, credential
+transition service, namespace view, supplementary-group model, or reusable
+identity API.
+
+The bounded non-secure-execution refinement adds a zero-valued Linux
+`AT_SECURE` fact to the initial auxiliary vector. It follows the executable and
+credential metadata, precedes `AT_NULL`, and agrees with the absence of any
+privilege-changing execution transition in the sealed profile. The provider
+owns the native tag and stack layout; source observes only the coherent initial
+process fact. This does not add credential mutation, capabilities, security
+modules, secure environment handling, or a general auxiliary-vector builder.
+
+The bounded userspace-accounting refinement adds Linux `AT_CLKTCK` with value
+100 after `AT_SECURE` and before `AT_NULL`. This is the baseline's native
+`USER_HZ` process-entry contract, not a hardware-counter frequency or scheduler
+timer period. The provider owns its native layout while constructed code proves
+the ordered fact and bounded consumption. This does not add process accounting,
+CPU-time clocks, interval timers, scheduler ticks, or a general auxiliary-
+vector builder.
+
+The bounded platform-identity refinement adds Linux `AT_PLATFORM` after
+`AT_CLKTCK` and before `AT_NULL`. Its value points to a distinct bounded
+NUL-terminated native platform string; the initial x86-64 profile publishes
+`x86_64`. `argv[0]` and `AT_EXECFN` continue to alias only the executable-name
+string. This reports an already selected ABI and does not add runtime target
+selection, compatibility personalities, capability masks, or a general
+auxiliary-vector builder.
+
+The initial x86-64 thread-pointer refinement permits Linux-compatible
+`arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only for the live
+initial thread. A nonzero selected FS base must lie within an already-owned
+readable user mapping; zero disables the base. The provider retains it as private thread state, installs it for
+user execution, and clears it before the user mappings are revoked. `GET_FS`
+publishes the same value only through an already-owned writable user extent.
+This target-qualified boundary exposes neither an MSR nor a register, and it
+does not define portable TLS layout, allocation, multiple threads, or a general
+architecture-control interface.
+
+The initial-thread exit-word refinement permits Linux-compatible
+`set_tid_address` to retain either no candidate or one complete writable
+four-byte user extent. It returns the sealed TID one. Terminal thread exit
+stores zero to the retained word under fault recovery before clearing the
+private candidate and completing user execution. This is one single-thread
+lifecycle hook, not cloning, futex service, robust-list processing, or a
+general task table.
+
+The initial-thread robust-list refinement permits Linux-compatible
+`set_robust_list` for one readable 24-byte native head whose list is empty and
+whose pending pointer is null at terminal exit. Registration retains the
+candidate privately without dereference. Terminal exit copies and validates
+the complete head under fault recovery before clearing private state. This
+qualifies empty libc registration; it does not walk entries, mutate futex
+words, wake waiters, or define multiple-thread recovery.
+
+The bounded initial-resource refinement permits Linux-compatible
+`getrlimit(RLIMIT_STACK)` and query-only
+`prlimit64(self, RLIMIT_STACK, null, old-limit)`. Both publish one native pair
+with an 8 MiB soft limit and unlimited hard limit through a complete writable
+16-byte user extent under fault recovery. This is one immutable process fact,
+not resource mutation, enforcement, accounting, inheritance, or a general
+resource table.
+
+The bounded initial-signal-mask refinement permits Linux-compatible
+`rt_sigprocmask` for the sole live thread. The private mask begins empty and
+supports native query, block, unblock, and replacement operations over one
+64-bit signal word. Input and optional prior-mask output use complete owned
+user extents under fault recovery; `SIGKILL` and `SIGSTOP` are always removed
+from an installed mask. This defines thread-local mask state only, not signal
+generation, queuing, action registration, delivery, restart, or return.
+
+The bounded initial-anonymous-mapping refinement adds one affine page
+reservation to a prepared user address space. `user address space reserve
+anonymous` consumes one owned frame without publishing a user mapping and
+returns an opaque reservation whose address remains provider-private. During
+the sole user execution, Linux-compatible anonymous `mmap` may zero and
+activate that page and `munmap` may revoke it; repeated activate/revoke
+generations reuse the same reservation only after complete revocation.
+`user address space release anonymous` consumes the terminally non-present
+reservation, returns the exact frame, and preserves address-space ownership.
+This is one bounded runtime page, not a VMA collection or general mapping API.
+
+The bounded anonymous-protection refinement permits Linux-compatible
+`mprotect` on that sole live mapping. The provider may transition the current
+generation among inaccessible, read-only non-executable, and read-write
+non-executable states with ordered target completion while retaining mapping
+identity and contents. The inaccessible state remains an active generation,
+so it neither releases the reservation nor admits another `mmap`. Native
+protection bits, page-table representation, and invalidation instructions stay
+provider-private. This is exact-page protection for one reservation, not
+executable permission, partial splitting, protection keys, concurrent edits,
+or a general virtual-memory-area service.
+
+The bounded anonymous-advice refinement permits Linux-compatible
+`MADV_DONTNEED` on that same live generation. The provider eagerly zeroes the
+complete resident backing through kernel authority while preserving generation
+identity and the current inaccessible, read-only, or read-write non-executable
+protection. This is one exact-page discard contract, not a silent hint, lazy
+fault-backed reclaim, other advice classes, or general memory-pressure policy.
+
+The bounded userspace-clock refinement permits Linux-compatible
+`clock_gettime(CLOCK_MONOTONIC)` for the initial process. It converts one
+qualified provider monotonic observation into normalized native seconds and
+nanoseconds, publishes the complete result under fault recovery, and preserves
+nondecreasing order across completed calls. Counter selection, frequency,
+rollover, and conversion remain provider-private. This does not define
+realtime, vDSO, timers, adjustment, clock namespaces, or SMP migration.
+
+The corresponding bounded resolution refinement permits Linux-compatible
+`clock_getres(CLOCK_MONOTONIC)`. It publishes the exact normalized resolution
+of the qualified provider source through an optional complete native timespec
+output. The initial x86-64 profile reports ten nanoseconds. This adds no new
+clock identity, timer service, or portable counter representation.
+
+The bounded unsupported-syscall refinement returns Linux-compatible `-ENOSYS`
+for every syscall number not selected by the initial process's implemented
+dispatch set. Failure follows the ordinary syscall return continuation without
+reading unused arguments or mutating process or kernel state, so userspace may
+continue after a capability probe. This is kernel dispatch policy rather than
+a machine-provider operation and does not make an unsupported interface
+available. A separately qualified static-process refinement applies the same
+recoverable fallback before and after image replacement. Unknown selectors do
+not consume startup phase, process resources or execution authority. Implemented
+selectors retain their own validated contracts; fallback does not turn an
+unqualified argument profile into a supported interface.
+
+The bounded user-yield refinement permits Linux-compatible `sched_yield` for
+the sole runnable initial thread. With no eligible peer, the kernel preserves
+the same context and private process state and returns zero through the ordinary
+syscall continuation. Runnable selection remains kernel policy and no provider
+context switch occurs. This does not add user scheduling collections,
+priorities, affinity, multiple threads, migration, or SMP scheduling.
 
 ## External observations and permitted choice
 
@@ -706,6 +1469,30 @@ A recovery scope admits only its declared synchronous faults and operations.
 Unexpected kernel faults, machine-critical events, stack corruption, and
 faults outside the generated scope use their owning fatal or entry protocol.
 
+The initial user-transfer refinement is systems-only. One opaque affine scope
+is derived from the exact live syscall entry and must be returned through every
+complete or fault outcome before that entry can be disposed. `copy_to_user`
+accepts an untrusted ABI candidate and bounded kernel-owned bytes; it reports
+complete extent or the copied prefix permitted by the selected Linux contract.
+The candidate never becomes a Topal reference.
+
+The first x86-64 qualification extends the generated probe with Linux `uname`.
+A complete copy publishes one source-owned `new_utsname`; a copy crossing from
+the writable probe page into an unmapped guard page enters only the generated
+page-fault recovery continuation and produces `-EFAULT`. Other page faults
+remain fatal.
+
+The input-direction refinement uses the same affine scope. `copy_from_user`
+keeps destination staging private until every byte of one selected layout was
+copied and validated. Completion returns the value; a fault returns permitted
+prefix progress but no partial or uninitialized value. The initial x86-64
+probe uses Linux `nanosleep` with a complete zero-duration native `timespec`
+and with a second `timespec` whose final eight bytes cross into the guard page.
+The first returns immediately with zero and the second returns `-EFAULT`.
+Nonzero sleep, remainder output, signals, restart, arbitrary input layouts,
+general user mapping, UTS namespaces, and ordinary core-language recovery
+remain unavailable.
+
 ## Atomic locations and shared state
 
 `AtomicLocation T D` is a live, suitably aligned fixed-layout location for one
@@ -859,7 +1646,336 @@ visibility, notification, completion source, and reclamation. Coherent and
 noncoherent providers implement the same ownership contract; a no-operation
 maintenance path still needs qualified evidence.
 
+The initial PCI configuration refinement derives one transaction-scoped
+configuration session from the bootstrap platform authority. Source supplies a
+PCI segment, bus, device, function, aligned configuration-register offset, and
+expected little-endian 32-bit value. The observable read occurs exactly once
+and either proves equality before returning the bootstrap authority or enters
+the fatal disposition. The provider owns the configuration access mechanism
+and transaction serialization, but not enumeration, matching, capability
+walking, BAR interpretation, or driver binding. Thus an x86 port-I/O lowering
+and an ECAM lowering preserve the same source meaning without making PCI bus
+policy a compiler intrinsic.
+
+The bounded virtio-PCI discovery refinement composes those transactions into a
+source-owned, ordered capability walk. The checked source follows the PCI
+capability links, recognizes the virtio vendor capabilities, validates their
+BAR-relative regions, and records the selected transport layout. Each provider
+call remains one generic configuration dword transaction. The provider neither
+parses capability bytes nor selects a virtio transport, so the same library
+policy can operate above x86 configuration mechanism 1, ECAM, or another
+qualified configuration service.
+
+A PCI region-register access derives a transaction-scoped device session from
+validated function, capability, BAR-index, and BAR-relative-region evidence.
+Source supplies the register protocol, width, direction, value policy, and
+selected PCI configuration-access gateway; it never receives an assigned BAR
+address. A provider may realize the access through that gateway or an opaque
+mapped BAR while preserving the same ordered device effect. Virtio feature and
+status policy therefore remains ordinary checked kernel/library code rather
+than a provider intrinsic.
+
+Queue discovery is source-owned device policy over the same checked region
+transactions. After confirmed feature negotiation, source selects a queue and
+observes its capacity, enable state, and transport-relative notification
+identity before allocating DMA memory. These facts carry no assigned address
+and grant no DMA authority. In particular, merely discovering a queue does not
+make the device live: queue population must still complete before source may
+publish `DRIVER_OK`.
+
+A checked PCI configuration update names one exact-width field, a mask,
+expected masked pre-state, and desired masked post-state. The provider reads,
+verifies, updates only the named bits, and reads back the result under one
+serialized transaction; source owns why those bits change. This permits a
+driver to authorize bus mastering without exposing x86 ports, ECAM addresses,
+or accidentally rewriting adjacent write-one-to-clear status bits.
+
+DMA-buffer creation derives fresh opaque affine memory identities for one
+validated device and translation domain. Each request carries size, alignment,
+direction, visibility policy, and semantic role. A created buffer begins in
+the CPU-owned state, remains disjoint from every other live allocation, and
+reveals no physical, virtual, bus, or I/O-virtual address. Creation alone does
+not prepare memory, publish descriptors, or grant device access; those require
+later explicit ownership transitions. Providers may use coherent identity
+translation, noncoherent cache maintenance, IOMMU mappings, or bounce storage
+while preserving the same source-visible lifetime and direction contract.
+
+While a DMA buffer is exclusively CPU-owned, checked integer stores may update
+bounded naturally aligned fields. A checked DMA-reference binding stores a
+provider-selected device-visible address derived from another compatible DMA
+identity without making that address an ordinary source value. Both buffers
+must belong to the same validated device and translation domain, and binding
+preserves their ownership. Identity-translated, IOMMU, and bounce-buffer
+providers therefore share one source operation while resolving different
+address representations privately.
+
+A DMA preparation transition consumes exclusive CPU ownership and produces the
+same opaque identity under exclusive device ownership. Before returning, the
+provider completes every mapping, pinning, cache-maintenance, and ordering
+action required by the buffer's direction, visibility policy, role, device,
+and translation domain. Even when coherent identity-translated hardware needs
+no cache instruction, the checked ownership and ordering boundary remains.
+Source cannot access the buffer again until a completion transition returns CPU
+ownership. Preparing referenced payload storage before queue-control storage
+lets portable driver policy establish device accessibility before exposing a
+descriptor that names it.
+
+A device-register DMA-reference publication names a validated device region,
+register, reference width, device-owned buffer identity, in-buffer offset, and
+matching device and translation domain. The provider writes the corresponding
+device-visible address without returning it to source. Register selection and
+publication order remain checked driver policy; translation, target byte order,
+and any legal access-width decomposition remain provider mechanics. Thus
+identity-translated, IOMMU, bounce-buffer, configuration-gateway, and mapped-
+MMIO realizations share one source-level operation without creating a general
+integer/address conversion.
+
+Once every required queue reference is published, checked driver policy may
+enable the queue and publish its ready status through ordinary exact-width
+device-register transactions. Queue enablement must be read back before the
+driver advertises readiness, and the final ready status must itself be read
+back before notification is permitted. The provider continues to implement
+only the qualified register-access mechanism and does not infer queue, feature,
+status-bit, or notification policy.
+
+Once activation is verified, checked driver policy may submit published work
+through an exact-width transaction to a discovered notification region. Queue
+selection, notification-offset arithmetic, ordering after device-ownership
+transfer, and the submitted value remain source-owned policy. Notification is
+an event and therefore has no synthetic readback; it grants no completion or
+CPU-access authority. The provider continues to resolve only the qualified
+region-access mechanism.
+
+After submission, checked driver policy may observe and acknowledge a transport
+completion signal through a bounded exact-width device-register observation.
+An eventual-read operation has an explicit finite attempt bound, succeeds on
+the first equal value, and fails closed on exhaustion; it never authorizes an
+unbounded provider wait. Signal observation remains distinct from validating
+device-written queue metadata and from returning DMA ownership: it grants
+neither CPU buffer access nor payload validity. Capability selection, expected
+status, bounded-operation selection, side-effectful acknowledgement, and
+ordering remain source-owned policy; the operation identity fixes its attempt
+bound, and the provider supplies only the qualified region-access mechanism and
+bounded retry realization.
+
+After acknowledging a completion signal, checked driver policy may return only
+the shared queue-control DMA buffer to CPU ownership. The transition preserves
+device, translation-domain, direction, visibility, role, and buffer identity;
+the provider must complete device-to-CPU visibility before source can inspect
+the buffer. A coherent target may realize this without a cache instruction,
+while a noncoherent, IOMMU, or bounce-buffer target performs its qualified
+synchronization privately.
+
+Exact-width integer reads from a CPU-owned DMA buffer may then validate
+device-written queue metadata. Such validation proves only the observed control
+fields. It does not return a referenced payload buffer to CPU ownership or make
+payload bytes valid, even when the metadata reports a completed length.
+
+Once checked queue metadata identifies the completed descriptor and length,
+driver policy may separately return that descriptor's payload buffer to CPU
+ownership through the same generic DMA completion protocol. The provider must
+finish device-to-CPU visibility for the payload's direction and role before
+returning authority. Completion exposes neither an address nor payload values
+and assigns no entropy estimate, credit, trust, or consumer policy. Those
+belong to later typed resource protocols above the DMA ownership boundary.
+
+A CPU-owned DMA payload may be borrowed by a checked entropy-sample capture
+operation. Capture names an exact in-buffer range and produces a fresh opaque
+raw-sample identity while preserving payload ownership. The provider resolves
+private CPU mappings and performs a complete exact-byte copy into kernel-owned
+sample storage; source receives neither address nor byte values. Capture also
+records explicit credited entropy, which may be zero. It does not condition,
+mix, health-test, trust, or distribute the sample. Those are later resource
+protocols and cannot be inferred from DMA completion or source role alone.
+
+An opaque raw sample may be assessed through an explicit entropy-source trust
+evidence resource owned by kernel policy. Assessment preserves the affine
+sample identity and bytes while recording a quality ratio and the derived
+credited-bit count. The credited count cannot exceed the sample extent and
+must follow the operation's exact quality calculation. A device class,
+successful DMA completion, semantic payload role, or target provider cannot
+implicitly create trust evidence or select quality. Assessment performs no
+mixing, conditioning, generator seeding, or output.
+
+Kernel policy may create an opaque affine entropy-pool resource with an
+explicit credit capacity and zero initial credit. Creation establishes
+lifecycle identity only: it exposes no storage or byte representation, invokes
+no target provider, and does not consume an assessed sample. Mixing and credit
+transfer require a later distinct checked operation. Pool existence or input
+quality alone cannot imply generator readiness or random output.
+
+A checked pool-mixing operation may consume an assessed opaque sample and an
+empty pool state through a qualified architecture-independent conditioner. It
+returns the same affine pool identity with opaque mixed state, consumes and
+wipes the sample, and creates a separate affine contribution token carrying
+the sample's credit claim. Source observes no bytes or addresses. Mixing does
+not itself change credited pool bits, imply readiness, or produce output; a
+later operation must explicitly consume the contribution to transfer credit.
+Providers realize the fixed conditioner and wiping mechanics but cannot select
+the construction, retain material, or assign credit.
+
+A checked entropy-credit operation may consume a mixed-but-uncredited pool and
+an affine contribution token created by its completed conditioner transition.
+It returns the same opaque pool identity with a checked bounded credit total
+and consumes the contribution so the claim cannot be applied twice. Credit
+accounting is architecture-independent source policy and receives no provider
+lowering; it neither reads nor changes opaque pool bytes. A fully credited pool
+does not by itself imply generator readiness, reseeding, extraction, or
+userspace delivery.
+
+A checked generator-initialization operation may consume a fully credited
+opaque pool into one fresh affine generator. The qualified profile fixes the
+algorithm, exact key extent, initial generation, and credit threshold. The
+provider transfers the complete opaque state into distinct generator storage,
+wipes the consumed pool, and fails closed on a partial transfer or wipe; source
+observes neither storage object nor any key byte. Success establishes an
+explicit ready generator but produces no random output. Extraction, fast key
+erasure, generation advancement, reseeding, and interface delivery require
+later distinct operations.
+
+A checked generator-extraction operation may consume one ready affine
+generator generation and return exactly one successor generation together with
+one opaque output object. The qualified profile fixes the cipher construction,
+counter and nonce, maximum output extent, key-erasure split, and generation
+advance. The provider must replace the persistent key before publishing any
+output, wipe all temporary cipher state, and fail closed on partial key or
+output publication. Source observes neither key nor output bytes; a separate
+checked delivery operation must consume the output object into a selected
+kernel or userspace interface.
+
+A checked initial-process random delivery may consume one opaque output object
+into a prepared but not yet entered user stack. The qualified Linux profile
+fixes the `AT_RANDOM` tag, 16-byte object extent, complete in-stack bounds,
+output partition and discard policy, and ordering before context entry. The
+provider copies and verifies the selected bytes, wipes and verifies the entire
+consumed output object, and returns a refined entry-ready process capability.
+Source observes neither the random bytes nor their provider-selected address.
+
+A checked user-random reservation may consume a fresh opaque output object into
+one process and interface capability before entry without performing the user
+copy. The qualified profile fixes the maximum delivery extent, output discard
+partition, accepted and incompatible interface flags, and single-use policy.
+Argument and complete-range validation failures preserve the reservation; the
+first successful nonempty request copies and verifies the selected prefix,
+consumes the capability, and wipes the entire provider output. Native syscall
+numbers, registers, pointer validation, and copy-fault recovery remain provider
+details, while source observes neither random bytes nor an address.
+
+A checked reusable user-random binding may consume a ready generator together
+with one live initial reservation into an affine process-lifetime service. The
+reserved output supplies the first successful request. Each later successful
+request performs a fresh generator transition with key replacement before
+publication; complete argument and user-range validation precedes that
+transition, and every call wipes its full output after the requested prefix is
+copied. Zero and rejected requests do not advance the generator. Process exit
+consumes the service only after the provider destroys any live output, the
+generator key, and private service state. Source observes neither secret state
+nor target syscall, register, exception, or copy mechanics.
+
+A bounded full-output refinement may raise the per-call delivery limit to the
+complete provider-output extent. The request still validates the complete user
+range before changing generator state, consumes at most one output object,
+copies and verifies exactly the requested prefix, and wipes the complete output
+even when every output byte was selected. The extent is a property of the
+qualified generator contract rather than an architecture syscall mechanism.
+
+A checked small-request refinement may consume a live reusable user-random
+service into a service that can satisfy one request from a bounded sequence of
+fresh output objects. It names the maximum output count and complete-request
+policy. The provider validates the entire user range before the first state
+transition, replaces the key before each fresh output is published, copies each
+selected chunk in order, wipes every complete output, and reports one completed
+interface delivery only after the full request. Source observes neither the
+chunk loop nor cryptographic, syscall, register, address, or fault mechanics.
+
+A checked large-request refinement may raise those explicit bounds while the
+qualified process remains single-threaded and signal-free. It preserves
+whole-range validation before extraction, ordered fixed-size output chunks,
+per-output key replacement and complete erasure, exact completion in the
+absence of interruption, and one interface delivery for the syscall. The
+larger bound does not imply unbounded allocation, partial-progress policy, or
+an architecture page-size dependency.
+
+A separately qualified read-only namespace refinement may retain immutable
+object identities, owned path bytes, directory descriptions and process cwd.
+It resolves native paths through namespace components and relative authority,
+allocates independent descriptions for independent opens, and makes metadata,
+enumeration and file reads agree on object identity and backing. Native copies
+and allocation precede their declared lookup/commit boundaries; failures retain
+existing resources and erase private names. Cwd survives image replacement.
+Path bytes, native layouts and directory cookies stay behind the Linux ABI
+adapter. This does not establish writable storage, links, mounts or general VFS
+coverage, and introduces no ordinary language pointer or string semantics.
+
+A separately qualified native realtime-seconds adapter may observe a declared
+platform realtime resource and publish Unix-epoch seconds with an optional
+checked complete native output. It keeps acquisition/calendar conversion
+private, distinct from monotonic observation, validates source coherence and
+bounds, and erases staging on every return. This does not establish clock
+setting, timezone or synchronization services or expose native clock registers
+to ordinary source.
+
+A separately qualified prepared-root identity refinement may expose repeated
+real/effective user/group queries and idempotent root selection independently
+of pathname or prior call ordering. Its authority is retained process identity,
+not user-writable auxiliary metadata. Exec preserves that view and exit erases
+its witness. Arbitrary identity and privilege changes remain unqualified.
+
+A separately qualified exec-environment refinement may transport checked owned
+argument/environment byte aggregates without interpreting keys or requiring
+argv[0] to equal the executable pathname. Empty/null environments, duplicates
+and empty entries remain caller data. A fresh stack derives vectors and payload
+pointers from copied lengths/offsets, isolates payloads from ordinary stack
+growth (above entry RSP in the initial x86 binding) and
+separates execution name from argument zero. Failures preserve the original
+process owner and erase staging; committed entry consumes the copied aggregate.
+Declared count/byte bounds and native layout remain provider-qualified details.
+
+A raw target deadline notification does not itself construct a source deadline
+context. The provider binds accepted delivery to the armed event and filters
+queued notifications for a completed event before source entry, preserving the
+interrupted frame. Completion closes target delivery resources; filtering
+cannot re-complete an event or repeat its scheduler transition. Controller and
+notification mechanics remain target-owned.
+
+A separately qualified process-pair refinement may suspend either independent
+process at a completed syscall boundary and resume its exact counterpart.
+Yield makes an eligible counterpart runnable; child wait binds the parent to
+the exact live relationship and excludes it from runnable selection until exit.
+Private image/thread/return state stays with each process; shared descriptions,
+clock and entropy histories stay with their owners. Native output is checked
+in the restored process generation before publication. Pair termination releases
+inactive as well as active resources. Cooperative qualification does not establish
+general user preemption, scheduling fairness, blocking I/O or core task semantics.
+
+A separately qualified anonymous-pipe service may construct shared byte-stream
+objects and read/write endpoints under an existing process owner. Descriptor
+aliases retain endpoint rights/status and peer lifetime independently of private
+process snapshots. Blocking transfer atomically retains an exact object-generation
+condition and native retry continuation; bytes, available space or peer closure
+make that condition eligible. Resumption rechecks current-generation user access
+before publication. Unrelated identities and ordinary yields cannot manufacture
+readiness, and destruction requires complete endpoint/wait/payload reclamation.
+Native pipe flags, atomic-write bounds and signal/error behavior remain qualified
+personality contracts. This introduces no core-language byte sharing or raw address.
+
 ## Storage, placement, and artifacts
+
+A separately qualified volatile-file service may retain owned sparse regular
+objects over an explicit filesystem page/object budget. Logical size, resident
+page ownership, open-description position and process descriptor authority stay
+distinct. Holes read as zero; writes and truncation publish only after complete
+checked admission, and removed bytes cannot reappear on regrowth or slot reuse.
+Aliases and inherited descriptions share live contents and position across exec
+and process restoration. Last-reference destruction and cancellation reclaim
+every page and identity exactly once. Native temporary-file creation, modes,
+umask, metadata and offset/error ordering remain Linux personality contracts.
+This service adds neither core mutable values nor a host allocation dependency;
+general writable namespace, mapping and device support need separate qualification.
+An enlarged closed syscall-operation vocabulary uses an explicitly selected new
+dispatch interface version. Earlier exact vocabularies remain independently
+usable in the same unique slot; adding a handler cannot silently reinterpret
+old nominal values or create a second invocation domain.
 
 The systems root begins with bounded bootstrap storage and may later construct
 allocator capabilities. Allocation is fallible and names a region or pool,
@@ -872,6 +1988,33 @@ while borrowed and become inaccessible when consumed by release. They expose
 neither their address nor their provider's allocation metadata. Volatile,
 atomic, device, DMA, firmware, and user-memory operations remain distinct typed
 protocols rather than flags on a plain region access.
+
+A qualified bootstrap root may lend a live plain region to its selected
+ordinary region library, suspending owner access until synchronous completion
+and complete temporary reclamation. The initial profile binds one declared
+region-library entry, explicit arena/stack reserves and a nonoverlapping loan
+before atomic derivation. Source stores persist when the owner resumes. The
+ownership model treats opaque helper-written bytes as unknown and records later
+byte guards as runtime obligations rather than predicting unchanged contents.
+Source/object qualification, root ownership, linked code and physical cleanup
+require separate evidence. See
+[root region invocation](../linux-kernel/design/root-borrowed-region-invocation.md).
+
+A separately qualified region-action context may select an ordinary
+`(KernelByteRegion, Nat, Nat) -> Boolean` function over an existing persistent
+kernel field. The controller retains ownership and lends a contained plain-byte
+window only while its entire synchronization domain is exclusive. Descriptor
+aliases retain that same owner for effects; service handles grant no raw memory
+access. Immutable scalar inputs and the Boolean result use explicit private
+transport, with complete bounds and temporary reclamation before owner access
+resumes. The initial file-position application supplies the effective transfer
+base and actual count after admitted data transfer; source performs checked
+arithmetic and mutation of the actual shared field. Positional/zero/EOF/error
+paths do not invoke it. Operation-private preparation stays inaccessible until
+commit; an admitted action failure never resumes the owner or becomes a new
+Linux error. This does not imply rollback of successful stores or new core
+Memory/resource semantics. Existing Unit region profiles retain their contracts.
+See [persistent region actions](../linux-kernel/design/persistent-region-actions.md).
 
 Static placement is semantic evidence such as special-entry text, read-only
 data, mutable data, per-CPU template, bootstrap-reclaimable data, page-aligned
@@ -891,6 +2034,16 @@ scheduler, filesystem, or userspace service.
 
 ## Qualification
 
+A further freestanding qualification may execute checked ordinary tail
+traversal with runtime-derived work and bounded live temporary storage.
+Ordinary termination, arbitrary-precision values, effect order and ownership
+remain unchanged. A closed source plan must bind every back edge and helper;
+publication separately proves carried-value bounds, storage transfer, retirement,
+native stack and cleanup. Recycling storage requires all retiring dependencies
+to be dead while preserving every still-live value and borrowed capability.
+The initial source-plan inspector grants no executable profile and does not
+relax the existing acyclic source qualifiers. See the kernel's `TK-DEC-282`.
+
 Each systems element requires:
 
 1. architecture-independent semantic and negative tests;
@@ -907,3 +2060,379 @@ Each systems element requires:
 The first executable qualification is x86-64 only. Architecture-neutral
 semantics continue to be reviewed against AArch64 and RISC-V so x86 mechanisms
 do not become universal source meaning.
+
+### Root tail traversal qualification
+
+The systems-only `borrowed-byte-region-tail-action-v1` interface selects ordinary
+checked tail traversal for the existing exclusive plain bootstrap-region call.
+The initial caller owns 64 bytes and supplies whole Nat facts `(64, 0, 1)` to
+a `(KernelByteRegion, Nat, Nat, Nat) -> Boolean` entry. A true result is required
+before owner resumption. Source retains ordinary values/effects/termination and
+receives no address or machine instruction vocabulary. Existing acyclic source
+interfaces keep their qualification and refusal behavior.
+
+The kernel adapter must bind the actual typed owner, privileged interrupt/stack
+context, source/native closure, complete caller and private storage bounds,
+independent failure recovery and physical caller/private retirement. Initial
+unpublished VM component experiments grant no canonical publication; publication
+remains refused until the complete source/native/caller/boot binding is verified.
+See the kernel [root-tail design](../linux-kernel/design/tail-kernel-root.md).
+
+Tail artifact qualification retains the root source and complete ordinary source
+dependencies. Packaging reconstructs the checked caller and native components
+with the qualified toolchain, then verifies their complete relocated code/data
+against the kernel. Supplied metadata does not establish that connection. The
+new profile requires the compiler toolchain during packaging; it adds no guest
+runtime dependency. The [publication binding](../linux-kernel/design/tail-publication-binding.md)
+describes this systems-only qualification.
+
+Tail-source byte counts describe the borrowed owner's extent, independently of
+the temporary arena used to evaluate the source. Source selection and isolated
+module checking cannot infer the older profile's 65536-byte owner cap for this
+family. They retain ordinary Nat meaning without an invented finite upper bound;
+the target's resource proof separately establishes its actual native count domain.
+
+### Tail metadata query components
+
+A separate source-only selection and owned native component may return Nat facts
+from a `(KernelByteRegion, Nat, Nat, Nat) -> Nat` traversal, with the first Nat as
+the checked countdown. This reuses ordinary natural values, source effects and
+the existing complete transfer/retirement protocol. The complete result retains
+its arbitrary-precision representation; a caller must prove any later native-word
+conversion. A returned index is data, not a frame extent, address or allocation
+grant. The Boolean root interface and its true-result gate remain separate.
+
+After its initial literal natural-countdown guard, a traversal may include
+additional ordered rules which finish the current invocation. These use the
+existing decision-table syntax. They cannot recurse; only the final otherwise
+action carries the guarded tail edge. Resource qualification accounts for every
+tested operand and terminal action, even when a policy commonly finishes early.
+
+Such a component supplies no kernel callsite, physical-frame authority or canonical
+artifact permission. Actual allocator integration must additionally bind its
+owned metadata, request/result protocol, reservation/provenance checks, complete
+caller costs and retirement, and closed linked code. See the
+[metadata query design](../linux-kernel/design/tail-metadata-query.md).
+
+Large tail-source closures may share equivalent checked helper instances before
+native qualification, as the existing acyclic region family already does. The
+sharing pass retains declaration/module identity, types, captures, effects,
+operations, literals and all ordered calls and arguments; only analysis-only
+integer-range annotations may be removed. The recursive entry and its exact
+self edge remain distinct. Checking helper closure/effects while ignoring that
+single self edge supplies no termination or executable proof. Ordinary source
+analysis and the complete tail-plan/resource/native checks remain necessary,
+including the existing 64-function limit after sharing. Small closures and the
+acyclic interfaces retain their existing representation and refusals.
+
+The ordinary [frame metadata policy](../linux-kernel/design/frame-metadata-policy.md)
+uses this mechanism to search, mark and release actual owned metadata cells.
+Its numeric results still require an actual allocator caller and physical
+ownership/zeroing before any frame grant.
+
+### Frame allocator policy binding
+
+An optional `frame-allocator-library` declaration selects the systems-only
+`physical-frame-policy-tail-v1` interface for the root's single frame allocator.
+Its ordinary region/three-Nat entry returns Nat facts, with the first Nat as
+countdown, under the existing 65536/4096 temporary/stack reserves. Persistent
+metadata capacity comes from the owned normalized memory description. This adds
+no core syntax, address or extent-authority constructor.
+
+The declaration is a checked source obligation. Actual execution/publication
+requires complete root/source/native binding, normalized topology/reservations,
+runtime requests, live affine extent identity, physical zeroing, whole release,
+privileged caller/context and complete retirement. Source facts do not supply
+those guarantees. Program-only publication remains refused until this binding
+exists. Existing roots retain their qualified profiles. See the
+[kernel binding design](../linux-kernel/design/frame-policy-kernel-binding.md).
+
+The source-bearing artifact route retains the frame declaration and rebuilds
+the complete root, frame policy, other selected libraries and native callers.
+Boot packaging repeats that reconstruction from immutable snapshots and checks
+the exact native contributions, load permissions, resource bounds, complete
+image reservation and artifact identities. A supplied manifest, a reservation
+symbol or a program-only entry point cannot replace these proofs. Missing,
+mixed, extra, duplicate or orphan frame bindings are refused.
+
+Workload allocation uses the request captured by the actual process entry.
+Its privileged invocation binds the process context, address space, fresh entry
+identity, critical state, owned continuation stack and compiled caller. A
+bootstrap stack address by itself does not authorize a syscall invocation.
+Memory handling and its nested allocator calls share an owning boundary with
+a complete combined resource and retirement proof.
+
+Resizing a heap retains its old ownership until replacement backing is ready,
+copies the retained prefix, and publishes pinned replacement translations.
+Translation invalidation precedes unpinning, erasing and consuming the old
+extent. Ordinary unavailability preserves the old heap. Exec and exit revoke
+and release the entire live heap; failure after writes retains performed
+effects and enters fatal cleanup. The initial target's finite translation
+geometry does not complete general virtual memory support. See
+[runtime memory design](../linux-kernel/design/dynamic-frame-memory.md).
+
+### Process address-space ownership
+
+A process keeps its own address-space identity, program break, mapping owners
+and backing lifetimes across fork, scheduling, exec and exit. Fork-like creation
+copies the parent's private memory state into independently owned child storage;
+later writes, resize or exec in either process cannot alter the other's memory.
+An inactive process retains its backing ownership. Reusing an active translation
+window does not make that window the owner of both processes' memory.
+
+The initial serialized pair may retain its existing image/stack parking, but
+frame-backed heaps require distinct live extents sized from each actual heap.
+Handoff publishes the selected process's mappings and completes required
+invalidation before its user continuation resumes. It neither exchanges a fixed
+number of heap bytes nor revives saved heap translations independently of their
+live backing owners. No user-memory loan or live kernel continuation crosses a
+handoff. Child exec/exit retires only the child's heap; outer-owner cancellation
+also retires any inactive child exactly once. Ordinary prepublication resource
+failure preserves the existing processes and consumes no child PID. Actual
+allocator issuance already performed during preparation is never rolled back.
+
+Exec replaces an image while retaining its initialized descriptor/process owner.
+In the process-MM profile, parent `exit` and `exit_group` use that retained
+owner during initial or replacement startup. Termination cancels an inactive
+child's wait before releasing its endpoint references, retires its backing,
+and completes the existing parent and shared-service teardown. Image-stage
+observations do not authorize termination or replace ownership checks.
+Process/thread identity and registration services bind that owner during replacement
+startup too. Restarting an image's startup observations cannot revoke the
+process's eligibility or change the PID/TID returned by an ordinary query.
+
+This systems-only refinement preserves the qualified serialized child/pair
+interfaces and core-language meaning. Separate address spaces, general mapping
+types and scheduling remain required for the complete kernel. The
+[process memory design](../linux-kernel/design/process-memory-ownership.md)
+defines staged integration; a reference model supplies no native or publication
+authority.
+
+### Owned user-memory extents
+
+The frame-backed process profile validates transfer candidates against its
+actual live address space. Complete nonwrapping bounds, every relevant
+translation permission and the owned pinned translation/backing storage must
+agree with the requested direction. An address or present leaf is not ownership.
+Admission and the following access share one stable entry-bound observation;
+validation cannot be cached across entries. Empty transfers touch no memory and
+grant no address authority. Existing syscall staging, fault/progress policies
+and error ordering remain required.
+
+For stat-family pathname queries, the owned profile checks the complete required
+pathname bytes before reading them. Lookup failure returns without admitting or
+touching an unused metadata destination. A query proceeding to metadata
+publication requires complete writable output admission before record staging.
+Independent record-error decisions retain their Linux order. This replaces
+only the predecessor's fixed pathname placement and unconditional output-buffer
+witnesses in that profile; operation, flag, lookup and lifecycle rules remain.
+Prescribed pathname contents remain the same; their storage may be any admitted
+readable extent held stable through the query.
+
+The bounded open paths check their complete pathname before the first load.
+Directory reads check the complete record output selected by the description
+and count before staging it. At EOF the directory call returns zero without
+using the output buffer. The profile-file read still checks the requested
+numeric address range before returning EOF. That check does not require a
+mapping. These rules apply to the owned selection with its existing operation,
+count and lifecycle checks.
+
+The bounded root `chdir` admits both pathname bytes before reading them.
+The bounded signal-action installs and queries admit their complete native
+input or output before updating the disposition or publishing the result.
+Terminal request misses return `ENOTTY` without accessing the unused argument.
+The file-header read admits its one-byte output before staging or advancing
+the file position. The bounded header poll checks its complete input record
+and admits the writable result field before publishing readiness.
+
+In the owned selection, either admitted ELF-header form may poll the same live
+bounded file description. The clean form may still read directly. Polling may
+repeat before a read, does not advance file position, and ignores incoming
+`revents` because that field is output. Each successful poll sets `POLLIN` and
+returns one; the next successful header-byte read clears pending readiness.
+A refused poll or read preserves those facts. The external form retains its
+terminal-probe sequence. This remains the one-record, descriptor-three,
+`POLLIN`, infinite-timeout operation; other polling behavior needs its own
+qualification. Predecessor profiles retain their existing behavior.
+
+Bounded shell command reads copy only the requested prefix of the available
+input. A short read leaves the remaining input available, and a zero count
+leaves the input and phase untouched. The serial adapter retains received bytes
+privately until it can copy them successfully. The shell advances after the
+complete command has been delivered. Later steps use private completion facts
+and retire them on image replacement or exit.
+
+The bounded first-image exit verifies that the current process owns the live
+descriptor table and has no child. It releases the table and clears the
+thread registrations as opaque values while retiring the sole address space.
+Signal dispositions have also transferred into that process-owned table. Exit
+requires the consumed prelude slots to be empty and retires the current table
+state, including subsequent signal-action changes.
+
+This systems-only refinement removes the predecessor's fixed heap geometry
+from general buffer admission. The initial x86 backend uses four-level paging
+and small leaves, retaining explicit physical-access and mode limits. Other
+architectures implement the same owner/entry/direction/lifetime contract with
+their own translation and user-access mechanisms. Existing predecessor roots
+retain their profiles. The owned-extent kernel profile enables supervisor write
+protection before its first userspace entry and keeps it enabled. That transition
+preserves every other CR0 bit; copying does not disable protection. See the
+[owned extent design](../linux-kernel/design/owned-user-extents.md).
+
+Generated caller adapters preserve the existing helper's live input registers
+and direction/result convention. Their return words, saved values, alignment
+and normal or terminal cleanup belong to the complete caller proof. The backend
+derives its inner retirement window after accounting for this outer storage
+within the existing caller reserve. Earlier profiles keep their exact layout.
+
+### Kernel-image protection refinement
+
+An explicitly selected boot adapter may retain a complete startup-storage page
+from its loaded setup image. The provider must bind the actual boot instance,
+whole loaded bytes, RAM provenance and disjoint boot/firmware/input extents
+before writing. It retains that page through kernel lifetime and revalidates
+it independently of historical register observations. Ordinary frame reservation
+alone does not create the owner. This storage grants no CPU startup or arrival
+authority. See `TOPAL-SYSTEMS-BOOT-STARTUP-STORAGE-001` and
+[TK-DEC-295](../linux-kernel/design/boot-startup-storage.md).
+
+The retained-table scope may explicitly request `context boot participants
+initialize (entry is provider-selected)`. Its success branch consumes the exact
+`BootParticipantArrivals` resource with `context boot participants retain
+arrivals for-kernel-lifetime`, observes arrival, then enters the checked boot
+continuation. Initialization is admitted immediately after the table-retention
+observation. The typed provider-selected participant entry carries no source
+CPU identity, address, register or geometry. Native publication remains refused
+until its actual entry and lifetime protocol are qualified. See
+`TOPAL-SYSTEMS-BOOT-PARTICIPANT-SOURCE-001` and
+[TK-DEC-294](../linux-kernel/design/boot-participant-source.md).
+
+Boot-participant initialization uses a complete boot inventory, a fresh session
+and a provider-selected typed entry. Every expected CPU remains pending until
+its own validated entry publishes a matching arrival acknowledgment. A startup
+request or firmware status does not acknowledge arrival. Entry code, translation,
+stack, mailbox and exception storage remain owned throughout the domain's
+lifetime; after entry is armed, a timeout or partial failure retains/poisons
+that storage because a target may arrive late. Arrival facts alone grant no
+protected-image activation or continuous exclusion. This systems-only contract
+has checked source/model support; native startup remains unimplemented.
+See `TOPAL-SYSTEMS-BOOT-PARTICIPANT-ARRIVAL-001` and
+[TK-DEC-293](../linux-kernel/design/boot-participant-arrival.md).
+
+After the preparation observation, `context kernel image retain tables tables
+during { ... }` consumes the exact inactive resource into a scoped
+`RetainedKernelImageTables` owner. The checked boot continuation may allocate,
+execute userspace and restore roots while those banks stay pinned and inactive.
+At its designated terminal disposition, the provider revalidates whole owners,
+generations and unchanged table bytes, erases and releases complete storage,
+then performs that disposition. Earlier fatal branches retain/poison resources.
+The initial boot-context comparison completes before entering the scope; its
+observations do not become valid for a later context. Retention grants no
+activation or protected-context authority and does not weaken the original
+immediate-discard protocol. See
+`TOPAL-SYSTEMS-KERNEL-IMAGE-RETAIN-001` and
+[TK-DEC-292](../linux-kernel/design/retained-image-tables.md).
+
+Inactive preparation checks the retained non-image roles against both actual
+constructed banks. Boot tables, descriptors, stack, handoff storage and actual
+boot-input extents must retain their declared identity, supervisor access,
+write availability, non-execution and memory-attribute encodings. The closed
+handoff code has already transferred into the image and is retired from
+execution; its storage remains retained. Device views retain their distinct
+provider contract. These checks describe inactive reachability; they grant no
+device access, effective protection, processor exclusion or activation.
+See `TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-COVERAGE-001` and
+[TK-DEC-291](../linux-kernel/design/inactive-boot-coverage.md).
+
+The boot binding also identifies the initial firmware-advertised processor set,
+including enabled and runtime-enableable participants. The provider validates
+the retained discovery path and processor identities within its supported
+firmware profile, and compares the relevant bytes again before discard.
+Decoding uses the same retained snapshot whose fields and checksums are checked.
+Firmware identifiers and table formats stay private; an inventory grants no
+processor-startup, parking, hotplug, scheduling or protected-context authority.
+See `TOPAL-SYSTEMS-BOOT-PROCESSOR-TOPOLOGY-001` and
+[TK-DEC-290](../linux-kernel/design/boot-processor-topology.md).
+
+Inactive table preparation also binds the actual boot handoff and retained
+non-image state. The provider checks the entry translation topology, descriptor
+tables and handler targets, current stack/code, boot-resource identity and
+supported interpretation capabilities. It retains raw memory-attribute state
+and preserves the checked entry mapping's cache encodings; this does not grant
+activation or prove other CPUs, asynchronous writers or later mapping paths.
+Source receives no architecture register interface. See
+`TOPAL-SYSTEMS-KERNEL-IMAGE-BOOT-BINDING-001` and
+[TK-DEC-289](../linux-kernel/design/kernel-image-boot-binding.md).
+
+A qualified boot allocator may instead request `kernel image prepare tables
+(image is current-kernel, page-policy is provider-selected)`. Success returns
+one affine `InactiveKernelImageTables` resource. The provider reserves complete
+backing, zeroes it, constructs the actual image's inactive primary views and
+reads back every table word. All separately required user-table storage remains
+separately owned; a bank subextent cannot stand in for it. Source observes
+preparation, consumes the resource with `kernel image discard tables`, observes
+discard, then resumes ordinary boot. Preparation grants no activation or
+protected-context authority. Final reconstruction must reproduce the exact
+image partition and template, as well as storage size, before loading. See
+`TOPAL-SYSTEMS-KERNEL-IMAGE-TABLES-001` and
+[TK-DEC-288](../linux-kernel/design/inactive-image-table-construction.md).
+
+Before initial translation construction, a qualified boot allocator context may
+request `kernel image reserve backing (image is current-kernel, page-policy is
+provider-selected)`. Success returns one affine `ZeroedKernelImageBacking`
+resource holding the complete provider-selected preparation extents. The actual
+current image determines their count and alignment; source supplies neither.
+This resource grants no mapping, table-pointer, activation or protected-context
+authority. The initial consuming operation is `kernel image discard backing`,
+which verifies and erases complete inactive backing, discharges its pins and
+releases each whole extent to its issuing allocator. Issued-identity history
+remains advanced. Other boot work cannot interleave with this preparation.
+
+The native preparation path requires complete current source/image/allocator
+binding. Provisional sizing during compilation cannot authorize execution;
+the final reconstructed image must reproduce its complete requirement before
+loading. The initial x86 provider prepares separate bootstrap and process banks
+while preserving all existing five-page bootstrap-equivalent contracts. Failure
+retains affected resources on the fatal path and publishes no preparation
+witness. See `TOPAL-SYSTEMS-KERNEL-IMAGE-PREPARE-001` and
+[TK-DEC-287](../linux-kernel/design/kernel-image-backing-preparation.md).
+
+Static-image construction may request opaque translation backing with
+`static image construction reserve hierarchy (owner is sealed-construction,
+backing is provider-selected)`. The owner is the exact live sealed construction.
+This purpose remains explicit through checking and lowering; source does not
+choose a page count or alignment. The selected qualified provider derives the
+complete requirement and obtains one affine extent from the allocator. The
+existing attachment, restoration, reclaim and whole-release obligations apply.
+
+For the existing x86 bootstrap-equivalent provider this resolves to its exact
+five unit-aligned frames and preserves every existing check. The older explicit
+`frame-count is 5, alignment-frames is 1` form retains its meaning. Combining
+the opaque and explicit forms is invalid. This request does not select image
+protection: an unsupported provider or protection mode must refuse it rather
+than substitute the bootstrap-equivalent shape. A future protected provider
+must derive its backing from the actual qualified image and retain its complete
+owner binding. See `TOPAL-SYSTEMS-STATIC-ELF-PROVIDER-BACKING-001` and
+[TK-DEC-286](../linux-kernel/design/kernel-image-protection.md#provider-selected-static-hierarchy-request).
+
+A separately qualified systems refinement may combine semantic kernel-image
+placement with actual translation/backing ownership. It makes kernel code
+readable/executable, immutable data readable/non-executable, and mutable data
+readable/writable/non-executable, with supervisor-only kernel routes and
+compatible memory attributes. Final relocation storage becomes immutable only
+after its declared initialization. The provider selects supported granules,
+subdivision and exact owned backing from the actual image and target. Source
+does not acquire PTE formats, native addresses or a portable table-count limit.
+
+The protected context covers every active and restorable root, including
+bootstrap return paths, and every alias of image backing. Construction,
+activation, restoration, writer exclusion, maintenance and retirement preserve
+that binding. The actual mode must enforce the requested rights; supervisor
+write protection cannot be temporarily disabled. Partial hardware-visible
+failure cannot return an ordinary protected continuation. Missing ownership,
+mapping or asynchronous evidence remains a qualification gap.
+
+This is an explicit additional refinement; `bootstrap-equivalent` and existing
+predecessor profiles keep their meaning. A descriptive plan or model creates
+no authority or public activation. Core language semantics remain unchanged.
+See the [kernel-image protection design](../linux-kernel/design/kernel-image-protection.md).

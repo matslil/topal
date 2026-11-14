@@ -14,7 +14,17 @@ use object::{
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
     CompilerAtomicOrder, CompilerAtomicWordRequest, CompilerBootstrapStoragePlacement,
-    CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerKernelMappingRequest,
+    CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerDmaBufferIntegerLoadRequest,
+    CompilerDmaBufferIntegerStoreRequest, CompilerDmaBufferPreparationRequest,
+    CompilerDmaBufferReferenceRequest, CompilerDmaBufferRequest, CompilerDmaBufferRole,
+    CompilerDmaDirection, CompilerEntropyGeneratorExtractRequest, CompilerEntropyGeneratorRequest,
+    CompilerEntropyOutputDeliveryRequest, CompilerEntropyOutputReservationRequest,
+    CompilerEntropyPoolCreditRequest, CompilerEntropyPoolMixRequest, CompilerEntropyPoolRequest,
+    CompilerEntropySampleCaptureRequest, CompilerEntropySampleQualityRequest,
+    CompilerEntropyUserRandomServiceRequest, CompilerEntropyUserRandomSmallRequest,
+    CompilerKernelMappingRequest, CompilerPciConfigurationDwordRequest,
+    CompilerPciConfigurationWordUpdateRequest, CompilerPciRegionDmaReferenceRequest,
+    CompilerPciRegionRegisterDirection, CompilerPciRegionRegisterRequest,
     CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
     CompilerSystemsTransition, CompilerTranslationEditKind, CompilerTranslationMappingRequest,
     CompilerTranslationUpdateRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END,
@@ -28,21 +38,119 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
     SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
-    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESERVE_HIERARCHY, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    model_systems_transitions,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+    SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+    SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
 };
 
 #[cfg(test)]
 use topal_language::compiler::{
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
+    SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+    SYSTEMS_ENTROPY_GENERATOR_EXTRACT, SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
+    SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM,
+    SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM, SYSTEMS_ENTROPY_POOL_CREATE,
+    SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
+    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
+    SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE, SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS,
+    SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+    SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
+    SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_BUS_MASTER,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+    SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END,
 };
 
 use crate::artifact::sha256;
+use crate::systems_provider_object::{
+    INITIAL_USER_CODE_ADDRESS, INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET,
+    INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET, INITIAL_USER_DATA_CAPACITY,
+    INITIAL_USER_DATA_FILE_OFFSET, INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET,
+    INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET, INITIAL_USER_ENTRY_ELF_OFFSET, initial_user_elf_file,
+};
 use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
     X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
@@ -53,40 +161,194 @@ use crate::{
     X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
     X86_SYSTEMS_DEADLINE_ARM_SYMBOL, X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
-    X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL, X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL, X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL, X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL, X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL,
+    X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL, X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL,
+    X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL,
+    X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL,
+    X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL, X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL,
+    X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL, X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+    X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
+    X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
+    X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
+    X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL,
+    X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL, X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
+    X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL, X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
-    X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+    X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ACTIVATE_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CLOCK_TICK_RATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_ENTRY_FACT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_EXECUTABLE_NAME_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PLATFORM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_INITIALIZE_STACK_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DEVICE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_POOL_LIFECYCLE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ACTIVATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_QUALITY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_TRANSPORT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CLOCK_TICK_RATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_ENTRY_FACT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_EXECUTABLE_NAME_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PLATFORM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_EXEC_SNAPSHOT_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-    generate_x86_64_systems_provider_object,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL, X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/14";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/14";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/255";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/241";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
 pub const X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY: &str = "topal_x86_systems_local_notification_entry";
 pub const X86_SYSTEMS_DEADLINE_ENTRY: &str = "topal_x86_systems_deadline_entry";
 pub const X86_SYSTEMS_KERNEL_THREAD_ENTRY: &str = "topal_x86_systems_kernel_thread_entry";
+pub const X86_SYSTEMS_COMPLETION_THREAD_ENTRY: &str = "topal_x86_systems_completion_thread_entry";
 pub const X86_SYSTEMS_TERMINAL_THREAD_ENTRY: &str = "topal_x86_systems_terminal_thread_entry";
 pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
+pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
+pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 37] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 103] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
     X86_SYSTEMS_DEADLINE_ENTRY,
     X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+    X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
     X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_INITIALIZE_STACK_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_ENTRY_FACT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_EXECUTABLE_NAME_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CLOCK_TICK_RATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PLATFORM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DEVICE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_TRANSPORT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PLATFORM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CLOCK_TICK_RATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_EXECUTABLE_NAME_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_ENTRY_FACT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ACTIVATE_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
     X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
@@ -113,6 +375,16 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 37] = [
     X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
     X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
     X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_SYSCALL_SYMBOL,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
+    X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -150,6 +422,70 @@ pub struct SystemsArtifactProvenance {
     pub bootstrap_storage_alignment: u64,
     pub placements: Vec<SystemsArtifactPlacement>,
     pub semantic_trace: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kernel_library: Option<crate::SystemsSourceLibraryArtifact>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region_runtime: Option<crate::SystemsRootRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub tail_root: Option<crate::SystemsTailRootBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub frame_root: Option<crate::SystemsFrameRootBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_position_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_position_runtime: Option<crate::SystemsFilePositionRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub ram_page_pool_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub ram_page_pool_runtime: Option<crate::SystemsRamPageRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub inode_mode_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub inode_mode_runtime: Option<crate::SystemsInodeRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub namespace_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub namespace_runtime: Option<crate::SystemsNamespaceRegionBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
+    pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
+    pub dispatch_library: Option<crate::SystemsNumericLibraryArtifact>,
+    pub process_identity_library: Option<crate::SystemsNumericLibraryArtifact>,
+    pub volatile_files: crate::SystemsVolatileFileProfile,
     pub inputs: Vec<DigestEntry>,
     pub outputs: Vec<DigestEntry>,
 }
@@ -171,6 +507,8 @@ pub struct PublishedSystemsArtifact {
     pub kernel: PathBuf,
     pub debug: PathBuf,
     pub map: PathBuf,
+    pub initial_user_image: PathBuf,
+    pub static_user_image: Option<PathBuf>,
     pub provenance: PathBuf,
     pub record: SystemsArtifactProvenance,
 }
@@ -190,8 +528,338 @@ pub fn publish_x86_64_systems_artifact(
     tools: &LlvmTools,
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
-    let generated_provider = generate_x86_64_systems_provider_object(program)?;
-    let root_object = generate_root_object(program)?;
+    let initial_user_image = initial_user_elf_file()?;
+    publish_x86_64_systems_artifact_with_initial_user_image(
+        program,
+        tools,
+        &initial_user_image,
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with a supplied
+/// bounded-profile initial user image.
+///
+/// # Errors
+///
+/// Returns an error before publication when the supplied image is outside the
+/// qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_initial_user_image(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: &[u8],
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_user_images(
+        program,
+        tools,
+        initial_user_image,
+        None,
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with a supplied
+/// approved-shape static user image and the generated boot user image.
+///
+/// # Errors
+///
+/// Returns an error before publication when the static image is outside the
+/// qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_static_user_image(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    static_user_image: &[u8],
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    let initial_user_image = initial_user_elf_file()?;
+    publish_x86_64_systems_artifact_with_user_images(
+        program,
+        tools,
+        &initial_user_image,
+        Some(static_user_image),
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with independently
+/// supplied boot and static user images.
+///
+/// # Errors
+///
+/// Returns an error before publication when either supplied image is outside
+/// its qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_user_images(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_source_library(
+        program,
+        tools,
+        Some(initial_user_image),
+        static_user_image,
+        None,
+        destination,
+    )
+}
+
+/// Publish a systems root with its explicit immutable source-library snapshot.
+///
+/// # Errors
+/// Rejects missing, mismatched or unqualified source before atomic publication.
+pub fn publish_x86_64_systems_artifact_with_source_library(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    source_library: Option<&crate::SystemsSourceLibraryInput>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_libraries(
+        program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        source_library,
+        None,
+        destination,
+    )
+}
+
+/// Explicit immutable inputs for each policy selected by a systems root.
+#[derive(Clone, Copy, Default)]
+pub struct SystemsKernelLibraries<'a> {
+    pub region: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub file_position: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub ram_page_pool: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub inode_mode: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub namespace: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub policy: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub time: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub image: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub dispatch: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub process_identity: Option<&'a crate::SystemsSourceLibraryInput>,
+}
+
+/// Publish both explicit source-library snapshots with their owned kernel root.
+///
+/// # Errors
+/// Rejects missing, mismatched, unsupported or unbounded source before publication.
+pub fn publish_x86_64_systems_artifact_with_libraries(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    source_library: Option<&crate::SystemsSourceLibraryInput>,
+    time_library: Option<&crate::SystemsSourceLibraryInput>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_kernel_libraries(
+        program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        SystemsKernelLibraries {
+            file_position: None,
+            ram_page_pool: None,
+            inode_mode: None,
+            namespace: None,
+            region: None,
+            policy: source_library,
+            time: time_library,
+            image: None,
+            dispatch: None,
+            process_identity: None,
+        },
+        destination,
+    )
+}
+
+/// Publish the complete explicit policy set without ambient source discovery.
+///
+/// # Errors
+/// Rejects missing/mismatched snapshots and unqualified resources before publication.
+pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    libraries: SystemsKernelLibraries<'_>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_with_root_source(
+        program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        libraries,
+        destination,
+        None,
+        None,
+    )
+}
+
+/// Publish the tail profile with its complete immutable checked root source.
+///
+/// # Errors
+/// Refuses incomplete source/native/caller reconstruction before publication.
+pub fn publish_x86_64_systems_tail_artifact(
+    root_source: &str,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    libraries: SystemsKernelLibraries<'_>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    let program = topal_language::compiler::analyze_systems_for_compiler(
+        root_source,
+        &topal_language::compiler::CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+    )
+    .map_err(CompileError::Diagnostic)?;
+    if !program.region_library.as_ref().is_some_and(|r|r.interface==topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1) {
+        return Err(CompileError::Tool("E-SYSTEMS-TAIL-BINDING: explicit tail source root required".into()));
+    }
+    publish_with_root_source(
+        &program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        libraries,
+        destination,
+        Some(root_source),
+        None,
+    )
+}
+
+/// Publish a frame-policy kernel from complete immutable root/library inputs.
+///
+/// # Errors
+/// Refuses incomplete source/native/caller/load reconstruction before publication.
+pub fn publish_x86_64_systems_frame_artifact(
+    root_source: &str,
+    frame_library: &crate::SystemsSourceLibraryInput,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    libraries: SystemsKernelLibraries<'_>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    let checked = crate::systems_frame_policy_binding::check(root_source, frame_library)?;
+    publish_with_root_source(
+        &checked.program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        libraries,
+        destination,
+        None,
+        Some((root_source, frame_library)),
+    )
+}
+
+fn publish_with_root_source(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    libraries: SystemsKernelLibraries<'_>,
+    destination: &Path,
+    tail_source: Option<&str>,
+    frame_source: Option<(&str, &crate::SystemsSourceLibraryInput)>,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    if program.frame_allocator_library.is_some() != frame_source.is_some()
+        || tail_source.is_some() && frame_source.is_some()
+    {
+        return Err(CompileError::Tool("E-SYSTEMS-FRAME-POLICY-BINDING: kernel publication requires complete source/native/allocator/caller reconstruction".into()));
+    }
+    let checked_frame = frame_source
+        .map(|(root, input)| crate::systems_frame_policy_binding::check(root, input))
+        .transpose()?;
+    if checked_frame
+        .as_ref()
+        .is_some_and(|c| c.program != *program)
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-FRAME-RECONSTRUCTION: root source/program differ".into(),
+        ));
+    }
+    let SystemsKernelLibraries {
+        region: region_library,
+        file_position: file_position_library,
+        ram_page_pool: ram_page_pool_library,
+        inode_mode: inode_mode_library,
+        namespace: namespace_library,
+        policy: source_library,
+        time: time_library,
+        image: image_library,
+        dispatch: dispatch_library,
+        process_identity: process_identity_library,
+    } = libraries;
+    if tail_source.is_none() && program.region_library.as_ref().is_some_and(|r| r.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1) {
+        return Err(CompileError::Tool("E-SYSTEMS-TAIL-KERNEL: canonical publication requires the complete kernel tail owner source/native/caller binding".into()));
+    }
+    if program.namespace_library.is_some() != namespace_library.is_some() {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-NAMESPACE: declaration requires its matching explicit source snapshot"
+                .into(),
+        ));
+    }
+    if program.inode_mode_library.is_some() != inode_mode_library.is_some() {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-INODE-MODE: declaration requires its matching explicit source snapshot"
+                .into(),
+        ));
+    }
+    if program.ram_page_pool_library.is_some() != ram_page_pool_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-REGION-PAGE: declaration requires its matching explicit page source snapshot".into()));
+    }
+    if program.file_position_library.is_some() != file_position_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-REGION-ACTION: declaration requires its matching explicit action source snapshot".into()));
+    }
+    if program.region_library.is_some() != region_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-REGION-ROOT: declaration requires its matching explicit region source snapshot".into()));
+    }
+    if program.process_identity_library.is_some() != process_identity_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared process identity import requires its matching explicit source snapshot".into()));
+    }
+    if program.dispatch_library.is_some() != dispatch_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared dispatch import requires its matching explicit source snapshot".into()));
+    }
+    if program.image_library.is_some() != image_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared image import requires its matching explicit source snapshot".into()));
+    }
+    if program.time_library.is_some() != time_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared numeric import requires its matching explicit source snapshot".into()));
+    }
+    if program.kernel_library.is_some() != source_library.is_some() {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-LIBRARY: declared import requires its matching explicit source snapshot"
+                .into(),
+        ));
+    }
+    let generated;
+    let initial_user_image = match initial_user_image {
+        Some(image) => image,
+        None => {
+            generated = initial_user_elf_file()?;
+            &generated
+        }
+    };
+    validate_x86_64_initial_user_image(initial_user_image)?;
+    if let Some(image) = static_user_image {
+        validate_x86_64_static_user_image(image)?;
+    }
+    let generated_provider = match &checked_frame {
+        Some(checked) => crate::systems_provider_object::generate_frame_memory_provider(checked)?,
+        None => generate_x86_64_systems_provider_object(program)?,
+    };
+    let root_object = match &checked_frame {
+        Some(checked) => generate_frame_root_checked(checked)?,
+        None => generate_root_object(program)?,
+    };
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent).map_err(io_error("create artifact parent", parent))?;
     if destination.exists() {
@@ -207,7 +875,21 @@ pub fn publish_x86_64_systems_artifact(
         &generated_provider.plan,
         &generated_provider.bytes,
         &root_object,
+        initial_user_image,
+        static_user_image,
+        source_library,
+        time_library,
+        image_library,
+        dispatch_library,
+        process_identity_library,
+        region_library,
+        file_position_library,
+        ram_page_pool_library,
+        inode_mode_library,
+        namespace_library,
         &stage,
+        tail_source,
+        frame_source,
     );
     let record = match result {
         Ok(record) => record,
@@ -228,6 +910,9 @@ pub fn publish_x86_64_systems_artifact(
         kernel: destination.join(SYSTEMS_KERNEL_FILE),
         debug: destination.join(SYSTEMS_DEBUG_FILE),
         map: destination.join(SYSTEMS_MAP_FILE),
+        initial_user_image: destination.join(SYSTEMS_INITIAL_USER_IMAGE_FILE),
+        static_user_image: static_user_image
+            .map(|_| destination.join(SYSTEMS_STATIC_USER_IMAGE_FILE)),
         provenance: destination.join(SYSTEMS_PROVENANCE_FILE),
         record,
     })
@@ -239,7 +924,21 @@ fn publish_in_stage(
     plan: &crate::X86SystemsProviderPlan,
     provider_object: &[u8],
     root_object: &[u8],
+    initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
+    source_library: Option<&crate::SystemsSourceLibraryInput>,
+    time_library: Option<&crate::SystemsSourceLibraryInput>,
+    image_library: Option<&crate::SystemsSourceLibraryInput>,
+    dispatch_library: Option<&crate::SystemsSourceLibraryInput>,
+    process_identity_library: Option<&crate::SystemsSourceLibraryInput>,
+    region_library: Option<&crate::SystemsSourceLibraryInput>,
+    file_position_library: Option<&crate::SystemsSourceLibraryInput>,
+    ram_page_pool_library: Option<&crate::SystemsSourceLibraryInput>,
+    inode_mode_library: Option<&crate::SystemsSourceLibraryInput>,
+    namespace_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
+    tail_source: Option<&str>,
+    frame_source: Option<(&str, &crate::SystemsSourceLibraryInput)>,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
     fs::create_dir(&work).map_err(io_error("create artifact work directory", &work))?;
@@ -248,31 +947,471 @@ fn publish_in_stage(
     fs::write(&provider_path, provider_object)
         .map_err(io_error("write provider object", &provider_path))?;
     fs::write(&root_path, root_object).map_err(io_error("write root object", &root_path))?;
+    let mut tail = tail_source
+        .map(|root| {
+            let source = region_library.ok_or_else(|| {
+                CompileError::Tool("E-SYSTEMS-TAIL-BINDING: missing source snapshot".into())
+            })?;
+            let fresh = crate::systems_tail_publication::rebuild(
+                root,
+                &source.into(),
+                tools,
+                &work.join("tail"),
+            )?;
+            if fresh.program != *program {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-TAIL-BINDING: root source/program disagree".into(),
+                ));
+            }
+            Ok(fresh)
+        })
+        .transpose()?;
+    let mut frame = frame_source
+        .map(|(root, input)| {
+            let fresh = crate::systems_frame_publication::rebuild(
+                root,
+                &input.into(),
+                tools,
+                &work.join("frame"),
+            )?;
+            if fresh.program != *program {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-FRAME-RECONSTRUCTION: source/program differ".into(),
+                ));
+            }
+            Ok(fresh)
+        })
+        .transpose()?;
+    let bound_provider = frame
+        .as_ref()
+        .map(|f| f.objects[1].as_slice())
+        .or_else(|| tail.as_ref().map(|t| t.objects[1].as_slice()))
+        .unwrap_or(provider_object)
+        .to_vec();
+    let provider_object = bound_provider.as_slice();
+    let bound_root = frame
+        .as_ref()
+        .map(|f| f.objects[0].as_slice())
+        .or_else(|| tail.as_ref().map(|t| t.objects[0].as_slice()))
+        .unwrap_or(root_object)
+        .to_vec();
+    let root_object = bound_root.as_slice();
+    fs::write(&root_path, root_object).map_err(io_error("write bound root object", &root_path))?;
+    fs::write(&provider_path, provider_object)
+        .map_err(io_error("write bound provider object", &provider_path))?;
 
+    let mut library = program
+        .kernel_library
+        .as_ref()
+        .zip(source_library)
+        .map(|(requirement, input)| {
+            crate::systems_library::build_source_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
+    let region = program
+        .region_library
+        .as_ref()
+        .filter(|r|r.interface!=topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1)
+        .zip(region_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-REGION-ROOT: source path does not match the declared entry".into(),
+                ));
+            }
+            if requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1 {
+                crate::build_systems_region_instance_library(input, &requirement.export, 0,
+                    crate::systems_region_library::ROOT_INSTANCE, tools, &work)
+            } else {
+                crate::systems_region_library::build_systems_region_library(input, &requirement.export, tools, &work)
+            }
+        })
+        .transpose()?;
+    let file_position = program
+        .file_position_library
+        .as_ref()
+        .zip(file_position_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-REGION-ACTION: source path does not match the declared entry".into(),
+                ));
+            }
+            let action_work = work.join("file-position");
+            fs::create_dir(&action_work)
+                .map_err(io_error("create action object work space", &action_work))?;
+            if requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1 {
+                crate::build_systems_region_instance_library(input, &requirement.export, 2,
+                    crate::systems_region_library::FILE_INSTANCE, tools, &action_work)
+            } else if requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1 {
+                crate::build_systems_region_framed_action_library(
+                    input, &requirement.export, 2, tools, &action_work,
+                )
+            } else {
+                crate::build_systems_region_action_library(
+                    input, &requirement.export, tools, &action_work,
+                )
+            }
+        })
+        .transpose()?;
+    let ram_page_pool = program
+        .ram_page_pool_library
+        .as_ref()
+        .zip(ram_page_pool_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-REGION-PAGE: source path does not match the declared entry".into(),
+                ));
+            }
+            let page_work = work.join("ram-page-pool");
+            fs::create_dir(&page_work)
+                .map_err(io_error("create page object work space", &page_work))?;
+            crate::build_systems_region_instance_library(
+                input,
+                &requirement.export,
+                2,
+                crate::systems_region_library::PAGE_INSTANCE,
+                tools,
+                &page_work,
+            )
+        })
+        .transpose()?;
+    let inode_mode = program
+        .inode_mode_library
+        .as_ref()
+        .zip(inode_mode_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-INODE-MODE: source path does not match the declared entry".into(),
+                ));
+            }
+            let inode_work = work.join("inode-mode");
+            fs::create_dir(&inode_work)
+                .map_err(io_error("create inode object work space", &inode_work))?;
+            crate::build_systems_region_instance_library(
+                input,
+                &requirement.export,
+                2,
+                crate::systems_region_library::INODE_INSTANCE,
+                tools,
+                &inode_work,
+            )
+        })
+        .transpose()?;
+    let namespace = program
+        .namespace_library
+        .as_ref()
+        .zip(namespace_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-NAMESPACE: source path does not match the declared entry".into(),
+                ));
+            }
+            let namespace_work = work.join("namespace");
+            fs::create_dir(&namespace_work).map_err(io_error(
+                "create namespace object work space",
+                &namespace_work,
+            ))?;
+            crate::build_systems_region_instance_library(
+                input,
+                &requirement.export,
+                2,
+                crate::systems_region_library::NAMESPACE_INSTANCE,
+                tools,
+                &namespace_work,
+            )
+        })
+        .transpose()?;
+    if program.time_library.is_some()
+        || program.image_library.is_some()
+        || program.dispatch_library.is_some()
+        || program.process_identity_library.is_some()
+    {
+        crate::systems_numeric_library::inspect_numeric_provider(tools, &provider_path)?;
+    }
+    let mut numeric = program
+        .time_library
+        .as_ref()
+        .zip(time_library)
+        .map(|(requirement, input)| {
+            crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
+    let mut image_numeric = program
+        .image_library
+        .as_ref()
+        .zip(image_library)
+        .map(|(requirement, input)| {
+            crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
+    let mut dispatch_numeric = program
+        .dispatch_library
+        .as_ref()
+        .zip(dispatch_library)
+        .map(|(requirement, input)| {
+            crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
+    let mut identity_numeric = program
+        .process_identity_library
+        .as_ref()
+        .zip(process_identity_library)
+        .map(|(requirement, input)| {
+            crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
+    if let Some(frame) = frame.as_mut() {
+        let sources = crate::systems_frame_publication::library_sources(SystemsKernelLibraries {
+            policy: source_library,
+            time: time_library,
+            image: image_library,
+            dispatch: dispatch_library,
+            process_identity: process_identity_library,
+            region: region_library,
+            file_position: file_position_library,
+            ram_page_pool: ram_page_pool_library,
+            inode_mode: inode_mode_library,
+            namespace: namespace_library,
+        });
+        frame.complete_libraries(&sources, tools, &work.join("frame"))?;
+        for (role, object, path) in [
+            (
+                "library-kernel",
+                library.as_ref().map(|l| l.object.as_slice()),
+                "kernel-library.o",
+            ),
+            (
+                "library-time",
+                numeric.as_ref().map(|l| l.object.as_slice()),
+                "time-library.o",
+            ),
+            (
+                "library-image",
+                image_numeric.as_ref().map(|l| l.object.as_slice()),
+                "image-library.o",
+            ),
+            (
+                "library-dispatch",
+                dispatch_numeric.as_ref().map(|l| l.object.as_slice()),
+                "dispatch-library.o",
+            ),
+            (
+                "library-process-identity",
+                identity_numeric.as_ref().map(|l| l.object.as_slice()),
+                "process-identity-library.o",
+            ),
+            (
+                "library-region",
+                region.as_ref().map(|l| l.object.as_slice()),
+                "kernel-region.o",
+            ),
+            (
+                "library-file-position",
+                file_position.as_ref().map(|l| l.object.as_slice()),
+                "file-position/kernel-region.o",
+            ),
+            (
+                "library-ram-page-pool",
+                ram_page_pool.as_ref().map(|l| l.object.as_slice()),
+                "ram-page-pool/kernel-region.o",
+            ),
+            (
+                "library-inode-mode",
+                inode_mode.as_ref().map(|l| l.object.as_slice()),
+                "inode-mode/kernel-region.o",
+            ),
+            (
+                "library-namespace",
+                namespace.as_ref().map(|l| l.object.as_slice()),
+                "namespace/kernel-region.o",
+            ),
+        ] {
+            if let Some(object) = object {
+                if frame.record.other_original_objects.get(role) != Some(&sha256(object)) {
+                    return Err(CompileError::Tool(format!(
+                        "E-SYSTEMS-FRAME-RECONSTRUCTION: metadata/native source producer differs for {role}"
+                    )));
+                }
+                fs::copy(work.join(format!("frame/{role}.o")), work.join(path))
+                    .map_err(io_error("install reconstructed library object", &work))?;
+            }
+        }
+    }
     let linked = build_linked_outputs(tools, &work, stage)?;
+    let frame_end = if let Some(frame) = frame.as_mut() {
+        frame.bind(&linked.kernel)?;
+        let file = object::File::parse(linked.kernel.as_slice())
+            .map_err(|e| CompileError::Tool(e.to_string()))?;
+        Some(
+            file.segments()
+                .map(|s| s.address() + s.size())
+                .max()
+                .unwrap()
+                .max(0x1000000),
+        )
+    } else {
+        None
+    };
+    if let Some(library) = library.as_mut() {
+        library.record.linked_inputs = Some(crate::systems_policy_inputs::inspect(
+            &linked.kernel,
+            "kernel-library",
+            &library.record.object_sha256,
+            &library.record.sections,
+        )?);
+    }
+    for (library, slot) in [
+        (numeric.as_mut(), "time-library"),
+        (image_numeric.as_mut(), "image-library"),
+        (dispatch_numeric.as_mut(), "dispatch-library"),
+        (identity_numeric.as_mut(), "process-identity-library"),
+    ] {
+        if let Some(library) = library {
+            library.record.linked_inputs = Some(crate::systems_policy_inputs::inspect(
+                &linked.kernel,
+                slot,
+                &library.record.object_sha256,
+                &library.record.sections,
+            )?);
+        }
+    }
+    let ram_page_pool_runtime = ram_page_pool
+        .as_ref()
+        .map(|page| {
+            crate::systems_provider_object::ram_page_region::inspect_linked(
+                &linked.kernel,
+                &page.record,
+            )
+        })
+        .transpose()?;
+    let inode_mode_runtime = inode_mode
+        .as_ref()
+        .map(|inode| {
+            crate::systems_provider_object::inode_region::inspect_linked(
+                &linked.kernel,
+                &inode.record,
+                program.dispatch_library.as_ref().is_some_and(|library|
+                    library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+                ),
+            )
+        })
+        .transpose()?;
+    let namespace_runtime = namespace
+        .as_ref()
+        .map(|namespace| {
+            crate::systems_provider_object::namespace_region::inspect_linked(
+                &linked.kernel,
+                &namespace.record,
+                program.dispatch_library.as_ref().is_some_and(|library|
+                    library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+                ),
+            )
+        })
+        .transpose()?;
+    let file_position_runtime = file_position
+        .as_ref()
+        .map(|action| {
+            crate::systems_provider_object::file_region::inspect_linked(
+                &linked.kernel,
+                &action.record,
+            )
+        })
+        .transpose()?;
+    let region_runtime = region
+        .as_ref()
+        .map(|region| {
+            crate::systems_provider_object::root_region::inspect_linked(
+                &linked.kernel,
+                &region.record,
+                plan.bootstrap_placement.capacity_bytes,
+            )
+        })
+        .transpose()?;
+    if let Some(identity) = &identity_numeric {
+        crate::systems_numeric_library::inspect_linked_numeric_library(
+            &linked.kernel,
+            &identity.record,
+        )?;
+    }
+    crate::systems_provider_object::inspect_linked_process_backing(&linked.kernel)?;
+    if let Some(numeric) = &numeric {
+        crate::systems_numeric_library::inspect_linked_numeric_library(
+            &linked.kernel,
+            &numeric.record,
+        )?;
+    }
+    if let Some(image) = &image_numeric {
+        crate::systems_numeric_library::inspect_linked_numeric_library(
+            &linked.kernel,
+            &image.record,
+        )?;
+    }
+    if let Some(library) = &library {
+        crate::systems_library::inspect_linked_library(&linked.kernel, &library.record)?;
+    }
+    if let Some(dispatch) = &dispatch_numeric {
+        crate::systems_numeric_library::inspect_linked_numeric_library(
+            &linked.kernel,
+            &dispatch.record,
+        )?;
+    }
     inspect_linked_kernel(
         &linked.kernel,
         &linked.debug,
         &linked.map,
         plan.bootstrap_placement.capacity_bytes,
-        program
-            .bootstrap
-            .handler
-            .operations
-            .iter()
-            .any(|operation| {
+        frame_end,
+        {
+            let operations = &program.bootstrap.handler.operations;
+            let memory = operations.iter().any(|op| {
                 matches!(
-                    operation,
+                    op,
                     CompilerSystemsOperation::BootstrapStoreByte { .. }
                         | CompilerSystemsOperation::BootstrapLoadByteEquals { .. }
                         | CompilerSystemsOperation::AtomicWordCreate { .. }
                         | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
                         | CompilerSystemsOperation::AtomicLoadEquals { .. }
                 )
-            }),
+            });
+            if memory {
+                let store = operations.iter().find_map(|op| {
+                    if let CompilerSystemsOperation::BootstrapStoreByte { value, .. } = op {
+                        Some(*value)
+                    } else {
+                        None
+                    }
+                });
+                let load = operations.iter().find_map(|op| {
+                    if let CompilerSystemsOperation::BootstrapLoadByteEquals { expected, .. } = op {
+                        Some(*expected)
+                    } else {
+                        None
+                    }
+                });
+                Some(store.zip(load).ok_or_else(|| {
+                    CompileError::Tool("checked bootstrap memory probe is incomplete".into())
+                })?)
+            } else {
+                None
+            }
+        },
     )?;
     let placements = linked_placements(&linked.kernel)?;
-    let record = artifact_provenance(
+    let initial_user_image_path = stage.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
+    fs::write(&initial_user_image_path, initial_user_image).map_err(io_error(
+        "write initial user image",
+        &initial_user_image_path,
+    ))?;
+    if let Some(image) = static_user_image {
+        let static_user_image_path = stage.join(SYSTEMS_STATIC_USER_IMAGE_FILE);
+        fs::write(&static_user_image_path, image)
+            .map_err(io_error("write static user image", &static_user_image_path))?;
+    }
+    let mut record = artifact_provenance(
         program,
         tools,
         plan,
@@ -281,8 +1420,294 @@ fn publish_in_stage(
         &linked.kernel,
         &linked.debug,
         &linked.map,
+        initial_user_image,
+        static_user_image,
         placements,
     )?;
+    if let Some(tail) = tail.as_mut() {
+        tail.bind(&linked.kernel)?;
+    }
+    if let Some(page) = ram_page_pool {
+        for (name, bytes) in [
+            ("ram-page-pool-library.t", page.source.as_bytes()),
+            ("ram-page-pool-library.ll", page.llvm.as_bytes()),
+            (
+                "ram-page-pool-library.retained.ll",
+                page.retained_llvm.as_bytes(),
+            ),
+            ("ram-page-pool-library.o", page.object.as_slice()),
+            (
+                "ram-page-pool-library.modules.json",
+                page.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write page source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-ram-page-pool-source:{}", page.record.source),
+            sha256: page.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(page.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-ram-page-pool-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.ram_page_pool_library = Some(page.record);
+        record.ram_page_pool_runtime = ram_page_pool_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
+    if let Some(inode) = inode_mode {
+        for (name, bytes) in [
+            ("inode-mode-library.t", inode.source.as_bytes()),
+            ("inode-mode-library.ll", inode.llvm.as_bytes()),
+            (
+                "inode-mode-library.retained.ll",
+                inode.retained_llvm.as_bytes(),
+            ),
+            ("inode-mode-library.o", inode.object.as_slice()),
+            (
+                "inode-mode-library.modules.json",
+                inode.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write inode source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-inode-mode-source:{}", inode.record.source),
+            sha256: inode.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(inode.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-inode-mode-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.inode_mode_library = Some(inode.record);
+        record.inode_mode_runtime = inode_mode_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
+    if let Some(namespace) = namespace {
+        for (name, bytes) in [
+            ("namespace-library.t", namespace.source.as_bytes()),
+            ("namespace-library.ll", namespace.llvm.as_bytes()),
+            (
+                "namespace-library.retained.ll",
+                namespace.retained_llvm.as_bytes(),
+            ),
+            ("namespace-library.o", namespace.object.as_slice()),
+            (
+                "namespace-library.modules.json",
+                namespace.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write namespace source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-namespace-source:{}", namespace.record.source),
+            sha256: namespace.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(namespace.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-namespace-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.namespace_library = Some(namespace.record);
+        record.namespace_runtime = namespace_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
+    if let Some(action) = file_position {
+        for (name, bytes) in [
+            ("file-position-library.t", action.source.as_bytes()),
+            ("file-position-library.ll", action.llvm.as_bytes()),
+            (
+                "file-position-library.retained.ll",
+                action.retained_llvm.as_bytes(),
+            ),
+            ("file-position-library.o", action.object.as_slice()),
+            (
+                "file-position-library.modules.json",
+                action.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write action source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-file-position-source:{}", action.record.source),
+            sha256: action.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(action.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-file-position-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.file_position_library = Some(action.record);
+        record.file_position_runtime = file_position_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
+    if let Some(region) = region {
+        for (name, bytes) in [
+            ("region-library.t", region.source.as_bytes()),
+            ("region-library.ll", region.llvm.as_bytes()),
+            (
+                "region-library.retained.ll",
+                region.retained_llvm.as_bytes(),
+            ),
+            ("region-library.o", region.object.as_slice()),
+            (
+                "region-library.modules.json",
+                region.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write region source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-region-source:{}", region.record.source),
+            sha256: region.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(region.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-region-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.region_library = Some(region.record);
+        record.region_runtime = region_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
+    if let Some(library) = library {
+        for (name, bytes) in [
+            ("kernel-library.t", library.source.as_bytes()),
+            ("kernel-library.ll", library.llvm.as_bytes()),
+            ("kernel-library.o", library.object.as_slice()),
+            (
+                "kernel-library.modules.json",
+                library.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write source library artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-source:{}", library.record.source),
+            sha256: library.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(library.record.modules.iter().map(|m| DigestEntry {
+                identity: format!("kernel-source-module:{}", m.source),
+                sha256: m.sha256.clone(),
+            }));
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.kernel_library = Some(library.record);
+    }
+    for (numeric, stem, input_prefix) in [
+        (numeric, "time-library", "kernel-time"),
+        (image_numeric, "image-library", "kernel-image"),
+        (dispatch_numeric, "dispatch-library", "kernel-dispatch"),
+        (
+            identity_numeric,
+            "process-identity-library",
+            "kernel-process-identity",
+        ),
+    ] {
+        if let Some(numeric) = numeric {
+            for (name, bytes) in [
+                (format!("{stem}.t"), numeric.source.as_bytes()),
+                (format!("{stem}.ll"), numeric.llvm.as_bytes()),
+                (
+                    format!("{stem}.retained.ll"),
+                    numeric.retained_llvm.as_bytes(),
+                ),
+                (format!("{stem}.o"), numeric.object.as_slice()),
+                (
+                    format!("{stem}.modules.json"),
+                    numeric.module_snapshot.as_slice(),
+                ),
+            ] {
+                fs::write(stage.join(&name), bytes)
+                    .map_err(io_error("write numeric library artifact", stage))?;
+                record.outputs.push(DigestEntry {
+                    identity: name.into(),
+                    sha256: sha256(bytes),
+                });
+            }
+            record.inputs.push(DigestEntry {
+                identity: format!("{input_prefix}-source:{}", numeric.record.source),
+                sha256: numeric.record.source_sha256.clone(),
+            });
+            record
+                .inputs
+                .extend(numeric.record.modules.iter().map(|m| DigestEntry {
+                    identity: format!("{input_prefix}-source-module:{}", m.source),
+                    sha256: m.sha256.clone(),
+                }));
+            record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+            record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+            if stem == "time-library" {
+                record.time_library = Some(numeric.record);
+            } else if stem == "image-library" {
+                record.image_library = Some(numeric.record);
+            } else if stem == "process-identity-library" {
+                record.process_identity_library = Some(numeric.record);
+            } else {
+                record.dispatch_library = Some(numeric.record);
+            }
+        }
+    }
+    if let Some(tail) = tail {
+        crate::systems_tail_publication::publish_outputs(
+            tail,
+            &work.join("tail"),
+            stage,
+            &mut record,
+        )?;
+    }
+    if let Some(frame) = frame {
+        crate::systems_frame_publication::publish_outputs(
+            frame,
+            &work.join("frame"),
+            stage,
+            &mut record,
+        )?;
+    }
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
         CompileError::Tool(format!(
             "cannot encode systems artifact provenance: {error}"
@@ -298,3243 +1723,25 @@ fn publish_in_stage(
     Ok(record)
 }
 
-fn build_linked_outputs(
-    tools: &LlvmTools,
-    work: &Path,
-    stage: &Path,
-) -> Result<LinkedOutputs, CompileError> {
-    let unstripped_path = work.join("kernel.unstripped");
-    let kernel_path = stage.join(SYSTEMS_KERNEL_FILE);
-    let debug_path = stage.join(SYSTEMS_DEBUG_FILE);
-    let map_path = stage.join(SYSTEMS_MAP_FILE);
+include!("systems_artifact_static_image.rs");
 
-    run_tool(
-        Command::new(tools.tool_path("rust-lld"))
-            .current_dir(work)
-            .arg("-flavor")
-            .arg("gnu")
-            .arg("-m")
-            .arg("elf_x86_64")
-            .arg("-static")
-            .arg("--no-dynamic-linker")
-            .arg("--build-id=none")
-            .arg("--entry")
-            .arg(X86_SYSTEMS_KERNEL_ENTRY)
-            .arg("-z")
-            .arg("max-page-size=0x1000")
-            .arg(format!("-Map=../{SYSTEMS_MAP_FILE}"))
-            .arg("root.o")
-            .arg("provider.o")
-            .arg("-o")
-            .arg("kernel.unstripped"),
-    )?;
+include!("systems_artifact_elf_plan.rs");
 
-    let objcopy = tools.tool_path("llvm-objcopy");
-    if !objcopy.is_file() {
-        return Err(CompileError::Tool(format!(
-            "LLVM tool `{}` is missing; systems artifact publication requires llvm-objcopy",
-            objcopy.display()
-        )));
-    }
-    run_tool(
-        Command::new(&objcopy)
-            .arg("--only-keep-debug")
-            .arg(&unstripped_path)
-            .arg(&debug_path),
-    )?;
-    run_tool(
-        Command::new(&objcopy)
-            .current_dir(stage)
-            .arg("--strip-debug")
-            .arg(format!("--add-gnu-debuglink={SYSTEMS_DEBUG_FILE}"))
-            .arg(&unstripped_path)
-            .arg(&kernel_path),
-    )?;
+include!("systems_artifact_linked_outputs.rs");
 
-    let kernel = fs::read(&kernel_path).map_err(io_error("read linked kernel", &kernel_path))?;
-    let debug = fs::read(&debug_path).map_err(io_error("read debug artifact", &debug_path))?;
-    let map = fs::read(&map_path).map_err(io_error("read link map", &map_path))?;
-    Ok(LinkedOutputs { kernel, debug, map })
-}
+include!("systems_artifact_root_state.rs");
 
-#[allow(clippy::too_many_arguments)] // Every independently hashed artifact input stays explicit.
-fn artifact_provenance(
-    program: &CompilerSystemsProgram,
-    tools: &LlvmTools,
-    plan: &crate::X86SystemsProviderPlan,
-    provider_object: &[u8],
-    root_object: &[u8],
-    kernel: &[u8],
-    debug: &[u8],
-    map: &[u8],
-    placements: Vec<SystemsArtifactPlacement>,
-) -> Result<SystemsArtifactProvenance, CompileError> {
-    let mut inputs = vec![
-        DigestEntry {
-            identity: X86_SYSTEMS_PROVIDER_OBJECT_REVISION.into(),
-            sha256: sha256(provider_object),
-        },
-        DigestEntry {
-            identity: X86_SYSTEMS_ROOT_OBJECT_REVISION.into(),
-            sha256: sha256(root_object),
-        },
-    ];
-    inputs.sort_by(|left, right| left.identity.cmp(&right.identity));
-    let mut outputs = vec![
-        DigestEntry {
-            identity: SYSTEMS_DEBUG_FILE.into(),
-            sha256: sha256(debug),
-        },
-        DigestEntry {
-            identity: SYSTEMS_KERNEL_FILE.into(),
-            sha256: sha256(kernel),
-        },
-        DigestEntry {
-            identity: SYSTEMS_MAP_FILE.into(),
-            sha256: sha256(map),
-        },
-    ];
-    outputs.sort_by(|left, right| left.identity.cmp(&right.identity));
-    Ok(SystemsArtifactProvenance {
-        schema: X86_SYSTEMS_ARTIFACT_REVISION.into(),
-        provider: X86_SYSTEMS_PROVIDER_REVISION.into(),
-        provider_object: X86_SYSTEMS_PROVIDER_OBJECT_REVISION.into(),
-        root_object: X86_SYSTEMS_ROOT_OBJECT_REVISION.into(),
-        target: plan.target.into(),
-        board: plan.board.into(),
-        profile: plan.profile.into(),
-        machine_cpu: plan.machine_cpu_model.into(),
-        codegen_cpu: plan.codegen_cpu.into(),
-        platform_abi: X86_SYSTEMS_PLATFORM_ABI.into(),
-        data_layout: plan.data_layout.into(),
-        object_format: plan.object_format.into(),
-        relocation_model: plan.relocation_model.into(),
-        code_model: plan.code_model.into(),
-        llvm_version: tools.version.clone(),
-        entry_symbol: X86_SYSTEMS_KERNEL_ENTRY.into(),
-        exception_entries: vec![
-            X86_SYSTEMS_DEBUG_BREAK_ENTRY.into(),
-            X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY.into(),
-            X86_SYSTEMS_DEADLINE_ENTRY.into(),
-        ],
-        bootstrap_storage_capacity: plan.bootstrap_placement.capacity_bytes,
-        bootstrap_storage_alignment: plan.bootstrap_placement.alignment_bytes,
-        placements,
-        semantic_trace: semantic_trace(program)?,
-        inputs,
-        outputs,
-    })
-}
+include!("systems_artifact_root_object.rs");
 
-fn inspect_linked_kernel(
-    kernel: &[u8],
-    debug: &[u8],
-    map: &[u8],
-    storage_capacity: u64,
-    requires_bootstrap_memory: bool,
-) -> Result<(), CompileError> {
-    let file = object::File::parse(kernel)
-        .map_err(|error| CompileError::Tool(format!("cannot parse linked systems ELF: {error}")))?;
-    inspect_kernel_elf(&file, storage_capacity, requires_bootstrap_memory)?;
-    inspect_debug_and_map(debug, map)
-}
+include!("systems_artifact_operations.rs");
 
-fn inspect_kernel_elf(
-    file: &object::File<'_>,
-    storage_capacity: u64,
-    requires_bootstrap_memory: bool,
-) -> Result<(), CompileError> {
-    if file.format() != BinaryFormat::Elf
-        || file.architecture() != Architecture::X86_64
-        || !file.is_little_endian()
-        || file.kind() != object::ObjectKind::Executable
-    {
-        return Err(CompileError::Tool(
-            "linked systems artifact is not a little-endian executable ELF64 x86-64 image".into(),
-        ));
-    }
-    let entry = file
-        .symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY)
-        .ok_or_else(|| {
-            CompileError::Tool(format!(
-                "linked systems artifact omits `{X86_SYSTEMS_KERNEL_ENTRY}`"
-            ))
-        })?;
-    if entry.address() == 0 || entry.address() != file.entry() {
-        return Err(CompileError::Tool(
-            "linked systems ELF entry does not select its generated bootstrap root".into(),
-        ));
-    }
-    inspect_bootstrap_reservation_floor(file)?;
-    if requires_bootstrap_memory {
-        inspect_bootstrap_memory_instructions(file)?;
-    }
-    if file
-        .symbols()
-        .filter(object::ObjectSymbol::is_undefined)
-        .count()
-        != 0
-        || file
-            .sections()
-            .flat_map(|section| section.relocations())
-            .count()
-            != 0
-    {
-        return Err(CompileError::Tool(
-            "linked systems ELF retains an undefined dependency or relocation".into(),
-        ));
-    }
-    for forbidden in [
-        ".interp",
-        ".dynamic",
-        ".dynsym",
-        ".plt",
-        ".got.plt",
-        ".eh_frame",
-        ".eh_frame_hdr",
-        ".gcc_except_table",
-    ] {
-        if file.section_by_name(forbidden).is_some() {
-            return Err(CompileError::Tool(format!(
-                "linked systems ELF contains forbidden hosted section `{forbidden}`"
-            )));
-        }
-    }
-    for required in REQUIRED_LINKED_TEXT_SYMBOLS {
-        let symbol = file.symbol_by_name(required).ok_or_else(|| {
-            CompileError::Tool(format!(
-                "linked systems ELF omits generated symbol `{required}`"
-            ))
-        })?;
-        if symbol.kind() != SymbolKind::Text || symbol.address() == 0 {
-            return Err(CompileError::Tool(format!(
-                "linked systems symbol `{required}` lacks executable placement"
-            )));
-        }
-    }
-    let storage = file
-        .symbol_by_name("topal_bootstrap_storage")
-        .ok_or_else(|| {
-            CompileError::Tool("linked systems ELF omits generated bootstrap storage".into())
-        })?;
-    let storage_section = storage
-        .section_index()
-        .and_then(|index| file.section_by_index(index).ok())
-        .ok_or_else(|| {
-            CompileError::Tool("linked bootstrap storage has no allocated section".into())
-        })?;
-    if storage_section.kind() != SectionKind::UninitializedData
-        || storage.size() != storage_capacity
-        || storage.address() % 4096 != 0
-    {
-        return Err(CompileError::Tool(
-            "linked systems ELF violates checked bootstrap-storage placement".into(),
-        ));
-    }
-    if file.section_by_name(".gnu_debuglink").is_none() {
-        return Err(CompileError::Tool(
-            "linked systems ELF omits its canonical debug companion link".into(),
-        ));
-    }
-    Ok(())
-}
-
-fn inspect_bootstrap_reservation_floor(file: &object::File<'_>) -> Result<(), CompileError> {
-    for segment in file.segments() {
-        let end = segment
-            .address()
-            .checked_add(segment.size())
-            .ok_or_else(|| CompileError::Tool("linked systems segment range overflows".into()))?;
-        if end > X86_SYSTEMS_ALLOCATABLE_FLOOR {
-            return Err(CompileError::Tool(format!(
-                "linked systems segment extends beyond reserved bootstrap floor {X86_SYSTEMS_ALLOCATABLE_FLOOR:#x}"
-            )));
-        }
-    }
-    Ok(())
-}
-
-fn inspect_bootstrap_memory_instructions(file: &object::File<'_>) -> Result<(), CompileError> {
-    let entry = file
-        .symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY)
-        .ok_or_else(|| CompileError::Tool("generated bootstrap root is absent".into()))?;
-    let section = entry
-        .section_index()
-        .and_then(|index| file.section_by_index(index).ok())
-        .ok_or_else(|| {
-            CompileError::Tool("generated bootstrap root has no executable section".into())
-        })?;
-    let section_data = section.data().map_err(|error| {
-        CompileError::Tool(format!(
-            "cannot inspect generated bootstrap root bytes: {error}"
-        ))
-    })?;
-    let start =
-        usize::try_from(entry.address().saturating_sub(section.address())).map_err(|_| {
-            CompileError::Tool("generated bootstrap root offset exceeds host range".into())
-        })?;
-    let size = usize::try_from(entry.size()).map_err(|_| {
-        CompileError::Tool("generated bootstrap root size exceeds host range".into())
-    })?;
-    let end = start
-        .checked_add(size)
-        .ok_or_else(|| CompileError::Tool("generated bootstrap root range overflows".into()))?;
-    let root = section_data.get(start..end).ok_or_else(|| {
-        CompileError::Tool("generated bootstrap root range exceeds its section".into())
-    })?;
-    let retains_store = root
-        .windows(7)
-        .any(|bytes| bytes[..2] == [0xc6, 0x05] && bytes[6] == 90);
-    let retains_load_and_check = root
-        .windows(15)
-        .any(|bytes| bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, 90, 0x0f, 0x85]);
-    if !retains_store || !retains_load_and_check {
-        return Err(CompileError::Tool(
-            "linked bootstrap root omits its checked byte store/load path".into(),
-        ));
-    }
-    Ok(())
-}
-
-fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
-    let debug_file = object::File::parse(debug).map_err(|error| {
-        CompileError::Tool(format!("cannot parse systems debug artifact: {error}"))
-    })?;
-    if debug_file.format() != BinaryFormat::Elf || debug_file.architecture() != Architecture::X86_64
-    {
-        return Err(CompileError::Tool(
-            "systems debug artifact does not match the kernel ELF architecture".into(),
-        ));
-    }
-    if debug_file
-        .symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY)
-        .is_none()
-    {
-        return Err(CompileError::Tool(
-            "systems debug artifact omits the generated bootstrap symbol".into(),
-        ));
-    }
-    let map = std::str::from_utf8(map)
-        .map_err(|error| CompileError::Tool(format!("systems link map is not UTF-8: {error}")))?;
-    for symbol in [
-        X86_SYSTEMS_KERNEL_ENTRY,
-        X86_SYSTEMS_DEBUG_BREAK_ENTRY,
-        X86_SYSTEMS_KERNEL_THREAD_ENTRY,
-        X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
-        X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
-        X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
-        X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-        X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-        X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-        X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
-        X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
-        X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-        X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
-        X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
-        X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
-        X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
-        X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
-        X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
-        X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
-        X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
-        "topal_x86_systems_uart16550_write",
-        "topal_bootstrap_storage",
-    ] {
-        if !map.contains(symbol) {
-            return Err(CompileError::Tool(format!(
-                "systems link map omits generated symbol `{symbol}`"
-            )));
-        }
-    }
-    for input_section in [
-        X86_SYSTEMS_ROOT_TEXT_SECTION,
-        X86_SYSTEMS_PROVIDER_TEXT_SECTION,
-        X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION,
-    ] {
-        if !map.contains(input_section) {
-            return Err(CompileError::Tool(format!(
-                "systems link map omits semantic input section `{input_section}`"
-            )));
-        }
-    }
-    Ok(())
-}
-
-#[allow(clippy::too_many_lines)] // The closed semantic-to-symbol placement ledger stays auditable together.
-fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, CompileError> {
-    let file = object::File::parse(kernel)
-        .map_err(|error| CompileError::Tool(format!("cannot parse linked systems ELF: {error}")))?;
-    let mut placements = Vec::new();
-    for (semantic_identity, symbol_name) in [
-        ("topal.systems.entry.bootstrap/1", X86_SYSTEMS_KERNEL_ENTRY),
-        (
-            "topal.systems.entry.synchronous.debug-break/1",
-            X86_SYSTEMS_DEBUG_BREAK_ENTRY,
-        ),
-        (
-            "topal.systems.entry.external.local-notification/1",
-            X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
-        ),
-        (
-            "topal.systems.entry.resumed.kernel-thread/1",
-            X86_SYSTEMS_KERNEL_THREAD_ENTRY,
-        ),
-        (
-            "topal.systems.entry.resumed.terminal-thread/1",
-            X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
-        ),
-        (SYSTEMS_BOOT_MEMORY_DESCRIBE, X86_SYSTEMS_BOOT_MEMORY_SYMBOL),
-        (SYSTEMS_FRAMES_ALLOCATE, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
-        (SYSTEMS_KERNEL_MAP, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
-        (SYSTEMS_KERNEL_MAPPING_STORE_BYTE, X86_SYSTEMS_KERNEL_ENTRY),
-        (SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, X86_SYSTEMS_KERNEL_ENTRY),
-        (SYSTEMS_KERNEL_UNMAP, X86_SYSTEMS_KERNEL_ENTRY),
-        (
-            SYSTEMS_TRANSLATION_BEGIN,
-            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-        ),
-        (
-            SYSTEMS_TRANSLATION_COMMIT,
-            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-        ),
-        (
-            SYSTEMS_TRANSLATION_ACTIVATE,
-            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-        ),
-        (
-            SYSTEMS_TRANSLATION_EDIT_BEGIN,
-            X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
-        ),
-        (
-            SYSTEMS_TRANSLATION_EDIT_MAP,
-            X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
-        ),
-        (
-            SYSTEMS_TRANSLATION_EDIT_UNMAP,
-            X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-        ),
-        (
-            SYSTEMS_TRANSLATION_EDIT_COMMIT,
-            X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
-        ),
-        (SYSTEMS_CRITICAL_ENTER, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL),
-        (
-            SYSTEMS_CRITICAL_RESTORE,
-            X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
-        ),
-        (SYSTEMS_ATOMIC_WORD_CREATE, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL),
-        (
-            SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
-            X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
-        ),
-        (SYSTEMS_ATOMIC_LOAD, X86_SYSTEMS_ATOMIC_LOAD_SYMBOL),
-        (SYSTEMS_ATOMIC_END, X86_SYSTEMS_KERNEL_ENTRY),
-        (
-            SYSTEMS_LOCAL_NOTIFICATION_SEND,
-            X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
-        ),
-        (
-            SYSTEMS_LOCAL_NOTIFICATION_WAIT,
-            X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
-        ),
-        (
-            SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
-            X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
-        ),
-        (
-            SYSTEMS_MONOTONIC_CLOCK_NOW,
-            X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
-        ),
-        (SYSTEMS_DEADLINE_AFTER, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL),
-        (SYSTEMS_DEADLINE_ARM, X86_SYSTEMS_DEADLINE_ARM_SYMBOL),
-        (SYSTEMS_DEADLINE_WAIT, X86_SYSTEMS_DEADLINE_WAIT_SYMBOL),
-        (
-            SYSTEMS_DEADLINE_COMPLETE,
-            X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
-        ),
-        (
-            SYSTEMS_RESUME_DEADLINE,
-            "topal_x86_systems_interrupt_return",
-        ),
-        (
-            SYSTEMS_KERNEL_CONTEXT_CREATE,
-            X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
-        ),
-        (
-            SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-            X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
-        ),
-        (
-            SYSTEMS_KERNEL_CONTEXT_RETIRE,
-            X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
-        ),
-        (
-            SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-            X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
-        ),
-        (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
-        (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
-        (
-            SYSTEMS_RESUME_DEBUG_BREAK,
-            "topal_x86_systems_interrupt_return",
-        ),
-        (
-            SYSTEMS_RESUME_LOCAL_NOTIFICATION,
-            "topal_x86_systems_interrupt_return",
-        ),
-        (SYSTEMS_FATAL, "topal_x86_systems_fatal"),
-        (
-            SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-            "topal_bootstrap_storage",
-        ),
-        (
-            SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-            "topal_bootstrap_storage",
-        ),
-        (
-            SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-            "topal_bootstrap_storage",
-        ),
-    ] {
-        let symbol = file.symbol_by_name(symbol_name).ok_or_else(|| {
-            CompileError::Tool(format!(
-                "linked systems ELF omits placement symbol `{symbol_name}`"
-            ))
-        })?;
-        let section = symbol
-            .section_index()
-            .and_then(|index| file.section_by_index(index).ok())
-            .ok_or_else(|| {
-                CompileError::Tool(format!(
-                    "linked systems placement symbol `{symbol_name}` has no section"
-                ))
-            })?;
-        placements.push(SystemsArtifactPlacement {
-            semantic_identity: semantic_identity.into(),
-            symbol: symbol_name.into(),
-            section: section.name().unwrap_or("<unnamed>").into(),
-            address: symbol.address(),
-            size: symbol.size(),
-            alignment: section.align(),
-        });
-    }
-    placements.sort_by(|left, right| {
-        left.semantic_identity
-            .cmp(&right.semantic_identity)
-            .then_with(|| left.symbol.cmp(&right.symbol))
-    });
-    Ok(placements)
-}
-
-#[derive(Clone, Copy)]
-enum ProviderSymbol {
-    DescribeBootMemory,
-    AllocatePhysicalFrames,
-    BeginTranslation,
-    CommitTranslation,
-    ActivateTranslation,
-    BeginTranslationEdit,
-    MapTranslationFrames,
-    UnmapTranslationMapping,
-    CommitTranslationEdit,
-    EnterCritical,
-    RestoreCritical,
-    AtomicWordCreate,
-    AtomicWordCompareExchange,
-    AtomicWordLoad,
-    SendLocalNotification,
-    WaitLocalNotification,
-    CompleteLocalNotification,
-    ObserveMonotonicClock,
-    ConstructDeadline,
-    ArmDeadline,
-    WaitDeadline,
-    CompleteDeadline,
-    CreateKernelContext,
-    TransferKernelContext,
-    AwaitDeadlinePreemption,
-    PreemptCurrentKernelContext,
-    RetireKernelContext,
-    ReclaimKernelContext,
-    KernelThreadEntry,
-    TerminalThreadEntry,
-    Uart16550Write,
-    DebugBreak,
-    InterruptReturn,
-    Fatal,
-    BootstrapStorage,
-}
-
-impl ProviderSymbol {
-    const fn name(self) -> &'static str {
-        match self {
-            Self::DescribeBootMemory => X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
-            Self::AllocatePhysicalFrames => X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
-            Self::BeginTranslation => X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-            Self::CommitTranslation => X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-            Self::ActivateTranslation => X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-            Self::BeginTranslationEdit => X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
-            Self::MapTranslationFrames => X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
-            Self::UnmapTranslationMapping => X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-            Self::CommitTranslationEdit => X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
-            Self::EnterCritical => X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
-            Self::RestoreCritical => X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
-            Self::AtomicWordCreate => X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
-            Self::AtomicWordCompareExchange => X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
-            Self::AtomicWordLoad => X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
-            Self::SendLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
-            Self::WaitLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
-            Self::CompleteLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
-            Self::ObserveMonotonicClock => X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
-            Self::ConstructDeadline => X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
-            Self::ArmDeadline => X86_SYSTEMS_DEADLINE_ARM_SYMBOL,
-            Self::WaitDeadline => X86_SYSTEMS_DEADLINE_WAIT_SYMBOL,
-            Self::CompleteDeadline => X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
-            Self::CreateKernelContext => X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
-            Self::TransferKernelContext => X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
-            Self::AwaitDeadlinePreemption => X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL,
-            Self::PreemptCurrentKernelContext => X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
-            Self::RetireKernelContext => X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
-            Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
-            Self::KernelThreadEntry => X86_SYSTEMS_KERNEL_THREAD_ENTRY,
-            Self::TerminalThreadEntry => X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
-            Self::Uart16550Write => "topal_x86_systems_uart16550_write",
-            Self::DebugBreak => "topal_x86_systems_debug_break",
-            Self::InterruptReturn => "topal_x86_systems_interrupt_return",
-            Self::Fatal => "topal_x86_systems_fatal",
-            Self::BootstrapStorage => "topal_bootstrap_storage",
-        }
-    }
-
-    const fn kind(self) -> SymbolKind {
-        match self {
-            Self::BootstrapStorage => SymbolKind::Data,
-            Self::DescribeBootMemory
-            | Self::AllocatePhysicalFrames
-            | Self::BeginTranslation
-            | Self::CommitTranslation
-            | Self::ActivateTranslation
-            | Self::BeginTranslationEdit
-            | Self::MapTranslationFrames
-            | Self::UnmapTranslationMapping
-            | Self::CommitTranslationEdit
-            | Self::EnterCritical
-            | Self::RestoreCritical
-            | Self::AtomicWordCreate
-            | Self::AtomicWordCompareExchange
-            | Self::AtomicWordLoad
-            | Self::SendLocalNotification
-            | Self::WaitLocalNotification
-            | Self::CompleteLocalNotification
-            | Self::ObserveMonotonicClock
-            | Self::ConstructDeadline
-            | Self::ArmDeadline
-            | Self::WaitDeadline
-            | Self::CompleteDeadline
-            | Self::CreateKernelContext
-            | Self::TransferKernelContext
-            | Self::AwaitDeadlinePreemption
-            | Self::PreemptCurrentKernelContext
-            | Self::RetireKernelContext
-            | Self::ReclaimKernelContext
-            | Self::KernelThreadEntry
-            | Self::TerminalThreadEntry
-            | Self::Uart16550Write
-            | Self::DebugBreak
-            | Self::InterruptReturn
-            | Self::Fatal => SymbolKind::Text,
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-enum SavedRegister {
-    Rax,
-    Rbx,
-    Rcx,
-    Rdx,
-    Rbp,
-    Rsi,
-    Rdi,
-    R8,
-    R9,
-    R10,
-    R11,
-    R12,
-    R13,
-    R14,
-    R15,
-}
-
-const SAVED_REGISTERS: [SavedRegister; 15] = [
-    SavedRegister::Rax,
-    SavedRegister::Rbx,
-    SavedRegister::Rcx,
-    SavedRegister::Rdx,
-    SavedRegister::Rbp,
-    SavedRegister::Rsi,
-    SavedRegister::Rdi,
-    SavedRegister::R8,
-    SavedRegister::R9,
-    SavedRegister::R10,
-    SavedRegister::R11,
-    SavedRegister::R12,
-    SavedRegister::R13,
-    SavedRegister::R14,
-    SavedRegister::R15,
-];
-
-struct PendingRelocation {
-    offset: u64,
-    target: ProviderSymbol,
-    addend: i64,
-    kind: RelocationKind,
-    encoding: RelocationEncoding,
-}
-
-#[derive(Default)]
-struct RootEncoder {
-    bytes: Vec<u8>,
-    relocations: Vec<PendingRelocation>,
-    frame_allocator_created: bool,
-    physical_frames_live: bool,
-    kernel_mapping_live: bool,
-    translation: RootTranslationState,
-    critical: RootCriticalState,
-    bootstrap_region_offset: Option<u64>,
-    atomic_word_offset: Option<u64>,
-    local_notification: RootLocalNotificationState,
-    monotonic_observations: u8,
-    deadline: RootDeadlineState,
-    kernel_context: RootKernelContextState,
-    bootstrap_next_offset: u64,
-    context_stack_offsets: [Option<u64>; 2],
-    role: RootRole,
-}
-
-#[derive(Default, Eq, PartialEq)]
-enum RootRole {
-    #[default]
-    Ordinary,
-    BootstrapWithLocalNotification,
-    LocalNotificationHandler,
-    DeadlineHandler,
-    CooperativeKernelThreadHandler,
-    TerminalKernelThreadHandler,
-}
-
-#[derive(Default, Eq, PartialEq)]
-enum RootTranslationState {
-    #[default]
-    BootstrapActive,
-    Update,
-    InactiveSpace,
-    ReplacementActive,
-    MapEdit,
-    MapStaged,
-    MappedActive,
-    UnmapEdit,
-    UnmapStaged,
-    RemovedActive,
-}
-
-#[derive(Default, Eq, PartialEq)]
-enum RootCriticalState {
-    #[default]
-    Restored,
-    Live,
-}
-
-#[derive(Default, Eq, PartialEq)]
-enum RootLocalNotificationState {
-    #[default]
-    Idle,
-    Pending,
-    Completed,
-}
-
-#[derive(Default, Eq, PartialEq)]
-enum RootDeadlineState {
-    #[default]
-    Fresh,
-    Constructed,
-    Armed,
-    Completed,
-}
-
-#[derive(Default, Eq, PartialEq)]
-enum RootKernelContextState {
-    #[default]
-    Fresh,
-    CooperativeCreated,
-    BothSuspended,
-    QueueCreated,
-    CooperativeEnqueued,
-    BothEnqueued,
-    CooperativeDequeued,
-    CooperativeYielded,
-    PreemptedTaken,
-    HandoffEnqueued,
-    TerminalDequeued,
-    TerminalCompleted,
-    TerminalReclaimed,
-    CooperativeDequeuedAgain,
-    CooperativeCompleted,
-    Reclaimed,
-    QueueConsumed,
-}
-
-#[derive(Clone, Copy)]
-struct ProviderSymbols {
-    describe_boot_memory: SymbolId,
-    allocate_physical_frames: SymbolId,
-    begin_translation: SymbolId,
-    commit_translation: SymbolId,
-    activate_translation: SymbolId,
-    begin_translation_edit: SymbolId,
-    map_translation_frames: SymbolId,
-    unmap_translation_mapping: SymbolId,
-    commit_translation_edit: SymbolId,
-    enter_critical: SymbolId,
-    restore_critical: SymbolId,
-    atomic_word_create: SymbolId,
-    atomic_word_compare_exchange: SymbolId,
-    atomic_word_load: SymbolId,
-    send_local_notification: SymbolId,
-    wait_local_notification: SymbolId,
-    complete_local_notification: SymbolId,
-    observe_monotonic_clock: SymbolId,
-    construct_deadline: SymbolId,
-    arm_deadline: SymbolId,
-    wait_deadline: SymbolId,
-    complete_deadline: SymbolId,
-    create_kernel_context: SymbolId,
-    transfer_kernel_context: SymbolId,
-    await_deadline_preemption: SymbolId,
-    preempt_current_kernel_context: SymbolId,
-    retire_kernel_context: SymbolId,
-    reclaim_kernel_context: SymbolId,
-    kernel_thread_entry: Option<SymbolId>,
-    terminal_thread_entry: Option<SymbolId>,
-    uart16550_write: SymbolId,
-    debug_break: SymbolId,
-    interrupt_return: SymbolId,
-    fatal: SymbolId,
-    bootstrap_storage: Option<SymbolId>,
-}
-
-impl RootEncoder {
-    fn describe_boot_memory(&mut self) -> Result<(), CompileError> {
-        self.bytes.extend_from_slice(&[0x49, 0x89, 0xf5]); // retain boot params in r13
-        self.call_checked_bool(ProviderSymbol::DescribeBootMemory)
-    }
-
-    fn create_frame_allocator(&mut self) -> Result<(), CompileError> {
-        if self.frame_allocator_created {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered duplicate frame-allocator creation".into(),
-            ));
-        }
-        self.frame_allocator_created = true;
-        Ok(())
-    }
-
-    fn allocate_physical_frames(
-        &mut self,
-        frame_count: u64,
-        alignment_frames: u64,
-    ) -> Result<(), CompileError> {
-        if !self.frame_allocator_created
-            || self.physical_frames_live
-            || self.kernel_mapping_live
-            || frame_count != 1
-            || alignment_frames != 1
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires one live allocator and the sealed one-frame request"
-                    .into(),
-            ));
-        }
-        match self.translation {
-            RootTranslationState::BootstrapActive => {
-                self.bytes
-                    .extend_from_slice(&[0xbf, 0x00, 0x00, 0x00, 0x01]);
-            }
-            RootTranslationState::ReplacementActive => {
-                self.bytes
-                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x40, 0x00, 0x00]);
-            }
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 root lowering encountered frame allocation in an unavailable translation state".into(),
-                ));
-            }
-        }
-        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // rsi = retained boot params
-        self.call(ProviderSymbol::AllocatePhysicalFrames);
-        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
-        self.jump_to_fatal_if(0x84)?;
-        self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
-        self.physical_frames_live = true;
-        Ok(())
-    }
-
-    fn map_kernel_frames(
-        &mut self,
-        request: CompilerKernelMappingRequest,
-    ) -> Result<(), CompileError> {
-        if !self.physical_frames_live
-            || self.kernel_mapping_live
-            || request != CompilerKernelMappingRequest::initial_read_write()
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires one live frame extent and the sealed mapping policy"
-                    .into(),
-            ));
-        }
-        self.physical_frames_live = false;
-        self.kernel_mapping_live = true;
-        Ok(())
-    }
-
-    fn store_kernel_mapping_byte(
-        &mut self,
-        offset_bytes: u64,
-        value: u8,
-    ) -> Result<(), CompileError> {
-        if !self.kernel_mapping_live || offset_bytes >= 4096 {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires an in-bounds live kernel mapping store".into(),
-            ));
-        }
-        let offset = u32::try_from(offset_bytes)
-            .map_err(|_| CompileError::Tool("kernel mapping offset exceeds u32".into()))?;
-        if self.translation == RootTranslationState::MappedActive {
-            self.bytes.extend_from_slice(&[0x41, 0xc6, 0x86]); // [r14+disp32]
-        } else {
-            self.bytes.extend_from_slice(&[0xc6, 0x83]); // [rbx+disp32]
-        }
-        self.bytes.extend_from_slice(&offset.to_le_bytes());
-        self.bytes.push(value);
-        Ok(())
-    }
-
-    fn load_kernel_mapping_byte_equals(
-        &mut self,
-        offset_bytes: u64,
-        expected: u8,
-    ) -> Result<(), CompileError> {
-        if !self.kernel_mapping_live || offset_bytes >= 4096 {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires an in-bounds live kernel mapping load".into(),
-            ));
-        }
-        let offset = u32::try_from(offset_bytes)
-            .map_err(|_| CompileError::Tool("kernel mapping offset exceeds u32".into()))?;
-        if self.translation == RootTranslationState::MappedActive {
-            self.bytes.extend_from_slice(&[0x41, 0x0f, 0xb6, 0x86]); // [r14+disp32]
-        } else {
-            self.bytes.extend_from_slice(&[0x0f, 0xb6, 0x83]); // [rbx+disp32]
-        }
-        self.bytes.extend_from_slice(&offset.to_le_bytes());
-        self.bytes.extend_from_slice(&[0x3c, expected]); // cmp al, imm8
-        self.jump_to_fatal_if(0x85)
-    }
-
-    fn unmap_kernel_frames(&mut self) -> Result<(), CompileError> {
-        if !self.kernel_mapping_live || self.physical_frames_live {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered unmap without a live kernel mapping".into(),
-            ));
-        }
-        self.kernel_mapping_live = false;
-        self.physical_frames_live = true;
-        Ok(())
-    }
-
-    fn release_physical_frames(&mut self) -> Result<(), CompileError> {
-        if !self.physical_frames_live {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered release without a live physical-frame extent".into(),
-            ));
-        }
-        self.physical_frames_live = false;
-        self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear retained physical base
-        Ok(())
-    }
-
-    fn begin_translation(
-        &mut self,
-        request: CompilerTranslationUpdateRequest,
-    ) -> Result<(), CompileError> {
-        if !self.frame_allocator_created
-            || self.physical_frames_live
-            || self.kernel_mapping_live
-            || self.translation != RootTranslationState::BootstrapActive
-            || request != CompilerTranslationUpdateRequest::initial_bootstrap_equivalent()
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires the live allocator, no borrowed frames, and the sealed translation request".into(),
-            ));
-        }
-        self.call(ProviderSymbol::BeginTranslation);
-        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
-        self.jump_to_fatal_if(0x84)?;
-        self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // retain root in r12
-        self.translation = RootTranslationState::Update;
-        Ok(())
-    }
-
-    fn commit_translation(&mut self) -> Result<(), CompileError> {
-        if self.translation != RootTranslationState::Update {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered translation commit without an update".into(),
-            ));
-        }
-        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // rdi = r12
-        self.call_checked_bool(ProviderSymbol::CommitTranslation)?;
-        self.translation = RootTranslationState::InactiveSpace;
-        Ok(())
-    }
-
-    fn activate_translation(&mut self) -> Result<(), CompileError> {
-        if self.translation != RootTranslationState::InactiveSpace {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered translation activation without an inactive space"
-                    .into(),
-            ));
-        }
-        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // rdi = r12
-        self.call_checked_bool(ProviderSymbol::ActivateTranslation)?;
-        self.bytes.extend_from_slice(&[0x4d, 0x89, 0xe7]); // retain active root in r15
-        self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // consume inactive-space token
-        self.translation = RootTranslationState::ReplacementActive;
-        Ok(())
-    }
-
-    fn begin_translation_edit(
-        &mut self,
-        kind: CompilerTranslationEditKind,
-    ) -> Result<(), CompileError> {
-        match kind {
-            CompilerTranslationEditKind::Map
-                if self.translation == RootTranslationState::ReplacementActive
-                    && self.physical_frames_live
-                    && !self.kernel_mapping_live =>
-            {
-                self.bytes.extend_from_slice(&[0x48, 0x89, 0xdf]); // payload in rdi
-                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // boot params in rsi
-                self.bytes.extend_from_slice(&[0x31, 0xd2]); // map kind
-                self.call(ProviderSymbol::BeginTranslationEdit);
-                self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
-                self.jump_to_fatal_if(0x84)?;
-                self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // metadata in r12
-                self.translation = RootTranslationState::MapEdit;
-            }
-            CompilerTranslationEditKind::Unmap
-                if self.translation == RootTranslationState::MappedActive
-                    && self.kernel_mapping_live
-                    && !self.physical_frames_live =>
-            {
-                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]); // active root
-                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]); // mapping
-                self.bytes
-                    .extend_from_slice(&[0xba, 0x01, 0x00, 0x00, 0x00]);
-                self.call_checked_bool(ProviderSymbol::BeginTranslationEdit)?;
-                self.translation = RootTranslationState::UnmapEdit;
-            }
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 root lowering encountered translation edit begin without matching active authority".into(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    fn map_translation_frames(
-        &mut self,
-        request: CompilerTranslationMappingRequest,
-    ) -> Result<(), CompileError> {
-        if self.translation != RootTranslationState::MapEdit
-            || !self.physical_frames_live
-            || self.kernel_mapping_live
-            || request != CompilerTranslationMappingRequest::initial_read_write()
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires a map edit, live frame, and sealed active mapping policy".into(),
-            ));
-        }
-        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // metadata PD
-        self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // payload frame
-        self.call_checked_bool(ProviderSymbol::MapTranslationFrames)?;
-        self.physical_frames_live = false;
-        self.translation = RootTranslationState::MapStaged;
-        Ok(())
-    }
-
-    fn unmap_translation_mapping(&mut self) -> Result<(), CompileError> {
-        if self.translation != RootTranslationState::UnmapEdit
-            || !self.kernel_mapping_live
-            || self.physical_frames_live
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires an unmap edit and its live mapping".into(),
-            ));
-        }
-        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]);
-        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]);
-        self.call_checked_bool(ProviderSymbol::UnmapTranslationMapping)?;
-        self.kernel_mapping_live = false;
-        self.translation = RootTranslationState::UnmapStaged;
-        Ok(())
-    }
-
-    fn commit_translation_edit(
-        &mut self,
-        kind: CompilerTranslationEditKind,
-    ) -> Result<(), CompileError> {
-        match kind {
-            CompilerTranslationEditKind::Map
-                if self.translation == RootTranslationState::MapStaged =>
-            {
-                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]);
-                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe6]);
-                self.bytes.extend_from_slice(&[0x31, 0xd2]);
-                self.call(ProviderSymbol::CommitTranslationEdit);
-                self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
-                self.jump_to_fatal_if(0x84)?;
-                self.bytes.extend_from_slice(&[0x49, 0x89, 0xc6]); // opaque mapping
-                self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]);
-                self.kernel_mapping_live = true;
-                self.translation = RootTranslationState::MappedActive;
-            }
-            CompilerTranslationEditKind::Unmap
-                if self.translation == RootTranslationState::UnmapStaged =>
-            {
-                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]);
-                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]);
-                self.bytes
-                    .extend_from_slice(&[0xba, 0x01, 0x00, 0x00, 0x00]);
-                self.call_checked_bool(ProviderSymbol::CommitTranslationEdit)?;
-                self.bytes.extend_from_slice(&[0x4d, 0x31, 0xf6]);
-                self.physical_frames_live = true;
-                self.translation = RootTranslationState::RemovedActive;
-            }
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 root lowering encountered translation edit commit without a matching candidate".into(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    fn enter_critical(&mut self, domain: CompilerCriticalDomain) -> Result<(), CompileError> {
-        if domain != CompilerCriticalDomain::LocalMaskableInterrupts
-            || self.critical == RootCriticalState::Live
-            || self.physical_frames_live
-            || self.kernel_mapping_live
-            || self.translation != RootTranslationState::RemovedActive
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires the restored active context and one non-nested local-interrupt critical scope".into(),
-            ));
-        }
-        self.call(ProviderSymbol::EnterCritical);
-        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // validate opaque token
-        self.jump_to_fatal_if(0x84)?;
-        self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // retain token in r12
-        self.critical = RootCriticalState::Live;
-        Ok(())
-    }
-
-    fn restore_critical(&mut self, domain: CompilerCriticalDomain) -> Result<(), CompileError> {
-        if domain != CompilerCriticalDomain::LocalMaskableInterrupts
-            || self.critical != RootCriticalState::Live
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered critical restoration without matching affine authority".into(),
-            ));
-        }
-        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // opaque token in rdi
-        self.call_checked_bool(ProviderSymbol::RestoreCritical)?;
-        self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // consume token
-        self.critical = RootCriticalState::Restored;
-        Ok(())
-    }
-
-    fn complete(&self) -> Result<(), CompileError> {
-        if self.atomic_word_offset.is_some() {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended with a live atomic word".into(),
-            ));
-        }
-        if self.bootstrap_region_offset.is_some() {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended with a live bootstrap region".into(),
-            ));
-        }
-        if self.physical_frames_live {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended with a live physical-frame extent".into(),
-            ));
-        }
-        if self.kernel_mapping_live {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended with a live kernel mapping".into(),
-            ));
-        }
-        if self.critical == RootCriticalState::Live {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended with live critical restoration authority".into(),
-            ));
-        }
-        if self.role == RootRole::BootstrapWithLocalNotification
-            && self.local_notification != RootLocalNotificationState::Completed
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended without completing its local-notification lifecycle"
-                    .into(),
-            ));
-        }
-        if self.role == RootRole::BootstrapWithLocalNotification && self.monotonic_observations != 2
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended without exactly two monotonic-clock observations".into(),
-            ));
-        }
-        if self.role == RootRole::BootstrapWithLocalNotification
-            && self.deadline != RootDeadlineState::Completed
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended without completing its deadline lifecycle".into(),
-            ));
-        }
-        if self.role == RootRole::BootstrapWithLocalNotification
-            && self.kernel_context != RootKernelContextState::QueueConsumed
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended without reclaiming both contexts and consuming its runnable queue"
-                    .into(),
-            ));
-        }
-        if self.context_stack_offsets != [None, None] {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended with a live cooperative context stack".into(),
-            ));
-        }
-        if matches!(
-            self.translation,
-            RootTranslationState::Update
-                | RootTranslationState::InactiveSpace
-                | RootTranslationState::MapEdit
-                | RootTranslationState::MapStaged
-                | RootTranslationState::UnmapEdit
-                | RootTranslationState::UnmapStaged
-        ) {
-            return Err(CompileError::Tool(
-                "x86 root lowering ended with an incomplete translation lifecycle".into(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn call_checked_bool(&mut self, target: ProviderSymbol) -> Result<(), CompileError> {
-        self.call(target);
-        self.bytes.extend_from_slice(&[0x84, 0xc0]);
-        self.jump_to_fatal_if(0x84)
-    }
-
-    fn jump_to_fatal_if(&mut self, condition: u8) -> Result<(), CompileError> {
-        self.bytes.extend_from_slice(&[0x0f, condition]);
-        self.relocations.push(PendingRelocation {
-            offset: u64::try_from(self.bytes.len()).map_err(|_| {
-                CompileError::Tool("generated root relocation offset exceeds u64".into())
-            })?,
-            target: ProviderSymbol::Fatal,
-            addend: -4,
-            kind: RelocationKind::PltRelative,
-            encoding: RelocationEncoding::X86Branch,
-        });
-        self.bytes.extend_from_slice(&[0; 4]);
-        Ok(())
-    }
-
-    fn console_write(&mut self, text: &str) {
-        for byte in text.as_bytes() {
-            self.bytes.push(0xbf);
-            self.bytes
-                .extend_from_slice(&u32::from(*byte).to_le_bytes());
-            self.call(ProviderSymbol::Uart16550Write);
-        }
-    }
-
-    fn call(&mut self, target: ProviderSymbol) {
-        self.bytes.push(0xe8);
-        self.relocations.push(PendingRelocation {
-            offset: self.bytes.len() as u64,
-            target,
-            addend: -4,
-            kind: RelocationKind::PltRelative,
-            encoding: RelocationEncoding::X86Branch,
-        });
-        self.bytes.extend_from_slice(&[0; 4]);
-    }
-
-    fn jump(&mut self, target: ProviderSymbol) {
-        self.bytes.push(0xe9);
-        self.relocations.push(PendingRelocation {
-            offset: self.bytes.len() as u64,
-            target,
-            addend: -4,
-            kind: RelocationKind::PltRelative,
-            encoding: RelocationEncoding::X86Branch,
-        });
-        self.bytes.extend_from_slice(&[0; 4]);
-    }
-
-    fn push(&mut self, register: SavedRegister) {
-        let (rex, opcode) = register_encoding(register, 0x50);
-        if let Some(rex) = rex {
-            self.bytes.push(rex);
-        }
-        self.bytes.push(opcode);
-    }
-
-    fn pop(&mut self, register: SavedRegister) {
-        let (rex, opcode) = register_encoding(register, 0x58);
-        if let Some(rex) = rex {
-            self.bytes.push(rex);
-        }
-        self.bytes.push(opcode);
-    }
-
-    fn allocate_bootstrap_region(
-        &mut self,
-        request: CompilerBootstrapStorageRequest,
-    ) -> Result<(), CompileError> {
-        if self.bootstrap_region_offset.is_some()
-            || request.placement != CompilerBootstrapStoragePlacement::BootstrapReclaimable
-            || !matches!(
-                (request.byte_count, request.alignment_bytes),
-                (64, 8) | (16_384, 16)
-            )
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered an overlapping or unsealed bootstrap region".into(),
-            ));
-        }
-        let mask = request.alignment_bytes - 1;
-        let mut offset = self
-            .bootstrap_next_offset
-            .checked_add(mask)
-            .ok_or_else(|| CompileError::Tool("bootstrap placement overflows".into()))?
-            & !mask;
-        if request.byte_count == 16_384 {
-            offset = offset.max(4096); // provider-private event state occupies the low page
-        }
-        self.bootstrap_next_offset = offset
-            .checked_add(request.byte_count)
-            .ok_or_else(|| CompileError::Tool("bootstrap placement overflows".into()))?;
-        self.bootstrap_region_offset = Some(offset);
-        Ok(())
-    }
-
-    fn store_bootstrap_byte(&mut self, offset: u64, value: u8) -> Result<(), CompileError> {
-        if self.atomic_word_offset.is_some() {
-            return Err(CompileError::Tool(
-                "x86 root lowering rejected plain access while an atomic word is live".into(),
-            ));
-        }
-        let storage_offset = self.bootstrap_storage_offset(offset)?;
-        self.bytes.extend_from_slice(&[0xc6, 0x05]);
-        self.rip_relative_storage(storage_offset, 1)?;
-        self.bytes.push(value);
-        Ok(())
-    }
-
-    fn load_bootstrap_byte_equals(
-        &mut self,
-        offset: u64,
-        expected: u8,
-    ) -> Result<(), CompileError> {
-        if self.atomic_word_offset.is_some() {
-            return Err(CompileError::Tool(
-                "x86 root lowering rejected plain access while an atomic word is live".into(),
-            ));
-        }
-        let storage_offset = self.bootstrap_storage_offset(offset)?;
-        self.bytes.extend_from_slice(&[0x0f, 0xb6, 0x05]);
-        self.rip_relative_storage(storage_offset, 0)?;
-        self.bytes.extend_from_slice(&[0x3c, expected, 0x0f, 0x85]);
-        self.relocations.push(PendingRelocation {
-            offset: u64::try_from(self.bytes.len()).map_err(|_| {
-                CompileError::Tool("generated root relocation offset exceeds u64".into())
-            })?,
-            target: ProviderSymbol::Fatal,
-            addend: -4,
-            kind: RelocationKind::PltRelative,
-            encoding: RelocationEncoding::X86Branch,
-        });
-        self.bytes.extend_from_slice(&[0; 4]);
-        Ok(())
-    }
-
-    fn release_bootstrap_region(&mut self) -> Result<(), CompileError> {
-        if self.atomic_word_offset.is_some() {
-            return Err(CompileError::Tool(
-                "x86 root lowering rejected region release while an atomic word is live".into(),
-            ));
-        }
-        if self.bootstrap_region_offset.take().is_none() {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered release without a live bootstrap region".into(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn create_atomic_word(
-        &mut self,
-        request: CompilerAtomicWordRequest,
-    ) -> Result<(), CompileError> {
-        if request != CompilerAtomicWordRequest::initial() || self.atomic_word_offset.is_some() {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires one live atomic word with the sealed request".into(),
-            ));
-        }
-        let storage_offset = self.bootstrap_storage_offset(request.offset_bytes)?;
-        self.load_bootstrap_storage_address(storage_offset)?;
-        self.bytes.push(0xbe); // mov esi, imm32
-        let initial_value = u32::try_from(request.initial_value)
-            .map_err(|_| CompileError::Tool("atomic initial value exceeds x86 imm32".into()))?;
-        self.bytes.extend_from_slice(&initial_value.to_le_bytes());
-        self.call_checked_bool(ProviderSymbol::AtomicWordCreate)?;
-        self.atomic_word_offset = Some(request.offset_bytes);
-        Ok(())
-    }
-
-    fn compare_exchange_atomic_word(
-        &mut self,
-        expected: u64,
-        desired: u64,
-        success_order: CompilerAtomicOrder,
-        failure_order: CompilerAtomicOrder,
-    ) -> Result<(), CompileError> {
-        if self.atomic_word_offset != Some(8)
-            || (expected, desired, success_order, failure_order)
-                != (
-                    41,
-                    42,
-                    CompilerAtomicOrder::AcquireRelease,
-                    CompilerAtomicOrder::Acquire,
-                )
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires the sealed atomic compare/exchange".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(8)?;
-        self.bytes.push(0xbe); // mov esi, imm32
-        let expected = u32::try_from(expected)
-            .map_err(|_| CompileError::Tool("atomic expected value exceeds x86 imm32".into()))?;
-        self.bytes.extend_from_slice(&expected.to_le_bytes());
-        self.bytes.push(0xba); // mov edx, imm32
-        let desired = u32::try_from(desired)
-            .map_err(|_| CompileError::Tool("atomic desired value exceeds x86 imm32".into()))?;
-        self.bytes.extend_from_slice(&desired.to_le_bytes());
-        self.call_checked_bool(ProviderSymbol::AtomicWordCompareExchange)
-    }
-
-    fn load_atomic_word_equals(
-        &mut self,
-        order: CompilerAtomicOrder,
-        expected: u64,
-    ) -> Result<(), CompileError> {
-        if self.atomic_word_offset != Some(8)
-            || order != CompilerAtomicOrder::Acquire
-            || expected != 42
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires the sealed acquire atomic load".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(8)?;
-        self.call(ProviderSymbol::AtomicWordLoad);
-        self.bytes.extend_from_slice(&[0x48, 0x83, 0xf8, 0x2a]); // cmp rax, 42
-        self.jump_to_fatal_if(0x85)
-    }
-
-    fn end_atomic_word(&mut self) -> Result<(), CompileError> {
-        if self.atomic_word_offset.take() != Some(8) {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered atomic end without a live location".into(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn send_local_notification(&mut self) -> Result<(), CompileError> {
-        if self.local_notification != RootLocalNotificationState::Idle
-            || self.bootstrap_region_offset.is_some()
-            || self.atomic_word_offset.is_some()
-            || self.critical != RootCriticalState::Restored
-        {
-            return Err(CompileError::Tool(
-                "x86 root lowering requires a restored context and no live bootstrap region before local-notification send".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(16)?;
-        self.call_checked_bool(ProviderSymbol::SendLocalNotification)?;
-        self.local_notification = RootLocalNotificationState::Pending;
-        Ok(())
-    }
-
-    fn wait_local_notification(&mut self) -> Result<(), CompileError> {
-        if self.local_notification != RootLocalNotificationState::Pending {
-            return Err(CompileError::Tool(
-                "x86 root lowering encountered local-notification wait without pending authority"
-                    .into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(16)?;
-        self.call_checked_bool(ProviderSymbol::WaitLocalNotification)?;
-        self.local_notification = RootLocalNotificationState::Completed;
-        Ok(())
-    }
-
-    fn complete_local_notification(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::LocalNotificationHandler {
-            return Err(CompileError::Tool(
-                "x86 local-notification completion is admitted only in its external entry".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(16)?;
-        self.call(ProviderSymbol::CompleteLocalNotification);
-        Ok(())
-    }
-
-    fn observe_monotonic_clock(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.local_notification != RootLocalNotificationState::Completed
-            || self.monotonic_observations >= 2
-        {
-            return Err(CompileError::Tool(
-                "x86 monotonic-clock observation requires the completed local-notification lifecycle and its sealed two-read sequence".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(24)?;
-        self.call(ProviderSymbol::ObserveMonotonicClock);
-        self.bytes.extend_from_slice(&[0x85, 0xc9]); // test provider status in ecx
-        self.jump_to_fatal_if(0x84)?;
-        self.monotonic_observations += 1;
-        Ok(())
-    }
-
-    fn construct_deadline(&mut self, duration_nanoseconds: u64) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.monotonic_observations != 2
-            || self.deadline != RootDeadlineState::Fresh
-            || duration_nanoseconds != 1_000_000
-        {
-            return Err(CompileError::Tool(
-                "x86 deadline construction requires the second clock observation and exact duration 1[ms]".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(24)?;
-        self.call_checked_bool(ProviderSymbol::ConstructDeadline)?;
-        self.deadline = RootDeadlineState::Constructed;
-        Ok(())
-    }
-
-    fn arm_deadline(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.deadline != RootDeadlineState::Constructed
-            || self.critical != RootCriticalState::Restored
-        {
-            return Err(CompileError::Tool(
-                "x86 deadline arm requires one constructed deadline and restored processor context"
-                    .into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(24)?;
-        self.call_checked_bool(ProviderSymbol::ArmDeadline)?;
-        self.deadline = RootDeadlineState::Armed;
-        Ok(())
-    }
-
-    fn wait_deadline(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.deadline != RootDeadlineState::Armed
-        {
-            return Err(CompileError::Tool(
-                "x86 deadline wait requires one matching armed event".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(24)?;
-        self.call_checked_bool(ProviderSymbol::WaitDeadline)?;
-        self.deadline = RootDeadlineState::Completed;
-        Ok(())
-    }
-
-    fn complete_deadline(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::DeadlineHandler {
-            return Err(CompileError::Tool(
-                "x86 deadline completion is admitted only in its external entry".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(24)?;
-        self.call_checked_bool(ProviderSymbol::CompleteDeadline)
-    }
-
-    fn create_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.deadline != RootDeadlineState::Constructed
-        {
-            return Err(CompileError::Tool(
-                "x86 kernel-context creation requires one constructed deadline and its sealed stack region"
-                    .into(),
-            ));
-        }
-        let (index, state_offset, stack_offset, entry) = match self.kernel_context {
-            RootKernelContextState::Fresh if self.bootstrap_region_offset == Some(4096) => {
-                (0, 80, 4096, ProviderSymbol::KernelThreadEntry)
-            }
-            RootKernelContextState::CooperativeCreated
-                if self.bootstrap_region_offset == Some(20_480) =>
-            {
-                (1, 112, 20_480, ProviderSymbol::TerminalThreadEntry)
-            }
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 cooperative profile creates exactly two contexts from its sealed disjoint stacks"
-                        .into(),
-                ));
-            }
-        };
-        self.load_bootstrap_storage_address(state_offset)?;
-        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]); // lea rsi, stack
-        self.rip_relative_storage(stack_offset, 0)?;
-        self.bytes
-            .extend_from_slice(&[0xba, 0x00, 0x40, 0x00, 0x00]); // 16 KiB
-        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x0d]); // lea rcx, worker entry
-        self.rip_relative_symbol(entry, 0)?;
-        self.call_checked_bool(ProviderSymbol::CreateKernelContext)?;
-        self.context_stack_offsets[index] = self.bootstrap_region_offset.take();
-        self.kernel_context = if index == 0 {
-            RootKernelContextState::CooperativeCreated
-        } else {
-            RootKernelContextState::BothSuspended
-        };
-        Ok(())
-    }
-
-    fn transfer_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role == RootRole::CooperativeKernelThreadHandler {
-            self.load_bootstrap_storage_address(80)?;
-            self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
-            return Ok(());
-        }
-        if self.role != RootRole::BootstrapWithLocalNotification {
-            return Err(CompileError::Tool(
-                "x86 cooperative transfer requires the dispatcher or cooperative worker".into(),
-            ));
-        }
-        let (state_offset, next_state) = match self.kernel_context {
-            RootKernelContextState::CooperativeDequeued
-                if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
-            {
-                (80, RootKernelContextState::CooperativeYielded)
-            }
-            RootKernelContextState::TerminalDequeued
-                if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
-            {
-                (112, RootKernelContextState::TerminalCompleted)
-            }
-            RootKernelContextState::CooperativeDequeuedAgain
-                if self.context_stack_offsets == [Some(4096), None] =>
-            {
-                (80, RootKernelContextState::CooperativeCompleted)
-            }
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 kernel-context transfers must follow cooperative, terminal, cooperative FIFO order"
-                        .into(),
-                ));
-            }
-        };
-        self.load_bootstrap_storage_address(state_offset)?;
-        self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
-        self.kernel_context = next_state;
-        Ok(())
-    }
-
-    fn transfer_kernel_context_until_deadline(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.kernel_context != RootKernelContextState::CooperativeDequeued
-            || self.context_stack_offsets != [Some(4096), Some(20_480)]
-            || self.deadline != RootDeadlineState::Constructed
-            || self.critical != RootCriticalState::Restored
-        {
-            return Err(CompileError::Tool(
-                "x86 deadline-bound transfer requires the first selected worker, constructed deadline, and restored processor context".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(24)?;
-        self.call_checked_bool(ProviderSymbol::ArmDeadline)?;
-        self.deadline = RootDeadlineState::Armed;
-        self.load_bootstrap_storage_address(80)?;
-        self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
-        self.deadline = RootDeadlineState::Completed;
-        self.kernel_context = RootKernelContextState::CooperativeYielded;
-        Ok(())
-    }
-
-    fn await_deadline_preemption(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::CooperativeKernelThreadHandler {
-            return Err(CompileError::Tool(
-                "x86 deadline-preemption await is admitted only in its bound worker".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(80)?;
-        self.call_checked_bool(ProviderSymbol::AwaitDeadlinePreemption)
-    }
-
-    fn take_preempted_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.kernel_context != RootKernelContextState::CooperativeYielded
-            || self.deadline != RootDeadlineState::Completed
-        {
-            return Err(CompileError::Tool(
-                "x86 preempted-context take requires the completed bound deadline transfer".into(),
-            ));
-        }
-        self.kernel_context = RootKernelContextState::PreemptedTaken;
-        Ok(())
-    }
-
-    fn preempt_current_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::DeadlineHandler {
-            return Err(CompileError::Tool(
-                "x86 deadline preemption is admitted only in its external entry".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(80)?;
-        self.call_checked_bool(ProviderSymbol::PreemptCurrentKernelContext)
-    }
-
-    fn create_runnable_queue(&mut self, capacity: usize) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.kernel_context != RootKernelContextState::BothSuspended
-            || capacity != 2
-        {
-            return Err(CompileError::Tool(
-                "x86 root runnable queue requires both suspended contexts and capacity two".into(),
-            ));
-        }
-        self.kernel_context = RootKernelContextState::QueueCreated;
-        Ok(())
-    }
-
-    fn enqueue_runnable_context(&mut self) -> Result<(), CompileError> {
-        self.kernel_context = match self.kernel_context {
-            RootKernelContextState::QueueCreated => RootKernelContextState::CooperativeEnqueued,
-            RootKernelContextState::CooperativeEnqueued => RootKernelContextState::BothEnqueued,
-            RootKernelContextState::PreemptedTaken => RootKernelContextState::HandoffEnqueued,
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 root runnable enqueue violates cooperative, terminal, cooperative FIFO ownership"
-                        .into(),
-                ));
-            }
-        };
-        Ok(())
-    }
-
-    fn dequeue_runnable_context(&mut self) -> Result<(), CompileError> {
-        self.kernel_context = match self.kernel_context {
-            RootKernelContextState::BothEnqueued => RootKernelContextState::CooperativeDequeued,
-            RootKernelContextState::HandoffEnqueued => RootKernelContextState::TerminalDequeued,
-            RootKernelContextState::TerminalReclaimed => {
-                RootKernelContextState::CooperativeDequeuedAgain
-            }
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 root runnable dequeue violates cooperative, terminal, cooperative FIFO ownership"
-                        .into(),
-                ));
-            }
-        };
-        Ok(())
-    }
-
-    fn consume_empty_runnable_queue(&mut self) -> Result<(), CompileError> {
-        if self.kernel_context != RootKernelContextState::Reclaimed {
-            return Err(CompileError::Tool(
-                "x86 root runnable queue must be empty after both context reclamations".into(),
-            ));
-        }
-        self.kernel_context = RootKernelContextState::QueueConsumed;
-        Ok(())
-    }
-
-    fn retire_kernel_context(&mut self) -> Result<(), CompileError> {
-        let state_offset = match self.role {
-            RootRole::CooperativeKernelThreadHandler => 80,
-            RootRole::TerminalKernelThreadHandler => 112,
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 kernel-context retirement is admitted only in a resumed entry".into(),
-                ));
-            }
-        };
-        self.load_bootstrap_storage_address(state_offset)?;
-        self.jump(ProviderSymbol::RetireKernelContext);
-        Ok(())
-    }
-
-    fn reclaim_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification {
-            return Err(CompileError::Tool(
-                "x86 kernel-context reclaim requires one completed transfer".into(),
-            ));
-        }
-        let (index, state_offset, next_state) = match self.kernel_context {
-            RootKernelContextState::TerminalCompleted
-                if self.context_stack_offsets[1] == Some(20_480) =>
-            {
-                (1, 112, RootKernelContextState::TerminalReclaimed)
-            }
-            RootKernelContextState::CooperativeCompleted
-                if self.context_stack_offsets[0] == Some(4096) =>
-            {
-                (0, 80, RootKernelContextState::Reclaimed)
-            }
-            _ => {
-                return Err(CompileError::Tool(
-                    "x86 kernel-context reclaim requires the next completed FIFO context".into(),
-                ));
-            }
-        };
-        self.load_bootstrap_storage_address(state_offset)?;
-        self.call_checked_bool(ProviderSymbol::ReclaimKernelContext)?;
-        self.context_stack_offsets[index] = None;
-        self.kernel_context = next_state;
-        Ok(())
-    }
-
-    fn load_bootstrap_storage_address(&mut self, storage_offset: u64) -> Result<(), CompileError> {
-        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]); // lea rdi, [rip+disp32]
-        self.rip_relative_storage(storage_offset, 0)
-    }
-
-    fn bootstrap_storage_offset(&self, offset: u64) -> Result<u64, CompileError> {
-        self.bootstrap_region_offset
-            .ok_or_else(|| {
-                CompileError::Tool(
-                    "x86 root lowering encountered byte access without a live region".into(),
-                )
-            })?
-            .checked_add(offset)
-            .ok_or_else(|| CompileError::Tool("bootstrap storage offset overflows".into()))
-    }
-
-    fn rip_relative_storage(
-        &mut self,
-        storage_offset: u64,
-        trailing_bytes: i64,
-    ) -> Result<(), CompileError> {
-        let storage_offset = i64::try_from(storage_offset).map_err(|_| {
-            CompileError::Tool("bootstrap storage offset exceeds x86 relocation range".into())
-        })?;
-        self.relocations.push(PendingRelocation {
-            offset: u64::try_from(self.bytes.len()).map_err(|_| {
-                CompileError::Tool("generated root relocation offset exceeds u64".into())
-            })?,
-            target: ProviderSymbol::BootstrapStorage,
-            addend: storage_offset - 4 - trailing_bytes,
-            kind: RelocationKind::Relative,
-            encoding: RelocationEncoding::X86RipRelative,
-        });
-        self.bytes.extend_from_slice(&[0; 4]);
-        Ok(())
-    }
-
-    fn rip_relative_symbol(
-        &mut self,
-        target: ProviderSymbol,
-        trailing_bytes: i64,
-    ) -> Result<(), CompileError> {
-        self.relocations.push(PendingRelocation {
-            offset: u64::try_from(self.bytes.len()).map_err(|_| {
-                CompileError::Tool("generated root relocation offset exceeds u64".into())
-            })?,
-            target,
-            addend: -4 - trailing_bytes,
-            kind: RelocationKind::Relative,
-            encoding: RelocationEncoding::X86RipRelative,
-        });
-        self.bytes.extend_from_slice(&[0; 4]);
-        Ok(())
-    }
-}
-
-const fn register_encoding(register: SavedRegister, base: u8) -> (Option<u8>, u8) {
-    let index = match register {
-        SavedRegister::Rax => 0,
-        SavedRegister::Rcx => 1,
-        SavedRegister::Rdx => 2,
-        SavedRegister::Rbx => 3,
-        SavedRegister::Rbp => 5,
-        SavedRegister::Rsi => 6,
-        SavedRegister::Rdi => 7,
-        SavedRegister::R8 => 8,
-        SavedRegister::R9 => 9,
-        SavedRegister::R10 => 10,
-        SavedRegister::R11 => 11,
-        SavedRegister::R12 => 12,
-        SavedRegister::R13 => 13,
-        SavedRegister::R14 => 14,
-        SavedRegister::R15 => 15,
-    };
-    if index < 8 {
-        (None, base + index)
-    } else {
-        (Some(0x41), base + index - 8)
-    }
-}
-
-#[allow(clippy::too_many_lines)] // Every typed provider dependency is constructed in one closed root boundary.
-fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, CompileError> {
-    generate_x86_64_systems_provider_object(program)?;
-    let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
-    object.add_file_symbol(b"topal-generated-x86-systems-root".to_vec());
-    let text = object.add_section(
-        Vec::new(),
-        X86_SYSTEMS_ROOT_TEXT_SECTION.as_bytes().to_vec(),
-        SectionKind::Text,
-    );
-    let uses_bootstrap_storage = program
-        .bootstrap
-        .handler
-        .operations
-        .iter()
-        .any(|operation| {
-            matches!(
-                operation,
-                CompilerSystemsOperation::BootstrapAllocate { .. }
-                    | CompilerSystemsOperation::BootstrapStoreByte { .. }
-                    | CompilerSystemsOperation::BootstrapLoadByteEquals { .. }
-                    | CompilerSystemsOperation::AtomicWordCreate { .. }
-                    | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
-                    | CompilerSystemsOperation::AtomicLoadEquals { .. }
-                    | CompilerSystemsOperation::AtomicWordEnd
-                    | CompilerSystemsOperation::SendLocalNotification
-                    | CompilerSystemsOperation::WaitLocalNotification
-                    | CompilerSystemsOperation::ObserveMonotonicClock
-                    | CompilerSystemsOperation::ConstructDeadline { .. }
-                    | CompilerSystemsOperation::ArmDeadline
-                    | CompilerSystemsOperation::WaitDeadline
-                    | CompilerSystemsOperation::BootstrapRelease
-            )
-        })
-        || program
-            .local_notification
-            .handler
-            .operations
-            .iter()
-            .any(|operation| {
-                matches!(
-                    operation,
-                    CompilerSystemsOperation::CompleteLocalNotification
-                )
-            })
-        || program
-            .deadline_notification
-            .handler
-            .operations
-            .iter()
-            .any(|operation| matches!(operation, CompilerSystemsOperation::CompleteDeadline));
-    let mut symbols = ProviderSymbols {
-        describe_boot_memory: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::DescribeBootMemory,
-        ),
-        allocate_physical_frames: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::AllocatePhysicalFrames,
-        ),
-        begin_translation: undefined_provider_symbol(&mut object, ProviderSymbol::BeginTranslation),
-        commit_translation: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::CommitTranslation,
-        ),
-        activate_translation: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::ActivateTranslation,
-        ),
-        begin_translation_edit: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::BeginTranslationEdit,
-        ),
-        map_translation_frames: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::MapTranslationFrames,
-        ),
-        unmap_translation_mapping: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::UnmapTranslationMapping,
-        ),
-        commit_translation_edit: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::CommitTranslationEdit,
-        ),
-        enter_critical: undefined_provider_symbol(&mut object, ProviderSymbol::EnterCritical),
-        restore_critical: undefined_provider_symbol(&mut object, ProviderSymbol::RestoreCritical),
-        atomic_word_create: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::AtomicWordCreate,
-        ),
-        atomic_word_compare_exchange: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::AtomicWordCompareExchange,
-        ),
-        atomic_word_load: undefined_provider_symbol(&mut object, ProviderSymbol::AtomicWordLoad),
-        send_local_notification: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::SendLocalNotification,
-        ),
-        wait_local_notification: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::WaitLocalNotification,
-        ),
-        complete_local_notification: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::CompleteLocalNotification,
-        ),
-        observe_monotonic_clock: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::ObserveMonotonicClock,
-        ),
-        construct_deadline: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::ConstructDeadline,
-        ),
-        arm_deadline: undefined_provider_symbol(&mut object, ProviderSymbol::ArmDeadline),
-        wait_deadline: undefined_provider_symbol(&mut object, ProviderSymbol::WaitDeadline),
-        complete_deadline: undefined_provider_symbol(&mut object, ProviderSymbol::CompleteDeadline),
-        create_kernel_context: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::CreateKernelContext,
-        ),
-        transfer_kernel_context: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::TransferKernelContext,
-        ),
-        await_deadline_preemption: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::AwaitDeadlinePreemption,
-        ),
-        preempt_current_kernel_context: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::PreemptCurrentKernelContext,
-        ),
-        retire_kernel_context: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::RetireKernelContext,
-        ),
-        reclaim_kernel_context: undefined_provider_symbol(
-            &mut object,
-            ProviderSymbol::ReclaimKernelContext,
-        ),
-        kernel_thread_entry: None,
-        terminal_thread_entry: None,
-        uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
-        debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
-        interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
-        fatal: undefined_provider_symbol(&mut object, ProviderSymbol::Fatal),
-        bootstrap_storage: uses_bootstrap_storage
-            .then(|| undefined_provider_symbol(&mut object, ProviderSymbol::BootstrapStorage)),
-    };
-
-    let mut kernel_thread = RootEncoder {
-        role: RootRole::CooperativeKernelThreadHandler,
-        ..RootEncoder::default()
-    };
-    encode_operations(
-        &mut kernel_thread,
-        &program.kernel_thread.handler.operations,
-    )?;
-    match program.kernel_thread.handler.disposition {
-        CompilerSystemsDisposition::RetireKernelContextToCaller => {
-            kernel_thread.retire_kernel_context()?;
-        }
-        CompilerSystemsDisposition::Fatal { .. } => kernel_thread.jump(ProviderSymbol::Fatal),
-        CompilerSystemsDisposition::Resume => {
-            return Err(CompileError::Tool(
-                "x86 kernel-thread root cannot resume as an interrupt entry".into(),
-            ));
-        }
-        CompilerSystemsDisposition::PreemptKernelContext => {
-            return Err(CompileError::Tool(
-                "x86 kernel-thread root cannot preempt itself as a deadline entry".into(),
-            ));
-        }
-    }
-    let kernel_thread_entry = append_root(
-        &mut object,
-        text,
-        X86_SYSTEMS_KERNEL_THREAD_ENTRY,
-        &kernel_thread,
-        symbols,
-    )?;
-    symbols.kernel_thread_entry = Some(kernel_thread_entry);
-
-    let mut terminal_thread = RootEncoder {
-        role: RootRole::TerminalKernelThreadHandler,
-        ..RootEncoder::default()
-    };
-    encode_operations(
-        &mut terminal_thread,
-        &program.terminal_thread.handler.operations,
-    )?;
-    match program.terminal_thread.handler.disposition {
-        CompilerSystemsDisposition::RetireKernelContextToCaller => {
-            terminal_thread.retire_kernel_context()?;
-        }
-        CompilerSystemsDisposition::Fatal { .. } => terminal_thread.jump(ProviderSymbol::Fatal),
-        CompilerSystemsDisposition::Resume => {
-            return Err(CompileError::Tool(
-                "x86 terminal-thread root cannot resume as an interrupt entry".into(),
-            ));
-        }
-        CompilerSystemsDisposition::PreemptKernelContext => {
-            return Err(CompileError::Tool(
-                "x86 terminal-thread root cannot preempt a kernel context".into(),
-            ));
-        }
-    }
-    let terminal_thread_entry = append_root(
-        &mut object,
-        text,
-        X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
-        &terminal_thread,
-        symbols,
-    )?;
-    symbols.terminal_thread_entry = Some(terminal_thread_entry);
-
-    let mut bootstrap = RootEncoder {
-        role: RootRole::BootstrapWithLocalNotification,
-        ..RootEncoder::default()
-    };
-    encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
-    bootstrap.jump(ProviderSymbol::Fatal);
-    append_root(
-        &mut object,
-        text,
-        X86_SYSTEMS_KERNEL_ENTRY,
-        &bootstrap,
-        symbols,
-    )?;
-
-    let mut deadline = RootEncoder {
-        role: RootRole::DeadlineHandler,
-        ..RootEncoder::default()
-    };
-    for register in SAVED_REGISTERS {
-        deadline.push(register);
-    }
-    encode_operations(
-        &mut deadline,
-        &program.deadline_notification.handler.operations,
-    )?;
-    match program.deadline_notification.handler.disposition {
-        CompilerSystemsDisposition::Resume => {
-            for register in SAVED_REGISTERS.into_iter().rev() {
-                deadline.pop(register);
-            }
-            deadline.jump(ProviderSymbol::InterruptReturn);
-        }
-        CompilerSystemsDisposition::Fatal { .. } => deadline.jump(ProviderSymbol::Fatal),
-        CompilerSystemsDisposition::PreemptKernelContext => {
-            deadline.preempt_current_kernel_context()?;
-            for register in SAVED_REGISTERS.into_iter().rev() {
-                deadline.pop(register);
-            }
-            deadline.jump(ProviderSymbol::InterruptReturn);
-        }
-        CompilerSystemsDisposition::RetireKernelContextToCaller => {
-            return Err(CompileError::Tool(
-                "x86 deadline entry cannot retire a kernel context".into(),
-            ));
-        }
-    }
-    append_root(
-        &mut object,
-        text,
-        X86_SYSTEMS_DEADLINE_ENTRY,
-        &deadline,
-        symbols,
-    )?;
-
-    let mut local_notification = RootEncoder {
-        role: RootRole::LocalNotificationHandler,
-        ..RootEncoder::default()
-    };
-    for register in SAVED_REGISTERS {
-        local_notification.push(register);
-    }
-    encode_operations(
-        &mut local_notification,
-        &program.local_notification.handler.operations,
-    )?;
-    match program.local_notification.handler.disposition {
-        CompilerSystemsDisposition::Resume => {
-            for register in SAVED_REGISTERS.into_iter().rev() {
-                local_notification.pop(register);
-            }
-            local_notification.jump(ProviderSymbol::InterruptReturn);
-        }
-        CompilerSystemsDisposition::Fatal { .. } => {
-            local_notification.jump(ProviderSymbol::Fatal);
-        }
-        CompilerSystemsDisposition::RetireKernelContextToCaller => {
-            return Err(CompileError::Tool(
-                "x86 local-notification entry cannot retire a kernel context".into(),
-            ));
-        }
-        CompilerSystemsDisposition::PreemptKernelContext => {
-            return Err(CompileError::Tool(
-                "x86 local-notification entry cannot preempt a kernel context".into(),
-            ));
-        }
-    }
-    append_root(
-        &mut object,
-        text,
-        X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
-        &local_notification,
-        symbols,
-    )?;
-
-    let mut debug_break = RootEncoder::default();
-    for register in SAVED_REGISTERS {
-        debug_break.push(register);
-    }
-    encode_operations(&mut debug_break, &program.debug_break.handler.operations)?;
-    match program.debug_break.handler.disposition {
-        CompilerSystemsDisposition::Resume => {
-            for register in SAVED_REGISTERS.into_iter().rev() {
-                debug_break.pop(register);
-            }
-            debug_break.jump(ProviderSymbol::InterruptReturn);
-        }
-        CompilerSystemsDisposition::Fatal { .. } => debug_break.jump(ProviderSymbol::Fatal),
-        CompilerSystemsDisposition::RetireKernelContextToCaller => {
-            return Err(CompileError::Tool(
-                "x86 debug-break entry cannot retire a kernel context".into(),
-            ));
-        }
-        CompilerSystemsDisposition::PreemptKernelContext => {
-            return Err(CompileError::Tool(
-                "x86 debug-break entry cannot preempt a kernel context".into(),
-            ));
-        }
-    }
-    append_root(
-        &mut object,
-        text,
-        X86_SYSTEMS_DEBUG_BREAK_ENTRY,
-        &debug_break,
-        symbols,
-    )?;
-    object
-        .write()
-        .map_err(|error| CompileError::Tool(format!("cannot encode systems root ELF: {error}")))
-}
-
-fn encode_operations(
-    encoder: &mut RootEncoder,
-    operations: &[CompilerSystemsOperation],
-) -> Result<(), CompileError> {
-    for operation in operations {
-        match operation {
-            CompilerSystemsOperation::DescribeBootMemory { .. } => {
-                encoder.describe_boot_memory()?;
-            }
-            CompilerSystemsOperation::CreateFrameAllocator { .. } => {
-                encoder.create_frame_allocator()?;
-            }
-            CompilerSystemsOperation::AllocatePhysicalFrames { request, .. } => {
-                encoder.allocate_physical_frames(request.frame_count, request.alignment_frames)?;
-            }
-            CompilerSystemsOperation::ReleasePhysicalFrames => {
-                encoder.release_physical_frames()?;
-            }
-            CompilerSystemsOperation::MapKernelFrames { request, .. } => {
-                encoder.map_kernel_frames(*request)?;
-            }
-            CompilerSystemsOperation::KernelMappingStoreByte {
-                offset_bytes,
-                value,
-            } => encoder.store_kernel_mapping_byte(*offset_bytes, *value)?,
-            CompilerSystemsOperation::KernelMappingLoadByteEquals {
-                offset_bytes,
-                expected,
-                ..
-            } => encoder.load_kernel_mapping_byte_equals(*offset_bytes, *expected)?,
-            CompilerSystemsOperation::UnmapKernelFrames => encoder.unmap_kernel_frames()?,
-            CompilerSystemsOperation::BeginTranslationUpdate { request, .. } => {
-                encoder.begin_translation(*request)?;
-            }
-            CompilerSystemsOperation::CommitTranslationUpdate { .. } => {
-                encoder.commit_translation()?;
-            }
-            CompilerSystemsOperation::ActivateTranslationSpace { .. } => {
-                encoder.activate_translation()?;
-            }
-            CompilerSystemsOperation::BeginTranslationEdit { kind, .. } => {
-                encoder.begin_translation_edit(*kind)?;
-            }
-            CompilerSystemsOperation::MapTranslationFrames { request, .. } => {
-                encoder.map_translation_frames(*request)?;
-            }
-            CompilerSystemsOperation::UnmapTranslationMapping => {
-                encoder.unmap_translation_mapping()?;
-            }
-            CompilerSystemsOperation::CommitTranslationEdit { kind, .. } => {
-                encoder.commit_translation_edit(*kind)?;
-            }
-            CompilerSystemsOperation::EnterCritical { domain, .. } => {
-                encoder.enter_critical(*domain)?;
-            }
-            CompilerSystemsOperation::RestoreCritical { domain } => {
-                encoder.restore_critical(*domain)?;
-            }
-            CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
-            CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
-            CompilerSystemsOperation::BootstrapAllocate { request } => {
-                encoder.allocate_bootstrap_region(*request)?;
-            }
-            CompilerSystemsOperation::BootstrapStoreByte {
-                offset_bytes,
-                value,
-            } => encoder.store_bootstrap_byte(*offset_bytes, *value)?,
-            CompilerSystemsOperation::BootstrapLoadByteEquals {
-                offset_bytes,
-                expected,
-                ..
-            } => encoder.load_bootstrap_byte_equals(*offset_bytes, *expected)?,
-            CompilerSystemsOperation::AtomicWordCreate { request } => {
-                encoder.create_atomic_word(*request)?;
-            }
-            CompilerSystemsOperation::AtomicCompareExchangeEquals {
-                expected,
-                desired,
-                success_order,
-                failure_order,
-                ..
-            } => encoder.compare_exchange_atomic_word(
-                *expected,
-                *desired,
-                *success_order,
-                *failure_order,
-            )?,
-            CompilerSystemsOperation::AtomicLoadEquals {
-                order, expected, ..
-            } => encoder.load_atomic_word_equals(*order, *expected)?,
-            CompilerSystemsOperation::AtomicWordEnd => encoder.end_atomic_word()?,
-            CompilerSystemsOperation::BootstrapRelease => encoder.release_bootstrap_region()?,
-            CompilerSystemsOperation::SendLocalNotification => encoder.send_local_notification()?,
-            CompilerSystemsOperation::WaitLocalNotification => encoder.wait_local_notification()?,
-            CompilerSystemsOperation::CompleteLocalNotification => {
-                encoder.complete_local_notification()?;
-            }
-            CompilerSystemsOperation::ObserveMonotonicClock => {
-                encoder.observe_monotonic_clock()?;
-            }
-            CompilerSystemsOperation::ConstructDeadline {
-                duration_nanoseconds,
-            } => encoder.construct_deadline(*duration_nanoseconds)?,
-            CompilerSystemsOperation::ArmDeadline => encoder.arm_deadline()?,
-            CompilerSystemsOperation::WaitDeadline => encoder.wait_deadline()?,
-            CompilerSystemsOperation::CompleteDeadline => encoder.complete_deadline()?,
-            CompilerSystemsOperation::CreateKernelContext => encoder.create_kernel_context()?,
-            CompilerSystemsOperation::CreateRunnableQueue { capacity } => {
-                encoder.create_runnable_queue(*capacity)?;
-            }
-            CompilerSystemsOperation::EnqueueRunnableContext => {
-                encoder.enqueue_runnable_context()?;
-            }
-            CompilerSystemsOperation::DequeueRunnableContext => {
-                encoder.dequeue_runnable_context()?;
-            }
-            CompilerSystemsOperation::TransferKernelContextUntilDeadline => {
-                encoder.transfer_kernel_context_until_deadline()?;
-            }
-            CompilerSystemsOperation::TakePreemptedKernelContext => {
-                encoder.take_preempted_kernel_context()?;
-            }
-            CompilerSystemsOperation::TransferKernelContext => encoder.transfer_kernel_context()?,
-            CompilerSystemsOperation::AwaitDeadlinePreemption => {
-                encoder.await_deadline_preemption()?;
-            }
-            CompilerSystemsOperation::ReclaimKernelContext => encoder.reclaim_kernel_context()?,
-            CompilerSystemsOperation::ConsumeEmptyRunnableQueue => {
-                encoder.consume_empty_runnable_queue()?;
-            }
-        }
-    }
-    encoder.complete()
-}
-
-fn undefined_provider_symbol(object: &mut Object<'_>, symbol: ProviderSymbol) -> SymbolId {
-    object.add_symbol(Symbol {
-        name: symbol.name().as_bytes().to_vec(),
-        value: 0,
-        size: 0,
-        kind: symbol.kind(),
-        scope: SymbolScope::Linkage,
-        weak: false,
-        section: SymbolSection::Undefined,
-        flags: SymbolFlags::None,
-    })
-}
-
-fn append_root(
-    object: &mut Object<'_>,
-    section: SectionId,
-    name: &str,
-    encoded: &RootEncoder,
-    provider_symbols: ProviderSymbols,
-) -> Result<SymbolId, CompileError> {
-    let start = object.append_section_data(section, &encoded.bytes, 16);
-    let root_symbol = object.add_symbol(Symbol {
-        name: name.as_bytes().to_vec(),
-        value: start,
-        size: encoded.bytes.len() as u64,
-        kind: SymbolKind::Text,
-        scope: SymbolScope::Linkage,
-        weak: false,
-        section: SymbolSection::Section(section),
-        flags: SymbolFlags::None,
-    });
-    for relocation in &encoded.relocations {
-        let symbol = match relocation.target {
-            ProviderSymbol::DescribeBootMemory => provider_symbols.describe_boot_memory,
-            ProviderSymbol::AllocatePhysicalFrames => provider_symbols.allocate_physical_frames,
-            ProviderSymbol::BeginTranslation => provider_symbols.begin_translation,
-            ProviderSymbol::CommitTranslation => provider_symbols.commit_translation,
-            ProviderSymbol::ActivateTranslation => provider_symbols.activate_translation,
-            ProviderSymbol::BeginTranslationEdit => provider_symbols.begin_translation_edit,
-            ProviderSymbol::MapTranslationFrames => provider_symbols.map_translation_frames,
-            ProviderSymbol::UnmapTranslationMapping => provider_symbols.unmap_translation_mapping,
-            ProviderSymbol::CommitTranslationEdit => provider_symbols.commit_translation_edit,
-            ProviderSymbol::EnterCritical => provider_symbols.enter_critical,
-            ProviderSymbol::RestoreCritical => provider_symbols.restore_critical,
-            ProviderSymbol::AtomicWordCreate => provider_symbols.atomic_word_create,
-            ProviderSymbol::AtomicWordCompareExchange => {
-                provider_symbols.atomic_word_compare_exchange
-            }
-            ProviderSymbol::AtomicWordLoad => provider_symbols.atomic_word_load,
-            ProviderSymbol::SendLocalNotification => provider_symbols.send_local_notification,
-            ProviderSymbol::WaitLocalNotification => provider_symbols.wait_local_notification,
-            ProviderSymbol::CompleteLocalNotification => {
-                provider_symbols.complete_local_notification
-            }
-            ProviderSymbol::ObserveMonotonicClock => provider_symbols.observe_monotonic_clock,
-            ProviderSymbol::ConstructDeadline => provider_symbols.construct_deadline,
-            ProviderSymbol::ArmDeadline => provider_symbols.arm_deadline,
-            ProviderSymbol::WaitDeadline => provider_symbols.wait_deadline,
-            ProviderSymbol::CompleteDeadline => provider_symbols.complete_deadline,
-            ProviderSymbol::CreateKernelContext => provider_symbols.create_kernel_context,
-            ProviderSymbol::TransferKernelContext => provider_symbols.transfer_kernel_context,
-            ProviderSymbol::AwaitDeadlinePreemption => provider_symbols.await_deadline_preemption,
-            ProviderSymbol::PreemptCurrentKernelContext => {
-                provider_symbols.preempt_current_kernel_context
-            }
-            ProviderSymbol::RetireKernelContext => provider_symbols.retire_kernel_context,
-            ProviderSymbol::ReclaimKernelContext => provider_symbols.reclaim_kernel_context,
-            ProviderSymbol::KernelThreadEntry => {
-                provider_symbols.kernel_thread_entry.ok_or_else(|| {
-                    CompileError::Tool(
-                        "x86 bootstrap root references an unplaced kernel-thread entry".into(),
-                    )
-                })?
-            }
-            ProviderSymbol::TerminalThreadEntry => {
-                provider_symbols.terminal_thread_entry.ok_or_else(|| {
-                    CompileError::Tool(
-                        "x86 bootstrap root references an unplaced terminal-thread entry".into(),
-                    )
-                })?
-            }
-            ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
-            ProviderSymbol::DebugBreak => provider_symbols.debug_break,
-            ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
-            ProviderSymbol::Fatal => provider_symbols.fatal,
-            ProviderSymbol::BootstrapStorage => {
-                provider_symbols.bootstrap_storage.ok_or_else(|| {
-                    CompileError::Tool(
-                        "x86 root lowering emitted a storage relocation without storage use".into(),
-                    )
-                })?
-            }
-        };
-        object
-            .add_relocation(
-                section,
-                Relocation {
-                    offset: start + relocation.offset,
-                    symbol,
-                    addend: relocation.addend,
-                    flags: RelocationFlags::Generic {
-                        kind: relocation.kind,
-                        encoding: relocation.encoding,
-                        size: 32,
-                    },
-                },
-            )
-            .map_err(|error| {
-                CompileError::Tool(format!("cannot encode systems root relocation: {error}"))
-            })?;
-    }
-    Ok(root_symbol)
-}
-
-#[allow(clippy::too_many_lines)] // Exhaustive transition detail remains beside its canonical trace spelling.
-fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, CompileError> {
-    let transitions = model_systems_transitions(program)
-        .map_err(|error| CompileError::Tool(format!("invalid systems transition model: {error}")))?
-        .into_iter()
-        .map(|transition| {
-            let identity = transition.semantic_identity();
-            match transition {
-                CompilerSystemsTransition::ProvisionBootstrapStorage {
-                    capacity_bytes,
-                    alignment_bytes,
-                } => format!("{identity}:capacity={capacity_bytes}:alignment={alignment_bytes}"),
-                CompilerSystemsTransition::ConsoleWrite { text } => {
-                    format!("{identity}:sha256:{}", sha256(text.as_bytes()))
-                }
-                CompilerSystemsTransition::Fatal { message } => {
-                    format!("{identity}:sha256:{}", sha256(message.as_bytes()))
-                }
-                CompilerSystemsTransition::AllocateBootstrapRegion { request } => format!(
-                    "{identity}:bytes={}:alignment={}:placement={}",
-                    request.byte_count,
-                    request.alignment_bytes,
-                    request.placement.semantic_identity()
-                ),
-                CompilerSystemsTransition::AllocatePhysicalFrames { request } => format!(
-                    "{identity}:frames={}:alignment={}",
-                    request.frame_count, request.alignment_frames
-                ),
-                CompilerSystemsTransition::MapKernelFrames { .. } => {
-                    format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
-                }
-                CompilerSystemsTransition::MapTranslationFrames { .. } => format!(
-                    "{identity}:rights=read-write:execution=denied:memory-kind=normal:placement=provider-selected"
-                ),
-                CompilerSystemsTransition::BeginTranslationUpdate { .. } => {
-                    format!(
-                        "{identity}:template=bootstrap-equivalent:page-policy=provider-selected"
-                    )
-                }
-                CompilerSystemsTransition::BeginTranslationEdit { kind }
-                | CompilerSystemsTransition::CommitTranslationEdit { kind } => format!(
-                    "{identity}:kind={}",
-                    match kind {
-                        CompilerTranslationEditKind::Map => "map",
-                        CompilerTranslationEditKind::Unmap => "unmap",
-                    }
-                ),
-                CompilerSystemsTransition::EnterCritical {
-                    domain,
-                    nesting_identity,
-                }
-                | CompilerSystemsTransition::RestoreCritical {
-                    domain,
-                    nesting_identity,
-                } => format!(
-                    "{identity}:domain={}:nesting={nesting_identity}",
-                    match domain {
-                        topal_language::CompilerCriticalDomain::LocalMaskableInterrupts => {
-                            "local-maskable-interrupts"
-                        }
-                    }
-                ),
-                CompilerSystemsTransition::CreateAtomicWord { request } => format!(
-                    "{identity}:offset={}:initial={}:domain=cpu-shared",
-                    request.offset_bytes, request.initial_value
-                ),
-                CompilerSystemsTransition::CompareExchangeAtomicWord {
-                    expected,
-                    desired,
-                    observed,
-                    exchanged,
-                    success_order,
-                    failure_order,
-                } => format!(
-                    "{identity}:expected={expected}:desired={desired}:observed={observed}:exchanged={exchanged}:success-order={success_order:?}:failure-order={failure_order:?}"
-                ),
-                CompilerSystemsTransition::LoadAtomicWord { value, order } => {
-                    format!("{identity}:value={value}:order={order:?}")
-                }
-                CompilerSystemsTransition::ConstructDeadline {
-                    source_observation_identity,
-                    duration_nanoseconds,
-                } => format!(
-                    "{identity}:source-observation={source_observation_identity}:duration-nanoseconds={duration_nanoseconds}"
-                ),
-                CompilerSystemsTransition::CreateKernelContext { context_identity }
-                | CompilerSystemsTransition::EnterKernelThread { context_identity }
-                | CompilerSystemsTransition::ReclaimKernelContext { context_identity } => {
-                    format!("{identity}:context={context_identity}")
-                }
-                CompilerSystemsTransition::CreateRunnableQueue { capacity } => {
-                    format!("{identity}:capacity={capacity}")
-                }
-                CompilerSystemsTransition::EnqueueRunnableContext { context_identity }
-                | CompilerSystemsTransition::DequeueRunnableContext { context_identity } => {
-                    format!("{identity}:context={context_identity}")
-                }
-                CompilerSystemsTransition::TransferKernelContext {
-                    context_identity,
-                    caller_identity,
-                }
-                | CompilerSystemsTransition::RetireKernelContextToCaller {
-                    context_identity,
-                    caller_identity,
-                } => format!(
-                    "{identity}:context={context_identity}:caller={caller_identity}"
-                ),
-                CompilerSystemsTransition::TransferKernelContextUntilDeadline {
-                    context_identity,
-                    caller_identity,
-                    event_identity,
-                }
-                | CompilerSystemsTransition::PreemptKernelContext {
-                    context_identity,
-                    caller_identity,
-                    event_identity,
-                }
-                | CompilerSystemsTransition::RestorePreemptedKernelContext {
-                    context_identity,
-                    caller_identity,
-                    event_identity,
-                } => format!(
-                    "{identity}:context={context_identity}:caller={caller_identity}:event={event_identity}"
-                ),
-                CompilerSystemsTransition::AwaitDeadlinePreemption { context_identity } => {
-                    format!("{identity}:context={context_identity}")
-                }
-                CompilerSystemsTransition::TakePreemptedKernelContext {
-                    context_identity,
-                    event_identity,
-                } => format!(
-                    "{identity}:context={context_identity}:event={event_identity}"
-                ),
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity }
-                | CompilerSystemsTransition::ResumePreemptionDispatcher { caller_identity } => {
-                    format!("{identity}:caller={caller_identity}")
-                }
-                CompilerSystemsTransition::StoreBootstrapByte {
-                    offset_bytes,
-                    value,
-                }
-                | CompilerSystemsTransition::LoadBootstrapByte {
-                    offset_bytes,
-                    value,
-                }
-                | CompilerSystemsTransition::StoreKernelMappingByte {
-                    offset_bytes,
-                    value,
-                }
-                | CompilerSystemsTransition::LoadKernelMappingByte {
-                    offset_bytes,
-                    value,
-                } => format!("{identity}:offset={offset_bytes}:value={value}"),
-                CompilerSystemsTransition::EnterBootstrap
-                | CompilerSystemsTransition::DescribeBootMemory
-                | CompilerSystemsTransition::CreateFrameAllocator
-                | CompilerSystemsTransition::ReleasePhysicalFrames
-                | CompilerSystemsTransition::UnmapKernelFrames
-                | CompilerSystemsTransition::CommitTranslationUpdate
-                | CompilerSystemsTransition::ActivateTranslationSpace
-                | CompilerSystemsTransition::UnmapTranslationMapping
-                | CompilerSystemsTransition::ObserveDebugBreak
-                | CompilerSystemsTransition::EnterDebugBreak
-                | CompilerSystemsTransition::ResumeDebugBreak
-                | CompilerSystemsTransition::SendLocalNotification { .. }
-                | CompilerSystemsTransition::BeginLocalNotificationWait { .. }
-                | CompilerSystemsTransition::ObserveLocalNotification { .. }
-                | CompilerSystemsTransition::EnterLocalNotificationInterrupt { .. }
-                | CompilerSystemsTransition::CompleteLocalNotificationInterrupt { .. }
-                | CompilerSystemsTransition::ResumeLocalNotificationInterrupt { .. }
-                | CompilerSystemsTransition::EndLocalNotificationWait { .. }
-                | CompilerSystemsTransition::ObserveMonotonicClock { .. }
-                | CompilerSystemsTransition::ArmDeadline { .. }
-                | CompilerSystemsTransition::BeginDeadlineWait { .. }
-                | CompilerSystemsTransition::ObserveDeadline { .. }
-                | CompilerSystemsTransition::EnterDeadlineInterrupt { .. }
-                | CompilerSystemsTransition::CompleteDeadlineInterrupt { .. }
-                | CompilerSystemsTransition::ResumeDeadlineInterrupt { .. }
-                | CompilerSystemsTransition::EndDeadlineWait { .. }
-                | CompilerSystemsTransition::EndAtomicWord
-                | CompilerSystemsTransition::ConsumeEmptyRunnableQueue
-                | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
-            }
-        })
-        .collect();
-    Ok(transitions)
-}
-
-fn allocate_stage(parent: &Path) -> Result<PathBuf, CompileError> {
-    for _ in 0..100 {
-        let sequence = NEXT_STAGE.fetch_add(1, Ordering::Relaxed);
-        let stage = parent.join(format!(
-            ".topal-systems-artifact-{}-{sequence}",
-            std::process::id()
-        ));
-        match fs::create_dir(&stage) {
-            Ok(()) => return Ok(stage),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(error) => return Err(io_error("create systems artifact stage", &stage)(error)),
-        }
-    }
-    Err(CompileError::Io(
-        "cannot allocate a unique systems artifact stage".into(),
-    ))
-}
-
-fn run_tool(command: &mut Command) -> Result<(), CompileError> {
-    let display = format!("{command:?}");
-    let output = command.output().map_err(|error| {
-        CompileError::Tool(format!(
-            "cannot execute systems artifact tool {display}: {error}"
-        ))
-    })?;
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(CompileError::Tool(format!(
-            "systems artifact tool failed ({display}):\n{}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        )))
-    }
-}
-
-fn io_error<'a>(
-    action: &'static str,
-    path: &'a Path,
-) -> impl FnOnce(std::io::Error) -> CompileError + 'a {
-    move |error| CompileError::Io(format!("cannot {action} {}: {error}", path.display()))
-}
+include!("systems_artifact_trace.rs");
 
 #[cfg(test)]
 mod tests {
-    use object::{Object as _, ObjectSection as _, ObjectSymbol as _};
-    use topal_language::compiler::{
-        CompilerSystemsTargetSelection, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
-        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
-        SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_RELEASE,
-        SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
-        SYSTEMS_KERNEL_UNMAP, analyze_systems_for_compiler,
-    };
 
-    use super::*;
+    include!("systems_artifact_tests_plans.rs");
 
-    const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
-
-    fn program() -> CompilerSystemsProgram {
-        analyze_systems_for_compiler(
-            SOURCE,
-            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
-        )
-        .unwrap()
-    }
-
-    #[test]
-    #[allow(clippy::too_many_lines)] // Root dependencies, relocations, and access bytes form one structural audit.
-    fn generated_root_has_only_typed_provider_dependencies() {
-        // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-MACHINE-001.
-        let root = generate_root_object(&program()).unwrap();
-        let file = object::File::parse(root.as_slice()).unwrap();
-        let undefined = file
-            .symbols()
-            .filter(object::ObjectSymbol::is_undefined)
-            .map(|symbol| symbol.name().unwrap().to_owned())
-            .collect::<Vec<_>>();
-        assert_root_dependencies(&undefined);
-        let text = file.section_by_name(X86_SYSTEMS_ROOT_TEXT_SECTION).unwrap();
-        let relocation_targets = text
-            .relocations()
-            .map(|(_, relocation)| {
-                let object::RelocationTarget::Symbol(symbol) = relocation.target() else {
-                    panic!("root relocations target only provider symbols");
-                };
-                file.symbol_by_index(symbol).unwrap().name().unwrap()
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 636);
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == X86_SYSTEMS_BOOT_MEMORY_SYMBOL)
-                .count(),
-            1
-        );
-        for target in [
-            X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
-            X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
-            X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
-        ] {
-            assert_eq!(
-                relocation_targets
-                    .iter()
-                    .filter(|actual| **actual == target)
-                    .count(),
-                1
-            );
-        }
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL)
-                .count(),
-            2
-        );
-        for target in [
-            X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
-            X86_SYSTEMS_DEADLINE_ARM_SYMBOL,
-            X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
-        ] {
-            assert_eq!(
-                relocation_targets
-                    .iter()
-                    .filter(|actual| **actual == target)
-                    .count(),
-                1
-            );
-        }
-        for (target, expected) in [
-            (X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, 2),
-            (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, 3),
-            (X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL, 1),
-            (X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL, 1),
-            (X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL, 2),
-            (X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, 2),
-        ] {
-            assert_eq!(
-                relocation_targets
-                    .iter()
-                    .filter(|actual| **actual == target)
-                    .count(),
-                expected
-            );
-        }
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == X86_SYSTEMS_KERNEL_THREAD_ENTRY)
-                .count(),
-            1
-        );
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == X86_SYSTEMS_TERMINAL_THREAD_ENTRY)
-                .count(),
-            1
-        );
-        for target in [
-            X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
-            X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
-            X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
-        ] {
-            assert_eq!(
-                relocation_targets
-                    .iter()
-                    .filter(|actual| **actual == target)
-                    .count(),
-                1
-            );
-        }
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
-                .count(),
-            2
-        );
-        assert_translation_relocations(&relocation_targets);
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == X86_SYSTEMS_CRITICAL_ENTER_SYMBOL)
-                .count(),
-            1
-        );
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL)
-                .count(),
-            1
-        );
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == "topal_x86_systems_uart16550_write")
-                .count(),
-            531
-        );
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == "topal_bootstrap_storage")
-                .count(),
-            26
-        );
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == "topal_x86_systems_fatal")
-                .count(),
-            37
-        );
-        assert_eq!(
-            relocation_targets
-                .iter()
-                .filter(|target| **target == "topal_x86_systems_interrupt_return")
-                .count(),
-            3
-        );
-        let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
-        let root_section = file
-            .section_by_index(root.section_index().unwrap())
-            .unwrap();
-        let data = root_section.data().unwrap();
-        let start = usize::try_from(root.address() - root_section.address()).unwrap();
-        let end = start + usize::try_from(root.size()).unwrap();
-        let root_bytes = &data[start..end];
-        assert!(
-            root_bytes
-                .windows(7)
-                .any(|bytes| bytes[..2] == [0xc6, 0x05] && bytes[6] == 90),
-            "root must retain the real byte store"
-        );
-        assert!(
-            root_bytes
-                .windows(7)
-                .any(|bytes| bytes == [0xc6, 0x83, 0, 0, 0, 0, 165]),
-            "root must store through the selected physical frame mapping"
-        );
-        assert!(
-            root_bytes.windows(11).any(|bytes| {
-                bytes[..7] == [0x0f, 0xb6, 0x83, 0, 0, 0, 0]
-                    && bytes[7..11] == [0x3c, 165, 0x0f, 0x85]
-            }),
-            "root must load through the selected physical frame mapping"
-        );
-        assert!(
-            root_bytes
-                .windows(8)
-                .any(|bytes| bytes == [0x41, 0xc6, 0x86, 0, 0, 0, 0, 60]),
-            "root must store through the committed active translation mapping"
-        );
-        assert!(
-            root_bytes.windows(12).any(|bytes| {
-                bytes[..8] == [0x41, 0x0f, 0xb6, 0x86, 0, 0, 0, 0]
-                    && bytes[8..12] == [0x3c, 60, 0x0f, 0x85]
-            }),
-            "root must load through the committed active translation mapping"
-        );
-        assert!(
-            root_bytes.windows(15).any(|bytes| {
-                bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, 90, 0x0f, 0x85]
-            }),
-            "root must retain the real byte load and mismatch branch"
-        );
-        assert_eq!(
-            root_bytes
-                .windows(7)
-                .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
-                .count(),
-            16,
-            "root must derive opaque storage for atomic, notification, clock, deadline, and context operations"
-        );
-        assert!(
-            root_bytes
-                .windows(4)
-                .any(|bytes| bytes == [0x48, 0x83, 0xf8, 0x2a]),
-            "root must retain the acquire-load confirmation"
-        );
-        assert!(file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).is_some());
-        assert!(file.symbol_by_name(X86_SYSTEMS_DEBUG_BREAK_ENTRY).is_some());
-        assert!(
-            file.symbol_by_name(X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)
-                .is_some()
-        );
-        assert!(file.symbol_by_name(X86_SYSTEMS_DEADLINE_ENTRY).is_some());
-        assert!(
-            file.symbol_by_name(X86_SYSTEMS_KERNEL_THREAD_ENTRY)
-                .is_some()
-        );
-        assert!(
-            file.symbol_by_name(X86_SYSTEMS_TERMINAL_THREAD_ENTRY)
-                .is_some()
-        );
-    }
-
-    fn assert_translation_relocations(relocation_targets: &[&str]) {
-        for target in [
-            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-            X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
-            X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-        ] {
-            assert_eq!(
-                relocation_targets
-                    .iter()
-                    .filter(|actual| **actual == target)
-                    .count(),
-                1
-            );
-        }
-        for (target, expected) in [
-            (X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, 2),
-            (X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL, 2),
-        ] {
-            assert_eq!(
-                relocation_targets
-                    .iter()
-                    .filter(|actual| **actual == target)
-                    .count(),
-                expected
-            );
-        }
-    }
-
-    fn assert_root_dependencies(undefined: &[String]) {
-        assert_eq!(
-            undefined,
-            [
-                "topal_x86_systems_describe_boot_memory",
-                "topal_x86_systems_allocate_physical_frames",
-                "topal_x86_systems_begin_bootstrap_translation",
-                "topal_x86_systems_commit_bootstrap_translation",
-                "topal_x86_systems_activate_bootstrap_translation",
-                "topal_x86_systems_begin_active_translation_edit",
-                "topal_x86_systems_stage_active_translation_map",
-                "topal_x86_systems_stage_active_translation_unmap",
-                "topal_x86_systems_commit_active_translation_edit",
-                "topal_x86_systems_enter_local_interrupt_critical",
-                "topal_x86_systems_restore_local_interrupt_critical",
-                "topal_x86_systems_atomic_word_create",
-                "topal_x86_systems_atomic_word_compare_exchange",
-                "topal_x86_systems_atomic_word_load_acquire",
-                "topal_x86_systems_local_notification_send",
-                "topal_x86_systems_local_notification_wait",
-                "topal_x86_systems_local_notification_complete",
-                "topal_x86_systems_monotonic_clock_now",
-                "topal_x86_systems_deadline_after",
-                "topal_x86_systems_deadline_arm",
-                "topal_x86_systems_deadline_wait",
-                "topal_x86_systems_deadline_complete",
-                "topal_x86_systems_context_create",
-                "topal_x86_systems_context_transfer",
-                "topal_x86_systems_context_await_deadline_preemption",
-                "topal_x86_systems_context_preempt_current",
-                "topal_x86_systems_context_retire",
-                "topal_x86_systems_context_reclaim",
-                "topal_x86_systems_uart16550_write",
-                "topal_x86_systems_debug_break",
-                "topal_x86_systems_interrupt_return",
-                "topal_x86_systems_fatal",
-                "topal_bootstrap_storage",
-            ]
-        );
-    }
-
-    #[test]
-    #[allow(clippy::too_many_lines)] // The complete transition artifact trace is one structural audit.
-    fn publishes_one_closed_freestanding_artifact_directory() {
-        // TOPAL-COMP-SYSTEMS-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
-        let tools = LlvmTools::discover(None).unwrap();
-        let parent = std::env::temp_dir().join(format!(
-            "topal-systems-artifact-test-{}-{}",
-            std::process::id(),
-            NEXT_STAGE.fetch_add(1, Ordering::Relaxed)
-        ));
-        fs::create_dir(&parent).unwrap();
-        let destination = parent.join("published");
-        let published = publish_x86_64_systems_artifact(&program(), &tools, &destination).unwrap();
-        assert_eq!(
-            fs::read_dir(&destination).unwrap().count(),
-            4,
-            "only canonical outputs are published"
-        );
-        assert!(published.kernel.is_file());
-        assert!(published.debug.is_file());
-        assert!(published.map.is_file());
-        assert!(published.provenance.is_file());
-        let encoded = fs::read(&published.provenance).unwrap();
-        let decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
-        assert_eq!(decoded, published.record);
-        assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
-        assert_eq!(decoded.target, "x86_64-unknown-none");
-        assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 45);
-        assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
-        assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 97);
-        assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
-        assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
-        assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
-        assert_eq!(decoded.semantic_trace[3], SYSTEMS_FRAME_ALLOCATOR_CREATE);
-        assert!(decoded.semantic_trace[4].starts_with(SYSTEMS_FRAMES_ALLOCATE));
-        assert!(decoded.semantic_trace[5].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[6].starts_with(SYSTEMS_KERNEL_MAP));
-        assert!(decoded.semantic_trace[7].starts_with(SYSTEMS_KERNEL_MAPPING_STORE_BYTE));
-        assert!(decoded.semantic_trace[8].starts_with(SYSTEMS_KERNEL_MAPPING_LOAD_BYTE));
-        assert_eq!(decoded.semantic_trace[9], SYSTEMS_KERNEL_UNMAP);
-        assert!(decoded.semantic_trace[10].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[11], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[12].starts_with(SYSTEMS_TRANSLATION_BEGIN));
-        assert_eq!(decoded.semantic_trace[13], SYSTEMS_TRANSLATION_COMMIT);
-        assert_eq!(decoded.semantic_trace[14], SYSTEMS_TRANSLATION_ACTIVATE);
-        assert!(decoded.semantic_trace[15].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[16].starts_with(SYSTEMS_FRAMES_ALLOCATE));
-        assert!(decoded.semantic_trace[17].starts_with(SYSTEMS_TRANSLATION_EDIT_BEGIN));
-        assert!(decoded.semantic_trace[18].starts_with(SYSTEMS_TRANSLATION_EDIT_MAP));
-        assert!(decoded.semantic_trace[19].starts_with(SYSTEMS_TRANSLATION_EDIT_COMMIT));
-        assert!(decoded.semantic_trace[20].starts_with(SYSTEMS_KERNEL_MAPPING_STORE_BYTE));
-        assert!(decoded.semantic_trace[21].starts_with(SYSTEMS_KERNEL_MAPPING_LOAD_BYTE));
-        assert!(decoded.semantic_trace[22].starts_with(SYSTEMS_TRANSLATION_EDIT_BEGIN));
-        assert_eq!(decoded.semantic_trace[23], SYSTEMS_TRANSLATION_EDIT_UNMAP);
-        assert!(decoded.semantic_trace[24].starts_with(SYSTEMS_TRANSLATION_EDIT_COMMIT));
-        assert!(decoded.semantic_trace[25].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[26], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_CRITICAL_ENTER));
-        assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[29].starts_with(SYSTEMS_CRITICAL_RESTORE));
-        assert!(decoded.semantic_trace[30].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[31].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[32], SYSTEMS_DEBUG_BREAK);
-        assert_eq!(
-            decoded.semantic_trace[33],
-            "topal.systems.entry.synchronous.debug-break/1"
-        );
-        assert_eq!(decoded.semantic_trace[34], SYSTEMS_RESUME_DEBUG_BREAK);
-        assert!(decoded.semantic_trace[35].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[36].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[37].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
-        assert!(decoded.semantic_trace[38].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
-        assert!(decoded.semantic_trace[39].starts_with(SYSTEMS_ATOMIC_WORD_CREATE));
-        assert!(decoded.semantic_trace[40].starts_with(SYSTEMS_ATOMIC_COMPARE_EXCHANGE));
-        assert!(decoded.semantic_trace[41].starts_with(SYSTEMS_ATOMIC_LOAD));
-        assert_eq!(decoded.semantic_trace[42], SYSTEMS_ATOMIC_END);
-        assert!(decoded.semantic_trace[43].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[44].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(
-            decoded.semantic_trace[45],
-            SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
-        );
-        assert!(decoded.semantic_trace[46].starts_with(SYSTEMS_LOCAL_NOTIFICATION_SEND));
-        assert!(decoded.semantic_trace[47].starts_with(SYSTEMS_LOCAL_NOTIFICATION_WAIT));
-        assert_eq!(
-            decoded.semantic_trace[48],
-            "topal.systems.observation.local-notification/1"
-        );
-        assert_eq!(
-            decoded.semantic_trace[49],
-            "topal.systems.entry.external.local-notification/1"
-        );
-        assert!(decoded.semantic_trace[50].starts_with(SYSTEMS_LOCAL_NOTIFICATION_COMPLETE));
-        assert_eq!(
-            decoded.semantic_trace[51],
-            SYSTEMS_RESUME_LOCAL_NOTIFICATION
-        );
-        assert!(decoded.semantic_trace[52].starts_with(SYSTEMS_LOCAL_NOTIFICATION_WAIT));
-        assert!(decoded.semantic_trace[53].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[54], SYSTEMS_MONOTONIC_CLOCK_NOW);
-        assert_eq!(decoded.semantic_trace[55], SYSTEMS_MONOTONIC_CLOCK_NOW);
-        assert!(decoded.semantic_trace[56].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[57].starts_with(SYSTEMS_DEADLINE_AFTER));
-        assert!(decoded.semantic_trace[58].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[59].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[60].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[61].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[62].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE));
-        assert!(decoded.semantic_trace[63].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[64].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert_eq!(decoded.semantic_trace[66], SYSTEMS_DEADLINE_ARM);
-        assert!(
-            decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
-        );
-        assert!(
-            decoded.semantic_trace[68].starts_with("topal.systems.entry.resumed.kernel-thread/1")
-        );
-        assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(
-            decoded.semantic_trace[70]
-                .starts_with(SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION)
-        );
-        assert_eq!(
-            decoded.semantic_trace[71],
-            "topal.systems.observation.deadline/1"
-        );
-        assert_eq!(
-            decoded.semantic_trace[72],
-            "topal.systems.entry.external.deadline/1"
-        );
-        assert_eq!(decoded.semantic_trace[73], SYSTEMS_DEADLINE_COMPLETE);
-        assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT));
-        assert!(
-            decoded.semantic_trace[75].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
-        );
-        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED));
-        assert!(decoded.semantic_trace[77].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(
-            decoded.semantic_trace[81].starts_with("topal.systems.entry.resumed.kernel-thread/1")
-        );
-        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
-        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[92].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[94].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
-        assert_eq!(
-            decoded.semantic_trace[95],
-            SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
-        );
-        assert!(decoded.semantic_trace[96].starts_with(SYSTEMS_FATAL));
-        let repeated_destination = parent.join("repeated");
-        let repeated =
-            publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();
-        for (first, second) in [
-            (&published.kernel, &repeated.kernel),
-            (&published.debug, &repeated.debug),
-            (&published.map, &repeated.map),
-            (&published.provenance, &repeated.provenance),
-        ] {
-            assert_eq!(fs::read(first).unwrap(), fs::read(second).unwrap());
-        }
-        fs::remove_dir_all(parent).unwrap();
-    }
+    include!("systems_artifact_tests_publication.rs");
+    include!("systems_artifact_tests_boot_participants.rs");
 }

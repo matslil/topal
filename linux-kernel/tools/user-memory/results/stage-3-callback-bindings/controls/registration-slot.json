@@ -1,0 +1,11 @@
+{
+  "name": "registration-slot",
+  "kernel_file_offset": 698712,
+  "original_byte": 184,
+  "changed_byte": 185,
+  "corrected_outer_kernel_sha256": "ed59548f7b33021d00d274a159c5d32244ce49f7f6482e29a428277b7b7d1e4b",
+  "exit_code": 1,
+  "rejected": true,
+  "expected_gate": "assert len(stores) == 1",
+  "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+}

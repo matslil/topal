@@ -1,0 +1,5 @@
+{
+  "status": "failed-validation-retained",
+  "reason": "included-format unintentionally checked unchanged historical include files with pre-existing formatting; no source formatting changes required; fresh validation narrows this command to every current changed/new Rust file while retaining all source snapshots",
+  "replaced_by": "../stage-3-frame-gateway/qualification.json"
+}

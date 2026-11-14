@@ -1,0 +1,13 @@
+{
+  "command": [
+    "objdump",
+    "-d",
+    "-M",
+    "intel",
+    "--insn-width=16",
+    "--start-address=45879111",
+    "--stop-address=45879159",
+    "linux-kernel/.cache/x86_64/user-extent-source-poll-2340765-1794433349203271869/kernel.elf"
+  ],
+  "exit_code": 0
+}

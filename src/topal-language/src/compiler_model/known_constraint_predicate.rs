@@ -276,7 +276,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::TraversalControl(_)
         | CompilerType::Generator(_)
         | CompilerType::Task(_)
-        | CompilerType::ExternalLocation(_) => false,
+        | CompilerType::ExternalLocation(_)
+        | CompilerType::KernelByteRegion => false,
     }
 }
 
@@ -596,6 +597,10 @@ fn compiler_expression_is_closed_with(
         } => {
             compiler_expression_is_closed_with(location, bound)
                 && compiler_expression_is_closed_with(value, bound)
+        }
+        CompilerExpressionKind::KernelRegion { region, arguments, .. } => {
+            compiler_expression_is_closed_with(region, bound)
+                && arguments.iter().all(|value| compiler_expression_is_closed_with(value, bound))
         }
         CompilerExpressionKind::ListEntry { value, remaining } => {
             compiler_expression_is_closed_with(value, bound)

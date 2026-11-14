@@ -1,0 +1,22 @@
+test_actual_heap_sizes_and_zero_new_tail (test_model.ModelTests.test_actual_heap_sizes_and_zero_new_tail) ... ok
+test_child_exec_and_resize_preserve_inactive_parent (test_model.ModelTests.test_child_exec_and_resize_preserve_inactive_parent) ... ok
+test_entry_and_copy_loans_cannot_cross_switch_resize_or_exec (test_model.ModelTests.test_entry_and_copy_loans_cannot_cross_switch_resize_or_exec) ... ok
+test_exec_invalidates_old_mm_entry_even_for_same_pid (test_model.ModelTests.test_exec_invalidates_old_mm_entry_even_for_same_pid) ... ok
+test_failure_preserves_all_owned_state_and_identity_history (test_model.ModelTests.test_failure_preserves_all_owned_state_and_identity_history) ... ok
+test_fragmented_pool_miss_preserves_active_and_inactive_heaps (test_model.ModelTests.test_fragmented_pool_miss_preserves_active_and_inactive_heaps) ... ok
+test_geometry_is_not_x86_snapshot_or_page_size_policy (test_model.ModelTests.test_geometry_is_not_x86_snapshot_or_page_size_policy) ... ok
+test_outer_cancellation_releases_both_heaps_once (test_model.ModelTests.test_outer_cancellation_releases_both_heaps_once) ... ok
+test_parent_exec_preserves_inactive_child (test_model.ModelTests.test_parent_exec_preserves_inactive_child) ... ok
+test_partial_break_and_within_page_retention (test_model.ModelTests.test_partial_break_and_within_page_retention) ... ok
+test_prepared_child_abandonment_keeps_extent_issuance_consumed (test_model.ModelTests.test_prepared_child_abandonment_keeps_extent_issuance_consumed) ... ok
+test_raw_brk_query_failure_and_zero_heap (test_model.ModelTests.test_raw_brk_query_failure_and_zero_heap) ... ok
+test_saved_event_controls_reject_missing_reordered_or_foreign_effects (test_model.ModelTests.test_saved_event_controls_reject_missing_reordered_or_foreign_effects) ... ok
+test_seeded_application_oracle_across_independent_mm_lifetimes (test_model.ModelTests.test_seeded_application_oracle_across_independent_mm_lifetimes) ... ok
+test_wait_parking_eligibility_fault_retry_and_recreation (test_model.ModelTests.test_wait_parking_eligibility_fault_retry_and_recreation) ... ok
+test_wrong_state_controls_are_model_only (test_model.ModelTests.test_wrong_state_controls_are_model_only) ... ok
+test_zero_length_no_touch_and_real_buffer_bounds (test_model.ModelTests.test_zero_length_no_touch_and_real_buffer_bounds) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.602s
+
+OK

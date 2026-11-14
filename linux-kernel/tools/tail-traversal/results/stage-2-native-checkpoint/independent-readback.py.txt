@@ -1,0 +1,90 @@
+from pathlib import Path
+import gzip
+import hashlib
+import json
+import re
+
+root = Path('/home/mats/git/topal')
+out = root / 'linux-kernel/tools/tail-traversal/results/stage-2-native-checkpoint'
+record = json.loads((out / 'qualification.json').read_text())
+sha = lambda data: hashlib.sha256(data).hexdigest()
+assert record['complete'] and record['passed']
+assert record['cgroup']['memory.swap.max'] == '0'
+def read(item):
+    compressed = (out / item['file']).read_bytes()
+    assert sha(compressed) == item['sha256']
+    raw = gzip.decompress(compressed)
+    assert sha(raw) == item['uncompressed_sha256']
+    return raw
+for path, item in record['source_snapshots'].items():
+    raw = read(item)
+    assert sha(raw) == record['sources'][path] == sha((root / path).read_bytes())
+for item in record['verification_inputs'].values():
+    read(item)
+assert sha((out / 'validation-runner.py.txt').read_bytes()) == record['runner_sha256']
+for command in record['commands']:
+    assert command['exit_code'] == 0
+    raw = read(dict(file=command['log'], sha256=command['sha256'], uncompressed_sha256=command['uncompressed_sha256']))
+    summaries = [line for line in raw.decode().splitlines() if line.startswith('test result:')]
+    print(command['name'], command['exit_code'], summaries)
+totals = {}
+warnings = []
+runtime_facts = {}
+for component in record['native_components']:
+    snapshots = {name: read(item) for name, item in component['snapshots'].items()}
+    assert sha(snapshots['step.ll']) == component['metadata']['llvm_sha256']
+    assert json.loads(snapshots['component.json']) == component['metadata']
+    for name in [label for label in ['llc', 'runtime-llc', 'source-disassembly', 'runtime-disassembly', 'cc', 'native', 'gdb'] if label + '.command.json' in snapshots]:
+        assert json.loads(snapshots[name + '.command.json'])['exit_code'] == 0
+        if snapshots[name + '.stderr.log']:
+            warnings.append((component['cache_directory'], name, snapshots[name + '.stderr.log'].decode()))
+    for name, identity in component['binary_identities'].items():
+        raw = (Path(component['cache_directory']) / name).read_bytes()
+        assert sha(raw) == identity['sha256'] and len(raw) == identity['bytes']
+    line = snapshots['native.stdout.log'].decode().strip()
+    assert line.startswith('TAIL_STEP_NATIVE_PASS ')
+    facts = {key: int(value) for key, value in re.findall(r'(\w+)=(\d+)', line)}
+    total = totals.setdefault(component['command'], {'components': 0, 'cases': 0, 'calls': 0, 'checkpoints': 0, 'fatal': 0})
+    total['components'] += 1
+    for key, value in facts.items():
+        total[key] = total.get(key, 0) + value
+    if 'gdb.stdout.log' in snapshots:
+        assert b'TAIL_BOUNDARY_GDB_PASS' in snapshots['gdb.stdout.log']
+        total['gdb'] = total.get('gdb', 0) + 1
+    if component['metadata'].get('native_provider_hooks'):
+        runtime = json.loads(snapshots['runtime.json'])
+        assert sha(snapshots['runtime.ll']) == runtime['llvm_sha256']
+        assert runtime['boundary_sha256'] == component['binary_identities']['boundary.o']['sha256']
+        assert runtime['source_step']['llvm_sha256'] == component['metadata']['llvm_sha256']
+        layout = runtime['layout']
+        assert layout['minimum_temporary_bytes'] == layout['context_bytes'] + 72 <= 65536
+        assert layout['history_bytes'] == 40 and layout['frame_bytes'] == 88
+        native = json.loads(snapshots['native-inspection.json'])
+        assert native['maximum_source_stack_bytes'] <= 4096
+        assert native['maximum_checkpoint_stack_bytes'] <= 4096
+        assert set(native['runtime_imports']) == {'topal_tail_step_component_v1', 'topal_tail_readonly_bytes_v1',
+            'topal_x86_tail_boundary_active_v1', 'topal_x86_tail_boundary_abort_v1'}
+        paths = native['reached_call_paths']
+        assert paths['topal_x86_tail_boundary_abort_v1'] == 8
+        for function, bound in paths.items():
+            if function == 'topal_x86_tail_boundary_abort_v1': continue
+            expected = native['frames'][function] + 8 + max((paths[callee] for callee in native['calls'][function]), default=0)
+            assert bound == expected
+        assert paths['topal_tail_step_component_v1'] == native['maximum_source_stack_bytes']
+        assert paths['topal_tail_checkpoint_body_v1'] == native['maximum_checkpoint_stack_bytes']
+        group = runtime_facts.setdefault(component['command'], {'clients':0,'stack':set(),'checkpoint_stack':set(),'context':set(),'faults':{},'boundary_faults':{},'gdb':0})
+        group['clients'] += 1
+        group['stack'].add(native['maximum_source_stack_bytes'])
+        group['checkpoint_stack'].add(native['maximum_checkpoint_stack_bytes'])
+        group['context'].add(layout['context_bytes'])
+        fault = component['metadata'].get('native_source_fault_fixture', 0)
+        group['faults'][fault] = group['faults'].get(fault,0) + 1
+        boundary_fault = component['metadata'].get('native_boundary_fault_fixture', 0)
+        group['boundary_faults'][boundary_fault] = group['boundary_faults'].get(boundary_fault,0) + 1
+        group['gdb'] += int('gdb.stdout.log' in snapshots)
+print('NATIVE_TOTALS', totals)
+print('PROVIDER_FACTS', runtime_facts)
+print('SOURCES', len(record['sources']), 'VERIFICATION', len(record['verification_inputs']), 'LOGS', len(record['commands']))
+print('CGROUP', record['cgroup'])
+assert all(name == 'gdb' and message == '\nwarning: .debug_names not created by gdb; ignoring\n' for _, name, message in warnings)
+print('TOOL_WARNINGS', len(warnings), 'known GDB .debug_names compatibility warnings only')

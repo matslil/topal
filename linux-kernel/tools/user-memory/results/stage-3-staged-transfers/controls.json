@@ -1,0 +1,59 @@
+{
+  "passed": true,
+  "rejections": [
+    {
+      "name": "loop-limit",
+      "rejected": true,
+      "offset": 92166,
+      "expected_byte": 109,
+      "changed_byte": 110,
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+    },
+    {
+      "name": "loop-index",
+      "rejected": true,
+      "offset": 76044,
+      "expected_byte": 194,
+      "changed_byte": 202,
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+    },
+    {
+      "name": "loop-candidate",
+      "rejected": true,
+      "offset": 82401,
+      "expected_byte": 22,
+      "changed_byte": 23,
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+    },
+    {
+      "name": "stat-end",
+      "rejected": true,
+      "offset": 53570,
+      "expected_byte": 136,
+      "changed_byte": 144,
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+    },
+    {
+      "name": "captured-reload",
+      "rejected": true,
+      "offset": 99825,
+      "expected_byte": 72,
+      "changed_byte": 64,
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+    },
+    {
+      "name": "carry-polarity",
+      "rejected": true,
+      "offset": 52977,
+      "expected_byte": 130,
+      "changed_byte": 131,
+      "exit_code": 1,
+      "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "relocated-table",
+  "kernel_file_offset": 29240,
+  "original_byte": 27,
+  "changed_byte": 26,
+  "corrected_outer_kernel_sha256": "6c55daa91758c1ba08d750464cc42766207aed2be03dcc9fb20c71eb5234652f",
+  "exit_code": 1,
+  "rejected": true,
+  "expected_gate": "linked allocated payload differs",
+  "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+}

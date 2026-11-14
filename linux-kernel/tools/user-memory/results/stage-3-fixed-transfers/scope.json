@@ -1,0 +1,11 @@
+{
+  "stage_complete": false,
+  "production_activation": false,
+  "remaining": [
+    "all other semantic user-access regions and complete syscall effects/error order",
+    "shared helper soundness, native owner/mode/stale-state and stable access lifetime",
+    "complete roots/callee/exception contracts and three fallback reachability obligations",
+    "canonical production binding and exact committed cold reconstruction",
+    "the complete original distribution/device/driver/container/VM-host requirements"
+  ]
+}

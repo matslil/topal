@@ -1,0 +1,10 @@
+{
+  "passed": false,
+  "exit_code": 101,
+  "debugger_deadline_seconds": 600,
+  "kernel_sha256": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+  "source_iterations_reported": 4,
+  "full_guest_retirement_complete": false,
+  "change_after_failure": "Delete every inactive range watchpoint after all 52 selected copy intervals and twelve controls, before independent enclosing application retirement. Keep all selected observations, the original deadline and resource/guest/host boundaries. Retain a false/incomplete progress record at that point.",
+  "scope": "Debugger deadline failure, no resource events or reported safeguard notice; its cause is not established by later success alone"
+}

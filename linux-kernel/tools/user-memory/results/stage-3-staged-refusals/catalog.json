@@ -1,0 +1,25 @@
+{
+  "build": "linux-kernel/.cache/x86_64/user-extent-source-2300920-1794416622046484664",
+  "run": "linux-kernel/.cache/x86_64/tk283-source-run-1794416621031055335",
+  "readback": "linux-kernel/.cache/x86_64/staged-refusal-readback.json",
+  "post": "linux-kernel/.cache/x86_64/tk283-staged-refusals-post-1794416916626204939",
+  "failed_attempts": [
+    {
+      "label": "initial-timeout",
+      "build": "linux-kernel/.cache/x86_64/user-extent-source-2299427-1794415578131768033",
+      "run": "linux-kernel/.cache/x86_64/tk283-source-run-1794415571239524498",
+      "inputs": "linux-kernel/.cache/x86_64/staged-refusals-initial-inputs"
+    },
+    {
+      "label": "second-timeout",
+      "build": "linux-kernel/.cache/x86_64/user-extent-source-2300201-1794416205747824472",
+      "run": "linux-kernel/.cache/x86_64/tk283-source-run-1794416204647813846",
+      "inputs": "linux-kernel/.cache/x86_64/staged-refusals-second-inputs"
+    }
+  ],
+  "pinned": {
+    "build": "linux-kernel/.cache/x86_64/user-extent-application-2301602-1794416947467284706",
+    "run": "linux-kernel/.cache/x86_64/tk283-application-run-1794416946422636577",
+    "readback": "linux-kernel/.cache/x86_64/staged-refusal-pinned-readback.json"
+  }
+}

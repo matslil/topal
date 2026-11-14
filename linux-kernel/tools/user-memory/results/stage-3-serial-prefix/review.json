@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High if selected interval evidence is mistaken for complete user-memory or production qualification; kernel bytes and authoritative meaning unchanged",
+  "review": "Single-agent authority/source/full-diff review, 88 model/reader tests, separate GNU operands/reverse cuts, twelve offline ELF controls, actual serial and unchanged pinned regressions, saved UART/syscall/prefix count reconstruction",
+  "selected_inputs": 149,
+  "changed_inputs_stable_in_native_runs": 5,
+  "model_reader_tests": 88,
+  "gnu_instructions": 56,
+  "gnu_windows": 2,
+  "offline_controls": 12,
+  "source_syscalls": 64,
+  "prefix_admissions": 28,
+  "prefix_completed": 12,
+  "prefix_refused": 16,
+  "prefix_bytes": 64,
+  "short_prefixes": 4,
+  "conditional_sites": 84,
+  "user_access_instructions": 311,
+  "remaining_sites": 7,
+  "failures": [
+    "First offline controls stopped at an incorrectly selected MOV byte before running that control; corrected runner and all twelve controls pass",
+    "A misspelled Rust selector ran zero tests; its nominal exit zero is not validation, and the focused runner now rejects zero selections",
+    "The correct pinned regression first failed before VM execution because TOPAL_PINNED_STATIC_USER_IMAGE was omitted; the corrected run uses the unchanged verified pinned digest"
+  ],
+  "safeguard_notices": [],
+  "core_language_or_authority_meaning_changed": false,
+  "kernel_production_unchanged": true,
+  "remaining": [
+    "Actual owners/nonaliasing and uninterrupted check-to-copy lifetime",
+    "Seven remaining sites and all helper/entry/callee/return/fatal/exception/fallback obligations",
+    "Canonical production and complete original Linux-compatible kernel acceptance"
+  ]
+}

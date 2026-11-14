@@ -1,0 +1,111 @@
+from pathlib import Path
+import gzip
+import hashlib
+import json
+import os
+import subprocess
+import time
+import uuid
+
+root = Path('/home/mats/git/topal')
+run_id = 'tk282-bounds-' + uuid.uuid4().hex[:8]
+scratch = root / 'linux-kernel/.cache' / run_id
+scratch.mkdir()
+alias = Path('/tmp/' + run_id)
+alias.symlink_to(scratch, target_is_directory=True)
+out = root / 'linux-kernel/tools/tail-traversal/results/stage-2-bounds'
+out.mkdir(parents=True, exist_ok=True)
+target = out / 'qualification.json'
+if target.exists():
+    raise SystemExit('refusing to overwrite earlier qualification')
+sha = lambda data: hashlib.sha256(data).hexdigest()
+paths = [
+    'src/topal-compiler/src/systems_tail_bounds.rs',
+    'src/topal-compiler/src/systems_tail_linear.rs',
+    'src/topal-compiler/src/systems_tail_step_bounds.rs',
+    'src/topal-compiler/src/systems_tail_call_bounds.rs',
+    'src/topal-compiler/src/systems_tail_bounds_tests.rs',
+    'src/topal-compiler/src/systems_tail_plan.rs',
+    'src/topal-compiler/src/systems_numeric_library.rs',
+    'src/topal-compiler/src/systems_region_bounds.rs',
+    'src/topal-compiler/src/systems_numeric_array_tests.rs',
+    'src/topal-compiler/src/systems_numeric_record_tests.rs',
+    'src/topal-compiler/src/lib.rs',
+    'linux-kernel/kernel/algorithms/clear-prefix.t',
+    'linux-kernel/design/tail-state-bounds.md',
+    'docs/systems-profile.md', 'spec/systems-profile.md',
+    'se/requirements.md', 'src/topal-compiler/se-requirements.md',
+    'se/core-language-coverage.md', 'scripts/run_bounded.py',
+    'src/topal-compiler/src/runtime/value_core.ll',
+    'src/topal-compiler/src/runtime/kernel_regions.ll',
+    'src/topal-compiler/src/runtime/kernel_region_unsigned.ll',
+    'Cargo.lock',
+]
+record = {
+    'schema': 'topal.tail-storage-bound-validation/1', 'complete': False, 'passed': False,
+    'base_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
+    'scope': 'Stage 2 conditional carried-range/allocation analysis only; native lowering, checkpoint, lifetime and execution remain unqualified',
+    'sources': {path: sha((root / path).read_bytes()) for path in paths},
+    'environment': {'RUST_MIN_STACK': '16777216', 'TMPDIR': str(alias), 'scratch_backing': str(scratch)},
+    'commands': [],
+}
+runner = Path(__file__).read_bytes()
+(out / 'validation-runner.py.txt').write_bytes(runner)
+record['runner_sha256'] = sha(runner)
+snapshot_dir = out / 'source-snapshots'
+snapshot_dir.mkdir()
+def snapshot(path):
+    raw = (root / path).read_bytes()
+    compressed = gzip.compress(raw, mtime=0)
+    name = sha(raw) + '.txt.gz'
+    (snapshot_dir / name).write_bytes(compressed)
+    assert gzip.decompress(compressed) == raw
+    return {'file': 'source-snapshots/' + name, 'sha256': sha(compressed), 'uncompressed_sha256': sha(raw)}
+record['source_snapshots'] = {path: snapshot(path) for path in paths}
+record['verification_inputs'] = {path: snapshot(path) for path in ['se/traceability.md', 'se/tool-conformance.md', 'se/test-strategy.md']}
+for tool in ['rustc', 'cargo']:
+    record[tool] = subprocess.check_output([tool, '--version'], cwd=root, text=True).strip()
+group = next(line.split(':', 2)[2] for line in Path('/proc/self/cgroup').read_text().splitlines() if line.startswith('0::'))
+cgroup = Path('/sys/fs/cgroup') / group.lstrip('/')
+record['cgroup'] = {'path': group, 'memory.max': (cgroup / 'memory.max').read_text().strip(),
+                   'memory.swap.max': (cgroup / 'memory.swap.max').read_text().strip()}
+assert record['cgroup']['memory.swap.max'] == '0'
+env = dict(os.environ, RUST_MIN_STACK='16777216', TMPDIR=str(alias))
+commands = [
+    ('tail-bounds', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1', 'systems_numeric_library::tail_bounds::tests']),
+    ('compiler', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1']),
+    ('check', ['cargo', 'check', '--workspace', '--all-targets', '--locked', '-j1']),
+    ('coverage', ['cargo', 'test', '-p', 'topal-language', '--test', 'core_language_coverage', '--locked', '-j1']),
+    ('format', ['cargo', 'fmt', '--all', '--', '--check']),
+    ('source-size', ['python3', 'scripts/check_rust_file_sizes.py']),
+]
+def save():
+    record['cgroup']['memory.peak'] = (cgroup / 'memory.peak').read_text().strip()
+    record['cgroup']['memory.events'] = (cgroup / 'memory.events').read_text()
+    target.write_text(json.dumps(record, indent=2) + '\n')
+save()
+print('TAIL_BOUNDS_STARTED ' + run_id, flush=True)
+for name, argv in commands:
+    print('RUNNING ' + name, flush=True)
+    started = time.monotonic()
+    plain = scratch / (name + '.log')
+    with plain.open('wb') as log:
+        result = subprocess.run(argv, cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
+    raw = plain.read_bytes()
+    compressed = gzip.compress(raw, mtime=0)
+    (out / (name + '.log.gz')).write_bytes(compressed)
+    record['commands'].append({'name': name, 'argv': argv, 'exit_code': result.returncode,
+        'elapsed_seconds': time.monotonic() - started, 'log': name + '.log.gz',
+        'encoding': 'gzip', 'sha256': sha(compressed), 'uncompressed_sha256': sha(raw)})
+    save()
+    print(name + ' EXIT ' + str(result.returncode), flush=True)
+    if result.returncode:
+        record['complete'] = True
+        save()
+        raise SystemExit(result.returncode)
+assert record['sources'] == {path: sha((root / path).read_bytes()) for path in paths}, 'frozen source changed'
+for path, item in record['verification_inputs'].items():
+    assert sha((root / path).read_bytes()) == item['uncompressed_sha256'], 'verification input changed'
+record.update(complete=True, passed=True)
+save()
+print('TAIL_BOUNDS_VALIDATION_PASS', flush=True)

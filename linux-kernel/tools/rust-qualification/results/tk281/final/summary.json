@@ -1,0 +1,14 @@
+{
+  "schema": "topal.rust-qualification-log-summary/1",
+  "head": "9e7875eb9731f231d74ed45e6e4c5b34efefddee",
+  "tree": "6e897b7c6181291b20d831c53688b33781003db2",
+  "passed": true,
+  "passed_tests": 2349,
+  "failed_tests": 0,
+  "ignored_tests": 0,
+  "target_summaries": 41,
+  "doc_tests": 0,
+  "qualification_sha256": "9fbe4a86f0849109d78b4d18c3f515453b5959d9a90d519dae10e4cc56c57069",
+  "archiver_sha256": "20a9d6332d5fac543576c8342c2e61525153b8bc9cda0d1ed6e77cd983e4e6ad",
+  "scope": "Rust implementation/all-target/doc qualification only; machine observations remain separate"
+}

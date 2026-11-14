@@ -1,0 +1,183 @@
+{
+  "archive_manifest": {
+    "bytes": 149897,
+    "sha256": "4f1c2497b4eac3b7765ce4e7967083b225c3dfdbed46af266fd0dc337e1718bc"
+  },
+  "entries": 840,
+  "frozen_replay": true,
+  "new_native_execution": false,
+  "overlays": 10,
+  "passed": true,
+  "qualification_complete": false,
+  "replay": {
+    "child_exec_readback": true,
+    "hardware_permissions_proved": false,
+    "models": {
+      "process-memory": 82,
+      "user-memory": 259
+    },
+    "native_workload_records": 51,
+    "new_native_execution": false,
+    "passed": true,
+    "placement": {
+      "applications": {
+        "complete_object_to_linked_reconstruction": true,
+        "constants": {
+          "topal_x86_realtime_months_v1": {
+            "ELF_load_flags": 4,
+            "bytes": 192,
+            "reference": 45863973,
+            "sha256": "42f82879e4df6f0fb3382eb69af1103e5b9bc242b51dcb9cc288a84b109a834f",
+            "symbol": {
+              "info": 1,
+              "name": "topal_x86_realtime_months_v1",
+              "section": 2,
+              "size": 192,
+              "value": 44982976
+            }
+          },
+          "topal_x86_realtime_years_v1": {
+            "ELF_load_flags": 4,
+            "bytes": 4672,
+            "reference": 45863930,
+            "sha256": "403f1adb2c1a6b26e3f5c2df1a2890d428661e8f5f6df4bcea718b7cac13c01d",
+            "symbol": {
+              "info": 1,
+              "name": "topal_x86_realtime_years_v1",
+              "section": 2,
+              "size": 4672,
+              "value": 44978304
+            }
+          }
+        },
+        "embedded_MSR_candidate": {
+          "address": 46105563,
+          "branch_target": 46117870,
+          "containing_function_bytes_unchanged": true,
+          "containing_instruction": 46105561,
+          "displacement": 12303,
+          "field": "signed rel32 JNE displacement",
+          "global_unreachability_proved": false,
+          "instruction_bytes": "0f850f300000"
+        },
+        "hardware_permissions_proved": false,
+        "kernel_sha256": "d8f937bdb2a4ad17cf4c20bca8c83c691af4fd3204b7316cdec1c713cffaf997",
+        "passed": true,
+        "provider_sha256": "800cc3435940ed83d510152540c035d384b745194663da62e8548cea7dcd98d2",
+        "qualification_complete": false,
+        "relocated_CF_candidate": {
+          "address": 44979984,
+          "bytes": "cf",
+          "field": "2075 Gregorian day count low byte",
+          "hardware_NX_proved": false
+        },
+        "runtime_immutability_proved": false,
+        "transformation": {
+          "exact_transformation": true,
+          "local_fixups": 6237,
+          "new_data_relocations": [
+            "topal_x86_realtime_years_v1",
+            "topal_x86_realtime_months_v1"
+          ],
+          "removed_bytes": 4864,
+          "retained_external_relocations": 24,
+          "scope": "Bound compiler label/fixup metadata and exact bytes; not independent whole-program semantics, CFI or lifetime proof"
+        },
+        "year_consumer": {
+          "address": 45863893,
+          "bytes": "4881f8b20700000f82350100004881f8d50800000f87280100004881c04ef8ffff48c1e0044c8d2d7f7cf2ff4901c54d8bbd000000004d8bb508000000",
+          "first_year": 1970,
+          "last_year": 2261,
+          "lea": 45863930,
+          "maximum_row_offset": 4656,
+          "rejection": 45864215,
+          "stride": 16
+        }
+      },
+      "child-exec": {
+        "complete_object_to_linked_reconstruction": true,
+        "constants": {
+          "topal_x86_realtime_months_v1": {
+            "ELF_load_flags": 4,
+            "bytes": 192,
+            "reference": 45863973,
+            "sha256": "42f82879e4df6f0fb3382eb69af1103e5b9bc242b51dcb9cc288a84b109a834f",
+            "symbol": {
+              "info": 1,
+              "name": "topal_x86_realtime_months_v1",
+              "section": 2,
+              "size": 192,
+              "value": 44982976
+            }
+          },
+          "topal_x86_realtime_years_v1": {
+            "ELF_load_flags": 4,
+            "bytes": 4672,
+            "reference": 45863930,
+            "sha256": "403f1adb2c1a6b26e3f5c2df1a2890d428661e8f5f6df4bcea718b7cac13c01d",
+            "symbol": {
+              "info": 1,
+              "name": "topal_x86_realtime_years_v1",
+              "section": 2,
+              "size": 4672,
+              "value": 44978304
+            }
+          }
+        },
+        "embedded_MSR_candidate": {
+          "address": 46105563,
+          "branch_target": 46117870,
+          "containing_function_bytes_unchanged": true,
+          "containing_instruction": 46105561,
+          "displacement": 12303,
+          "field": "signed rel32 JNE displacement",
+          "global_unreachability_proved": false,
+          "instruction_bytes": "0f850f300000"
+        },
+        "hardware_permissions_proved": false,
+        "kernel_sha256": "d8f937bdb2a4ad17cf4c20bca8c83c691af4fd3204b7316cdec1c713cffaf997",
+        "passed": true,
+        "provider_sha256": "800cc3435940ed83d510152540c035d384b745194663da62e8548cea7dcd98d2",
+        "qualification_complete": false,
+        "relocated_CF_candidate": {
+          "address": 44979984,
+          "bytes": "cf",
+          "field": "2075 Gregorian day count low byte",
+          "hardware_NX_proved": false
+        },
+        "runtime_immutability_proved": false,
+        "transformation": {
+          "exact_transformation": true,
+          "local_fixups": 6237,
+          "new_data_relocations": [
+            "topal_x86_realtime_years_v1",
+            "topal_x86_realtime_months_v1"
+          ],
+          "removed_bytes": 4864,
+          "retained_external_relocations": 24,
+          "scope": "Bound compiler label/fixup metadata and exact bytes; not independent whole-program semantics, CFI or lifetime proof"
+        },
+        "year_consumer": {
+          "address": 45863893,
+          "bytes": "4881f8b20700000f82350100004881f8d50800000f87280100004881c04ef8ffff48c1e0044c8d2d7f7cf2ff4901c54d8bbd000000004d8bb508000000",
+          "first_year": 1970,
+          "last_year": 2261,
+          "lea": 45863930,
+          "maximum_row_offset": 4656,
+          "rejection": 45864215,
+          "stride": 16
+        }
+      }
+    },
+    "qualification_complete": false,
+    "saved_application_controls": 859
+  },
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3345719296",
+    "memory.peak": "1680486400",
+    "memory.swap.max": "0"
+  },
+  "shared_sources": 749,
+  "sources": 759
+}

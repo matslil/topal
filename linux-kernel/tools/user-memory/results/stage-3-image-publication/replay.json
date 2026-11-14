@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "selected_sources": 201,
+  "artifacts": 94,
+  "models": 196,
+  "exact_layout_equal": true,
+  "exact_image_readback_equal": true,
+  "exact_heap_readback_equal": true,
+  "exact_owner_readback_equal": true,
+  "exact_metadata_readback_equal": true,
+  "exact_sixteen_image_controls_equal": true,
+  "exact_eighteen_heap_controls_equal": true,
+  "new_native_execution": false,
+  "scope": "Frozen selected source/artifact delta, models and exact saved-data reader/control replay; no compiler, decoder, GDB or VM execution, continuous lifetime or production qualification"
+}

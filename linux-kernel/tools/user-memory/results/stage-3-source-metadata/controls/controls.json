@@ -1,0 +1,106 @@
+{
+  "passed": true,
+  "reader_sha256": "353e0ea17545a5eef4789451af74ea059a6ea36297b7b96480216abc016f4aba",
+  "original_observation_sha256": "857d6282ac4ec916d78ce71e8522dbaaa68c2796686680f9e1dc5810acc4c79f",
+  "controls": [
+    {
+      "name": "clock-seconds",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "747bf697216ecca34c46563e32c46894d88bfca136e4f2d655d85a21fba7a0c5",
+      "log_sha256": "4ff18e3f3513983f75bc1d35697a5b7ecce138343f3b39f039fbddb8a0ba8145"
+    },
+    {
+      "name": "clock-call-site",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "0faf49f713ce0bb71e4283ffb958e1120b812af7b06dc4841ff153383c7c76f6",
+      "log_sha256": "09fb6062b888961fff960ff72cce4d3252e1eec2f5e18991acf0352bdd741333"
+    },
+    {
+      "name": "clock-carry",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "df2f19460634433b5d42b7b06af27ba4aa48ee019189162cb54a983a3e4448e8",
+      "log_sha256": "11007f5cf6d02633e309e869a2bba09ce3cf98f8f413d08e05640693d3692888"
+    },
+    {
+      "name": "missing-clock",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "64f7968ee7caee4cd4c9bbca1131f6f80bd25c6397c18ff3711ccddce3b89fcc",
+      "log_sha256": "11007f5cf6d02633e309e869a2bba09ce3cf98f8f413d08e05640693d3692888"
+    },
+    {
+      "name": "immutable-payload",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "f5c008d39f9fe3defb8f553a35fbade289654e6d5e1e639a3d988c35e57199ad",
+      "log_sha256": "e096d35aa97a31e9b0cce4ce16f836b277cad03057d8dc5733417df4370a87ce"
+    },
+    {
+      "name": "immutable-path",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "d5cac0a034d09e1a36ce7b10376680aabd1217c9881db7084aa3a9e4e752e519",
+      "log_sha256": "596dbfc267e83e8d3463a468730a4ae7327d371ca1a5793887c81e6296e92947"
+    },
+    {
+      "name": "stat-mode",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "8b483cef26c80f42b5f2ce91cd3a75031910e39a9af2835bd44370020f2c88af",
+      "log_sha256": "1db1683560355b4c522e4740f3f084585a1761aac850cea105d7cb9dcd978661"
+    },
+    {
+      "name": "stat-zero-field",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "9d62af59a9737b703e7ccadd5a0cb0426e82fbb48460fd55aa762d3f8e063815",
+      "log_sha256": "1db1683560355b4c522e4740f3f084585a1761aac850cea105d7cb9dcd978661"
+    },
+    {
+      "name": "missed-close-table",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "049d687fe5c6100b8ea00f70c8456334c577d8647f7c855844f986519c0587d3",
+      "log_sha256": "b4bcbca48e37034684e86b9af89a77f90f7918d9d9e6ca7a65470f4b7cae72c2"
+    },
+    {
+      "name": "missed-page-tail-zero",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "939d48061df7cedcba568786928b857a4e629d72efcaff933c00a8795fecdf63",
+      "log_sha256": "4ff18e3f3513983f75bc1d35697a5b7ecce138343f3b39f039fbddb8a0ba8145"
+    },
+    {
+      "name": "missed-final-reclamation",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "3ac696030e949b50073f3af556b4530e9b1d34def16e516f19b5f861a703b642",
+      "log_sha256": "4ff18e3f3513983f75bc1d35697a5b7ecce138343f3b39f039fbddb8a0ba8145"
+    },
+    {
+      "name": "duplicate-delta",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "9011b8c282bfc4ade96cf4c962a3e9a412944b6f948bbd9c2b4e01cfb04a6077",
+      "log_sha256": "0d3aa5ce8c28393708a41c33414216342800110d61c5773eb1a5476fcecf664d"
+    },
+    {
+      "name": "missing-call",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "44a8e66e76d9a203e3bee0a4173a62ca804bd040d0b6cc5ab6f50f02c577ca9a",
+      "log_sha256": "5aa664c0830301c78db2d44cb0bc5dbd14e5bb21382b85ab28d3d1bee8d05959"
+    },
+    {
+      "name": "failed-native-cleanup",
+      "rejected": true,
+      "exit_code": 1,
+      "observation_sha256": "b8f375f430ee3274dd874d57c1f56aad4f5f0c75f72c75788fedbf7e6e42bca1",
+      "log_sha256": "3345b429fed9bf1fdf40837e83a3cb6b3959b03ac17e98c318235d26a169a473"
+    }
+  ],
+  "scope": "Offline mutations of saved first-party observation records only. No changed ELF, compiler, GNU decoder, GDB or VM execution; not authentication or native fault/owner/lifetime qualification"
+}

@@ -1,0 +1,41 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 294.1117331646383,
+  "resources": {
+    "memory.max": "3349680128",
+    "memory.swap.max": "0",
+    "memory.peak": "441843712",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "ff386d26826d2faf9982fb235dbf5c61e68a866ca3fdf464df6e1adf5ac1151e",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "36d734ccdd4323d5747a5deb5b2320a67e3576aeeb9302d7d13bcf8abdecebb9",
+    "linux-kernel/labs/qemu/x86_64/user_extent_staged_observer.py": "1b665e0c6a2b2cef452ddce00b0b6ca1ff94455ea3c1417658ebb782152a6a00",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "53c336da1f4ed2a51e1431f9c69c26def650527acaece1be649cac34cb10b608",
+    "linux-kernel/tools/user-memory/test_observer_selection.py": "cf193536056a91b81623f877df649c00457d2057d3d039d6dfc092c4f8e2e0c8"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "ff386d26826d2faf9982fb235dbf5c61e68a866ca3fdf464df6e1adf5ac1151e",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "36d734ccdd4323d5747a5deb5b2320a67e3576aeeb9302d7d13bcf8abdecebb9",
+    "linux-kernel/labs/qemu/x86_64/user_extent_staged_observer.py": "1b665e0c6a2b2cef452ddce00b0b6ca1ff94455ea3c1417658ebb782152a6a00",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "53c336da1f4ed2a51e1431f9c69c26def650527acaece1be649cac34cb10b608",
+    "linux-kernel/tools/user-memory/test_observer_selection.py": "cf193536056a91b81623f877df649c00457d2057d3d039d6dfc092c4f8e2e0c8"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused source-built ordinary user-buffer cases; no production or complete all-caller qualification"
+}

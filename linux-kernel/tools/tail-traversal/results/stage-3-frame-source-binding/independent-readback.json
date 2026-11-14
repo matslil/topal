@@ -1,0 +1,11 @@
+{
+  "schema": "topal.frame-policy-source-binding-readback/1",
+  "exit_code": 0,
+  "scope": "Exact current/frozen source and source-only root/library/component obligation replay, independent valid-root/body changes and explicit native refusal; retained native frame/Count/Nat and raw/canonical kernel regressions. Actual kernel allocator/caller authority, physical zeroing and workload integration remain unqualified.",
+  "files": {
+    "qualification.json": "a284597d0d82af7515301c84e12c496e728fd2f3a728b70d93ffc806c5fdca41",
+    "independent-readback.py.txt": "792027fd1deeb82b57680f71457ec8c5902810f77a4878c177f628f7d8645abf",
+    "independent-readback.stdout.log": "cfeea2e4388083abca3de8ceeb41d0c29a19ad471c94bde7f399a466f3d000f6",
+    "independent-readback.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

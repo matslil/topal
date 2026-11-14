@@ -1,0 +1,446 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "29de5cda82d8b48bcc68a2b00306c7ebc0156decf457366c62850fa8ccc02d6c",
+  "observation_sha256": "fc5889ceb1fd7c6adf7ba40cbaf9cfc7242ddad4475e42ac97bb2318ee5abb9d",
+  "source_syscalls": 248,
+  "completed_inputs": [
+    {
+      "name": "volatile-write-input",
+      "candidate": 5712528,
+      "size": 16,
+      "position": 0,
+      "page_present": false,
+      "payload_sha256": "fc2e2c73072bfa2bda03ff9307472debd3cc8105028a8a9e235e35ba8d2e37f4"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6291452,
+      "size": 8,
+      "position": 8,
+      "page_present": true,
+      "payload_sha256": "ebaeb334608f2c327073263eb7ea23a4ace2aa98e0f5a7d04cce3af547bcc329"
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6512632,
+      "size": 256,
+      "position": 16,
+      "page_present": true,
+      "payload_sha256": "d6e2d5bef67164bb351ddeb75f8df1f2d46c0adcfb7433cd193c0bb2f2c16635"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 4,
+      "position": 8188,
+      "page_present": false,
+      "payload_sha256": "bb5e0a8f0326eabe206fb55eb4fd76bbb4a04aa77d0bb183736907a397146222"
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 5712528,
+      "size": 16,
+      "position": 0,
+      "page_present": false,
+      "payload_sha256": "fc2e2c73072bfa2bda03ff9307472debd3cc8105028a8a9e235e35ba8d2e37f4"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6291452,
+      "size": 8,
+      "position": 8,
+      "page_present": true,
+      "payload_sha256": "ebaeb334608f2c327073263eb7ea23a4ace2aa98e0f5a7d04cce3af547bcc329"
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6512632,
+      "size": 256,
+      "position": 16,
+      "page_present": true,
+      "payload_sha256": "d6e2d5bef67164bb351ddeb75f8df1f2d46c0adcfb7433cd193c0bb2f2c16635"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 4,
+      "position": 8188,
+      "page_present": false,
+      "payload_sha256": "bb5e0a8f0326eabe206fb55eb4fd76bbb4a04aa77d0bb183736907a397146222"
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 5712528,
+      "size": 16,
+      "position": 0,
+      "page_present": false,
+      "payload_sha256": "fc2e2c73072bfa2bda03ff9307472debd3cc8105028a8a9e235e35ba8d2e37f4"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6291452,
+      "size": 8,
+      "position": 8,
+      "page_present": true,
+      "payload_sha256": "ebaeb334608f2c327073263eb7ea23a4ace2aa98e0f5a7d04cce3af547bcc329"
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6512632,
+      "size": 256,
+      "position": 16,
+      "page_present": true,
+      "payload_sha256": "d6e2d5bef67164bb351ddeb75f8df1f2d46c0adcfb7433cd193c0bb2f2c16635"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 4,
+      "position": 8188,
+      "page_present": false,
+      "payload_sha256": "bb5e0a8f0326eabe206fb55eb4fd76bbb4a04aa77d0bb183736907a397146222"
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 5712528,
+      "size": 16,
+      "position": 0,
+      "page_present": false,
+      "payload_sha256": "fc2e2c73072bfa2bda03ff9307472debd3cc8105028a8a9e235e35ba8d2e37f4"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6291452,
+      "size": 8,
+      "position": 8,
+      "page_present": true,
+      "payload_sha256": "ebaeb334608f2c327073263eb7ea23a4ace2aa98e0f5a7d04cce3af547bcc329"
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6512632,
+      "size": 256,
+      "position": 16,
+      "page_present": true,
+      "payload_sha256": "d6e2d5bef67164bb351ddeb75f8df1f2d46c0adcfb7433cd193c0bb2f2c16635"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 4,
+      "position": 8188,
+      "page_present": false,
+      "payload_sha256": "bb5e0a8f0326eabe206fb55eb4fd76bbb4a04aa77d0bb183736907a397146222"
+    }
+  ],
+  "refused_inputs": [
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529024,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 8388608,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529016,
+      "size": 16
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529024,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 8388608,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 8
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529024,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 8388608,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529016,
+      "size": 16
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529024,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 8388608,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 8
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529024,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 8388608,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529016,
+      "size": 16
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529024,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 8388608,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 8
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529024,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 8388608,
+      "size": 16
+    },
+    {
+      "name": "volatile-write-input",
+      "candidate": 6529016,
+      "size": 16
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529024,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 8388608,
+      "size": 8
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "candidate": 6529020,
+      "size": 8
+    }
+  ],
+  "unused_early_results": [
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        18446744073709551615,
+        16,
+        0
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        18446744073709551615,
+        8,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        0
+      ],
+      "result": 0
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        8188
+      ],
+      "result": 0
+    },
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        18446744073709551615,
+        16,
+        0
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        18446744073709551615,
+        8,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        0
+      ],
+      "result": 0
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        8188
+      ],
+      "result": 0
+    },
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        18446744073709551615,
+        16,
+        0
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        18446744073709551615,
+        8,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        0
+      ],
+      "result": 0
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        8188
+      ],
+      "result": 0
+    },
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        18446744073709551615,
+        16,
+        0
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        18446744073709551615,
+        8,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "name": "volatile-write-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        0
+      ],
+      "result": 0
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "args": [
+        5,
+        6529024,
+        0,
+        8188
+      ],
+      "result": 0
+    }
+  ],
+  "total_input_bytes": 1136,
+  "variants": [
+    {
+      "name": "volatile-pwrite-input",
+      "page_present": false,
+      "count": 4
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "page_present": true,
+      "count": 4
+    },
+    {
+      "name": "volatile-write-input",
+      "page_present": false,
+      "count": 4
+    },
+    {
+      "name": "volatile-write-input",
+      "page_present": true,
+      "count": 4
+    }
+  ],
+  "saved_observer_programs_present": true,
+  "scope": "Independent saved source/admission/completion ordering, clipped counts, deterministic payloads and resident/missing-page variants. Runtime live-stack and boundary mapping checks retain their native observer evidence; not independent private-read reconstruction, a second native run, complete owners/nonalias/lifetime/retired-spill cleanup or production qualification"
+}

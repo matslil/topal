@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "exact_llvm_graph_equal": true,
+  "exact_gnu_report_equal": true,
+  "exact_observation_binding_equal": true,
+  "instructions": 31016,
+  "scope": "Offline archived first-party linked graph and recorded observation binding; no kernel rebuild, new VM/native execution or complete user-access qualification"
+}

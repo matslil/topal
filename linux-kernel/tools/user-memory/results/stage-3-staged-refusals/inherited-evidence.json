@@ -1,0 +1,27 @@
+[
+  {
+    "path": "../stage-3-owned-poll/regression/guest/observations.json",
+    "bytes": 1592300,
+    "sha256": "5c50975a1865ac3047f6044f59d3ad507f9a5b98528a2a1a5cc1461bf53c7cf6"
+  },
+  {
+    "path": "../stage-3-staged-transfers/staged-transfer-audit.json.gz",
+    "bytes": 20693,
+    "sha256": "d6c2a109d7d26f4e56b9a24b58ab70504b41dd4ca2063d3326e378ad8706b129"
+  },
+  {
+    "path": "../stage-3-staged-transfers/staged-audit-identity.json",
+    "bytes": 149,
+    "sha256": "e63e47cff77350487adf2ce8ee000dfa1a7e5d277f52e3dd6b5aa32d6e82c2a0"
+  },
+  {
+    "path": "../stage-3-staged-transfers/caller-access-index.json",
+    "bytes": 19718,
+    "sha256": "b5d9dfc8af50b83407d27083a16a826d703767dd242296e8457df4a4d4f41e07"
+  },
+  {
+    "path": "../stage-3-staged-transfers/staged-summary.json",
+    "bytes": 12141,
+    "sha256": "07cf03be6230f20a2f00dcc6be5b4bd7cd37ced50ae76deffc9f86359d5049db"
+  }
+]

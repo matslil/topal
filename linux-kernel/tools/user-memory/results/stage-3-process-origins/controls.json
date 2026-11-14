@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "rejections": [
+    {
+      "name": "missing-span",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline JSON origin/graph diagnostic mutation only; unchanged first-party ELF and no VM execution or guest-state mutation"
+    },
+    {
+      "name": "overlap",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline JSON origin/graph diagnostic mutation only; unchanged first-party ELF and no VM execution or guest-state mutation"
+    },
+    {
+      "name": "foreign-source",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline JSON origin/graph diagnostic mutation only; unchanged first-party ELF and no VM execution or guest-state mutation"
+    },
+    {
+      "name": "function-digest",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline JSON origin/graph diagnostic mutation only; unchanged first-party ELF and no VM execution or guest-state mutation"
+    },
+    {
+      "name": "decoded-bytes",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline JSON origin/graph diagnostic mutation only; unchanged first-party ELF and no VM execution or guest-state mutation"
+    }
+  ],
+  "scope": "Malformed diagnostic metadata rejection, not source-provenance authentication or native memory-safety qualification"
+}

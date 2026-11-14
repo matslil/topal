@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "cc",
+    "-std=c11",
+    "-O2",
+    "-g",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-fno-pie",
+    "-fno-stack-protector",
+    "-fno-asynchronous-unwind-tables",
+    "-fno-unwind-tables",
+    "-mgeneral-regs-only",
+    "-mno-red-zone",
+    "-fstack-usage",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-c",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2256205-1794392689887672216/command-cases.c",
+    "-o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2256205-1794392689887672216/command-cases.o"
+  ],
+  "exit_code": 0
+}

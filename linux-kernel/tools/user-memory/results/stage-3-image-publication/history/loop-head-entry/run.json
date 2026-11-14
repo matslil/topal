@@ -1,0 +1,83 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/mats/git/topal/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py",
+    "/home/mats/git/topal/linux-kernel/.cache/x86_64/image-publication-native-1794480330874173838/build"
+  ],
+  "exit_code": 1,
+  "elapsed_seconds": 83.56511176005006,
+  "source_hashes_before": {
+    "linux-kernel/tools/user-memory/image_publication.py": "541fe19831cd133d27aa24a2faa7b91761c3762466cd87d7e9bad025df563447",
+    "linux-kernel/tools/user-memory/test_image_publication.py": "d8b9ec3840b677f4536d4f79bd12c323cc06648abc203aec9e64979b1cc8a59a",
+    "linux-kernel/tools/user-memory/inspect_image_publication.py": "dfc13001f39119379d73b375aa2aad89197e2443d037c3c79f9fabcff2c4dbf6",
+    "linux-kernel/tools/user-memory/qemu_publication_trace.py": "3d0cadc81cfa602c68dafe81fc510621d0db547e5d57774af7ebd3b4454b10f0",
+    "linux-kernel/tools/user-memory/translation_publication.py": "9b5b9a7fa9df253eea6b62a31c7589d61679b46c2abfdbeb372697265db369a3",
+    "linux-kernel/tools/user-memory/inspect_translation_publication.py": "53a25b8a1cca3710ebb0b1a07a8b546d7280dbd8a82ab23e0992eb2f997d267f",
+    "linux-kernel/tools/user-memory/owner_snapshot.py": "afd3147353ae9f95f9b5e9537adc451083d302970b476f02be1846710b8f34f2",
+    "linux-kernel/labs/qemu/x86_64/user_extent_image_observer.py": "f4b92e2b5a1e1117da60e874028cd6ca14f127d94f7ccb17b7c0a0051b87b0c6",
+    "linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py": "97803532a0ad3bc3b7f779cdc5ccd95a103ebc4b145ed7aa4336d28071d183f4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "197eb798482994a743c6177ceebd9e83e55e16876a53599e802e11fc6c34026f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_owner_observer.py": "1dcbc78602079357a305a8cf15b28dca211e8096c31b6dcfce915edac26a6ab5",
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": "a95f8b8f332d06910b457cf1259bb4bad4a35ce7350e4a51faf33267a8c56099"
+  },
+  "source_hashes_after": {
+    "linux-kernel/tools/user-memory/image_publication.py": "541fe19831cd133d27aa24a2faa7b91761c3762466cd87d7e9bad025df563447",
+    "linux-kernel/tools/user-memory/test_image_publication.py": "d8b9ec3840b677f4536d4f79bd12c323cc06648abc203aec9e64979b1cc8a59a",
+    "linux-kernel/tools/user-memory/inspect_image_publication.py": "dfc13001f39119379d73b375aa2aad89197e2443d037c3c79f9fabcff2c4dbf6",
+    "linux-kernel/tools/user-memory/qemu_publication_trace.py": "3d0cadc81cfa602c68dafe81fc510621d0db547e5d57774af7ebd3b4454b10f0",
+    "linux-kernel/tools/user-memory/translation_publication.py": "9b5b9a7fa9df253eea6b62a31c7589d61679b46c2abfdbeb372697265db369a3",
+    "linux-kernel/tools/user-memory/inspect_translation_publication.py": "53a25b8a1cca3710ebb0b1a07a8b546d7280dbd8a82ab23e0992eb2f997d267f",
+    "linux-kernel/tools/user-memory/owner_snapshot.py": "afd3147353ae9f95f9b5e9537adc451083d302970b476f02be1846710b8f34f2",
+    "linux-kernel/labs/qemu/x86_64/user_extent_image_observer.py": "f4b92e2b5a1e1117da60e874028cd6ca14f127d94f7ccb17b7c0a0051b87b0c6",
+    "linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py": "97803532a0ad3bc3b7f779cdc5ccd95a103ebc4b145ed7aa4336d28071d183f4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "197eb798482994a743c6177ceebd9e83e55e16876a53599e802e11fc6c34026f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_owner_observer.py": "1dcbc78602079357a305a8cf15b28dca211e8096c31b6dcfce915edac26a6ab5",
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": "a95f8b8f332d06910b457cf1259bb4bad4a35ce7350e4a51faf33267a8c56099"
+  },
+  "source_changes_during_run": false,
+  "artifact_hashes_before": {
+    "kernel.elf": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+    "bzImage": "598752d825d1ec1ee9a4feb35e7e5866b3161921db0f2e07c6ccf9bcc27e1d1b",
+    "initramfs.cpio": "335b54ea11cf0f0e76709df27199c093b2a09869513a811ffb6d730a30d4fd92",
+    "provider.o": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767",
+    "dispatch.o": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457",
+    "dispatch.ll": "1bfddb07fb32196a9d60aac0b5ea684daa69232f27c67cbaf251733bc7b5114a",
+    "runtime.o": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f",
+    "target.o": "0c365ec9114c14e1699f75e4d8f2a74f5bcc0041628cf125e5039fbf685fdecd",
+    "static-elf-abi-fixture.elf": "1fe95385ee7f89c5a20a7f5530020ade0ff2d6cbbbf7c41fd51127e7e8361351",
+    "source-user.elf": "08380834abb9c25bdbfcd7d598d1eb1607308f3aa5da787ccd62d8582611c501",
+    "user-owners.json": "15c924bc1d1829ba690333e21aa96216b82e84606472648cdd9480e30c24bf6c",
+    "source-component.json": "4529b0026ebf15a22602a74f1f16c129f676d9ec71df51956160f43d2766640a",
+    "process-byte-origins.json": "dba6593767711635fc316dc8dd0f9e82b94502850f2e924905335866fb938320",
+    "process-access-inventory.json": "62a92404a664e1be515652803b2e5007ddf0c716e57a9b656ba62a7afff5d2f0"
+  },
+  "artifact_hashes_after": {
+    "kernel.elf": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+    "bzImage": "598752d825d1ec1ee9a4feb35e7e5866b3161921db0f2e07c6ccf9bcc27e1d1b",
+    "initramfs.cpio": "335b54ea11cf0f0e76709df27199c093b2a09869513a811ffb6d730a30d4fd92",
+    "provider.o": "b3628eb5d12fdfb21a7d03205538cd90c42ba9cea2113590586e713993d59767",
+    "dispatch.o": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457",
+    "dispatch.ll": "1bfddb07fb32196a9d60aac0b5ea684daa69232f27c67cbaf251733bc7b5114a",
+    "runtime.o": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f",
+    "target.o": "0c365ec9114c14e1699f75e4d8f2a74f5bcc0041628cf125e5039fbf685fdecd",
+    "static-elf-abi-fixture.elf": "1fe95385ee7f89c5a20a7f5530020ade0ff2d6cbbbf7c41fd51127e7e8361351",
+    "source-user.elf": "08380834abb9c25bdbfcd7d598d1eb1607308f3aa5da787ccd62d8582611c501",
+    "user-owners.json": "15c924bc1d1829ba690333e21aa96216b82e84606472648cdd9480e30c24bf6c",
+    "source-component.json": "4529b0026ebf15a22602a74f1f16c129f676d9ec71df51956160f43d2766640a",
+    "process-byte-origins.json": "dba6593767711635fc316dc8dd0f9e82b94502850f2e924905335866fb938320",
+    "process-access-inventory.json": "62a92404a664e1be515652803b2e5007ddf0c716e57a9b656ba62a7afff5d2f0"
+  },
+  "artifacts_changed": false,
+  "observer_environment": {
+    "TOPAL_TEST_EXTENT_OWNERS": "metadata",
+    "TOPAL_TEST_EXTENT_TRANSLATIONS": "metadata",
+    "TOPAL_TEST_IMAGE_PUBLICATION": "metadata"
+  },
+  "resources": {
+    "memory.max": "2724757504",
+    "memory.swap.max": "0",
+    "memory.peak": "438583296",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "scope": "Unchanged-kernel ordinary four-iteration metadata VM with read-only image/heap publication probes. Same 600-second deadline and VM/host protections; no debugger state assignment"
+}

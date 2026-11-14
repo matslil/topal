@@ -1,0 +1,22 @@
+test_all_8192_direction_and_path_permission_combinations (test_model.OwnedExtentTests.test_all_8192_direction_and_path_permission_combinations) ... ok
+test_beyond_predecessor_and_unrelated_virtual_placements (test_model.OwnedExtentTests.test_beyond_predecessor_and_unrelated_virtual_placements) ... ok
+test_complete_word_range_overflow_and_canonical_boundaries (test_model.OwnedExtentTests.test_complete_word_range_overflow_and_canonical_boundaries) ... ok
+test_cross_page_and_every_upper_table_boundary (test_model.OwnedExtentTests.test_cross_page_and_every_upper_table_boundary) ... ok
+test_empty_has_no_table_or_context_or_buffer_access (test_model.OwnedExtentTests.test_empty_has_no_table_or_context_or_buffer_access) ... ok
+test_foreign_next_table_is_not_read_even_if_numerically_accessible (test_model.OwnedExtentTests.test_foreign_next_table_is_not_read_even_if_numerically_accessible) ... ok
+test_holes_at_every_level_stop_before_dereference (test_model.OwnedExtentTests.test_holes_at_every_level_stop_before_dereference) ... ok
+test_huge_reserved_and_additional_feature_formats_are_not_small_tables (test_model.OwnedExtentTests.test_huge_reserved_and_additional_feature_formats_are_not_small_tables) ... ok
+test_large_extent_has_no_34_page_quota (test_model.OwnedExtentTests.test_large_extent_has_no_34_page_quota) ... ok
+test_mapping_owner_can_withhold_write_independently_of_pte (test_model.OwnedExtentTests.test_mapping_owner_can_withhold_write_independently_of_pte) ... ok
+test_missing_wrong_role_or_out_of_window_table_is_not_read (test_model.OwnedExtentTests.test_missing_wrong_role_or_out_of_window_table_is_not_read) ... ok
+test_nx_and_hardware_accessed_dirty_do_not_prevent_data_access (test_model.OwnedExtentTests.test_nx_and_hardware_accessed_dirty_do_not_prevent_data_access) ... ok
+test_range_hole_cannot_be_covered_by_valid_endpoints (test_model.OwnedExtentTests.test_range_hole_cannot_be_covered_by_valid_endpoints) ... ok
+test_readonly_mapping_and_ancestor_distinguish_direction (test_model.OwnedExtentTests.test_readonly_mapping_and_ancestor_distinguish_direction) ... ok
+test_snapshot_and_admission_preserve_all_input_storage (test_model.OwnedExtentTests.test_snapshot_and_admission_preserve_all_input_storage) ... ok
+test_stale_foreign_unpinned_or_table_alias_backing_is_not_authority (test_model.OwnedExtentTests.test_stale_foreign_unpinned_or_table_alias_backing_is_not_authority) ... ok
+test_stale_or_unstable_context_is_not_an_ordinary_pointer_miss (test_model.OwnedExtentTests.test_stale_or_unstable_context_is_not_an_ordinary_pointer_miss) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.803s
+
+OK

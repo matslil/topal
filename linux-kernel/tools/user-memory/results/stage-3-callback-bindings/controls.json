@@ -1,0 +1,105 @@
+{
+  "passed": true,
+  "rejections": [
+    {
+      "name": "kernel_library-instruction",
+      "kernel_file_offset": 1296288,
+      "original_byte": 85,
+      "changed_byte": 84,
+      "corrected_outer_kernel_sha256": "41b48608aafafc24b8b2bd1fafb3566cdf989c8d3b0491bc83617f991a5950d2",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "linked allocated payload differs",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "time_library-instruction",
+      "kernel_file_offset": 1266816,
+      "original_byte": 85,
+      "changed_byte": 84,
+      "corrected_outer_kernel_sha256": "6928e50a2cbae764d31b7c566c5a0b0df04a6b22adca84e299fccbbe5ca93973",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "linked allocated payload differs",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "image_library-instruction",
+      "kernel_file_offset": 1274000,
+      "original_byte": 85,
+      "changed_byte": 84,
+      "corrected_outer_kernel_sha256": "9a275fe9db083fdb161db63fa81cb3df4a310bb883a855a48244d4783530b4cc",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "linked allocated payload differs",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "dispatch_library-instruction",
+      "kernel_file_offset": 1292144,
+      "original_byte": 85,
+      "changed_byte": 84,
+      "corrected_outer_kernel_sha256": "a0bc0c5c6ab513ec2765c47feb63a6bc2cdf62844deaf9037ad21ca81162c404",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "linked allocated payload differs",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "process_identity_library-instruction",
+      "kernel_file_offset": 1276704,
+      "original_byte": 85,
+      "changed_byte": 84,
+      "corrected_outer_kernel_sha256": "3cf1dbbb8693197c7a170ec0ac5dd36dc1b1256712c6372f4e722902a74e1f5f",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "linked allocated payload differs",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "literal",
+      "kernel_file_offset": 23992,
+      "original_byte": 0,
+      "changed_byte": 1,
+      "corrected_outer_kernel_sha256": "a5df6237de183710d65865c94ac6a11f7eb6364eadf377b21aaf466d0b02df90",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "linked allocated payload differs",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "relocated-table",
+      "kernel_file_offset": 29240,
+      "original_byte": 27,
+      "changed_byte": 26,
+      "corrected_outer_kernel_sha256": "6c55daa91758c1ba08d750464cc42766207aed2be03dcc9fb20c71eb5234652f",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "linked allocated payload differs",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "root-code-argument",
+      "kernel_file_offset": 92157,
+      "original_byte": 159,
+      "changed_byte": 158,
+      "corrected_outer_kernel_sha256": "e3860aee7c0120b81f900ab690b6b2ef80e96de64cd417e379379d5c8ea83eea",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "assert linked_root['value']+field+4",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    },
+    {
+      "name": "registration-slot",
+      "kernel_file_offset": 698712,
+      "original_byte": 184,
+      "changed_byte": 185,
+      "corrected_outer_kernel_sha256": "ed59548f7b33021d00d274a159c5d32244ce49f7f6482e29a428277b7b7d1e4b",
+      "exit_code": 1,
+      "rejected": true,
+      "expected_gate": "assert len(stores) == 1",
+      "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+    }
+  ],
+  "scope": "Nine offline byte-binding counterexamples; not guest fault injection or complete hostile-provenance authentication"
+}

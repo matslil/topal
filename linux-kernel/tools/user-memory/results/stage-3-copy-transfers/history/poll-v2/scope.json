@@ -1,0 +1,8 @@
+{
+  "status": "failed",
+  "reason": "A valid null-input signal path reaches the post-copy address without executing REP; an always-enabled completion breakpoint incorrectly required an active copy",
+  "process_exit_code": null,
+  "observer_override": "../observer-v2.py",
+  "tests_override": "../tests-v1.py",
+  "scope": "Preceding diagnostic cohort, not final-source qualification; unchanged kernel bytes verified"
+}

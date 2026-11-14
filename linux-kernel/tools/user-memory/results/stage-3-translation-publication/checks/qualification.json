@@ -1,0 +1,89 @@
+{
+  "passed": true,
+  "models": 177,
+  "offline_controls": 18,
+  "new_native_execution": true,
+  "serial_bytes": 7606,
+  "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+  "complete_console_equals_preceding_native": true,
+  "kernel_sha256": "47b785aca3794d171d508a3fdbb616057a613016c1783ca9ec95236dbba2199f",
+  "commands": [
+    {
+      "label": "models",
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory",
+        "-v"
+      ],
+      "exit_code": 0,
+      "seconds": 1.6881385073065758,
+      "log_sha256": "5942175fb30ea942ad20c0ee9142a201df5cfd3766caab33d2c7d101f1c3f7de"
+    },
+    {
+      "label": "layout",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/inspect_translation_publication.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-checks/layout.json"
+      ],
+      "exit_code": 0,
+      "seconds": 0.06832477170974016,
+      "log_sha256": "a55066866d9c24f03cbbd0e2278cf19ca6fce3e3e7adfb1dbb55a1ab1310d83d"
+    },
+    {
+      "label": "publication",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/readback_translation_publication.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-checks/publication.json"
+      ],
+      "exit_code": 0,
+      "seconds": 0.489363806322217,
+      "log_sha256": "0e34ca72c845a6fb9020fb0c56c98b78e7e5b177acbe5545672c864924e2cec8"
+    },
+    {
+      "label": "owners",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/results/stage-3-owner-intervals/readback-owner-boundaries.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build/source-user-extents/observations.json",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-checks/owners.json"
+      ],
+      "exit_code": 0,
+      "seconds": 0.25514547247439623,
+      "log_sha256": "bb2ac4fd7487cff5db943f5cd427c5ba6584ccfa79e0e811fad22e1915eee093"
+    },
+    {
+      "label": "metadata",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/results/stage-3-owner-intervals/readback-source-metadata.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-checks/metadata"
+      ],
+      "exit_code": 0,
+      "seconds": 0.2176190735772252,
+      "log_sha256": "8e67edf9fd8f2f10e923f263bee1992dae3a8ab7df0c50c810160b2ba7c31283"
+    },
+    {
+      "label": "controls",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/control_translation_publication.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-native-1794477598358838483/build",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/translation-publication-checks/controls"
+      ],
+      "exit_code": 0,
+      "seconds": 6.456838828511536,
+      "log_sha256": "bd39e1517709e78c386d4c35da23dee0dd565029c8c4b3cc28cc0120b52def34"
+    }
+  ],
+  "scope": "Bounded Python-only checks over the completed new same-kernel ordinary VM run; not a full new Rust/compiler/production qualification"
+}

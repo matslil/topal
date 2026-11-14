@@ -1,0 +1,6 @@
+{
+  "initial_reader_exit_code": 1,
+  "reported_error": "unsupported GS preparation: 6548890425e8020000",
+  "correction": "The existing preparation also stores RAX with MOV, in addition to immediate stores. Add its exact GS scalar effect before unit/native qualification",
+  "scope": "Reader construction before source freeze/native validation; original failure reported in the session, not captured as a separate log or AI safeguard notice"
+}

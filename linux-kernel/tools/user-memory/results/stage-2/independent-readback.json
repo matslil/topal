@@ -1,0 +1,65 @@
+{
+  "schema": "topal-owned-user-extent-functional-readback/1",
+  "passed": true,
+  "stage_complete": false,
+  "changed_since_prior_cohort": [
+    "src/topal-compiler/src/runtime/kernel_user_extent_target.ll",
+    "src/topal-compiler/src/systems_user_extent.rs",
+    "src/topal-compiler/src/systems_user_extent_tests.rs"
+  ],
+  "source_inputs": 2157,
+  "rust_tests": 3,
+  "rust_targets": 1,
+  "model_tests": 17,
+  "prior_guarded_native_calls": 8243,
+  "prior_permission_cases": 8192,
+  "native_guest_calls": 324,
+  "actual_mm_operations": 80,
+  "negative_component_boundaries": 0,
+  "prior_negative_component_boundaries": 21,
+  "independently_derived_root_gateway_calls": 37,
+  "actual_owners": {
+    "roles": [
+      {
+        "slot": 7,
+        "count": 5,
+        "pins": 1
+      },
+      {
+        "slot": 6,
+        "count": 1,
+        "pins": 1
+      },
+      {
+        "slot": 5,
+        "count": 503,
+        "pins": 1
+      },
+      {
+        "slot": 8,
+        "count": 2,
+        "pins": 2
+      }
+    ],
+    "token_bytes": 336
+  },
+  "native_results": {
+    "0": 208,
+    "3": 44,
+    "1": 44,
+    "2": 28
+  },
+  "complete_probe_path_bytes": 2272,
+  "wp_transitions": [
+    {
+      "before": 2147483665,
+      "after": 2147549201
+    }
+  ],
+  "archived_files": 146,
+  "archived_uncompressed_bytes": 132265537,
+  "failed_workspace_cohorts": 1,
+  "exact_image_interrupt_repeats": 4,
+  "development_scope": "Prior failed four-thread cohort and four isolated repeats are retained. Three source inputs changed afterward; no new deliberate guest-state controls were executed. The stopped serial cohort remains separate.",
+  "scope": "Selected ordinary-functional checkpoint: byte/ELF/boot-resource/root-instruction/flat permission and static heap-owner-domain readback by the same agent. Not full workspace execution, completed Stage2, independent human review, all-caller production or full Linux acceptance."
+}

@@ -1,0 +1,714 @@
+{
+  "passed": true,
+  "function": "topal_x86_systems_static_image_process_enter",
+  "function_bytes": 231663,
+  "provider_sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+  "kernel_sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+  "linked_function_sha256": "b5555dab7fa1f48e353051e0f6eddd2b5279ac5a9f32dee95177b65ceba1396b",
+  "origin_sha256": "286a7949ebc3ab3188518ead1b216909eba77258d3d3ec820d328684b6425572",
+  "process_graph_sha256": "afdacb7c3705041ec40dac4f9f6ab45fb58a62a64afe468c4c71d91768a4da32",
+  "spans": 45005,
+  "source_hashes": {
+    "src/topal-compiler/src/systems_process_entry_start.rs": "f807dd8b9f44bd9b0f947e81098c5921a933f7d6c7519d6ec43249d55b87a500",
+    "src/topal-compiler/src/systems_file_descriptions.rs": "22ffae54b1b75c77dc0e9476dad0d66db7faa98df8564a99d7500b60ed626119",
+    "src/topal-compiler/src/systems_provider_emit_encoding.rs": "189c1148f540db2295acdc86da20ada6611f52b48d76617290eec0ca4025cdbf",
+    "src/topal-compiler/src/systems_process_time.rs": "0906bfefd0dae9fd9431aeb1b856181318a1b8c3ee493bbde61cd0d4dba6e611",
+    "src/topal-compiler/src/systems_process_policy.rs": "b27826283b82ede0f99a02862e253685a612e41ccd627037a1213bb3fdddeb7d",
+    "src/topal-compiler/src/systems_process_numeric.rs": "5366f9833ce46ac1c8a4eae67b0afdafedb073bddf9f280cc7e473f93a3533c4",
+    "src/topal-compiler/src/systems_process_retained.rs": "f16f19523869c31548115e1f2909e231e6d6576011b0830773fb1321ca7b3a50",
+    "src/topal-compiler/src/systems_provider_emit_static_image_leaves.rs": "0c54e4412fe90d6c12396ca6110ac9435b1c73ea5b8b66d8c8ab5fa7fb771ed9",
+    "src/topal-compiler/src/systems_provider_emit_image_mapping.rs": "4e60e9523046a0fe2244dce520af90ebd17b0687d8c7b9e651bdaea9932c7c8e",
+    "src/topal-compiler/src/systems_provider_emit_stack_headers.rs": "65c621e48c0452a4079c92850648dfa257b12a607f37c2e36982d5916a617520",
+    "src/topal-compiler/src/systems_provider_emit_stack_platform.rs": "81f11326340449bbf31a4d581bb5e3fb4925f2f2ddc2b9a1e4f1358b9be5d3ed",
+    "src/topal-compiler/src/systems_provider_emit_user_context.rs": "f6daeec3b70d51ec45f3a23c58cad5873c57b8050a5509200883986b6f98ddcf",
+    "src/topal-compiler/src/systems_process_frame_memory.rs": "1a2606551dc7755ad7a2c960deaee90619e3709ae34069ccea9cc540fe506296",
+    "src/topal-compiler/src/systems_process_dispatch.rs": "52ef0f97dc0c202d195d15ae3563ecd2d5692b50c92eb77c128283b0756108bb",
+    "src/topal-compiler/src/systems_inode_services.rs": "67ba875a2d494972712aba46c41703e4e9ca4ffa7013e21d442a8e305731c457",
+    "src/topal-compiler/src/systems_process_signals.rs": "c60d759f85f69ccf465c311b7873dded9843b001bf7531e767bb05e41e5fafd1",
+    "src/topal-compiler/src/systems_process_namespace.rs": "0be5352d68b97c56714466d3b2f4235b08b3ebc15ef456cba1ebb2d188f6967a",
+    "src/topal-compiler/src/systems_process_realtime.rs": "786fd35064224a2bcf18e58570492a82341cf85897bdca93dc4f4d11a20262fa",
+    "src/topal-compiler/src/systems_process_credentials.rs": "6f597242be71db608a1dc6645d031e914b998e8d73ddddd88d34e25dd655fdaa",
+    "src/topal-compiler/src/systems_process_observations.rs": "9fa8dee42aaeeede3f808447b7f292782a391902a518e0bbac0f90e052900a99",
+    "src/topal-compiler/src/systems_process_children.rs": "eed4eb4741265e46132f62da63e0dfd9b557759a8de330eda3c9aa6ada56df87",
+    "src/topal-compiler/src/systems_process_pipes.rs": "4cb13ca86d086a7b80003a8b20e075e9ba81274f4910fb3428822adb7201ee85",
+    "src/topal-compiler/src/systems_volatile_files.rs": "91f359f6115772c7eca83c6d1a0168f14508296adc8459bba7888870baad4fd4",
+    "src/topal-compiler/src/systems_shell_input.rs": "78629fdb0971123d5a2e989124952fcde8eea31e2adee86f574e4bf7a2948a63",
+    "src/topal-compiler/src/systems_process_runtime.rs": "64cbb2575a19232899b9512d5524e53835751343534270546b134ccdae9cbd5d",
+    "src/topal-compiler/src/systems_process_entry_read_exec.rs": "d57d5f558b4888928c3e5711bd1a714beaef62eb45e6d913bdbc4d1d13cceb20",
+    "src/topal-compiler/src/systems_provider_emit_process_entry.rs": "b43fe16065d806d047bd039160e82834bbbfe5992805f3180d851b0192b47a7d",
+    "src/topal-compiler/src/systems_process_header.rs": "336049ff6a55dc331a2e4176c0701a7e89257a09e960656a082af3c92d3d2012",
+    "src/topal-compiler/src/systems_exec_environment.rs": "dd2ac18936d522fb985d4117f9bdd1ebb847555f694e1dcbdc5d7cdba633469d",
+    "src/topal-compiler/src/systems_process_entry_files.rs": "73778e9645f6ab481907f16e37e4bb12ae1c69f0d294f4a03b532b31c1e532b4",
+    "src/topal-compiler/src/systems_process_entry_output.rs": "08ca483949524a3336021f952e6115d738c6774cbee862ead79b9250d3c50540",
+    "src/topal-compiler/src/systems_process_entry_completion.rs": "4a808fb844bd3df16e5e5d3185276e90151f8ce80efe2e0f2fbeea2e9f603c9b",
+    "src/topal-compiler/src/systems_positional_transfer.rs": "015de3df1c66fb1fad9ce076a927078efb98d84f17b96efdf5e74a8ffd646b5c",
+    "src/topal-compiler/src/systems_file_region.rs": "97d372efd31f9cf14d67390869a262f9711ba92efd91babf3a9c453c0182160b",
+    "src/topal-compiler/src/systems_namespace_walk.rs": "85cdbd199c024bfc39fcd5b4927696af593c4785517fd8e1f3fd89f0be5ede4a",
+    "src/topal-compiler/src/systems_namespace_named.rs": "41892ebde8a42224c48756b7975be856c279fae5467b1423a773424490a01bca",
+    "src/topal-compiler/src/systems_namespace_entries.rs": "e72e342a16a004f43d48ac2cc69bad9687594e1e302512a9363db4b02b4b2fa2",
+    "src/topal-compiler/src/systems_namespace_transactions_native.rs": "4f1c447400eae7e62bf2e51aecc46c9fbab342af77736dec3ba22088af639000",
+    "src/topal-compiler/src/systems_namespace_rename_native.rs": "4c1917c13cf2c707bb97b577fb87d0ca9b1fdb769a8da56028d687d9c0235ef8",
+    "src/topal-compiler/src/systems_namespace_link_native.rs": "79f07c11db8cd61e948f278b9d3d80f4ec9ae13900e7daf0d81731c44f373b28",
+    "src/topal-compiler/src/systems_namespace_transaction_commit.rs": "e284c337349301170b179d79dcaa20bc69a60f0f22a2d5f2791951de40cceac4",
+    "src/topal-compiler/src/systems_process_identity.rs": "7a8f3d84e133be38cb2f90d5726a057098cb67672a2fefdfcf48a514639106d1",
+    "src/topal-compiler/src/systems_retained_validation.rs": "94620afcff659a0fdc2bbc72cc109be0e28dd7528358faacfd2f0c1726c39743",
+    "src/topal-compiler/src/systems_process_pair.rs": "42600a5cbee9afb9050733d3f499fa4bc64c81f2c08fae50b5b90992e6bd3847",
+    "src/topal-compiler/src/systems_pipe_create.rs": "208b965e233443a6a3d6a48abd3ce8d7c7a56f04d698b6bacd7fdf0464e00b68",
+    "src/topal-compiler/src/systems_pipe_transfer.rs": "0103921cd08d7ac92a486b1465cf999208e85e18a0537930f2c7d093ecc47fb9",
+    "src/topal-compiler/src/systems_pipe_wait.rs": "2617235f98e3d95c19f77c338f136c81995ce14beef22472d716423a477c9862",
+    "src/topal-compiler/src/systems_ram_page_region.rs": "6fd19a65a41b01bf854b1ce607b514ef50c8cbdf38f83a53315678a57c7b6b6c",
+    "src/topal-compiler/src/systems_volatile_transfer.rs": "e84f3aac1f491c9a66d64712778d2a77b2728701c6f24f91077bf2c3f2aa6051",
+    "src/topal-compiler/src/systems_volatile_create.rs": "30283793d610da03d0066907cb15b5812dad17dadba386e195d8aa0b012286cf"
+  },
+  "process_relocations": [
+    {
+      "offset": 14730,
+      "symbol": "topal_x86_frame_mm_epoch_v1",
+      "kind": 2,
+      "addend": -4
+    },
+    {
+      "offset": 22009,
+      "symbol": "topal_x86_frame_gateway_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 49090,
+      "symbol": "topal_x86_frame_gateway_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 109088,
+      "symbol": "topal_x86_frame_gateway_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 133228,
+      "symbol": "topal_x86_user_extent_readable_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 133233,
+      "symbol": "topal_x86_user_extent_writable_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 141550,
+      "symbol": "topal_x86_systems_file_position_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 145062,
+      "symbol": "topal_x86_systems_file_position_finalize_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 145067,
+      "symbol": "topal_x86_systems_ram_page_finalize_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 145072,
+      "symbol": "topal_x86_systems_inode_mode_finalize_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 145077,
+      "symbol": "topal_x86_systems_namespace_finalize_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 148223,
+      "symbol": "topal_x86_systems_inode_mode_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 164667,
+      "symbol": "topal_x86_systems_namespace_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 220602,
+      "symbol": "topal_x86_systems_ram_page_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 221582,
+      "symbol": "topal_x86_systems_file_position_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 223291,
+      "symbol": "topal_x86_systems_ram_page_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 223375,
+      "symbol": "topal_x86_systems_file_position_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 224362,
+      "symbol": "topal_x86_systems_ram_page_apply_v1",
+      "kind": 4,
+      "addend": -4
+    },
+    {
+      "offset": 226241,
+      "symbol": "topal_x86_systems_ram_page_apply_v1",
+      "kind": 4,
+      "addend": -4
+    }
+  ],
+  "access_instructions": 14584,
+  "groups": [
+    {
+      "file": "src/topal-compiler/src/systems_exec_environment.rs",
+      "primary_access_instructions": 64,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 61,
+        "general-address-operand": 57,
+        "gs-based": 2,
+        "implicit-stack": 3,
+        "stack-base-operand": 2,
+        "string-operation": 2
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "primary_access_instructions": 329,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 287,
+        "general-address-operand": 269,
+        "gs-based": 12,
+        "implicit-stack": 42,
+        "stack-base-operand": 6,
+        "string-operation": 191
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_file_region.rs",
+      "primary_access_instructions": 6,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 3,
+        "general-address-operand": 3,
+        "implicit-stack": 3
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_inode_services.rs",
+      "primary_access_instructions": 21,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 12,
+        "general-address-operand": 4,
+        "gs-based": 8,
+        "implicit-stack": 9
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_namespace_entries.rs",
+      "primary_access_instructions": 317,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 289,
+        "general-address-operand": 269,
+        "implicit-stack": 28,
+        "stack-base-operand": 20,
+        "string-operation": 6
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_namespace_link_native.rs",
+      "primary_access_instructions": 22,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 14,
+        "general-address-operand": 14,
+        "implicit-stack": 8
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_namespace_named.rs",
+      "primary_access_instructions": 46,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 35,
+        "general-address-operand": 33,
+        "gs-based": 1,
+        "implicit-stack": 11,
+        "stack-base-operand": 1,
+        "string-operation": 3
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_namespace_rename_native.rs",
+      "primary_access_instructions": 19,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 13,
+        "general-address-operand": 13,
+        "implicit-stack": 6
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_namespace_transaction_commit.rs",
+      "primary_access_instructions": 22,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 10,
+        "general-address-operand": 10,
+        "implicit-stack": 12,
+        "string-operation": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_namespace_transactions_native.rs",
+      "primary_access_instructions": 123,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 115,
+        "general-address-operand": 89,
+        "gs-based": 18,
+        "implicit-stack": 8,
+        "stack-base-operand": 8,
+        "string-operation": 43
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_namespace_walk.rs",
+      "primary_access_instructions": 37,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 30,
+        "general-address-operand": 29,
+        "implicit-stack": 7,
+        "stack-base-operand": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_pipe_create.rs",
+      "primary_access_instructions": 49,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 45,
+        "general-address-operand": 41,
+        "gs-based": 3,
+        "implicit-stack": 4,
+        "stack-base-operand": 1,
+        "string-operation": 3
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_pipe_transfer.rs",
+      "primary_access_instructions": 56,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 42,
+        "general-address-operand": 30,
+        "gs-based": 10,
+        "implicit-stack": 14,
+        "stack-base-operand": 2
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_pipe_wait.rs",
+      "primary_access_instructions": 32,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 31,
+        "general-address-operand": 29,
+        "gs-based": 2,
+        "implicit-stack": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_positional_transfer.rs",
+      "primary_access_instructions": 13,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 9,
+        "general-address-operand": 6,
+        "gs-based": 2,
+        "implicit-stack": 4,
+        "stack-base-operand": 1,
+        "string-operation": 2
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_children.rs",
+      "primary_access_instructions": 163,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 157,
+        "general-address-operand": 115,
+        "gs-based": 39,
+        "implicit-stack": 6,
+        "stack-base-operand": 3,
+        "string-operation": 43
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_credentials.rs",
+      "primary_access_instructions": 6,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 6,
+        "general-address-operand": 2,
+        "gs-based": 4
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_dispatch.rs",
+      "primary_access_instructions": 38,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 23,
+        "general-address-operand": 6,
+        "gs-based": 13,
+        "implicit-stack": 15,
+        "stack-base-operand": 4
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "primary_access_instructions": 2437,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 2424,
+        "general-address-operand": 1292,
+        "gs-based": 322,
+        "implicit-stack": 13,
+        "stack-base-operand": 810,
+        "string-operation": 8
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_entry_files.rs",
+      "primary_access_instructions": 865,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 865,
+        "general-address-operand": 177,
+        "gs-based": 688
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_entry_output.rs",
+      "primary_access_instructions": 330,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 330,
+        "general-address-operand": 20,
+        "gs-based": 310
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_entry_read_exec.rs",
+      "primary_access_instructions": 419,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 400,
+        "general-address-operand": 71,
+        "gs-based": 329,
+        "implicit-stack": 19,
+        "string-operation": 6
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_entry_start.rs",
+      "primary_access_instructions": 362,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 348,
+        "general-address-operand": 127,
+        "gs-based": 195,
+        "implicit-stack": 14,
+        "stack-base-operand": 26,
+        "string-operation": 5
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_frame_memory.rs",
+      "primary_access_instructions": 18,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 15,
+        "general-address-operand": 3,
+        "gs-based": 6,
+        "implicit-stack": 3,
+        "stack-base-operand": 6
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_header.rs",
+      "primary_access_instructions": 36,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 21,
+        "general-address-operand": 10,
+        "gs-based": 7,
+        "implicit-stack": 15,
+        "stack-base-operand": 4
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_identity.rs",
+      "primary_access_instructions": 36,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 21,
+        "general-address-operand": 7,
+        "gs-based": 8,
+        "implicit-stack": 15,
+        "stack-base-operand": 6
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_namespace.rs",
+      "primary_access_instructions": 221,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 203,
+        "general-address-operand": 171,
+        "gs-based": 29,
+        "implicit-stack": 18,
+        "stack-base-operand": 3,
+        "string-operation": 80
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_numeric.rs",
+      "primary_access_instructions": 54,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 51,
+        "general-address-operand": 39,
+        "gs-based": 5,
+        "implicit-stack": 3,
+        "stack-base-operand": 7,
+        "string-operation": 27
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_observations.rs",
+      "primary_access_instructions": 10,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 9,
+        "general-address-operand": 5,
+        "gs-based": 3,
+        "implicit-stack": 1,
+        "stack-base-operand": 1,
+        "string-operation": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_pair.rs",
+      "primary_access_instructions": 139,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 137,
+        "general-address-operand": 118,
+        "gs-based": 19,
+        "implicit-stack": 2
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_pipes.rs",
+      "primary_access_instructions": 54,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 43,
+        "general-address-operand": 40,
+        "gs-based": 2,
+        "implicit-stack": 11,
+        "stack-base-operand": 1,
+        "string-operation": 9
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_policy.rs",
+      "primary_access_instructions": 12,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 10,
+        "general-address-operand": 1,
+        "gs-based": 2,
+        "implicit-stack": 2,
+        "stack-base-operand": 7
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_realtime.rs",
+      "primary_access_instructions": 48,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 44,
+        "general-address-operand": 40,
+        "gs-based": 3,
+        "implicit-stack": 4,
+        "stack-base-operand": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_retained.rs",
+      "primary_access_instructions": 40,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 40,
+        "general-address-operand": 32,
+        "gs-based": 6,
+        "stack-base-operand": 2,
+        "string-operation": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "primary_access_instructions": 292,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 153,
+        "general-address-operand": 45,
+        "gs-based": 50,
+        "implicit-stack": 139,
+        "stack-base-operand": 58,
+        "string-operation": 24
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_signals.rs",
+      "primary_access_instructions": 74,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 68,
+        "general-address-operand": 44,
+        "gs-based": 20,
+        "implicit-stack": 6,
+        "stack-base-operand": 4,
+        "string-operation": 4
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_process_time.rs",
+      "primary_access_instructions": 47,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 37,
+        "general-address-operand": 24,
+        "gs-based": 9,
+        "implicit-stack": 10,
+        "stack-base-operand": 4,
+        "string-operation": 2
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_provider_emit_encoding.rs",
+      "primary_access_instructions": 6,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 6,
+        "general-address-operand": 6
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_provider_emit_image_mapping.rs",
+      "primary_access_instructions": 18,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 18,
+        "general-address-operand": 16,
+        "stack-base-operand": 2,
+        "string-operation": 6
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_provider_emit_process_entry.rs",
+      "primary_access_instructions": 348,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 348,
+        "general-address-operand": 60,
+        "gs-based": 288
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_provider_emit_stack_headers.rs",
+      "primary_access_instructions": 669,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 669,
+        "general-address-operand": 668,
+        "stack-base-operand": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_provider_emit_stack_platform.rs",
+      "primary_access_instructions": 48,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 48,
+        "general-address-operand": 47,
+        "stack-base-operand": 1,
+        "string-operation": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_provider_emit_static_image_leaves.rs",
+      "primary_access_instructions": 16,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 16,
+        "general-address-operand": 11,
+        "stack-base-operand": 5,
+        "string-operation": 2
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_provider_emit_user_context.rs",
+      "primary_access_instructions": 6216,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 6216,
+        "general-address-operand": 21,
+        "gs-based": 6195
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_ram_page_region.rs",
+      "primary_access_instructions": 36,
+      "access_kind_counts": {
+        "implicit-stack": 36
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_retained_validation.rs",
+      "primary_access_instructions": 13,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 13,
+        "general-address-operand": 12,
+        "stack-base-operand": 1
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_shell_input.rs",
+      "primary_access_instructions": 48,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 48,
+        "general-address-operand": 29,
+        "gs-based": 19,
+        "string-operation": 11
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_volatile_create.rs",
+      "primary_access_instructions": 38,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 35,
+        "general-address-operand": 35,
+        "implicit-stack": 3,
+        "string-operation": 3
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_volatile_files.rs",
+      "primary_access_instructions": 167,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 101,
+        "general-address-operand": 92,
+        "gs-based": 9,
+        "implicit-stack": 66,
+        "string-operation": 63
+      }
+    },
+    {
+      "file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "primary_access_instructions": 104,
+      "access_kind_counts": {
+        "explicit-addressed-operand": 75,
+        "general-address-operand": 69,
+        "gs-based": 2,
+        "implicit-stack": 29,
+        "stack-base-operand": 4,
+        "string-operation": 10
+      }
+    }
+  ],
+  "scope": "Complete emission-span/source-location coverage for the selected process function and listed graph potential accesses, with whole-function object-to-linked byte reconstruction. Source locations identify writers, not pointer authority, transfer semantics, admission dominance or stable mapping lifetime. Other roots/callees/unvisited instructions and production qualification remain separate",
+  "locations": 9380
+}

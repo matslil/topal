@@ -1,0 +1,498 @@
+{
+  "schema": "topal-inode-mode-full-qualification.x86_64/1",
+  "qualified_code_commit": "86c72c443be8bd993b06c71de44504071ce01a6b",
+  "qualified_code_tree": "e7fada2ee45764ea26a7e9bc4f7b0190d7f2fee5",
+  "production_inputs_unchanged_since_rust_qualification": true,
+  "vm_harness_worktree_changes": [
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/file_open_inspect.py",
+      "sha256": "3d7f83d63a5d79d93b931f1786037848655aa7d46908e157aa5fbaf9c007b590"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/library_gate.py",
+      "sha256": "f117bf8a0bea6f585d1e37fda5206acc9a17b822c8137b69deae4b00b219e857"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/numeric_gate.py",
+      "sha256": "60953bd22c1a048f84f7582bae45f2e1cd205c01ba0caa16731dee627067fa4d"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/test_ram_page_gate.py",
+      "sha256": "5ca4592f46420eac2399903a285610d3670ce1ff25847eaa185cd597ac1c3d0c"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/test_topal_gate.py",
+      "sha256": "0e526240747b8370509e4f4456c19da2c7d3cf244efba7af1df08a8479ab9ce5"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/test_inode_mode_gate.py",
+      "sha256": "1fcdce675959e7661db91377ed659f44c58ca416eed976b15d713b16bbf99a07"
+    }
+  ],
+  "runner_sources": [
+    {
+      "path": "runner-sources/cohort.py",
+      "sha256": "637a11106be76d4b9fc8cc23ef0909a1083c2233315bb683668996f5f8b7cc13"
+    },
+    {
+      "path": "runner-sources/corpus.py",
+      "sha256": "6f0e27d1e5a2a74e2f7ac682e5e7749c69ed00a925dd2f723e44707ffc5eb69c"
+    },
+    {
+      "path": "runner-sources/environments.py",
+      "sha256": "76a2581f26bbb853eae6b6b9ebcc8d23af9b66fe5d46f8d0014c63c4eb2d73f3"
+    }
+  ],
+  "lab_publication_contracts": {
+    "passed": 43,
+    "log": "lab-publication-contracts.log.gz",
+    "decompressed_log_sha256": "84de479a2166e2238e4c466cdfcb597143d566842ae3cc2b04c9d998c85a7de3"
+  },
+  "primary_kernel_sha256": "d22cb2d7500e7447a780856837d5872c072f20728755380caedb16e78bdae3b1",
+  "cohort_vm_observations": 164,
+  "inode_vm_observations": 12,
+  "total_qualified_vm_observations": 176,
+  "unmodified_busybox_workloads": 45,
+  "commands": [
+    {
+      "group": "ram_page",
+      "observations": 21,
+      "log": "ram_page.log.gz",
+      "decompressed_log_sha256": "d4ae29cc85a07a3d44e5e537bf6ce7646e35d7d38829d1c5f51bc079550fb1ba"
+    },
+    {
+      "group": "file_region",
+      "observations": 13,
+      "log": "file_region.log.gz",
+      "decompressed_log_sha256": "71659e767815e99c3262f00533594b85e628eafe36733ea23aa5cba8c6e48e8f"
+    },
+    {
+      "group": "region",
+      "observations": 9,
+      "log": "region.log.gz",
+      "decompressed_log_sha256": "0f276b1f32d2d346d63d08edf67e4c63d50357084d3727d8104060b16c44c167"
+    },
+    {
+      "group": "positional",
+      "observations": 4,
+      "log": "positional.log.gz",
+      "decompressed_log_sha256": "9664ff8f6eca1e02c1f24f8508c5312f3c44a3a6b7e68767dd49084f4a38ea71"
+    },
+    {
+      "group": "named",
+      "observations": 4,
+      "log": "named.log.gz",
+      "decompressed_log_sha256": "f8d14367e77c13441d4a3444a1024b4ae1a4438860447f0b355dc1f3a7061e7d"
+    },
+    {
+      "group": "file_open",
+      "observations": 5,
+      "log": "file_open.log.gz",
+      "decompressed_log_sha256": "93d8ed0ccffa158943aeebf79bf3af5044e7ddd6fc2a528cfd779062fbcb8f96"
+    },
+    {
+      "group": "volatile",
+      "observations": 4,
+      "log": "volatile.log.gz",
+      "decompressed_log_sha256": "f650ef74e027656f4fdaa79f5617b5b28acac4c789fdb110494eede1cd5bf996"
+    },
+    {
+      "group": "header",
+      "observations": 4,
+      "log": "header.log.gz",
+      "decompressed_log_sha256": "f10d80f8644d12e288825f7f0ec4c980a33b67c54d5acb593e74d36df36ca775"
+    },
+    {
+      "group": "dispatch",
+      "observations": 8,
+      "log": "dispatch.log.gz",
+      "decompressed_log_sha256": "c2478f14e725ea54dd273de4c9c4cfc39ab430b6b25501e90226ca92dab5972c"
+    },
+    {
+      "group": "identity",
+      "observations": 5,
+      "log": "identity.log.gz",
+      "decompressed_log_sha256": "8322e8e25f719282216d5b350a99cfe16151be3a683c385b6bc8e2305357b2c2"
+    },
+    {
+      "group": "retained",
+      "observations": 5,
+      "log": "retained.log.gz",
+      "decompressed_log_sha256": "9c7373a4c43f34260553e185f861b54c42c536984d20a45191e9b0201fec696e"
+    },
+    {
+      "group": "structured",
+      "observations": 6,
+      "log": "structured.log.gz",
+      "decompressed_log_sha256": "e51892dc5a2359b75e496b504f1f3b805f1b37d706f0e20aaff00801f34efa31"
+    },
+    {
+      "group": "corpus",
+      "observations": 46,
+      "log": "corpus.log.gz",
+      "decompressed_log_sha256": "ee08bf390e1c89ebe091d64b037705b5b06fd50d326cf7b7971d4128fd60329f"
+    },
+    {
+      "group": "environments",
+      "observations": 2,
+      "log": "environments.log.gz",
+      "decompressed_log_sha256": "2c6fdb4b078aae1bd1f9df134218a3ae0cf066c36d1a55a251a242b861e49395"
+    },
+    {
+      "group": "numeric",
+      "observations": 4,
+      "log": "numeric.log.gz",
+      "decompressed_log_sha256": "fb66de2e57f86d5a23eba34c972d64bd9d1e0ae6b884cc66427d152434c7087a"
+    },
+    {
+      "group": "library",
+      "observations": 3,
+      "log": "library.log.gz",
+      "decompressed_log_sha256": "0faf16a83cfc16b2c2f2158f339c7dac66213e39e42faca72a0c21337768d298"
+    },
+    {
+      "group": "realtime",
+      "observations": 5,
+      "log": "realtime.log.gz",
+      "decompressed_log_sha256": "4ade087ff44c5bc5de4ab834f91cf08cb76b61404eab24bb3d986928731b6e50"
+    },
+    {
+      "group": "time",
+      "observations": 3,
+      "log": "time.log.gz",
+      "decompressed_log_sha256": "6bc11959609cbceb4db57de1cd9d241b39e305b1650ce11a721f689f3231f1e1"
+    },
+    {
+      "group": "children",
+      "observations": 3,
+      "log": "children.log.gz",
+      "decompressed_log_sha256": "68004418843b92b24aace43a552db01e96ec4cb575941289c070f4418a188b70"
+    },
+    {
+      "group": "pair",
+      "observations": 4,
+      "log": "pair.log.gz",
+      "decompressed_log_sha256": "91ee88bb7a13888b1c5fe3cfde9efe6212399623c486954012cfecdec51daf23"
+    },
+    {
+      "group": "pipes",
+      "observations": 4,
+      "log": "pipes.log.gz",
+      "decompressed_log_sha256": "e0e9fbdcbd012c3cddebcbb6ba8c4b9df4fa64948948193d917dffd2ec60e9a3"
+    },
+    {
+      "group": "deadline",
+      "observations": 2,
+      "log": "deadline.log.gz",
+      "decompressed_log_sha256": "a5cf267576b8ed1c256b1653be444b6c63f4afeda3c50493da7c0ce258f57df6"
+    }
+  ],
+  "earlier_failed_attempts": [
+    {
+      "group": "ram_page",
+      "log": "earlier-attempts/ram_page-1.log.gz",
+      "decompressed_log_sha256": "b69f2d0ff4593191cba87168eb9c8bee98b2d51e494b3fbe2e2bbf816486ac7a",
+      "included_in_passed_observation_count": false
+    },
+    {
+      "group": "file_open",
+      "log": "earlier-attempts/file_open-1.log.gz",
+      "decompressed_log_sha256": "5d4dbba127cffb3d77625f92e48721da55e1af23e31ba3141a632fd6e33538df",
+      "included_in_passed_observation_count": false
+    },
+    {
+      "group": "numeric",
+      "log": "earlier-attempts/numeric-1.log.gz",
+      "decompressed_log_sha256": "c8b02ddec33e86a907b5d1cbc083143c50007ec976b9709c936481cd397a7324",
+      "included_in_passed_observation_count": false
+    }
+  ],
+  "records": [
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/tk280/stage-3/inode-qualification.json",
+      "sha256": "ef36899c2b9218dd9b3c48aa78ce445dffa7a0d8852f022b93ab43d6c0cfdb77"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-deadline-entry-filter-gate.json",
+      "sha256": "b64e8aff4ffa3334c640e3ec92071d3bad2a81506c84b19e553356096ee2c15c"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-file-open-plan-gate.json",
+      "sha256": "52564b2f2ee0bce2a753d1d7dac88a04330d89a5f0c478f21b1be7a037ffa414"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-file-position-region-gate.json",
+      "sha256": "75216d96f68d0055f2ab59544ea843c8fcc6f70b2868d70b5b2dd240b86148a2"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-kernel-source-library-gate.json",
+      "sha256": "6176e5727e30ba5d88b976efdff64b95a105b8e42225fdfa541f5766a66e6f1b"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-named-file-gate.json",
+      "sha256": "da61fded10944124e7111cf75ea620db5ff47aab6aeb274df8fcb5cb161fd70d"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-owned-numeric-runtime-gate.json",
+      "sha256": "03444dd59b76137a2f69c6b3119a1df3583df0b6376de735fe8429a3b3c27a32"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-pinned-static-busybox-gate.json",
+      "sha256": "b755a991e32c8d3052f5e0b15fc31af67ca413dae4c871ecb63686dabd6fae07"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-positional-file-gate.json",
+      "sha256": "fc29706ea1c800519d7bcdb1dc852396e961f5792233d36677749d87aec6c333"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-ram-page-region-gate.json",
+      "sha256": "44519b54135a4e3e25c192c78ea3ff860b35786d599ceff5d7745cd383c27120"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-realtime-seconds-gate.json",
+      "sha256": "f59309c5dbd6453d631fb111a715121dbf8a859117c58de89a34dfbf56de2f12"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-retained-source-identity-gate.json",
+      "sha256": "3230c1b4a6f644cd69415219b1418ddf059c3df583009c14198a9965a2035e40"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-root-region-gate.json",
+      "sha256": "93eb8251e3f12588871b2b55210b024f82c586ad7285f2cd7f83b3cb10ad6ce7"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-child-cwd-gate.json",
+      "sha256": "0a9828e167a38595a0f0d5ceefd6661dd2cb9bdb53204966d3d2f4edac7c1de9"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-child-echo-gate.json",
+      "sha256": "d0fec539446c944acb612e3882d36effeb64294c352bae90c30f657b849d61e3"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-child-offset-gate.json",
+      "sha256": "59e7b3cab7117338af27e642149fe30d722d34becab40fcedd1bca876074f2b0"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-child-repeated-gate.json",
+      "sha256": "acaffea2292bbf5e9c97eaa20e3a97c0cff2d37118c8bdeb203e3523464cfcf2"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-child-status-gate.json",
+      "sha256": "658d4aa7e4cf22cb8f0ae2ad60092bf4ac5bbaece4d36501bef6a62d1d7e37e1"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-dd-seek-gate.json",
+      "sha256": "d78bc2cc95e3585f8275154056b9c2a94cfc15889c16b480a7f685eba1b31690"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-echo-changed-gate.json",
+      "sha256": "5e2f3ea78e7fb844faf434c2574e1bd7935bf456e584163acd472017ce108888"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-echo-gate.json",
+      "sha256": "ffae00b089349d4d82a17e239042335217e5665f19e5528cf08f33367dd9a1a0"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-env-empty-gate.json",
+      "sha256": "acd14c62986c8a21eba3c238d03f6d7b39f3d6b2f9cf4afc6455e8c15af69f50"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-env-null-gate.json",
+      "sha256": "caf18587c7b6ad73010d8356277046b5dec53c53d33f5ab27b37b71d2628054d"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-exec-chain-cwd-gate.json",
+      "sha256": "ba8cc892e6dbd2977d98a2867727297372ee6ca8d022bddafc762364cfb15530"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-exec-chain-false-gate.json",
+      "sha256": "ccc46759fceaf76e602817d0fdcd601b1bff32fb127652602af3ed22fd20beee"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-exec-chain-gate.json",
+      "sha256": "20ef981b932d557460ba745a34c2247a73ef97c292c906d717ea5fec62e23ee5"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-export-token-changed-gate.json",
+      "sha256": "bca57a3cbe14c92334a61e3b4e31f7b87d85cb83cb7359eb942be87b2b82d5a4"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-export-token-gate.json",
+      "sha256": "ba5b82b2348321536707cfaa1dd661d30e7512ea449fddbcb7d2789e5edda9c6"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-false-gate.json",
+      "sha256": "cbada6b43413a7beb42dc2372482be0f7e076b60428820481808c6970b31a9e8"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-head-alias-gate.json",
+      "sha256": "e80ed270e5717cf2a57b8899ddd87f7c68995e7895a337f13c3be7aa6daa796d"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-head-file-gate.json",
+      "sha256": "a9812ca908ae286c2c59c76111ea973d99fd1d35eaa6339a96f0b31b9b39e311"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-head-normalized-gate.json",
+      "sha256": "81009bca38f91d815d9bbb225328f14381c6205f27907e353108492e04ac3d6f"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-head-stdin-gate.json",
+      "sha256": "f4c4e89e00c1cf77268e2100d986d39e32396c8c2ef8e7ef44fe7e0e1dc5f137"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-interactive-prompt-changed-gate.json",
+      "sha256": "cb580b6f2ffe2c8720a0ff0dcd2670aa216e68fef185f2d0c3df93481f20f772"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-interactive-prompt-gate.json",
+      "sha256": "56b6de385bd8f5854930447071a76232721a3f441af5f1ba7357719162964fde"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-ls-bin-gate.json",
+      "sha256": "292e03b22afaf3c20c6b53d859084aba25f70f4ecfc291edf4d49ef48a7ab0ae"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-mode-directory-gate.json",
+      "sha256": "94e34c950ecbf6cb7daaaf280be4aad4eefc2a5970b2852aea3ce6d15290aede"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-mode-numeric-gate.json",
+      "sha256": "44356d3bd1b05c07435a8898941f4720de15970f20f293d3949bde6a917ea87b"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-mode-retained-reader-gate.json",
+      "sha256": "6faf19474e645f7f27bf2ff23b13a9fba285be1df830fcaa5ca0107cb77744c0"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-mode-symbolic-gate.json",
+      "sha256": "efaeec670076bacf6f18395f92cfb91bbc392b6d5fbe443699673bfe07543d7c"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-mode-umask-independent-gate.json",
+      "sha256": "e51c63772ecda8c0e64972de011ccdaef0e3590fc4e3ff7eb85bf13eee6b3cd6"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-named-append-gate.json",
+      "sha256": "24fb6e8dcbd6deeec01a05d34610e2d43ba42b43ee6c7b5c69c6ad176bd3f8c9"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-named-list-gate.json",
+      "sha256": "cd2af5d3ef4b63759e8264b8c45d946b8a34582d75306476f942a3003d2a6198"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-named-redirection-gate.json",
+      "sha256": "101e5134f0efdcbe2912ec59e34597d1c8b389f0c606c871265ccc90fcb863c7"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-named-remove-gate.json",
+      "sha256": "ac6a7f189ab8410ead380f793d5a9edfae737bda7297bb526c303b802bab1c51"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-named-reopen-gate.json",
+      "sha256": "b4dce218dd2b9a1384759083b94bddd02d1873e30b5545693c130fea2fee1b96"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-named-truncate-gate.json",
+      "sha256": "3bb85be8cc7959d36661120ebb2baf0df688025809921ec145fe91b79985637a"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-pipe-substitution-changed-gate.json",
+      "sha256": "2a4d755e6d24dc3c81b9f90ca7e7720e62607dc391b3fd4fd0ec7efe966cf33d"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-pipe-substitution-gate.json",
+      "sha256": "8d2949303961d76d61c5b60215c385e028a028eba865390c6009205372b83731"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-pipe-substitution-large-gate.json",
+      "sha256": "7c599043366ae5d988e74d7d18f676f21d2c073f022a4640cc4fb02caade38cb"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-pwd-bin-gate.json",
+      "sha256": "31f1f14bc17b8631e56d55e13e2a09f3dcf3118029ce3d79f6a4532469059b60"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-replacement-shell-cwd-gate.json",
+      "sha256": "70aa3c9666aa0f9751e0520a61427695d0e0b10b783fbc296dda723179e1a822"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-replacement-shell-pid-gate.json",
+      "sha256": "30e4afa655a8e7b4cfc9d57282a7b8cf0e36c31998901618418cc7140fdec082"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-replacement-shell-script-gate.json",
+      "sha256": "6b97f631d69054381a3af90a15d1642dbcf0f190d822064036801709c52b7c35"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-sleep-changed-gate.json",
+      "sha256": "2d3d536af9f205612932443c3b68d89e7849e632e469d84cc66974048cdf4cdd"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-sleep-short-gate.json",
+      "sha256": "9ae20e3c53a0f3a979e56b65cf30c3da125ad1ea490568303f72869b58d91b41"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-uname-kernel-gate.json",
+      "sha256": "d198803237b5b364dc238852d5175d1cbd709d5eb2a1e37c7076aa98fa378f97"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-wc-file-gate.json",
+      "sha256": "1b012bacc54ac7a316ac2b6fc38dd12d3778c7a56b62b53f4a1003a4bc2a6513"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-runtime-wc-stdin-gate.json",
+      "sha256": "e651c1f814b3933e14ec2c7951344de726f5fa03cda3109673d9dfa231b620c7"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-source-elf64-header-gate.json",
+      "sha256": "ba11742fc97d0dafb180cc468deef7d8d46f5de27440e79b6442d9ca01028919"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-source-linux-dispatch-gate.json",
+      "sha256": "e80517d06f014e0ef1dceeb87d6ac37f314a3bce461becec420fe2de3a390867"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-source-process-identity-gate.json",
+      "sha256": "a8d651ab10190c9371d25d151336ce779e76f2cb70a9eb0e701efd021cc039b9"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-static-process-children-gate.json",
+      "sha256": "e4fbad949afd717b59697818c9f1162e7304f14fe5dc109560918bc61a46825f"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-static-process-pair-gate.json",
+      "sha256": "32b844be727e6fdbd679964af0fc86aa4dba9fd04c5643806648b1fe28df066e"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-static-process-pipes-gate.json",
+      "sha256": "40c7c11b05f1a39dca51f2b5096caff826cee331ef03f75a38e47fb756f12af9"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-static-process-time-gate.json",
+      "sha256": "c82ea708706b211f0e4ae21ebe6b4af76a2697bf2671217c99fb50e2e9c8d76e"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-structured-source-identity-gate.json",
+      "sha256": "0fa6a5cfcaa61848da412656dd556c4a27ee69e58dd99771fb908ac9e3c299d4"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-toolchain-gate.json",
+      "sha256": "44519de0730d33bb0e6b0b31f2f55454bb2583188ef8499e63fc753452bea722"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/results/topal-volatile-file-gate.json",
+      "sha256": "b432af2831008dc2d9da031d3c5e097f4378fd54783febff36bfbe2d982ce721"
+    }
+  ],
+  "rust_record": {
+    "path": "linux-kernel/tools/rust-qualification/results/tk280/final/qualification.json",
+    "sha256": "a0ea6b124b8ec3df6396408e7c53d3882964f372dd564f7301099dab8ec50312"
+  },
+  "inode_record": {
+    "path": "linux-kernel/labs/qemu/x86_64/results/tk280/stage-3/inode-qualification.json",
+    "sha256": "ef36899c2b9218dd9b3c48aa78ce445dffa7a0d8852f022b93ab43d6c0cfdb77",
+    "current_source_and_kernel_bindings_verified": true
+  },
+  "scope": "Shared inode metadata; fresh affected cohort plus current exact-kernel/source-bound inode controls; full initial acceptance remains unfinished."
+}

@@ -1,0 +1,119 @@
+{
+  "schema": "topal-linux-namespace-transactions-research/1",
+  "decision": "TK-DEC-281",
+  "architecture": "x86_64",
+  "linux_release": "7.2.9",
+  "archive": {
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.9.tar.xz",
+    "sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+    "actual_digest_verified": true
+  },
+  "source_files": {
+    "arch/x86/entry/syscalls/syscall_64.tbl": {
+      "sha256": "93e42d351de2002418bf499b9a538f189fd683e8ecd52b4adc8a0bbe59130455",
+      "archive_member": "linux-7.2.9/arch/x86/entry/syscalls/syscall_64.tbl",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "82:rename",
+        "86:link",
+        "264:renameat",
+        "265:linkat",
+        "316:renameat2"
+      ]
+    },
+    "fs/libfs.c": {
+      "sha256": "cad722b76151a17568c56b1e73fab30c5e760ef63078c78d57234bef1efe2c2b",
+      "archive_member": "linux-7.2.9/fs/libfs.c",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "simple_link",
+        "__simple_unlink",
+        "simple_rename_timestamp",
+        "simple_rename_exchange"
+      ]
+    },
+    "fs/namei.c": {
+      "sha256": "d5498d87be97efd71286e27a30c34ce92a5e059e37540de11e93d1b8aad36c4a",
+      "archive_member": "linux-7.2.9/fs/namei.c",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "vfs_link",
+        "filename_linkat",
+        "vfs_rename",
+        "filename_renameat2",
+        "getname_uflags",
+        "I_LINKABLE",
+        "LOOKUP_LINKAT_EMPTY"
+      ]
+    },
+    "include/uapi/linux/fcntl.h": {
+      "sha256": "530fa75ae9611598705eefb5ed6068f800fc26d97a2997fae4a3f7c2dadbaddf",
+      "archive_member": "linux-7.2.9/include/uapi/linux/fcntl.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "AT_SYMLINK_FOLLOW",
+        "AT_EMPTY_PATH"
+      ]
+    },
+    "include/uapi/linux/fs.h": {
+      "sha256": "983e2337b2615bf93c9ba3e44d35de4e53e2a0520961f5e4807da719e5019c4c",
+      "archive_member": "linux-7.2.9/include/uapi/linux/fs.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "RENAME_NOREPLACE",
+        "RENAME_EXCHANGE",
+        "RENAME_WHITEOUT"
+      ]
+    },
+    "mm/shmem.c": {
+      "sha256": "eb5d1e9107b287c8d9d2c1dda83aa0e573917d5b0f88dc17b55162f22718cefb",
+      "archive_member": "linux-7.2.9/mm/shmem.c",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "shmem_link",
+        "shmem_unlink",
+        "shmem_rename2",
+        "shmem_whiteout"
+      ]
+    }
+  },
+  "facts": {
+    "syscalls": {
+      "rename": 82,
+      "link": 86,
+      "renameat": 264,
+      "linkat": 265,
+      "renameat2": 316
+    },
+    "rename_flags": {
+      "NOREPLACE": 1,
+      "EXCHANGE": 2,
+      "WHITEOUT": 4
+    },
+    "exchange_incompatible_with": [
+      "NOREPLACE",
+      "WHITEOUT"
+    ],
+    "linkat_flags": [
+      "AT_SYMLINK_FOLLOW",
+      "AT_EMPTY_PATH"
+    ],
+    "same_inode_rename_is_noop": true,
+    "noreplace_existing_destination_precedes_same_inode_noop": true,
+    "initial_tmpfile_linkability_consumed_by_successful_link": true,
+    "whiteout_requires_separate_device_inode": true,
+    "link_updates": [
+      "inode.ctime",
+      "parent.mtime",
+      "parent.ctime",
+      "inode.nlink"
+    ],
+    "rename_updates": [
+      "source.ctime",
+      "target.ctime-if-present",
+      "parent.mtime",
+      "parent.ctime"
+    ]
+  },
+  "scope": "Pinned primary source research only; native error ordering, source actions and Linux/Topal VM qualification remain subsequent stages."
+}

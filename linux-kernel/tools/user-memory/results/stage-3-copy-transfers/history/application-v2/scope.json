@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "reason": "Passing five-copy observation before completion breakpoints were made conditional on copy start; not final observer source qualification",
+  "process_exit_code": null,
+  "observer_override": "../observer-v2.py",
+  "tests_override": "../tests-v1.py",
+  "scope": "Preceding diagnostic cohort, not final-source qualification; unchanged kernel bytes verified"
+}

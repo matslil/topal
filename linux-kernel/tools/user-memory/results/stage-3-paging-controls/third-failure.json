@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "source_sha256": "e7b5068a13ca094a371cdbc1c363bbde20882c785fb2c83b61b07e702073472a",
+  "exception": "AssertionError: instruction contains prefixes only",
+  "cause": "GNU lists one isolated rex.WB prefix; retain that raw prefix fragment without assigning an independent operation",
+  "native_execution": false,
+  "exact_original_stderr_retained": false
+}

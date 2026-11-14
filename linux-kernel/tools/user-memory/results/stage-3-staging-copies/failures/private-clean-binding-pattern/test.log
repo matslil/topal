@@ -1,0 +1,22 @@
+   Compiling topal-compiler v0.1.0 (/home/mats/git/topal/src/topal-compiler)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.71s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 3 tests
+test systems_user_extent::private_clean::tests::native_component_preserves_every_private_byte_and_tail ... private zero-check component: /home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794433145669180323/temporary/user-extent-private-clean-2340136-1794433153661266313
+ok
+test systems_user_extent::private_clean::tests::preserves_the_bytewise_predecessor_and_all_private_bindings ... 
+thread 'systems_user_extent::private_clean::tests::preserves_the_bytewise_predecessor_and_all_private_bindings' (2340162) panicked at src/topal-compiler/src/systems_user_extent_clean_tests.rs:18:34:
+called `Result::unwrap()` on an `Err` value: Tool("E-SYSTEMS-USER-EXTENT: private check binding changed")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+test systems_user_extent::private_clean::tests::rejects_changed_predicate_or_unreviewed_private_geometry ... ok
+
+failures:
+
+failures:
+    systems_user_extent::private_clean::tests::preserves_the_bytewise_predecessor_and_all_private_bindings
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 388 filtered out; finished in 1.39s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

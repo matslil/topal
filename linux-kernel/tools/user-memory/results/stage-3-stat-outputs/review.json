@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "stable_ids": [
+    "TK-DEC-283",
+    "TOPAL-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-REQ-SYSTEMS-USER-EXTENT-001",
+    "TOPAL-COMP-SYSTEMS-USER-EXTENT-001"
+  ],
+  "risk": "High if conditional effect/normal-return observations are mistaken for complete ownership/lifetime or kernel qualification; kernel and authoritative design bytes are unchanged",
+  "review": "Single-agent authority/source review, raw effect/frame counterexamples, separate GNU boundaries/effects/stack-order and reverse cut, fourteen offline ELF controls, actual ordinary stat/old-source/pinned-application execution and saved-source/native correspondence",
+  "model_reader_tests": 82,
+  "new_stat_model_controls": 11,
+  "coincident_first_reach_control": true,
+  "selected_inputs": 147,
+  "changed_inputs_stable_in_each_final_run": 13,
+  "static_stat_regions": 2,
+  "shared_stat_copy_instructions": 1,
+  "metadata_validator_instructions": 1140,
+  "metadata_spill_bytes": 64,
+  "maximum_nested_callee_stack_bytes": 96,
+  "native_stat_syscalls": 152,
+  "stat_queries": 88,
+  "completed_stat_copies": 60,
+  "refused_stat_output_admissions": 20,
+  "lookup_errors_without_registered_output_events": 8,
+  "stat_variants": 8,
+  "conditional_index_sites": 83,
+  "conditional_index_access_instructions": 310,
+  "remaining_sites": 8,
+  "failures": [
+    "Initial stat run failed on duplicate first-reach bookkeeping from two coincident read-only observers; exact captured inputs and failure retained",
+    "Initial effect decoder rejected reviewed SUB opcode 4c29e0; register ADD/SUB effects were reviewed and tested before native validation",
+    "Initial GNU projection applied the stat body decoder to the captured-GS prelude; the failed reader is retained and the exact reviewed GS instruction is checked separately",
+    "Initial frozen replay stopped because the archive omitted process-byte-origins.json; the failed origin log and replay reader are retained, and the exact inherited map is now referenced"
+  ],
+  "earlier_positive_scope": "The 34-call-per-execution stat run is retained separately; the final fixture also queries stdin and a directory descriptor",
+  "safeguard_notices": [],
+  "kernel_production_unchanged": true,
+  "core_language_or_authority_meaning_changed": false,
+  "remaining": [
+    "Actual private/table/stack/backing/output ownership and nonaliasing",
+    "Continuous lifetime and full helper/entry/callee/return/fatal/exception guarantees",
+    "Eight sites without intervals and all fallback obligations",
+    "Canonical clean source/native/boot reconstruction and full original kernel acceptance"
+  ]
+}

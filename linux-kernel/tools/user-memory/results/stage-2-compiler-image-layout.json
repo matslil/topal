@@ -1,0 +1,170 @@
+{
+  "closed_source_archive": false,
+  "commands": {
+    "Rust-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.3857292216271162
+    },
+    "default-ABI": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "exit_code": 0,
+      "seconds": 0.1859379205852747
+    },
+    "format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 1.1079031908884645
+    },
+    "image-layout": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_kernel_image_layout::tests",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "seconds": 85.70759122725576
+    },
+    "process-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.0012752218171954
+    },
+    "user-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.9701598836109042
+    },
+    "workspace": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "seconds": 0.1411296660080552
+    }
+  },
+  "compiler_cases": 5,
+  "frozen_replay": false,
+  "layout": {
+    "address_limit": 1073741824,
+    "image_leaf_storage_bytes": 12288,
+    "kernel_sha256": "4b12d214683e5a3794c4f9af413585a1166d80954e0006fe062eb8106494fb95",
+    "large_granule": 2097152,
+    "minimum_granule": 4096,
+    "schema": "topal.kernel-image-layout.x86_64/1",
+    "spans": [
+      {
+        "end": 2101248,
+        "role": "immutable",
+        "start": 2097152
+      },
+      {
+        "end": 44978176,
+        "role": "mutable",
+        "start": 8388608
+      },
+      {
+        "end": 45010944,
+        "role": "immutable",
+        "start": 44978176
+      },
+      {
+        "end": 46272512,
+        "role": "code",
+        "start": 45010944
+      },
+      {
+        "end": 46276608,
+        "role": "immutable",
+        "start": 46272512
+      }
+    ],
+    "subdivided_regions": [
+      2097152,
+      44040192,
+      46137344
+    ]
+  },
+  "local_run": "linux-kernel/.cache/x86_64/compiler-image-layout-stage-2/run.json",
+  "native_execution": false,
+  "passed": true,
+  "process_models": 83,
+  "protected_context": false,
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3351339008",
+    "memory.peak": "158572544",
+    "memory.swap.max": "0"
+  },
+  "scope": "Fresh compiler source/native reconstruction and descriptive image subdivision only; no VM, native activation, ownership or complete root sizing",
+  "seconds": 90.53901435341686,
+  "user_models": 271,
+  "watched_inputs": 764,
+  "watched_inputs_unchanged": true,
+  "watched_set_sha256": "ed4baebbfad181ffda4b11a0365f7c11a620307bb23c7250198ef03f3f2146a7"
+}

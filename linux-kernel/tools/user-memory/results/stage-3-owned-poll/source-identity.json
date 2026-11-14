@@ -1,0 +1,32 @@
+{
+  "base_commit": "bff899f279765aaace90d67ac013fc5a1d4b922b",
+  "selected_executable_inputs": {
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "1c1bbfde2003891ab575b8304bf90fdf143626b366161cbdaa5c7b280efe6a57",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "862154d74826d9970ee4e41fe91950113685e13d5378c102d788173b96c15050",
+    "src/topal-compiler/src/systems_time_checks.rs": "02a366b2826cbc49c7f65adacc64765a4de161fe962b16f9c97cfac9104bfa6c",
+    "src/topal-compiler/src/systems_user_extent.rs": "4e489d9cf30c8b9f0b6c41d24fcc886120f5ba7c7caa2109f0e708d3b85a0c56",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "91351e910cc95d99ec4a3c8461517c1e95b6af60920dae7873d86d2f20275da2",
+    "src/topal-compiler/src/systems_process_entry_read_exec.rs": "d57d5f558b4888928c3e5711bd1a714beaef62eb45e6d913bdbc4d1d13cceb20",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c": "4350abed34fe56b3961d52ec3d73532a03de56320cf08f84d0cac5688538d70b",
+    "linux-kernel/labs/qemu/x86_64/user_extent_startup_cases.c": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+    "linux-kernel/labs/qemu/x86_64/user_extent_file_cases.c": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+    "linux-kernel/labs/qemu/x86_64/user_extent_shell_cases.c": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_command_cases.c": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+    "linux-kernel/labs/qemu/x86_64/user_extent_poll_cases.c": "4cfcb2ad6874f7670948c0b2786cabab1ad26e7246c48fac24d11a8333541e79",
+    "linux-kernel/labs/qemu/x86_64/user_extent_shell_observer.py": "6ba36c58ec144d748b840b957932c49d8535643ad82ab0b58b764779d0329200",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "e6b02b0874b52e9c1182d34a291f83aa73726dab7458158445945ebb3b765dfa",
+    "linux-kernel/labs/qemu/x86_64/user_extent_exec_observer.py": "515a9b2bf726f36416ea2d86291595950cfaeaf5bf307985450fbb38aeccb5f6",
+    "linux-kernel/labs/qemu/x86_64/user_extent_signal_observer.py": "fc6fdc9f205d1a26d88518e8e7d644e533b6a94076e1b46c1cc37749760ffe42",
+    "linux-kernel/labs/qemu/x86_64/user_extent_poll_observer.py": "fb638dafca87766a1cd11542b1ddb2771a821fe1113e85c6033793a37b7fd1a2",
+    "linux-kernel/labs/qemu/x86_64/user_extent_application_inspect.py": "2dc8305d651b9d0f680ff8c95f817d22cdbfd08c3ba8e86b4cbb207c022fdee3",
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": "3846966e1d413a7508507baf243496a9766137c9eb5d7624ebc7eb50da9eae4b"
+  },
+  "authority_inputs": {
+    "docs/systems-profile.md": "c2549736eac0f7e7c09ed1c0a669f6e2d140ea758728cf63b3c11674257b205f",
+    "se/requirements.md": "0e1ad7bfd9a01b014e9455a2d938e64715fee92db61358d7b09020f5d5a4ca8b",
+    "spec/systems-profile.md": "c528834ee0401b1352cb7b2fd28029fbc4487f1cc7cfb582c99e4a38124e63fe",
+    "src/topal-compiler/se-requirements.md": "a44bb5abe02f2d5b23117bd9e71dc7f5155ed061ccc52b55213e36e8755c0213",
+    "linux-kernel/design/owned-user-extents.md": "d746ee4732c8ffa48e69e62156b134cc5a8a08da713c49a0cff443f893c5f693"
+  },
+  "scope": "Nineteen selected executable/test inputs and five authority inputs. Final focused native execution uses the formatted producer; three earlier matching-kernel runs use the retained pre-format producer. Not a complete producer census, clean-checkout run or cold reconstruction."
+}

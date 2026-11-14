@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "gdb",
+    "-nx",
+    "-batch",
+    "-x",
+    "linux-kernel/.cache/x86_64/process-accesses-readback/verify-graph.gdb"
+  ],
+  "exit_code": 0
+}

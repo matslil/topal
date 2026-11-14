@@ -1,0 +1,6 @@
+{
+  "bytes": 2024544,
+  "sha256": "381f3dfe7cac3719ae02ee40206a39edb1ec4961e91f9f03e5be33ce513324dd",
+  "boot_resource_sha256": "e692bbea4bf9b1e68468d2cf2647f8d1f2ee9a4d17dd79ad5d55db2f3009d8b2",
+  "scope": "Actual unchanged application/boot identities; pinned third-party bytes remain outside Git"
+}

@@ -1,0 +1,134 @@
+{
+  "files": [
+    {
+      "path": "boundary.o",
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    {
+      "path": "bzImage",
+      "bytes": 45232800,
+      "sha256": "dde754f580fe7784a0238c90f34b07984e0883f8a4ad815e76c0176fd1c9eae5"
+    },
+    {
+      "path": "command-cases.o",
+      "bytes": 7848,
+      "sha256": "fff869aa219d79d7b30d59ca2037564ff1972aca4fb04a943b2e8fb05ff5d9f3"
+    },
+    {
+      "path": "controller.o",
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    {
+      "path": "dispatch.o",
+      "bytes": 12832,
+      "sha256": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457"
+    },
+    {
+      "path": "extent-bridge.o",
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    {
+      "path": "extent-callers.o",
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    {
+      "path": "extent.o",
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    {
+      "path": "file-cases.o",
+      "bytes": 16048,
+      "sha256": "d7f610bcff12e47a25826a42b79d8b8ca112f364940d0f97180fac5ac43aa975"
+    },
+    {
+      "path": "gateway.o",
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    {
+      "path": "initramfs.cpio",
+      "bytes": 2037200,
+      "sha256": "d920843ab8b486cfc11503cf2cd839cd26ad632585b9f979e700bf61dfb67d77"
+    },
+    {
+      "path": "kernel.elf",
+      "bytes": 1665328,
+      "sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6"
+    },
+    {
+      "path": "owner.o",
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    {
+      "path": "predecessor-gateway.o",
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    {
+      "path": "predecessor-provider.o",
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    {
+      "path": "provider.o",
+      "bytes": 1061624,
+      "sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359"
+    },
+    {
+      "path": "root.o",
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    {
+      "path": "runtime.o",
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    {
+      "path": "shell-cases.o",
+      "bytes": 13576,
+      "sha256": "e789de6e2b389c481af8f2f8fc51ea93b06b2810f1e16a8caef316f63bbcfa4e"
+    },
+    {
+      "path": "source-cases.o",
+      "bytes": 8784,
+      "sha256": "198c8f6ec920c74802d04c7923dd5a47f06b12a59ca2df0ca8830ab86d040227"
+    },
+    {
+      "path": "source-syscall.o",
+      "bytes": 1056,
+      "sha256": "158f2f856adfab794a41c758848e8b009979233401e90c7780b190d9dc966111"
+    },
+    {
+      "path": "source-user.elf",
+      "bytes": 37760,
+      "sha256": "c28a9f0af52e235d6e0be1119960325026a444c70c1168cf2bc8dd5005bad1f2"
+    },
+    {
+      "path": "source.o",
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    },
+    {
+      "path": "startup-cases.o",
+      "bytes": 13920,
+      "sha256": "6dbc959b28605baf7fa203e76e9826146daed56eb6cdeb2e9d4a6dcd5c4d7dc8"
+    },
+    {
+      "path": "static-elf-abi-fixture.elf",
+      "bytes": 2024544,
+      "sha256": "89cf2e7d208044fc7f91da2ba6964a13e562be586e3cfa503b47275cde281cba"
+    },
+    {
+      "path": "target.o",
+      "bytes": 27320,
+      "sha256": "b7abc95d8f6d85a69adb77ff0759193b40642e74cb29350e0908e80ce47a0a2e"
+    }
+  ]
+}

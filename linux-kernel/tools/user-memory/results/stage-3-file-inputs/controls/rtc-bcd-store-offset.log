@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 224, in <module>
+    if __name__=='__main__': audit(Path(sys.argv[1]).resolve())
+                             ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 189, in audit
+    clocks[clock_entry]=clock_contract(body,nodes,roots,successors,predecessors,clock_entry)
+                        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 111, in clock_contract
+    leaf=leaf_contract(body,nodes,roots,successors,predecessors,call_target(s))
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_file_inputs.py", line 80, in leaf_contract
+    bcd.take('498985000000004981c5080000004981c6ffffffff4981fe00000000')
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_staging_copies.py", line 67, in take
+    assert self.body[self.at:self.at+len(raw)] == raw, ('staging slice encoding',self.at,raw.hex())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('staging slice encoding', 179454, '498985000000004981c5080000004981c6ffffffff4981fe00000000')

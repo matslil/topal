@@ -1,0 +1,36 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 1 test
+test systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries ... actual frame source root: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2300201-1794416205747824472
+
+thread 'systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries' (2300202) panicked at src/topal-compiler/src/systems_tail_nat_owner_tests.rs:20:5:
+guest: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2300201-1794416205747824472
+warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-2300201-1794416205747824472/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.
+Traceback (most recent call last):
+  File "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py", line 523, in <module>
+    harness.main(
+    ~~~~~~~~~~~~^
+        work_name='source-user-extents',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        serial_dialogue=DIALOGUE*4 if component.get('mode')=='serial' else (),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/mats/git/topal/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py", line 303, in main
+    assert time.monotonic() < deadline, f'full-root guest timed out ({guest_timeout_seconds}s)'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: full-root guest timed out (300s)
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 387 filtered out; finished in 327.07s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

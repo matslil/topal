@@ -1,0 +1,679 @@
+{
+  "passed": true,
+  "schema": "topal.saved-boot-entry-stage/1",
+  "results": {
+    "boot": {
+      "bytes": 12695,
+      "sha256": "5a14377cb7aaf7d786a48bb4c73554479f603867b83dbb311496ee64aab4cbdb"
+    },
+    "graph": {
+      "bytes": 83945132,
+      "sha256": "60e2a98f587049d480a1f0f78dc8ef82994ca6976831a7215d0fc17d9baf8ce3"
+    },
+    "reached_instructions": 206533,
+    "reached_bytes": 1230917,
+    "roots": 19,
+    "functions": 995,
+    "tables": 6,
+    "table_entries": 98,
+    "helpers": {
+      "88215": false,
+      "94687": true
+    },
+    "previously_unmatched_control_reached": false,
+    "qualification_complete": false
+  },
+  "upstream_inputs": {
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/native/kernel.elf.gz": {
+      "compressed": {
+        "bytes": 365990,
+        "sha256": "fa4cf5d8736a8dd916a05b750fa0ba7fc1db6573cebdd1faa45b96e145ed2f68"
+      },
+      "content": {
+        "bytes": 1678416,
+        "sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/native/process-access-inventory.json.gz": {
+      "compressed": {
+        "bytes": 512970,
+        "sha256": "9bfcf4087ef926df9a8156563aff97f56f168dce46866ec86e42f5a1ebaa6e85"
+      },
+      "content": {
+        "bytes": 10383656,
+        "sha256": "3210b350935fdb275e5e73995d7b55aeceea38892ec7d4062e9766c8a09be634"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/native/callback-bindings.json.gz": {
+      "compressed": {
+        "bytes": 49609,
+        "sha256": "907724d0b44e3079a532edcda9e8dae38d39dd0ae26b1991273481fb86593008"
+      },
+      "content": {
+        "bytes": 332040,
+        "sha256": "ebe2aa3e87491bb3486fb29f9552af28674a623c109aef0d8d21395d99fa5e12"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/process-memory/results/stage-3-interface-callers/native/poll/bzImage.gz": {
+      "compressed": {
+        "bytes": 326429,
+        "sha256": "3b5bd53248ca4b6d4f01ae42e5eeabfdb63649e05717742f9c95deaf3fd89274"
+      },
+      "content": {
+        "bytes": 45243376,
+        "sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b"
+      },
+      "manifest_sha256": "0d5697ba20e1ceddf5c12187daaa82b21f34872e1e04325edc5df020224cf7ea"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/matrix/llvm.stdout.log.gz": {
+      "compressed": {
+        "bytes": 1648468,
+        "sha256": "f6b00eee1b8a47e9a274e9a4b08b8ca3257ece2d86683413f46103af2c77069f"
+      },
+      "content": {
+        "bytes": 17752237,
+        "sha256": "9719e4ea2c674bba55ffb76e5a7b4d374476c1ee93c00768835c57e795a791eb"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/matrix/gnu.stdout.log.gz": {
+      "compressed": {
+        "bytes": 1677598,
+        "sha256": "8d69c212bab26b41886927344befc58e7b36b34a1d4ee5ae035660d455440e4d"
+      },
+      "content": {
+        "bytes": 22149020,
+        "sha256": "7cdc04b53a37ac8dcc217092c1005859fc85ed12c7de6a369539d82e0abf8039"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/matrix/45864290-llvm.stdout.log.gz": {
+      "compressed": {
+        "bytes": 566,
+        "sha256": "cd3ec4dfff7e34a18ab05bd8aae756bfd64c99373d69d04be3838499e3d50f6f"
+      },
+      "content": {
+        "bytes": 1520,
+        "sha256": "9a4f5fd358d398a8fb8c4fbd2e6d04d59b46d79c9f4ac0a6b65c25af1a8c12de"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/matrix/45864290-gnu.stdout.log.gz": {
+      "compressed": {
+        "bytes": 584,
+        "sha256": "43e454fe6b72d74fc8c906b89a003562080a838e40d57e42e624671067f3ce77"
+      },
+      "content": {
+        "bytes": 1924,
+        "sha256": "de0617b61b8632b0fd97814bf791f971a1dfda15e2d35777e073a8c1703778f9"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/matrix/45841237-llvm.stdout.log.gz": {
+      "compressed": {
+        "bytes": 423,
+        "sha256": "c12b9e92cedd6dfdab6a610cf81d05bfab94dd536e3c77135fdaeaeb34bd4f93"
+      },
+      "content": {
+        "bytes": 1441,
+        "sha256": "f9f3680b7fc62f1b0b6a9d0699609e4be223964d9eeedc0421d2bb0a95e2b99c"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    },
+    "linux-kernel/tools/user-memory/results/stage-3-callee-graph/matrix/45841237-gnu.stdout.log.gz": {
+      "compressed": {
+        "bytes": 486,
+        "sha256": "4e49ded4a64da46b0c5f528e5c8da2314227225e891831e5c0e5c1fb116706f0"
+      },
+      "content": {
+        "bytes": 1987,
+        "sha256": "539509e23b155abe672ff09c13500ca7b24275354da0aedd344485013d9dd859"
+      },
+      "manifest_sha256": "45227f2173edcfad8a5e9d083dd0b2c0da05bd9bc49b553579a728941c9ebb3e"
+    }
+  },
+  "source_hashes": {
+    "linux-kernel/tools/process-memory/archive_allocation.py": {
+      "bytes": 10639,
+      "sha256": "62fd06d14735ffd7925732788a18d172b7d7ffff51f2b9d0ed9e90a5455dd923"
+    },
+    "linux-kernel/tools/process-memory/archive_applications.py": {
+      "bytes": 15021,
+      "sha256": "37a00fa7de82fb0d6c5709b9f1fe94786882d89c5410c90465539fae80118c98"
+    },
+    "linux-kernel/tools/process-memory/archive_caller_coverage.py": {
+      "bytes": 12923,
+      "sha256": "31d2ab738d8b908a3d5db71a45f50edd6bd5fde7b82b09371b96c8e1d687661f"
+    },
+    "linux-kernel/tools/process-memory/archive_cancel.py": {
+      "bytes": 10842,
+      "sha256": "38899e9ffec884cf8ce2e23cf5c93a3f0acca592b903ffb000534fd73b7dab4a"
+    },
+    "linux-kernel/tools/process-memory/archive_geometry.py": {
+      "bytes": 10783,
+      "sha256": "300e349eb9fa1b8db5add982b80287c3b0f6e55e5d1493cbab2279ad04a30d1d"
+    },
+    "linux-kernel/tools/process-memory/archive_interfaces.py": {
+      "bytes": 13668,
+      "sha256": "ff729625ae7bccd4767f0d8f30c5bc66dc41d24022f69e413f56627ad62f7cec"
+    },
+    "linux-kernel/tools/process-memory/archive_policy_failure.py": {
+      "bytes": 9712,
+      "sha256": "5df77194a752712a6e3c733dbd38f88b472c5ceade74fd08954b02a01f27a2cc"
+    },
+    "linux-kernel/tools/process-memory/archive_process.py": {
+      "bytes": 12265,
+      "sha256": "8bb64d08ad925cfd92db77c3a987139bc76920edac6bb08b5cf91e748cc5b5fc"
+    },
+    "linux-kernel/tools/process-memory/archive_publication.py": {
+      "bytes": 21107,
+      "sha256": "a885a4dd05d2fb026d5063eba0c9e3f6c049990e6602910a8c17cab21f2074ea"
+    },
+    "linux-kernel/tools/process-memory/archive_relationship.py": {
+      "bytes": 10963,
+      "sha256": "c158ac8a8f259743926616859b34d667b749636bd35e78b9127cbc73123182b6"
+    },
+    "linux-kernel/tools/process-memory/caller_coverage.py": {
+      "bytes": 3469,
+      "sha256": "c86957c2db1208484634a2c2f4a4479ec0423328f51f372cbd48d67d9909c7fb"
+    },
+    "linux-kernel/tools/process-memory/caller_retirement.py": {
+      "bytes": 6219,
+      "sha256": "5ee5f38b087d76cc947ac8e80b030798ba89aeabf12f5cc5972d84473b35efac"
+    },
+    "linux-kernel/tools/process-memory/model.py": {
+      "bytes": 12994,
+      "sha256": "e4983eaa8c58c6cd9920af00e3084aa4f1223a2df3d8726f69ee7206fa1ff6d1"
+    },
+    "linux-kernel/tools/process-memory/policy_failure.py": {
+      "bytes": 8663,
+      "sha256": "091a05ebfe737ce3a99f10f9884d1428c6ceb244e40aa4ad676d0fc6281fc74b"
+    },
+    "linux-kernel/tools/process-memory/preparation_native.py": {
+      "bytes": 7637,
+      "sha256": "41c775cfb60bbd5e9e9005bf4cf20f82b1e5496a34aad40c71ca60a7f29e0615"
+    },
+    "linux-kernel/tools/process-memory/process_native.py": {
+      "bytes": 17466,
+      "sha256": "fc03bcb20b0aa4ad4c249294813f5807e531d46f8f34328283d583530a281ee5"
+    },
+    "linux-kernel/tools/process-memory/publication.py": {
+      "bytes": 10891,
+      "sha256": "2777caf924e0386ce35a00908e2092a7621f802e5714e426cea6caa6e2c45d22"
+    },
+    "linux-kernel/tools/process-memory/qualify.py": {
+      "bytes": 6874,
+      "sha256": "678af9ca7c4c6408f3ff632d6d10303aa2e5be5f2802a42e9a2e41a0edb7a93e"
+    },
+    "linux-kernel/tools/process-memory/readback_allocation.py": {
+      "bytes": 9896,
+      "sha256": "6968ecd5cf4c8c7701b938fbc3def54564c152b018f117f606c37dae9f353647"
+    },
+    "linux-kernel/tools/process-memory/readback_applications.py": {
+      "bytes": 13061,
+      "sha256": "1c68726dc22596db3f437d56f7008a3c34f4286b482d5246dd79205fada7b324"
+    },
+    "linux-kernel/tools/process-memory/readback_caller_retirement.py": {
+      "bytes": 6165,
+      "sha256": "f8b6ce6fa6dbb36f7153673b8955861577a7a012e029b9aa15b8903b67824cbf"
+    },
+    "linux-kernel/tools/process-memory/readback_cancel.py": {
+      "bytes": 10133,
+      "sha256": "b8aba5d7a817d93da32e2f18b9d838667099bc7043c4e6d5cd5ae3e68f72746c"
+    },
+    "linux-kernel/tools/process-memory/readback_exec.py": {
+      "bytes": 5026,
+      "sha256": "702f094e97fa8b5b4c73083a8195cc42369586661569e07689cf1f2d9ba4d135"
+    },
+    "linux-kernel/tools/process-memory/readback_geometry.py": {
+      "bytes": 9692,
+      "sha256": "98931a8990420aae728f1cb3a9390fd7e232f1e0cd01c7706218b4e397ab48f2"
+    },
+    "linux-kernel/tools/process-memory/readback_interface_callers.py": {
+      "bytes": 4654,
+      "sha256": "4adaf02bd86ca4d611326d33ba02ef58f070558d85d66f7acaaa4d3ec7d92277"
+    },
+    "linux-kernel/tools/process-memory/readback_interfaces.py": {
+      "bytes": 16125,
+      "sha256": "a293e75a9706328125a5f0547c31173d7df3fc5fdc947c9a540111963bc56dd4"
+    },
+    "linux-kernel/tools/process-memory/readback_policy_failure.py": {
+      "bytes": 16126,
+      "sha256": "56853857c75ec759bf3b8c90c08ea238f8024390ecb95c3cc83f6587d9fda98f"
+    },
+    "linux-kernel/tools/process-memory/readback_prelude_stat.py": {
+      "bytes": 9547,
+      "sha256": "69e2a25ac1c1ef3bbe7b96bea72ee8ed8075a6538260a8fc2c71bab462b8c28a"
+    },
+    "linux-kernel/tools/process-memory/readback_preparation.py": {
+      "bytes": 15178,
+      "sha256": "b5f9ef46d31565dcbf72a5dd96cdcc205cbe30452558d1d052ec47d532e2858c"
+    },
+    "linux-kernel/tools/process-memory/readback_process.py": {
+      "bytes": 9401,
+      "sha256": "aaab11926bf2600e2a873e18291657197df6548cb0b3b03654ef213b79cdb73b"
+    },
+    "linux-kernel/tools/process-memory/readback_publication.py": {
+      "bytes": 14582,
+      "sha256": "a5cd795fdb6fd5d1872d0e07eb01c9b15e615ca329b26a0e4004718730a55b38"
+    },
+    "linux-kernel/tools/process-memory/readback_relationship.py": {
+      "bytes": 12851,
+      "sha256": "2300ac58b8eda20b1fbba4954366b1118ecf74185134fc16cd15b9e50e0d3282"
+    },
+    "linux-kernel/tools/process-memory/replay_allocation.py": {
+      "bytes": 3340,
+      "sha256": "9567af0ae56165512e5eca2b671472b8e9239a07617afdab6b11ebd202c3b243"
+    },
+    "linux-kernel/tools/process-memory/replay_applications.py": {
+      "bytes": 7984,
+      "sha256": "a6d4fc1ea7a4d7f5dfcf481b12eb50562a0b60c795d94a2c07e6f0681f2b924e"
+    },
+    "linux-kernel/tools/process-memory/replay_cancel.py": {
+      "bytes": 3149,
+      "sha256": "dbdb254f487d56b8eb81246137b5c603ddf720135d24b035d20adc548a426a71"
+    },
+    "linux-kernel/tools/process-memory/replay_geometry.py": {
+      "bytes": 3770,
+      "sha256": "49031e03ad483565384afe5d2d852313e89ef63eddc3ba8e97c7ed470139c474"
+    },
+    "linux-kernel/tools/process-memory/replay_interfaces.py": {
+      "bytes": 4792,
+      "sha256": "25098f74444ee8ecc8f76890e40314c1823ba6c2f276af99ad3b1bfdc92348a7"
+    },
+    "linux-kernel/tools/process-memory/replay_preparation.py": {
+      "bytes": 3378,
+      "sha256": "83c435d65b7076096b53ff515b73ebd2b68838415fc1730514c2839743418dd9"
+    },
+    "linux-kernel/tools/process-memory/replay_process.py": {
+      "bytes": 3510,
+      "sha256": "5342d5361aa0e9a148559b719080bedb45a864a443ab4a27a63ce91184a2ac1c"
+    },
+    "linux-kernel/tools/process-memory/replay_publication.py": {
+      "bytes": 5762,
+      "sha256": "67ace8e1da82d9c694f1ee5d369173765994d38106c5e61e9fdfc6eeab72a468"
+    },
+    "linux-kernel/tools/process-memory/replay_relationship.py": {
+      "bytes": 3921,
+      "sha256": "6c2e9773445ba1434cfa65132db33d4df7b84a3ddd718131498665b9fc0659bd"
+    },
+    "linux-kernel/tools/process-memory/run_policy_failure.py": {
+      "bytes": 10257,
+      "sha256": "ee9602b0939fcf6ea895c170937d89129144f951bf10dce42f6cde0c0e0e9766"
+    },
+    "linux-kernel/tools/process-memory/test_application_serial.py": {
+      "bytes": 2670,
+      "sha256": "38f3a351f02852da59d1e6b7306af26f1739f5302be4f16c1630ccb348db6dfe"
+    },
+    "linux-kernel/tools/process-memory/test_caller_coverage.py": {
+      "bytes": 5444,
+      "sha256": "c5c7e39e66867bebd02f2bcd86e2d0d69dd081deb19c2e19c49e7053fb784d45"
+    },
+    "linux-kernel/tools/process-memory/test_caller_retirement.py": {
+      "bytes": 6468,
+      "sha256": "6860688a24cd3a3dc56cf3aa0cc5f70dc00f608bf7edeb770450a825d74c17b3"
+    },
+    "linux-kernel/tools/process-memory/test_interface_observer.py": {
+      "bytes": 4534,
+      "sha256": "6323de24cc659f324b96f341007ec650673b4bf97c01c86db575500a890eb605"
+    },
+    "linux-kernel/tools/process-memory/test_model.py": {
+      "bytes": 16446,
+      "sha256": "037a463ba5a587e0daecb8fd432ab4269654e4ba3d2498c9f0884d26ab5fcb9c"
+    },
+    "linux-kernel/tools/process-memory/test_physical_catalog.py": {
+      "bytes": 2836,
+      "sha256": "9ec5c0be3ebd8a61cf9c26db06ae732b1bc86c2267cb4936bf5e8104aca2f6cd"
+    },
+    "linux-kernel/tools/process-memory/test_policy_failure_profile.py": {
+      "bytes": 3153,
+      "sha256": "a5bce3207979a5ea3e9a71ef894bf8853a009027d038e9b991ed6a3ea693eaa7"
+    },
+    "linux-kernel/tools/process-memory/test_publication.py": {
+      "bytes": 10079,
+      "sha256": "a6578947d286a889e28940ff331e87fa2c0a9d8603340dbfe0a5a705543630d6"
+    },
+    "linux-kernel/tools/process-memory/test_publication_capture.py": {
+      "bytes": 4891,
+      "sha256": "2fe6d024e27aa7755ba78d509e7951ed690425bc7d005e4462e78df9c0bbd900"
+    },
+    "linux-kernel/tools/process-memory/test_publication_completion.py": {
+      "bytes": 2327,
+      "sha256": "a9753eac9689013c9310e47ea7737557c258f456017ee8f7c3403de0ab5f17a1"
+    },
+    "linux-kernel/tools/process-memory/test_publication_transport.py": {
+      "bytes": 1746,
+      "sha256": "8cb922a08f8ab6b221264e0135eea63fbab2a20303355202db2cde53a9faebd2"
+    },
+    "linux-kernel/tools/process-memory/trace_check.py": {
+      "bytes": 3321,
+      "sha256": "9296070cc3e6d4ccf8deec07076c56f4f77d0fda31629108b4cd7918c480f4b3"
+    },
+    "linux-kernel/tools/user-memory/alias_snapshot.py": {
+      "bytes": 5828,
+      "sha256": "2588bf12d917e23e83da034d99ba8f016cb9f286d6fa388666b4720f541179d0"
+    },
+    "linux-kernel/tools/user-memory/audit_additional_scalars.py": {
+      "bytes": 13397,
+      "sha256": "98ed00619c2dd00c0012865aa15a7377eb142ce6afedb050fcc1e0b303f5489d"
+    },
+    "linux-kernel/tools/user-memory/audit_copy_transfers.py": {
+      "bytes": 17514,
+      "sha256": "f0c91de04e0afe0f4ecaa7861d81bebb9b537ac18bfc928789fecd25fe4e4105"
+    },
+    "linux-kernel/tools/user-memory/audit_file_inputs.py": {
+      "bytes": 12879,
+      "sha256": "19f23f88d0328a928e98fbd9efe62160b68524353202a5270d22273a01a68003"
+    },
+    "linux-kernel/tools/user-memory/audit_fixed_transfers.py": {
+      "bytes": 14007,
+      "sha256": "7408be75dda8cb7c36e65b581d33e40efce0fdc4a5582143df6557327d40953d"
+    },
+    "linux-kernel/tools/user-memory/audit_mapping_aliases.py": {
+      "bytes": 6478,
+      "sha256": "23ab8028752200d032a91e2e356391768d686f021d7f28809582b9cc91d169e4"
+    },
+    "linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py": {
+      "bytes": 12193,
+      "sha256": "dcf30af63cdad04f1ad1fd6a26058351c7fd07d9e706d38465427604ae67cafd"
+    },
+    "linux-kernel/tools/user-memory/audit_pipe_loops.py": {
+      "bytes": 7068,
+      "sha256": "db9785c04c22e84016c339060000574521e083845b619cd161a65252b51e3f75"
+    },
+    "linux-kernel/tools/user-memory/audit_random_outputs.py": {
+      "bytes": 10830,
+      "sha256": "bae675df9145759ae8902f78804a8dcb75b4d7482c9fdcf7b8c0fbbd8e04b5c9"
+    },
+    "linux-kernel/tools/user-memory/audit_serial_prefix.py": {
+      "bytes": 7363,
+      "sha256": "79e034f4d20676635dbfc70c526a749b2936497d8b61d0e23292fcbac26db6a1"
+    },
+    "linux-kernel/tools/user-memory/audit_stack_retirement.py": {
+      "bytes": 5644,
+      "sha256": "08025fad0776dc95996839452484f16817ce32b3c8d6b1127a305ef40c5ae02c"
+    },
+    "linux-kernel/tools/user-memory/audit_staged_transfers.py": {
+      "bytes": 15102,
+      "sha256": "731a78cba5ea243387beb7284b521ec58bde2ed2284c84dcbff69901b1f5932e"
+    },
+    "linux-kernel/tools/user-memory/audit_staging_copies.py": {
+      "bytes": 13698,
+      "sha256": "6fec74012264fdf5815f86c3f30c6180bb9dccc2ad56071b31ed1b8ea2d8317b"
+    },
+    "linux-kernel/tools/user-memory/audit_stat_outputs.py": {
+      "bytes": 15479,
+      "sha256": "24e87a91711b75f013c725b482eb154ee1f04daeea0d045686589841a9dacb73"
+    },
+    "linux-kernel/tools/user-memory/audit_transfer_guards.py": {
+      "bytes": 8416,
+      "sha256": "e5bb7a6c1062407f848aed47059f60b2dc34287f91629af9bfe6a1f596f07356"
+    },
+    "linux-kernel/tools/user-memory/audit_warning_inputs.py": {
+      "bytes": 8696,
+      "sha256": "5c1cb12795ffd333eabb25f58fce4ac968d8f87a9103ddeb0d22f167780547d8"
+    },
+    "linux-kernel/tools/user-memory/boot_layout.py": {
+      "bytes": 6813,
+      "sha256": "f890a78ae94532b8cddad64037eed735291c90b109dafc3b7f56e989dee83cdd"
+    },
+    "linux-kernel/tools/user-memory/callee_control.py": {
+      "bytes": 11224,
+      "sha256": "da5e79775d7d22278ff3953187f603b8d7244c1a7e3faf0b41f22238db960bd9"
+    },
+    "linux-kernel/tools/user-memory/control_image_publication.py": {
+      "bytes": 3222,
+      "sha256": "5964ff842930467c0f29bfd2bb97fab108d5700f08518991f562c10bd96ed67e"
+    },
+    "linux-kernel/tools/user-memory/control_mapping_aliases.py": {
+      "bytes": 6329,
+      "sha256": "a63fe783eb95e4a1746084731d2a88fcb412f057a85e892abe9b76c2692cf972"
+    },
+    "linux-kernel/tools/user-memory/control_translation_publication.py": {
+      "bytes": 4146,
+      "sha256": "b26c3b85bf3169cc92d8c8d4144161716b8d2051dace043336f11b60a3f40aa9"
+    },
+    "linux-kernel/tools/user-memory/file_input_effects.py": {
+      "bytes": 1726,
+      "sha256": "c290ba84638ddaebefda7428a54f1a6148d0a02cd0f061b5bf8e0c34ebbc4698"
+    },
+    "linux-kernel/tools/user-memory/image_publication.py": {
+      "bytes": 6062,
+      "sha256": "83631cbd87c0c2fc785eb1f555f54a1b7c7f4b07429e105b12076c0d8da81035"
+    },
+    "linux-kernel/tools/user-memory/inspect_boot_entries.py": {
+      "bytes": 7952,
+      "sha256": "2bc3a55e1ed163a0a1f39054677d04630dc750edd369a81c76fb3e93fd8f10ac"
+    },
+    "linux-kernel/tools/user-memory/inspect_call_inventory.py": {
+      "bytes": 8733,
+      "sha256": "bbf287ba1ebf072c4031267d58bff8be0dfb876d98ea17a309420cd58e649b7f"
+    },
+    "linux-kernel/tools/user-memory/inspect_callback_bindings.py": {
+      "bytes": 11772,
+      "sha256": "360cf97d8323cc2e149370de581ef83ac3197738f0d71ee786bb509c2c5743fa"
+    },
+    "linux-kernel/tools/user-memory/inspect_callee_graph.py": {
+      "bytes": 16417,
+      "sha256": "2fd9d9602b1078e58f1a77736f486ee6e52dd831996717c1e7506dc85a1dd80c"
+    },
+    "linux-kernel/tools/user-memory/inspect_image_publication.py": {
+      "bytes": 4226,
+      "sha256": "dfc13001f39119379d73b375aa2aad89197e2443d037c3c79f9fabcff2c4dbf6"
+    },
+    "linux-kernel/tools/user-memory/inspect_translation_publication.py": {
+      "bytes": 3602,
+      "sha256": "53a25b8a1cca3710ebb0b1a07a8b546d7280dbd8a82ab23e0992eb2f997d267f"
+    },
+    "linux-kernel/tools/user-memory/inventory_paging_controls.py": {
+      "bytes": 12352,
+      "sha256": "b01f52edc9b65d0e7ef9a83b2ccb2d5a0eaab6341f0aadf58267b71d652e7bad"
+    },
+    "linux-kernel/tools/user-memory/inventory_process_accesses.py": {
+      "bytes": 12110,
+      "sha256": "675b6e0be9f4134c09cd78e6d642d7a7b9b550992c004ec6108ea00f3ff53cd3"
+    },
+    "linux-kernel/tools/user-memory/metadata_model.py": {
+      "bytes": 6460,
+      "sha256": "0d33dd2afd81b614dcd0a8b4ba414cd8c88e6754f89a18ea0e743fb75e314e4e"
+    },
+    "linux-kernel/tools/user-memory/model.py": {
+      "bytes": 5880,
+      "sha256": "7f4a7d6a2f9de48b736c5a7df04f7bd0a48bb4765d6533bd616788abda08b291"
+    },
+    "linux-kernel/tools/user-memory/owner_interval.py": {
+      "bytes": 2994,
+      "sha256": "19cb7e8f13e08588c7b5290ab7f07928baed7e885fd0ad30be56c5a6853600f3"
+    },
+    "linux-kernel/tools/user-memory/owner_snapshot.py": {
+      "bytes": 4827,
+      "sha256": "afd3147353ae9f95f9b5e9537adc451083d302970b476f02be1846710b8f34f2"
+    },
+    "linux-kernel/tools/user-memory/qemu_publication_trace.py": {
+      "bytes": 2669,
+      "sha256": "3d0cadc81cfa602c68dafe81fc510621d0db547e5d57774af7ebd3b4454b10f0"
+    },
+    "linux-kernel/tools/user-memory/random_extract_effects.py": {
+      "bytes": 2561,
+      "sha256": "3deefbdc4bd8e4a719ae5227b329af17fb3ea34c1ea002bc66fb5b3f75c82f85"
+    },
+    "linux-kernel/tools/user-memory/readback_image_publication.py": {
+      "bytes": 5932,
+      "sha256": "c663628c9e8d8af6b05a162b8ea9984081615c177303fc2057fef8cd87267eb2"
+    },
+    "linux-kernel/tools/user-memory/readback_mapping_aliases.py": {
+      "bytes": 9954,
+      "sha256": "2e2368e9f9280a5ccee36f1be4a29e2d043fbe4dede83d9bba988eb8a898059f"
+    },
+    "linux-kernel/tools/user-memory/readback_translation_publication.py": {
+      "bytes": 8747,
+      "sha256": "ea075ac8ec0cf11db3e23fa12b0c8bb95f5e538e7a88dff85723f59ba0fe4679"
+    },
+    "linux-kernel/tools/user-memory/retired_stack_words.py": {
+      "bytes": 1013,
+      "sha256": "88d761ae2b8dd5e823c306c48cf9033d8995f762b70c3f62cfb494b838c42bd3"
+    },
+    "linux-kernel/tools/user-memory/run_boot_entry_stage.py": {
+      "bytes": 9028,
+      "sha256": "246b54a5b0d5f4543ce635ed2ef9b3998839046465af6d703a5bb82f294fd4c8"
+    },
+    "linux-kernel/tools/user-memory/stat_instruction_effects.py": {
+      "bytes": 3823,
+      "sha256": "23f337124f97c3453437614afc20e9cad83f2e0279da4c3d69c7fd3bbd0c00ed"
+    },
+    "linux-kernel/tools/user-memory/test_additional_scalars.py": {
+      "bytes": 2982,
+      "sha256": "580e2e98d2a745b3ecb1ae97d2623aecf9781b556a7fe10ad7526b44ad7ee400"
+    },
+    "linux-kernel/tools/user-memory/test_alias_snapshot.py": {
+      "bytes": 5461,
+      "sha256": "4fd87b464ac4a64c2008e7fa9264aec1a3d3a52f78d92fe3fc9fabd71673c83f"
+    },
+    "linux-kernel/tools/user-memory/test_boot_layout.py": {
+      "bytes": 6828,
+      "sha256": "66c7e42204a10e76077880388122f3ce7d0986e9c05beef1b84041a32dc58535"
+    },
+    "linux-kernel/tools/user-memory/test_callee_control.py": {
+      "bytes": 8971,
+      "sha256": "9eeb73dd56382177a797093876a27cd186eafa0631db33f996d9ffa5b34f2ac8"
+    },
+    "linux-kernel/tools/user-memory/test_copy_transfers.py": {
+      "bytes": 4716,
+      "sha256": "cfabaf44fc6d6abe653a5701c1c2232e6e2d9c854531a60ba92d255188de32ad"
+    },
+    "linux-kernel/tools/user-memory/test_elf_symbol_scopes.py": {
+      "bytes": 4002,
+      "sha256": "16761442c48b643c2abd38f17e88b865c82d35880190aeb50ddc6f083021e471"
+    },
+    "linux-kernel/tools/user-memory/test_file_inputs.py": {
+      "bytes": 2917,
+      "sha256": "335dc8c9174400a2264388ef0ba797fbcc92373cf213b556ca2ebd1f6d5a09b3"
+    },
+    "linux-kernel/tools/user-memory/test_fixed_transfers.py": {
+      "bytes": 2221,
+      "sha256": "1978ff3693c41c1306c9482e57185dc3f9522c6fd3375389426a7f34b59c1934"
+    },
+    "linux-kernel/tools/user-memory/test_image_observer.py": {
+      "bytes": 3597,
+      "sha256": "2c4dbf263a74b6c36d31d7dc5cfee6f9d6582d3523168c752d567bd3856ab034"
+    },
+    "linux-kernel/tools/user-memory/test_image_publication.py": {
+      "bytes": 5363,
+      "sha256": "243b754b4e89d48033a01f1387443f0583923085f5664e45f0e317f3d7d7b416"
+    },
+    "linux-kernel/tools/user-memory/test_metadata_model.py": {
+      "bytes": 6228,
+      "sha256": "f831ccaae9dd4417b2b1159f585546135d68e6c052f38dca1d0aafcb950c9483"
+    },
+    "linux-kernel/tools/user-memory/test_model.py": {
+      "bytes": 12396,
+      "sha256": "172e562d53005ae3939e3f5b8e6f17e0f15e5625e6f7bf59214dfa864f6e7767"
+    },
+    "linux-kernel/tools/user-memory/test_observer_selection.py": {
+      "bytes": 6632,
+      "sha256": "418f9147dde9fd8c9043f2d8af127416cba3b07300092382d8b71597acfee4b7"
+    },
+    "linux-kernel/tools/user-memory/test_owner_interval.py": {
+      "bytes": 3324,
+      "sha256": "d944929baabb35632d020b41820e25c2ead4f47328aa2e216d0ae6c0276f39b0"
+    },
+    "linux-kernel/tools/user-memory/test_owner_snapshot.py": {
+      "bytes": 5196,
+      "sha256": "148db9f84345d9dc741c942515c86f87315831e4676ee1d7df0f939d08cacf4f"
+    },
+    "linux-kernel/tools/user-memory/test_paging_controls.py": {
+      "bytes": 4955,
+      "sha256": "84d90a7e0ed50dba6fe87601f4d33be9b02d8bb276728986447e6b6ccc276da2"
+    },
+    "linux-kernel/tools/user-memory/test_pipe_fixed_observer.py": {
+      "bytes": 7031,
+      "sha256": "f6919ed5e940314acc0033f575b75994548e62a11fea4706ec9073cfdc3fcd5f"
+    },
+    "linux-kernel/tools/user-memory/test_pipe_fixed_outputs.py": {
+      "bytes": 3784,
+      "sha256": "2ca5dc460edfaeae34dd1cff40dba801cb2d6a424a3d541135e1b7c5f5fab2c8"
+    },
+    "linux-kernel/tools/user-memory/test_pipe_loops.py": {
+      "bytes": 4653,
+      "sha256": "f4d8fa58d151d46829d38b9f7069e69410e51cc8bc724e042f31ae1dca46d0db"
+    },
+    "linux-kernel/tools/user-memory/test_qemu_publication_trace.py": {
+      "bytes": 2783,
+      "sha256": "8dfac3d57f9a93fe869a8e09ff59d9d234871e9157ea5cbff28bc4fa84bd5f9d"
+    },
+    "linux-kernel/tools/user-memory/test_random_extract_effects.py": {
+      "bytes": 2255,
+      "sha256": "22f8b846bd8eb32be4b8848854a16bef18a400406276d0851d88ba33308631e3"
+    },
+    "linux-kernel/tools/user-memory/test_random_observer.py": {
+      "bytes": 3494,
+      "sha256": "0cfe2b3bd6c7a27ff6675ab1ac314a6652776ce4278e2386fc5dc9270978860f"
+    },
+    "linux-kernel/tools/user-memory/test_random_outputs.py": {
+      "bytes": 4255,
+      "sha256": "ab5fd25deeb7d363ed3ba2d98c8dbb9e63abb1b9b0e3b25588c93e52dbf37471"
+    },
+    "linux-kernel/tools/user-memory/test_serial_prefix.py": {
+      "bytes": 2736,
+      "sha256": "d9e561ac1a0f193965b0341e614cd8f823c1a195ebdf4b2f01dc2e512d41113c"
+    },
+    "linux-kernel/tools/user-memory/test_stack_retirement.py": {
+      "bytes": 5334,
+      "sha256": "736f4d9cc6972d62ffb974c29c36de8aefc075ebeccd32a24723d456b7b9475a"
+    },
+    "linux-kernel/tools/user-memory/test_staged_transfers.py": {
+      "bytes": 4870,
+      "sha256": "572ea606dd15e0cdca2922016742ef06ba0926a23b1933cae27009cc7a71ae97"
+    },
+    "linux-kernel/tools/user-memory/test_staging_copies.py": {
+      "bytes": 5545,
+      "sha256": "e35c64d116bce44bf238b23976d3980d8e30eb9b425c3908666e6492c1710227"
+    },
+    "linux-kernel/tools/user-memory/test_stat_instruction_effects.py": {
+      "bytes": 2399,
+      "sha256": "5a957d841bb1b688812e3a0793fa18019afd50ec9b45df26b412e47976cdd9de"
+    },
+    "linux-kernel/tools/user-memory/test_stat_saved_frames.py": {
+      "bytes": 4496,
+      "sha256": "d8792a4939067216913bcf88785fa38faa217386505cc63c18de183d996a3770"
+    },
+    "linux-kernel/tools/user-memory/test_translation_publication.py": {
+      "bytes": 4965,
+      "sha256": "e9901b4bbb41b05e4dd1555b4051cb21be72687ebbfccfa5ca793df260c09300"
+    },
+    "linux-kernel/tools/user-memory/test_warning_inputs.py": {
+      "bytes": 2617,
+      "sha256": "f4143756daddfac676c6b31ad090096463d46ec4a67a04f2030cb2050f92b2ef"
+    },
+    "linux-kernel/tools/user-memory/trace_process_origins.py": {
+      "bytes": 6411,
+      "sha256": "405fc43a889b4232b4dfcdf60f6924a86cc934fe0a384b6e99f74ad2c82f9bb2"
+    },
+    "linux-kernel/tools/user-memory/translation_publication.py": {
+      "bytes": 5409,
+      "sha256": "9b5b9a7fa9df253eea6b62a31c7589d61679b46c2abfdbeb372697265db369a3"
+    }
+  },
+  "dependencies": [
+    "../stage-3-callee-graph",
+    "../../../process-memory/results/stage-3-interface-callers"
+  ],
+  "qualification_elapsed_seconds": 23.160128445364535,
+  "qualification_resources": {
+    "memory.max": "3298422784",
+    "memory.swap.max": "0",
+    "memory.peak": "839798784",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "models": {
+    "user-memory": 229,
+    "process-memory": 82
+  },
+  "offline_image_counterexamples": 13,
+  "risk": "Observation correctness is security-sensitive, but this stage changes only host readers/tests and descriptive reports. Single-agent self-review, counterexamples, exact frozen replay and explicit limits; no independent human security review.",
+  "failure_history": "The retained initial driver misidentified a payload gap as BSS; corrected selection preserves the actual BSS check.",
+  "scope": "Composable saved-byte evidence archive. The two pinned existing archives are required dependencies, not copied or claimed freshly rebuilt. No VM/compiler/disassembler rerun, production provenance or complete entry/lifetime qualification."
+}

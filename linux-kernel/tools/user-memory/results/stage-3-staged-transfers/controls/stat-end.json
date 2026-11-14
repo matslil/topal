@@ -1,0 +1,9 @@
+{
+  "name": "stat-end",
+  "rejected": true,
+  "offset": 53570,
+  "expected_byte": 136,
+  "changed_byte": 144,
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+}

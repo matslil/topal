@@ -1,0 +1,8 @@
+{
+  "argv": [
+    "python3",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/audit_copy_transfers.py",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-poll-2292547-1794409820975678369"
+  ],
+  "exit_code": 0
+}

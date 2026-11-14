@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "exit_code": 1,
+  "cause": "GNU default seven-byte instruction display wrapped longer encodings, so the readback parser incorrectly treated continuation rows as instructions",
+  "correction": "Explicit --insn-width=16 preserves one display row per x86 instruction; final GNU reader passes with unchanged native artifacts",
+  "scope": "Initial retained GNU outputs and command records; Python traceback was reported in the session, not captured as a log. Reader failure, not a native kernel or safeguard failure"
+}

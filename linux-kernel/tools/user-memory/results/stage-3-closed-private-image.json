@@ -1,0 +1,5748 @@
+{
+  "applications": {
+    "facts": {
+      "boot_resource_bytes": 2037200,
+      "inventory_sha256": "6d18c0c41ec5fb24d17c6dbfce8ecb53044aeac4e3a8e183fd825ba25e799448",
+      "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+      "kernel_spans": [
+        [
+          2097152,
+          2097664
+        ],
+        [
+          8388608,
+          44974080
+        ],
+        [
+          44974080,
+          45004968
+        ],
+        [
+          45009072,
+          46271661
+        ],
+        [
+          46275760,
+          46276608
+        ]
+      ],
+      "reservation_end": 46276608,
+      "retirement_symbols": {
+        "facts": 44110640,
+        "gateway_recovery": 44111152,
+        "output": 44110672,
+        "private": 44041008,
+        "stack": 44106544
+      },
+      "root_token_bytes": 336
+    },
+    "passed": true,
+    "summaries": {
+      "child-cwd": {
+        "boundaries": 22,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 569344,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 54,
+        "retired_extents": 7,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "child-cwd"
+      },
+      "child-echo": {
+        "boundaries": 22,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 569344,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 53,
+        "retired_extents": 7,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "child-echo"
+      },
+      "child-offset": {
+        "boundaries": 31,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 851968,
+        "operations": {
+          "10": 2,
+          "12": 2,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 10,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "child-offset"
+      },
+      "child-repeated": {
+        "boundaries": 31,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 851968,
+        "operations": {
+          "10": 2,
+          "12": 2,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 53,
+        "retired_extents": 10,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "child-repeated"
+      },
+      "child-status": {
+        "boundaries": 22,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 569344,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 53,
+        "retired_extents": 7,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "child-status"
+      },
+      "dd-seek": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 46,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "dd-seek"
+      },
+      "echo": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 45,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "echo"
+      },
+      "echo-changed": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 45,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "echo-changed"
+      },
+      "exec-chain": {
+        "boundaries": 25,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 573440,
+        "operations": {
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 45,
+        "retired_extents": 8,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "exec-chain"
+      },
+      "exec-chain-cwd": {
+        "boundaries": 25,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 573440,
+        "operations": {
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 48,
+        "retired_extents": 8,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "exec-chain-cwd"
+      },
+      "exec-chain-false": {
+        "boundaries": 19,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 430080,
+        "operations": {
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 44,
+        "retired_extents": 6,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "exec-chain-false"
+      },
+      "export-token": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 46,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "export-token"
+      },
+      "export-token-changed": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 46,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "export-token-changed"
+      },
+      "false": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 44,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "false"
+      },
+      "head-alias": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 47,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "head-alias"
+      },
+      "head-file": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 48,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "head-file"
+      },
+      "head-normalized": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 48,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "head-normalized"
+      },
+      "head-stdin": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 47,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "head-stdin"
+      },
+      "interactive-prompt": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 51,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "interactive-prompt"
+      },
+      "interactive-prompt-changed": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 51,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "interactive-prompt-changed"
+      },
+      "ls-bin": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 50,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "ls-bin"
+      },
+      "mode-directory": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 54,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "mode-directory"
+      },
+      "mode-numeric": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "mode-numeric"
+      },
+      "mode-retained-reader": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "mode-retained-reader"
+      },
+      "mode-symbolic": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "mode-symbolic"
+      },
+      "mode-umask-independent": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 54,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "mode-umask-independent"
+      },
+      "named-append": {
+        "boundaries": 19,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 430080,
+        "operations": {
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 52,
+        "retired_extents": 6,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "named-append"
+      },
+      "named-list": {
+        "boundaries": 19,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 430080,
+        "operations": {
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 53,
+        "retired_extents": 6,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "named-list"
+      },
+      "named-redirection": {
+        "boundaries": 19,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 430080,
+        "operations": {
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 52,
+        "retired_extents": 6,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "named-redirection"
+      },
+      "named-remove": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 56,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "named-remove"
+      },
+      "named-reopen": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 56,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "named-reopen"
+      },
+      "named-truncate": {
+        "boundaries": 19,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 430080,
+        "operations": {
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 51,
+        "retired_extents": 6,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "named-truncate"
+      },
+      "namespace-alias-mode": {
+        "boundaries": 37,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 995328,
+        "operations": {
+          "10": 2,
+          "12": 2,
+          "13": 1,
+          "5": 25,
+          "6": 1,
+          "7": 4,
+          "9": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 12,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "namespace-alias-mode"
+      },
+      "namespace-link": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "namespace-link"
+      },
+      "namespace-move": {
+        "boundaries": 28,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 712704,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 20,
+          "6": 1,
+          "7": 3,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 9,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "namespace-move"
+      },
+      "namespace-relative-directory": {
+        "boundaries": 37,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 995328,
+        "operations": {
+          "10": 2,
+          "12": 2,
+          "13": 1,
+          "5": 25,
+          "6": 1,
+          "7": 4,
+          "9": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 57,
+        "retired_extents": 12,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "namespace-relative-directory"
+      },
+      "namespace-replace-retained-reader": {
+        "boundaries": 37,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 995328,
+        "operations": {
+          "10": 2,
+          "12": 2,
+          "13": 1,
+          "5": 25,
+          "6": 1,
+          "7": 4,
+          "9": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 12,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "namespace-replace-retained-reader"
+      },
+      "namespace-unlink-retained-reader": {
+        "boundaries": 37,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 995328,
+        "operations": {
+          "10": 2,
+          "12": 2,
+          "13": 1,
+          "5": 25,
+          "6": 1,
+          "7": 4,
+          "9": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 55,
+        "retired_extents": 12,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "namespace-unlink-retained-reader"
+      },
+      "pipe-substitution": {
+        "boundaries": 22,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 569344,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 56,
+        "retired_extents": 7,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "pipe-substitution"
+      },
+      "pipe-substitution-changed": {
+        "boundaries": 22,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 569344,
+        "operations": {
+          "10": 1,
+          "12": 1,
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 57,
+        "retired_extents": 7,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "pipe-substitution-changed"
+      },
+      "pipe-substitution-large": {
+        "boundaries": 26,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "creation-missing-copy-pin",
+            "reason": "heap backing/pin",
+            "rejected": true
+          },
+          {
+            "name": "handoff-lost-inactive-owner",
+            "reason": "empty inactive owner",
+            "rejected": true
+          },
+          {
+            "name": "child-exit-missing-retirement",
+            "reason": "complete retirement set",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 569344,
+        "operations": {
+          "10": 1,
+          "11": 4,
+          "12": 1,
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2,
+          "9": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 57,
+        "retired_extents": 7,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "pipe-substitution-large"
+      },
+      "pwd-bin": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 48,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "pwd-bin"
+      },
+      "replacement-shell-cwd": {
+        "boundaries": 19,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 430080,
+        "operations": {
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 51,
+        "retired_extents": 6,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "replacement-shell-cwd"
+      },
+      "replacement-shell-pid": {
+        "boundaries": 19,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 430080,
+        "operations": {
+          "13": 1,
+          "5": 15,
+          "6": 1,
+          "7": 2
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 49,
+        "retired_extents": 6,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "replacement-shell-pid"
+      },
+      "replacement-shell-script": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 50,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "replacement-shell-script"
+      },
+      "sleep-changed": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 45,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "sleep-changed"
+      },
+      "sleep-short": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 45,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "sleep-short"
+      },
+      "true": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 44,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "true"
+      },
+      "uname-kernel": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 47,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "uname-kernel"
+      },
+      "wc-file": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 48,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "wc-file"
+      },
+      "wc-stdin": {
+        "boundaries": 13,
+        "controls": [
+          {
+            "name": "wrong-application-workload",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "lost-actual-source-CFI",
+            "reason": "application/legacy observer incomplete",
+            "rejected": true
+          },
+          {
+            "name": "changed-legacy-MM-result",
+            "reason": "independent legacy/MM transport, heap and translation binding",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-registry-binding",
+            "reason": "complete final registry differs",
+            "rejected": true
+          },
+          {
+            "name": "lost-final-catalog-binding",
+            "reason": "complete final frame catalog differs",
+            "rejected": true
+          },
+          {
+            "name": "unpinned-bootstrap-root",
+            "reason": "remaining pinned bootstrap owner",
+            "rejected": true
+          },
+          {
+            "name": "truncated-firmware-catalog",
+            "reason": "complete firmware/catalog identity",
+            "rejected": true
+          },
+          {
+            "name": "changed-kernel-reservation-end",
+            "reason": "artifact-bound kernel and boot-resource reservations",
+            "rejected": true
+          },
+          {
+            "name": "wrong-kernel-observation",
+            "reason": "application/MM observation binding",
+            "rejected": true
+          },
+          {
+            "name": "retained-final-MM-owner",
+            "reason": "remaining process-MM authority",
+            "rejected": true
+          },
+          {
+            "name": "truncated-caller-retirement",
+            "reason": "return-retirement address/extent/digest: caller",
+            "rejected": true
+          },
+          {
+            "name": "unbound-private-retirement",
+            "reason": "return-retirement address/extent/digest: private",
+            "rejected": true
+          },
+          {
+            "name": "omitted-linked-kernel-load-span",
+            "reason": "complete linked kernel load-span binding",
+            "rejected": true
+          },
+          {
+            "name": "exec-lost-image-generation",
+            "reason": "exec MM generation",
+            "rejected": true
+          },
+          {
+            "name": "changed-terminal-console-status",
+            "reason": "application console contract: runtime process output or observed exit status differed",
+            "rejected": true
+          },
+          {
+            "name": "extra-successful-console-exec",
+            "reason": "application console contract: unexpected successful image-replacement count",
+            "rejected": true
+          }
+        ],
+        "erased_released_bytes": 286720,
+        "operations": {
+          "13": 1,
+          "5": 10,
+          "6": 1,
+          "7": 1
+        },
+        "passed": true,
+        "physical_frames": 152012,
+        "reached_extent_sites": 47,
+        "retired_extents": 4,
+        "scope": "Joined unchanged application console, legacy/MM boundaries and final complete catalog/registry digests; not every observer assertion, continuous lifetime, a VM replay or public activation",
+        "workload": "wc-stdin"
+      }
+    },
+    "workloads": 51
+  },
+  "child_exec": {
+    "cases": 4,
+    "failed_exec_calls": 16,
+    "failed_exec_controls": [
+      {
+        "name": "changed-heap-bytes",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      },
+      {
+        "name": "changed-parent-bytes",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      },
+      {
+        "name": "lost-TLS",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      },
+      {
+        "name": "lost-TID",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      },
+      {
+        "name": "lost-robust-list",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      },
+      {
+        "name": "changed-MM-generation",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      },
+      {
+        "name": "lost-descriptor",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      },
+      {
+        "name": "changed-description",
+        "reason": "failed exec changed process state",
+        "rejected": true
+      }
+    ],
+    "failed_exec_scope": "Ordinary ENOENT/EFAULT returns, retained heap owners/bytes, TLS, registrations, selected descriptor banks and signal state; not every exec error or continuous lifetime",
+    "passed": true,
+    "scope": "Experimental child exec, retained parent and early ordinary services; not public ELF-loader, continuous lifetime, cancellation or fatal-path qualification"
+  },
+  "closed_source_archive": false,
+  "commands": {
+    "Rust-ceiling": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 0.38888871017843485,
+      "state": "finished"
+    },
+    "applications": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::process_mm_preserves_pinned_busybox_workloads",
+        "--",
+        "--exact",
+        "--test-threads=1",
+        "--nocapture",
+        "--ignored"
+      ],
+      "environment": {
+        "TOPAL_PINNED_STATIC_USER_IMAGE": "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-applications-2590479-1794610111824852018/static-elf-abi-fixture.elf"
+      },
+      "exit_code": 0,
+      "seconds": 7057.069369270466,
+      "state": "finished"
+    },
+    "child-exec": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::process_mm_child_exec_preserves_inactive_parent_and_fresh_child_heap",
+        "--",
+        "--exact",
+        "--test-threads=1",
+        "--nocapture",
+        "--ignored"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 243.82795223407447,
+      "state": "finished"
+    },
+    "default-ABI": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "default_abi_fixture_preserves_committed_generator_bytes"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 0.21905688475817442,
+      "state": "finished"
+    },
+    "format": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 1.1821409882977605,
+      "state": "finished"
+    },
+    "image-layout": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_kernel_image_layout::tests",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 98.8460507299751,
+      "state": "finished"
+    },
+    "private-build": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_frame_target::root_tests::process_mm_closed_link_reconstructs_complete_private_image",
+        "--",
+        "--exact",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 21.641793777234852,
+      "state": "finished"
+    },
+    "process-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 1.0376579752191901,
+      "state": "finished"
+    },
+    "user-models": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 1.9966985303908587,
+      "state": "finished"
+    },
+    "workspace": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "seconds": 2.925264441408217,
+      "state": "finished"
+    }
+  },
+  "compiler_layout_cases": 5,
+  "frozen_replay": false,
+  "image_bindings": {
+    "applications": {
+      "contributions": 862,
+      "controls": [
+        "code",
+        "immutable",
+        "zero",
+        "omitted-library"
+      ],
+      "layout": {
+        "address_limit": 1073741824,
+        "image_leaf_storage_bytes": 12288,
+        "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+        "large_granule": 2097152,
+        "minimum_granule": 4096,
+        "schema": "topal.kernel-image-layout.x86_64/1",
+        "spans": [
+          {
+            "end": 2101248,
+            "role": "immutable",
+            "start": 2097152
+          },
+          {
+            "end": 44974080,
+            "role": "mutable",
+            "start": 8388608
+          },
+          {
+            "end": 45006848,
+            "role": "immutable",
+            "start": 44974080
+          },
+          {
+            "end": 46272512,
+            "role": "code",
+            "start": 45006848
+          },
+          {
+            "end": 46276608,
+            "role": "immutable",
+            "start": 46272512
+          }
+        ],
+        "subdivided_regions": [
+          2097152,
+          44040192,
+          46137344
+        ]
+      },
+      "native_execution": true,
+      "objects": 23,
+      "original_inputs_unchanged": true
+    },
+    "child-exec": {
+      "contributions": 862,
+      "controls": [
+        "code",
+        "immutable",
+        "zero",
+        "omitted-library"
+      ],
+      "layout": {
+        "address_limit": 1073741824,
+        "image_leaf_storage_bytes": 12288,
+        "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+        "large_granule": 2097152,
+        "minimum_granule": 4096,
+        "schema": "topal.kernel-image-layout.x86_64/1",
+        "spans": [
+          {
+            "end": 2101248,
+            "role": "immutable",
+            "start": 2097152
+          },
+          {
+            "end": 44974080,
+            "role": "mutable",
+            "start": 8388608
+          },
+          {
+            "end": 45006848,
+            "role": "immutable",
+            "start": 44974080
+          },
+          {
+            "end": 46272512,
+            "role": "code",
+            "start": 45006848
+          },
+          {
+            "end": 46276608,
+            "role": "immutable",
+            "start": 46272512
+          }
+        ],
+        "subdivided_regions": [
+          2097152,
+          44040192,
+          46137344
+        ]
+      },
+      "native_execution": true,
+      "objects": 23,
+      "original_inputs_unchanged": true
+    },
+    "private-build": {
+      "contributions": 862,
+      "controls": [
+        "code",
+        "immutable",
+        "zero",
+        "omitted-library"
+      ],
+      "layout": {
+        "address_limit": 1073741824,
+        "image_leaf_storage_bytes": 12288,
+        "kernel_sha256": "28057d5606b6c59f704e861b2e22d0b6dd04e79f9d07ff4933546695214204c1",
+        "large_granule": 2097152,
+        "minimum_granule": 4096,
+        "schema": "topal.kernel-image-layout.x86_64/1",
+        "spans": [
+          {
+            "end": 2101248,
+            "role": "immutable",
+            "start": 2097152
+          },
+          {
+            "end": 44974080,
+            "role": "mutable",
+            "start": 8388608
+          },
+          {
+            "end": 45006848,
+            "role": "immutable",
+            "start": 44974080
+          },
+          {
+            "end": 46272512,
+            "role": "code",
+            "start": 45006848
+          },
+          {
+            "end": 46276608,
+            "role": "immutable",
+            "start": 46272512
+          }
+        ],
+        "subdivided_regions": [
+          2097152,
+          44040192,
+          46137344
+        ]
+      },
+      "native_execution": false,
+      "objects": 23,
+      "original_inputs_unchanged": true
+    }
+  },
+  "native_image_protection": false,
+  "passed": true,
+  "pinned_image_sha256": "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd",
+  "post_validation_descriptive_updates": [
+    {
+      "current_sha256": "a7787af92a42336a30cd4eb044c968cf0b5db57541869ec04466ce05e33cc8c9",
+      "file": "linux-kernel/step-4-status.md",
+      "validated_sha256": "c7c0940e48caf3612a48354c7081f9d8e11d5f79df3209a1e8a0da371d8c837c"
+    }
+  ],
+  "process_models": 83,
+  "production_qualified": false,
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3379101696",
+    "memory.peak": "1801719808",
+    "memory.swap.max": "0"
+  },
+  "schema": "topal.closed-private-image-validation/1",
+  "scope": "Private static/local compilation and complete fresh object/link/allocation reconstruction, ordinary child exec and unchanged pinned BusyBox corpus; not native image protection or production qualification",
+  "seconds": 7464.73031690903,
+  "source_hash_manifest_sha256": "435132ecef3269dd39c328a06a90172fd000cb3f367fbf5fdc8f2651b781fc0b",
+  "source_hashes_unchanged": true,
+  "source_inputs": 766,
+  "user_models": 271
+}

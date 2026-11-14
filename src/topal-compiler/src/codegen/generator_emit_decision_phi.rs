@@ -100,6 +100,11 @@ impl Generator<'_> {
                 span,
                 &mut self.debug,
             )),
+            LlValue::KernelRegion(_) => LlValue::KernelRegion(body.instruction(
+                &format!("phi ptr {}", incoming(LlValue::kernel_region_pointer)),
+                span,
+                &mut self.debug,
+            )),
             LlValue::Modular { modular, .. } => LlValue::Modular {
                 value: body.instruction(
                     &format!("phi ptr {}", incoming(LlValue::modular_pointer)),
@@ -371,6 +376,7 @@ impl Generator<'_> {
             LlValue::ExternalLocation { location, .. } => {
                 self.emit_write_literal(&format!("<{}>", location.identity), body, span);
             }
+            LlValue::KernelRegion(_) => self.emit_write_literal("<KernelByteRegion>", body, span),
             LlValue::Int(value) => body.effect(
                 &format!("call void @topal.runtime.int.print(ptr {value})"),
                 span,

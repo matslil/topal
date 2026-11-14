@@ -1,0 +1,33 @@
+{
+  "kind": "Single-agent review of observer decoding performance change",
+  "stable_id": "TOPAL-SYSTEMS-USER-EXTENT-001",
+  "source_sha256": {
+    "linux-kernel/labs/qemu/x86_64/frame_memory_inspect.py": "9a5cdcff5f649511bfb2e8ef5d2f9d216825eff9e6e8550a51efaf63b58c3bab",
+    "linux-kernel/labs/qemu/x86_64/test_frame_word_decoding.py": "a3e6b0dd0d7e8cb38b79f07df460541c5fd38eb45adebe4975ab1450eb538993"
+  },
+  "invariants": [
+    "The same single memory(p,n*8) read occurs on each call; no cached runtime memory or new reads, mappings, tokens, permissions, deadlines or guest writes.",
+    "For every complete n-word read, unsigned little-endian Q decoding returns the same Python integer list in original order, including high-bit words and zero count.",
+    "Every existing ownership/table/register/content/retirement assertion remains present and receives all words. A truncated read fails closed instead of returning partial words; GDB read_memory normally returns the requested length or raises.",
+    "Only the frame_memory embedded observer changes. The frame_root predecessor decoder is retained as an independent comparison in four tests. No compiler, native kernel, authority or core-language semantics change in this performance fix.",
+    "Profile timing is diagnostic only, not full native acceptance or a proof of full memory safety. Separate VM entropy makes two prefix states differ in captured data/hash fields; no whole-state equality claim."
+  ],
+  "validation": {
+    "embedded_decoder_tests": {
+      "passed": true,
+      "tests": 4,
+      "scope": "Complete-word equivalence up to1048576words, all bit positions/unaligned reads, fresh observations after changed bytes, incomplete-read rejection"
+    },
+    "sampled_native_prefix": {
+      "original_gateway_callbacks": 108,
+      "bulk_gateway_callbacks": 108,
+      "helper_returns_each": 6,
+      "original_seconds": 80.58168366923928,
+      "bulk_seconds": 58.435479667037725,
+      "original_gdb_cpu_seconds": 26.547024008,
+      "bulk_gdb_cpu_seconds": 6.170505514999999
+    },
+    "full_shared_native": "Running: tk283-staging-focused-1794430527863296152; original1800s deadline, no success claim"
+  },
+  "risk": "Validation infrastructure at a kernel security boundary; all runtime checks preserved. No independent reviewer claimed."
+}

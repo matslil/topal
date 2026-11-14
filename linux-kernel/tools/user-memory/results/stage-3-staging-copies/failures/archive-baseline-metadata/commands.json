@@ -1,0 +1,21 @@
+[
+  {
+    "name": "collect",
+    "command": [
+      "/usr/bin/python3",
+      "linux-kernel/.cache/x86_64/collect-staging-wide-results.py"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.08041516225785017
+  },
+  {
+    "name": "archive",
+    "command": [
+      "/usr/bin/python3",
+      "linux-kernel/.cache/x86_64/archive-staging-copies.py",
+      "linux-kernel/.cache/x86_64/staging-copies-catalog.json"
+    ],
+    "exit_code": 1,
+    "elapsed_seconds": 1.8921814123168588
+  }
+]

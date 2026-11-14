@@ -1,0 +1,375 @@
+{
+  "passed": true,
+  "cohorts": [
+    {
+      "label": "application",
+      "counts": {
+        "header-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 11
+        },
+        "refill-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 5
+        },
+        "root-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 294
+        },
+        "pwd-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 24
+        },
+        "serial-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 5
+        },
+        "signal-action-input": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "signal-action-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "signal-mask-input": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "signal-mask-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "directory-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "named-directory-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "uname-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "clock-time-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "clock-resolution-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "sleep-interval-input": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        }
+      },
+      "unreached": [
+        "signal-action-input",
+        "signal-action-output",
+        "signal-mask-input",
+        "signal-mask-output",
+        "directory-output",
+        "named-directory-output",
+        "uname-output",
+        "clock-time-output",
+        "clock-resolution-output",
+        "sleep-interval-input"
+      ],
+      "native_extent_first_reach": 38,
+      "callback_returns": 77
+    },
+    {
+      "label": "poll",
+      "counts": {
+        "header-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 11
+        },
+        "refill-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 5
+        },
+        "root-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 294
+        },
+        "pwd-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 24
+        },
+        "serial-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 23
+        },
+        "signal-action-input": {
+          "attempts": 12,
+          "admitted": 10,
+          "refused": 2,
+          "completed": 10,
+          "bytes": 320
+        },
+        "signal-action-output": {
+          "attempts": 16,
+          "admitted": 15,
+          "refused": 1,
+          "completed": 15,
+          "bytes": 480
+        },
+        "signal-mask-input": {
+          "attempts": 8,
+          "admitted": 7,
+          "refused": 1,
+          "completed": 7,
+          "bytes": 56
+        },
+        "signal-mask-output": {
+          "attempts": 11,
+          "admitted": 10,
+          "refused": 1,
+          "completed": 10,
+          "bytes": 80
+        },
+        "directory-output": {
+          "attempts": 8,
+          "admitted": 7,
+          "refused": 1,
+          "completed": 7,
+          "bytes": 200
+        },
+        "named-directory-output": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "uname-output": {
+          "attempts": 68,
+          "admitted": 24,
+          "refused": 44,
+          "completed": 24,
+          "bytes": 9360
+        },
+        "clock-time-output": {
+          "attempts": 56,
+          "admitted": 36,
+          "refused": 20,
+          "completed": 36,
+          "bytes": 576
+        },
+        "clock-resolution-output": {
+          "attempts": 24,
+          "admitted": 8,
+          "refused": 16,
+          "completed": 8,
+          "bytes": 128
+        },
+        "sleep-interval-input": {
+          "attempts": 80,
+          "admitted": 48,
+          "refused": 32,
+          "completed": 48,
+          "bytes": 768
+        }
+      },
+      "unreached": [
+        "named-directory-output"
+      ],
+      "native_extent_first_reach": 77,
+      "callback_returns": 1064
+    },
+    {
+      "label": "storage",
+      "counts": {
+        "header-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 11
+        },
+        "refill-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 5
+        },
+        "root-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 294
+        },
+        "pwd-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 24
+        },
+        "serial-command": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 23
+        },
+        "signal-action-input": {
+          "attempts": 12,
+          "admitted": 10,
+          "refused": 2,
+          "completed": 10,
+          "bytes": 320
+        },
+        "signal-action-output": {
+          "attempts": 16,
+          "admitted": 15,
+          "refused": 1,
+          "completed": 15,
+          "bytes": 480
+        },
+        "signal-mask-input": {
+          "attempts": 8,
+          "admitted": 7,
+          "refused": 1,
+          "completed": 7,
+          "bytes": 56
+        },
+        "signal-mask-output": {
+          "attempts": 11,
+          "admitted": 10,
+          "refused": 1,
+          "completed": 10,
+          "bytes": 80
+        },
+        "directory-output": {
+          "attempts": 8,
+          "admitted": 7,
+          "refused": 1,
+          "completed": 7,
+          "bytes": 200
+        },
+        "named-directory-output": {
+          "attempts": 24,
+          "admitted": 4,
+          "refused": 20,
+          "completed": 4,
+          "bytes": 192
+        },
+        "uname-output": {
+          "attempts": 40,
+          "admitted": 16,
+          "refused": 24,
+          "completed": 16,
+          "bytes": 6240
+        },
+        "clock-time-output": {
+          "attempts": 56,
+          "admitted": 36,
+          "refused": 20,
+          "completed": 36,
+          "bytes": 576
+        },
+        "clock-resolution-output": {
+          "attempts": 24,
+          "admitted": 8,
+          "refused": 16,
+          "completed": 8,
+          "bytes": 128
+        },
+        "sleep-interval-input": {
+          "attempts": 80,
+          "admitted": 48,
+          "refused": 32,
+          "completed": 48,
+          "bytes": 768
+        }
+      },
+      "unreached": [],
+      "native_extent_first_reach": 81,
+      "callback_returns": 1168
+    }
+  ],
+  "reached_case_union": [
+    "clock-resolution-output",
+    "clock-time-output",
+    "directory-output",
+    "header-command",
+    "named-directory-output",
+    "pwd-command",
+    "refill-command",
+    "root-command",
+    "serial-command",
+    "signal-action-input",
+    "signal-action-output",
+    "signal-mask-input",
+    "signal-mask-output",
+    "sleep-interval-input",
+    "uname-output"
+  ],
+  "unreached_case_union": []
+}

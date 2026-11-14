@@ -1,0 +1,75 @@
+{
+  "passed": true,
+  "model_tests": 164,
+  "rejected_saved_data_controls": 20,
+  "source_hashes_before": {
+    "alias_snapshot.py": "2588bf12d917e23e83da034d99ba8f016cb9f286d6fa388666b4720f541179d0",
+    "audit_mapping_aliases.py": "23ab8028752200d032a91e2e356391768d686f021d7f28809582b9cc91d169e4",
+    "test_alias_snapshot.py": "4fd87b464ac4a64c2008e7fa9264aec1a3d3a52f78d92fe3fc9fabd71673c83f",
+    "readback_mapping_aliases.py": "2e2368e9f9280a5ccee36f1be4a29e2d043fbe4dede83d9bba988eb8a898059f",
+    "control_mapping_aliases.py": "a63fe783eb95e4a1746084731d2a88fcb412f057a85e892abe9b76c2692cf972"
+  },
+  "source_hashes_after": {
+    "alias_snapshot.py": "2588bf12d917e23e83da034d99ba8f016cb9f286d6fa388666b4720f541179d0",
+    "audit_mapping_aliases.py": "23ab8028752200d032a91e2e356391768d686f021d7f28809582b9cc91d169e4",
+    "test_alias_snapshot.py": "4fd87b464ac4a64c2008e7fa9264aec1a3d3a52f78d92fe3fc9fabd71673c83f",
+    "readback_mapping_aliases.py": "2e2368e9f9280a5ccee36f1be4a29e2d043fbe4dede83d9bba988eb8a898059f",
+    "control_mapping_aliases.py": "a63fe783eb95e4a1746084731d2a88fcb412f057a85e892abe9b76c2692cf972"
+  },
+  "commands": [
+    {
+      "label": "models",
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory",
+        "-v"
+      ],
+      "exit_code": 0,
+      "seconds": 1.5983580416068435,
+      "log_sha256": "3abe60dabae6eeab7cf75c4eddc0035603052505e7c6311b7de18c801539bb87"
+    },
+    {
+      "label": "aliases",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_mapping_aliases.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-metadata-2408345-1794470644696506965",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-final-checks/mapping-aliases.json"
+      ],
+      "exit_code": 0,
+      "seconds": 2.4933156445622444,
+      "log_sha256": "26757ca877ae0f0f7ac34090171a2d847a80d8303c0600d04888d09760364c3d"
+    },
+    {
+      "label": "independent",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/readback_mapping_aliases.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-metadata-2408345-1794470644696506965",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-final-checks/mapping-aliases.json",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-final-checks/independent.json"
+      ],
+      "exit_code": 0,
+      "seconds": 1.9657871406525373,
+      "log_sha256": "67ba45c1a9f68b79a0837d7f1c20fd98c06fd58d7ae2eeea65855aecf40e3098"
+    },
+    {
+      "label": "controls",
+      "command": [
+        "/usr/bin/python3",
+        "/home/mats/git/topal/linux-kernel/tools/user-memory/control_mapping_aliases.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-metadata-2408345-1794470644696506965",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-final-checks/mapping-aliases.json",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/mapping-alias-final-checks/controls"
+      ],
+      "exit_code": 0,
+      "seconds": 9.279051566496491,
+      "log_sha256": "efa3bbb8c960fc348969d39c095945d500c93595b3be99bbf8fa2b1847a1ce7c"
+    }
+  ],
+  "scope": "Bounded Python-only saved-data/model checks; no new native execution"
+}

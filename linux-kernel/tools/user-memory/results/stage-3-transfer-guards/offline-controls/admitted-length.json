@@ -1,0 +1,8 @@
+{
+  "name": "admitted-length",
+  "body_offset": 88228,
+  "replacement_hex": "0d",
+  "rejected": true,
+  "error": "",
+  "scope": "Offline compiler-owned object byte shape with rebound function digest; unchanged decoder listing; no native execution"
+}

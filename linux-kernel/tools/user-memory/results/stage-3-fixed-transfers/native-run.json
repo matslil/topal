@@ -1,0 +1,37 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 74.97663710545748,
+  "resources": {
+    "memory.max": "3310313472",
+    "memory.swap.max": "0",
+    "memory.peak": "893915136",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "ff93204571588f45e07876eb35322caa0b7f412aa767b5bbd4077042db2aaa9a",
+    "linux-kernel/tools/user-memory/audit_fixed_transfers.py": "1f96a702a5c9bccc36fa3d2572e007b452d177c701ba1c9fabaf92864a95e0d5",
+    "linux-kernel/tools/user-memory/test_fixed_transfers.py": "1978ff3693c41c1306c9482e57185dc3f9522c6fd3375389426a7f34b59c1934"
+  },
+  "modified_source_hashes_after": {
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "ff93204571588f45e07876eb35322caa0b7f412aa767b5bbd4077042db2aaa9a",
+    "linux-kernel/tools/user-memory/audit_fixed_transfers.py": "1f96a702a5c9bccc36fa3d2572e007b452d177c701ba1c9fabaf92864a95e0d5",
+    "linux-kernel/tools/user-memory/test_fixed_transfers.py": "1978ff3693c41c1306c9482e57185dc3f9522c6fd3375389426a7f34b59c1934"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused unchanged BusyBox first-image exit; no production or full-caller qualification"
+}

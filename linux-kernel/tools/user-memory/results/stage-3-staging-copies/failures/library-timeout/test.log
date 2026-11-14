@@ -1,0 +1,426 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 388 tests
+test artifact::tests::native_metadata_rejects_target_and_dependency_ambiguity ... ok
+test artifact::tests::native_metadata_round_trips_only_in_canonical_form ... ok
+test codegen::tests::embeds_and_validates_canonical_native_serialization ... ok
+test codegen::tests::emits_anonymous_captures_and_results_as_exact_private_calls ... ok
+test codegen::tests::emits_anonymous_product_patterns_as_flat_once_only_private_calls ... ok
+test codegen::tests::emits_arbitrary_precision_ints_across_custom_generator_directions ... ok
+test codegen::tests::emits_basic_int_list_operations_and_total_decision ... ok
+test codegen::tests::emits_boolean_values_across_custom_generator_directions ... ok
+test codegen::tests::emits_bounded_iterate_collection_as_an_ordered_list_loop ... ok
+test codegen::tests::emits_bounded_iterate_foreach_as_an_ordered_unit_loop ... ok
+test codegen::tests::emits_capture_bearing_function_aggregates_with_path_ordered_private_transport ... ok
+test codegen::tests::emits_capture_free_function_aggregate_pattern_identity_as_direct_guards ... ok
+test codegen::tests::emits_captured_anonymous_function_pattern_identity_as_direct_guards ... ok
+test codegen::tests::emits_captured_function_aggregate_pattern_identity_as_direct_guards ... ok
+test codegen::tests::emits_captured_function_parameters_as_hidden_direct_arguments ... ok
+test codegen::tests::emits_captured_function_results_as_exact_private_aggregates ... ok
+test codegen::tests::emits_captured_named_function_pattern_identity_as_direct_guards ... ok
+test codegen::tests::emits_checked_external_location_as_ordered_topal_owned_storage ... ok
+test codegen::tests::emits_closed_function_results_as_private_tags_with_direct_application ... ok
+test codegen::tests::emits_closed_mutual_int_cycles_with_exact_private_edges ... ok
+test codegen::tests::emits_closed_string_character_collection_as_exact_source_identity ... ok
+test codegen::tests::emits_closed_string_character_foreach_in_preserved_order ... ok
+test codegen::tests::emits_comparison_across_custom_generator_directions ... ok
+test codegen::tests::emits_complete_list_sequence_operations_as_private_o0_control_flow ... ok
+test codegen::tests::emits_completed_as_a_retained_zero_data_result ... ok
+test codegen::tests::emits_compound_custom_generator_function_boundaries ... ok
+test codegen::tests::emits_constraint_validation_with_erased_base_storage_and_result_paths ... ok
+test codegen::tests::emits_contextual_int_list_functions_as_finite_loops ... ok
+test codegen::tests::emits_custom_generator_character_result_function_result_transfer ... ok
+test codegen::tests::emits_custom_generator_character_result_parameter_transfer ... ok
+test codegen::tests::emits_custom_generator_early_unit_return_without_action ... ok
+test codegen::tests::emits_custom_generator_final_boolean_decision_after_resumption ... ok
+test codegen::tests::emits_custom_generator_final_string_after_resumption ... ok
+test codegen::tests::emits_custom_generator_function_parameter_transfer ... ok
+test codegen::tests::emits_custom_generator_function_result_transfer ... ok
+test codegen::tests::emits_custom_generator_local_binding_in_lexical_debug_scope ... ok
+test codegen::tests::emits_custom_generator_parameter_close_without_runtime_state ... ok
+test codegen::tests::emits_custom_generator_string_input_prefix_before_suspension ... ok
+test codegen::tests::emits_custom_generator_string_yields_without_runtime_state ... ok
+test codegen::tests::emits_defining_context_as_a_private_direct_capture_parameter ... ok
+test codegen::tests::emits_direct_anonymous_functions_without_a_closure_runtime ... ok
+test codegen::tests::emits_discarded_computation_between_string_yields ... ok
+test codegen::tests::emits_discarded_parameter_without_debug_binding ... ok
+test codegen::tests::emits_distinct_custom_generator_final_character_after_action ... ok
+test codegen::tests::emits_distinct_overload_and_static_function_instances ... ok
+test codegen::tests::emits_dynamic_infinity_multiplication_through_result_runtime_paths ... ok
+test codegen::tests::emits_dynamic_modular_validation_as_a_native_result ... ok
+test codegen::tests::emits_empty_effect_as_a_distinct_zero_data_scalar ... ok
+test codegen::tests::emits_escaping_nested_function_environments_as_exact_private_results ... ok
+test codegen::tests::emits_euclidean_recursion_without_dynamic_arithmetic_checks ... ok
+test codegen::tests::emits_every_symbolic_callable_value_without_dispatch ... ok
+test codegen::tests::emits_exact_int_list_containment_loops ... ok
+test codegen::tests::emits_exact_private_tuple_parameter_prototypes_and_debug_shadows ... ok
+test codegen::tests::emits_exact_rationals_across_custom_generator_directions ... ok
+test codegen::tests::emits_exact_recursive_int_string_list_nodes_and_core_loops ... ok
+test codegen::tests::emits_exact_string_and_derived_optional_string_equality ... ok
+test codegen::tests::emits_explicit_measure_recursion_with_one_complete_signature ... ok
+test codegen::tests::emits_explicit_string_return_after_yield_action_and_resumption ... ok
+test codegen::tests::emits_explicit_string_return_without_invoking_the_action ... ok
+test codegen::tests::emits_fieldwise_phi_nodes_for_tuple_decision_results ... ok
+test codegen::tests::emits_finite_unfold_collection_as_a_seed_and_list_loop ... ok
+test codegen::tests::emits_forward_callee_before_its_caller ... ok
+test codegen::tests::emits_freestanding_string_construction_concatenation_and_emptiness ... ok
+test codegen::tests::emits_function_aggregates_with_exact_private_direct_boundaries ... ok
+test codegen::tests::emits_function_inputs_as_private_tags_with_direct_specialization ... ok
+test codegen::tests::emits_function_local_custom_generator_close_handler ... ok
+test codegen::tests::emits_function_local_custom_generator_close_without_runtime_state ... ok
+test codegen::tests::emits_function_namespace_aliases_as_direct_private_calls ... ok
+test codegen::tests::emits_function_result_chains_as_once_only_direct_calls ... ok
+test codegen::tests::emits_fundamental_constraint_bases_and_boxed_boolean_results ... ok
+test codegen::tests::emits_fundamental_containers_as_private_o0_collections ... ok
+test codegen::tests::emits_fundamental_type_values_as_closed_private_tags ... ok
+test codegen::tests::emits_generator_error_code_as_a_closed_nominal_tag_without_a_generator_runtime ... ok
+test codegen::tests::emits_generator_local_enum_and_direct_function_after_resumption ... ok
+test codegen::tests::emits_generator_local_function_during_custom_close ... ok
+test codegen::tests::emits_generic_custom_generator_function_boundaries ... ok
+test codegen::tests::emits_immutable_int_list_removal_loops ... ok
+test codegen::tests::emits_int_list_range_selection_as_private_finite_loops ... ok
+test codegen::tests::emits_int_pair_list_product_map_without_a_generic_runtime ... ok
+test codegen::tests::emits_int_ranges_across_custom_generator_directions ... ok
+test codegen::tests::emits_layout_policies_as_closed_nominal_tags_without_a_layout_runtime ... ok
+test codegen::tests::emits_lazy_iterate_construction_as_a_private_debug_token_without_invoking_functions ... ok
+test codegen::tests::emits_lazy_unfold_construction_without_invoking_its_step ... ok
+test codegen::tests::emits_lexical_block_scope_metadata ... ok
+test codegen::tests::emits_list_custom_generator_function_boundaries ... ok
+test codegen::tests::emits_modular_values_as_nominal_int_backed_private_values ... ok
+test codegen::tests::emits_multiple_yield_custom_generator_in_source_order ... ok
+test codegen::tests::emits_named_constraint_values_as_closed_private_tags ... ok
+test codegen::tests::emits_named_function_values_with_direct_retained_calls ... ok
+test codegen::tests::emits_named_string_character_generator_as_a_private_linear_token ... ok
+test codegen::tests::emits_namespace_data_members_as_stable_ssa_references ... ok
+test codegen::tests::emits_namespace_qualified_generator_without_runtime_lookup ... ok
+test codegen::tests::emits_nat_comparison_with_the_exact_int_representation ... ok
+test codegen::tests::emits_nested_absent_optional_across_custom_generator_directions ... ok
+test codegen::tests::emits_nested_anonymous_patterns_as_recursive_once_only_projections ... ok
+test codegen::tests::emits_nested_custom_generator_function_boundaries ... ok
+test codegen::tests::emits_nested_functions_with_exact_private_capture_parameters ... ok
+test codegen::tests::emits_nested_optional_product_across_custom_generator_directions ... ok
+test codegen::tests::emits_nested_result_product_across_custom_generator_directions ... ok
+test codegen::tests::emits_nominal_enum_across_custom_generator_directions ... ok
+test codegen::tests::emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators ... ok
+test codegen::tests::emits_nominal_sums_as_private_tagged_aggregates_with_dwarf ... ok
+test codegen::tests::emits_nonnegative_nats_across_custom_generator_directions ... ok
+test codegen::tests::emits_o0_infinity_arithmetic_through_validating_runtime_paths ... ok
+test codegen::tests::emits_one_yield_task_stream_as_an_ordered_affine_transaction ... ok
+test codegen::tests::emits_optional_function_environments_as_exact_private_paths ... ok
+test codegen::tests::emits_optional_int_values_across_custom_generator_directions ... ok
+test codegen::tests::emits_optional_rational_values_with_exact_equality ... ok
+test codegen::tests::emits_optional_structured_error_fields_and_source_metadata ... ok
+test codegen::tests::emits_optional_values_decisions_equality_and_debug_metadata ... ok
+test codegen::tests::emits_order_preserving_private_record_boundaries_and_debug_types ... ok
+test codegen::tests::emits_ordered_custom_generator_overloads_and_typed_results ... ok
+test codegen::tests::emits_ordered_product_across_custom_generator_directions ... ok
+test codegen::tests::emits_packaged_fields_as_an_exact_flat_private_signature ... ok
+test codegen::tests::emits_post_resume_local_before_the_next_custom_yield ... ok
+test codegen::tests::emits_private_direct_task_storage_and_transactions_in_source_order ... ok
+test codegen::tests::emits_private_effect_list_nodes_and_pointer_boundaries ... ok
+test codegen::tests::emits_private_infinity_function_and_aggregate_boundaries ... ok
+test codegen::tests::emits_proven_direct_recursion_with_one_exact_private_signature ... ok
+test codegen::tests::emits_proven_increasing_recursion_with_exact_private_signatures ... ok
+test codegen::tests::emits_proven_mutual_nat_cycles_without_runtime_revalidation ... ok
+test codegen::tests::emits_proven_nat_recursion_without_runtime_revalidation ... ok
+test codegen::tests::emits_qualified_custom_generator_close_code_pattern ... ok
+test codegen::tests::emits_recursive_nominal_values_across_custom_generator_directions ... ok
+test codegen::tests::emits_recursive_positional_product_equality_from_field_evidence ... ok
+test codegen::tests::emits_recursive_private_tuple_function_results_and_debug_types ... ok
+test codegen::tests::emits_repeated_anonymous_aggregate_values_as_structural_private_guards ... ok
+test codegen::tests::emits_repeated_anonymous_patterns_as_exact_private_guards ... ok
+test codegen::tests::emits_required_nat_validation_for_dynamic_list_insertion ... ok
+test codegen::tests::emits_result_decisions_and_native_string_error_metadata ... ok
+test codegen::tests::emits_result_function_environments_as_exact_private_paths ... ok
+test codegen::tests::emits_result_rational_across_custom_generator_directions ... ok
+test codegen::tests::emits_root_local_infinity_sentinels_and_exact_range_operations ... ok
+test codegen::tests::emits_root_namespace_identity_and_statically_qualified_call ... ok
+test codegen::tests::emits_runtime_constructed_rational_infinities_and_exact_ranges ... ok
+test codegen::tests::emits_same_named_cross_overload_edge_without_a_cycle ... ok
+test codegen::tests::emits_scope_parameters_with_private_data_environment_arguments ... ok
+test codegen::tests::emits_short_circuiting_int_list_fold_control_inline ... ok
+test codegen::tests::emits_single_yield_custom_generator_without_runtime_state ... ok
+test codegen::tests::emits_specialized_string_character_generator_parameter_traversal ... ok
+test codegen::tests::emits_specialized_string_character_generator_result_transfer ... ok
+test codegen::tests::emits_static_character_evidence_as_the_string_carrier ... ok
+test codegen::tests::emits_sum_function_environments_as_exact_private_paths ... ok
+test codegen::tests::emits_symbolic_callable_values_as_direct_operations ... ok
+test codegen::tests::emits_target_platform_runtime_and_debug_metadata ... ok
+test codegen::tests::emits_transferred_string_character_generator_close_without_runtime_state ... ok
+test codegen::tests::emits_unit_across_every_custom_generator_direction ... ok
+test codegen::tests::emits_unit_resume_binding_after_the_custom_action ... ok
+test codegen::tests::emits_use_namespace_as_the_existing_private_scope_identity ... ok
+test codegen::tests::emits_utf8_byte_counts_through_the_native_string_descriptor ... ok
+test codegen::tests::erases_dependency_only_library_selection_and_preserves_nat_arithmetic ... ok
+test codegen::tests::erases_diagnostic_controls_before_llvm_lowering ... ok
+test codegen::tests::erases_function_interface_evidence_before_direct_llvm_lowering ... ok
+test codegen::tests::erases_static_empty_effect_view_before_llvm_lowering ... ok
+test codegen::tests::erases_static_introspection_and_lowers_numeric_version ... ok
+test codegen::tests::folds_and_erases_static_capability_composition ... ok
+test codegen::tests::folds_closed_character_counting_and_indexing ... ok
+test codegen::tests::folds_closed_pinned_unicode_transformations ... ok
+test codegen::tests::forwards_defining_context_as_exact_private_arguments ... ok
+test codegen::tests::forwards_exact_scalar_environments_across_proven_recursion ... ok
+test codegen::tests::forwards_live_root_data_as_exact_private_arguments ... ok
+test codegen::tests::lowers_anonymous_records_without_a_runtime_abi ... ok
+test codegen::tests::lowers_build_graph_string_list_folds_and_operations_directly ... ok
+test codegen::tests::lowers_generic_optional_int_list_pair_as_one_private_pointer_payload ... ok
+test codegen::tests::lowers_nat_pair_gather_fold_as_one_finite_private_loop ... ok
+test codegen::tests::lowers_qualified_source_library_functions_to_direct_private_calls ... ok
+test codegen::tests::lowers_record_reconstruction_without_a_runtime_abi ... ok
+test codegen::tests::lowers_recursive_structural_comparisons ... ok
+test codegen::tests::lowers_string_pair_lookup_fold_as_one_finite_private_loop ... ok
+test codegen::tests::lowers_the_lint_namespace_as_an_authority_free_scope_value ... ok
+test codegen::tests::specializes_bound_anonymous_int_list_functions_without_dispatch ... ok
+test codegen::tests::specializes_capability_generic_source_library_calls_directly ... ok
+test optimization::tests::default_plan_uses_generic_host_without_native_features ... ok
+test optimization::tests::o1_enables_only_qualified_runtime_global_dce ... ok
+test optimization::tests::profiles_controls_and_explanations_are_deterministic ... ok
+test optimization::tests::rejects_unknown_or_incompatible_controls ... ok
+test optimization::tests::rejects_unqualified_target_cpu_board_and_model ... ok
+test optimization::tests::target_registry_distinguishes_executable_and_model_only_profiles ... ok
+test systems_artifact::tests::declared_library_requires_checked_snapshot_before_publication ... ok
+test systems_artifact::tests::derives_the_pinned_busybox_shaped_static_elf_plan ... ok
+test systems_artifact::tests::generated_root_has_only_typed_provider_dependencies ... ok
+test systems_artifact::tests::publishes_one_closed_freestanding_artifact_directory ... ok
+test systems_artifact::tests::realizes_the_pinned_static_elf_as_ordered_wx_safe_pages ... ok
+test systems_artifact::tests::rejects_inconsistent_inherited_static_elf_page_facts ... ok
+test systems_artifact::tests::rejects_malformed_bounded_static_elf_plans_before_publication ... ok
+test systems_artifact::tests::static_user_image_validation_requires_the_exact_approved_shape ... ok
+test systems_artifact::tests::supplied_initial_user_image_validation_is_bounded_and_payload_neutral ... ok
+test systems_boot_image::tests::atomically_publishes_a_deterministic_image_resource_and_provenance ... ok
+test systems_boot_image::tests::file_open_binding_boots_only_with_its_exact_export_and_tag_vocabulary ... ok
+test systems_boot_image::tests::generates_the_approved_linux_boot_header_and_transition_layout ... ok
+test systems_boot_image::tests::inode_binding_requires_exact_actual_owner_geometry_costs_and_source ... ok
+test systems_boot_image::tests::namespace_binding_requires_exact_owner_source_recovery_and_complete_stack ... ok
+test systems_boot_image::tests::namespace_fault_sources_publish_with_complete_bounded_controller_bindings ... ok
+test systems_boot_image::tests::rejects_cross_policy_missing_or_undercharged_header_binding_before_boot ... ok
+test systems_boot_image::tests::rejects_incomplete_or_cross_policy_retained_state_certificates ... ok
+test systems_boot_image::tests::rejects_missing_cross_policy_or_incomplete_identity_record_binding ... ok
+test systems_boot_image::tests::rejects_missing_cross_policy_or_incomplete_nominal_dispatch_binding ... ok
+test systems_boot_image::tests::rejects_structured_layout_domain_projection_and_transport_evidence_tampering ... ok
+test systems_boot_image::tests::rejects_truncated_or_user_visible_child_backing_before_boot ... ok
+test systems_boot_image::tests::rejects_wrong_sparse_filesystem_capacity_private_layout_and_profile_evidence ... ok
+test systems_boot_image::tests::v6_namespace_binding_requires_complete_owning_retirement_and_entry_costs ... ok
+test systems_boot_resource::tests::publishes_two_deterministic_newc_members ... ok
+test systems_boot_resource::tests::rejects_an_empty_member ... ok
+test systems_frame_controller::tests::frame_controller_uses_source_extents_and_preserves_opaque_handle_lifetimes ... ok
+test systems_frame_policy_binding::tests::frame_policy_binding_rechecks_changed_valid_root_and_library_independently ... ok
+test systems_frame_policy_binding::tests::frame_policy_binding_refuses_unbound_source_and_wrong_result_or_progress ... ok
+test systems_frame_policy_binding::tests::frame_policy_binding_retains_exact_root_source_and_component_without_publication ... ok
+test systems_frame_publication::artifact_tests::frame_artifact_boot_refuses_erased_stale_or_duplicated_provenance ... ok
+test systems_frame_publication::artifact_tests::frame_artifact_publishes_complete_sources_and_reconstructs_at_boot ... ok
+test systems_frame_publication::guest_tests::frame_reconstruction_binds_actual_loads_and_executes_syscall_memory ... ok
+test systems_frame_publication::tests::frame_reconstruction_uses_complete_fresh_source_and_native_roles ... ok
+test systems_frame_target::memory_tests::frame_memory_uses_actual_syscall_requests_and_whole_exec_exit_release ... ok
+test systems_frame_target::root_tests::frame_root_replaces_real_allocation_release_and_mapping_lifetimes ... ok
+test systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state ... ignored, requires TOPAL_PINNED_STATIC_USER_IMAGE, QEMU and GDB
+test systems_frame_target::root_tests::owned_source_fixture_checks_exec_vector_boundaries ... ignored, requires a C compiler, QEMU and GDB
+test systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries ... ignored, requires a C compiler, QEMU and GDB
+test systems_frame_target::root_tests::owned_source_fixture_checks_pipe_transfer_boundaries ... ignored, requires a C compiler, QEMU and GDB
+test systems_frame_target::root_tests::owned_source_fixture_checks_poll_transfer_boundaries ... ignored, requires a C compiler, QEMU and GDB
+test systems_frame_target::root_tests::owned_source_fixture_checks_serial_transfer_boundaries ... ignored, requires a C compiler, QEMU and GDB
+test systems_frame_target::root_tests::owned_source_fixture_checks_signal_transfer_boundaries ... ignored, requires a C compiler, QEMU and GDB
+test systems_frame_target::root_tests::owned_source_fixture_checks_storage_transfer_boundaries ... ignored, requires a C compiler, QEMU and GDB
+test systems_frame_target::tests::bootstrap_frame_target_constructs_the_real_map_and_zeroes_owned_extents ... ok
+test systems_frame_target::tests::frame_gateway_refuses_unproved_and_overflowing_native_stack_budgets ... ok
+test systems_frame_target::tests::frame_gateway_retires_actual_bootstrap_caller_storage_and_preserves_lifetimes ... ok
+test systems_library::file_open_tests::file_open_native_domain_adapts_every_source_tag_and_rejects_wide_masks ... ok
+test systems_library::file_open_tests::file_open_rejects_frozen_shape_and_malformed_nominal_contracts ... ok
+test systems_library::modules::tests::closed_snapshots_reject_missing_extra_conflicting_cyclic_and_effectful_inputs ... ok
+test systems_library::modules::tests::debugger_modules_resolve_against_selected_library_root ... ok
+test systems_library::modules::tests::discovery_budgets_symlinks_and_provenance_mismatches_fail_closed ... ok
+test systems_library::modules::tests::imported_helpers_use_shared_selection_lowering_and_real_source_locations ... ok
+test systems_library::modules::tests::numeric_imports_keep_declared_types_and_complete_allocation_certificate ... ok
+test systems_library::tests::compiled_stack_metadata_rejects_an_excessive_acyclic_call_path ... ok
+test systems_library::tests::declared_library_never_uses_missing_or_private_source ... ok
+test systems_library::tests::finite_library_uses_ordinary_frontend_and_codegen ... ok
+test systems_library::tests::finite_profile_rejects_nonfinite_values_and_cycles ... ok
+test systems_library::tests::native_finite_library_has_bounded_stack_and_preserves_enum_meaning ... ok
+test systems_library::tests::source_loading_rejects_symlink_escape_and_missing_units ... ok
+test systems_numeric_library::array_tests::actual_native_arrays_execute_empty_absent_present_and_joined_optional_paths ... ok
+test systems_numeric_library::array_tests::arrays_preserve_each_entry_and_charge_complete_construction_and_reads ... ok
+test systems_numeric_library::array_tests::empty_and_out_of_bounds_arrays_return_none_and_charge_its_wrapper ... ok
+test systems_numeric_library::array_tests::optional_and_array_joins_retain_all_possible_payload_ranges ... ok
+test systems_numeric_library::array_tests::unqualified_elements_extents_and_operations_are_rejected ... ok
+test systems_numeric_library::dispatch_tests::all_dispatch_versions_admit_only_their_exact_nominal_vocabulary ... ok
+test systems_numeric_library::dispatch_tests::dispatch_requires_complete_nominal_vocabulary_and_full_declared_selector ... ok
+test systems_numeric_library::dispatch_tests::extended_dispatch_rejects_cross_version_vocabulary_and_preserves_the_frozen_profile ... ok
+test systems_numeric_library::dispatch_tests::native_dispatch_matches_independent_selector_set_across_holes_and_wide_inputs ... ok
+test systems_numeric_library::dispatch_tests::nominal_decisions_bound_reachable_actions_and_reject_unqualified_dead_forms ... ok
+test systems_numeric_library::header_tests::header_source_has_exact_array_facts_boolean_result_and_complete_copy_cost ... ok
+test systems_numeric_library::header_tests::native_header_snapshot_preserves_bytes_and_matches_independent_wire_decoding ... ok
+test systems_numeric_library::identity_tests::identity_requires_exact_declared_input_and_named_flat_numeric_output ... ok
+test systems_numeric_library::identity_tests::native_identity_return_matches_independent_transition_and_field_order ... ok
+test systems_numeric_library::interface::tests::private_namespaces_do_not_rewrite_debug_paths_literals_or_comments ... ok
+test systems_numeric_library::native_tests::compiled_numeric_policy_uses_owned_arena_and_general_native_inputs ... ok
+test systems_numeric_library::record_tests::actual_large_record_call_frames_must_fit_the_declared_native_stack ... ok
+test systems_numeric_library::record_tests::joined_records_retain_each_labels_full_numeric_range_independently_of_order ... ok
+test systems_numeric_library::record_tests::malformed_shapes_unqualified_payloads_and_excessive_work_fail_before_emission ... ok
+test systems_numeric_library::record_tests::nested_records_and_reconstruction_preserve_base_values_and_charge_all_fields ... ok
+test systems_numeric_library::retained_identity_tests::malformed_source_result_cannot_modify_published_or_prepared_storage ... ok
+test systems_numeric_library::retained_identity_tests::native_retained_identity_preserves_published_graph_until_preparation_is_consumed ... ok
+test systems_numeric_library::tail_bounds::tests::a_reset_inside_global_but_outside_baseline_is_refused ... ok
+test systems_numeric_library::tail_bounds::tests::actual_clearer_has_a_65_bit_offset_and_constant_per_step_storage ... ok
+test systems_numeric_library::tail_bounds::tests::additional_outer_terminal_operands_and_actions_are_charged ... ok
+test systems_numeric_library::tail_bounds::tests::affine_relations_pass_through_actual_checked_helpers ... ok
+test systems_numeric_library::tail_bounds::tests::arithmetic_ceiling_applies_to_carried_constants_before_publication ... ok
+test systems_numeric_library::tail_bounds::tests::binding_storage_identity_and_prefix_cost_survive_branch_refinement ... ok
+test systems_numeric_library::tail_bounds::tests::constant_resets_expand_baseline_and_preserve_multiple_limbs_and_sign ... ok
+test systems_numeric_library::tail_bounds::tests::discarded_argument_work_is_charged_even_when_not_part_of_the_relation ... ok
+test systems_numeric_library::tail_bounds::tests::equal_source_spans_do_not_confuse_different_tail_edges ... ok
+test systems_numeric_library::tail_bounds::tests::fresh_identity_counts_include_duplicate_calls_to_one_helper ... ok
+test systems_numeric_library::tail_bounds::tests::helper_dag_call_multiplicity_is_not_its_depth_or_function_count ... ok
+test systems_numeric_library::tail_bounds::tests::identity_budget_reserves_root_and_representable_next_counter ... ok
+test systems_numeric_library::tail_bounds::tests::legacy_numeric_bounds_still_refuse_subtraction ... ok
+test systems_numeric_library::tail_bounds::tests::nonlinear_growth_is_refused_instead_of_widened_until_it_fits ... ok
+test systems_numeric_library::tail_bounds::tests::nonunit_progress_uses_the_ceiling_of_drift_per_decrement ... ok
+test systems_numeric_library::tail_bounds::tests::optional_tail_payloads_do_not_lose_edge_identity_or_baseline_checks ... ok
+test systems_numeric_library::tail_bounds::tests::ordered_tail_operands_and_early_terminal_actions_are_charged ... ok
+test systems_numeric_library::tail_bounds::tests::ordinary_optional_loads_keep_their_cost_and_read_only_effects ... ok
+test systems_numeric_library::tail_bounds::tests::signed_positive_and_negative_drift_use_separate_potentials ... ok
+test systems_numeric_library::tail_bounds::tests::symbolic_intermediates_are_limited_before_large_multiplication_chains ... ok
+test systems_numeric_library::tail_bounds::tests::tail_proof_work_has_an_explicit_budget ... ok
+test systems_numeric_library::tail_bounds::tests::total_private_allocation_remains_subject_to_the_existing_reserve ... ok
+test systems_numeric_library::tail_bounds::tests::unchecked_negative_nat_successor_is_refused ... ok
+test systems_numeric_library::tests::bounds_shared_numeric_deadline_from_full_interface_ranges ... ok
+test systems_numeric_library::tests::numeric_profile_rejects_missing_authority_and_unbounded_operations ... ok
+test systems_policy_inputs::tests::policy_object_inputs_allow_empty_data_and_refuse_tls_writable_and_reserved_inputs ... ok
+test systems_provider::tests::plan_is_deterministic_and_retains_no_host_platform_identity ... ok
+test systems_provider::tests::plan_rejects_programs_outside_the_qualified_semantic_profile ... ok
+test systems_provider::tests::plans_the_complete_sealed_initial_provider_mapping ... ok
+test systems_provider_object::namespace_region::tests::namespace_runtime_v6_changes_only_the_bound_fatal_continuation ... ok
+test systems_provider_object::tail_boundary::kernel::tests::tail_root_profile_is_explicit_and_canonical_publication_requires_binding ... ok
+test systems_provider_object::tail_boundary::kernel::tests::typed_root_tail_component_runs_in_privileged_guest_with_retirement ... ok
+test systems_provider_object::tests::emits_a_closed_relocatable_elf64_provider_object ... ok
+test systems_provider_object::tests::emits_only_the_sealed_provider_instruction_sequences ... ok
+test systems_provider_object::tests::retains_checked_storage_and_provider_provenance ... ok
+test systems_region_library::tests::emits_checked_region_source_and_actual_native_helper_frames ... ok
+test systems_region_library::tests::framed_region_source_objects_bind_exact_scalar_counts_and_complete_costs ... ok
+test systems_region_library::tests::inode_modes::inode_mode_changed_source_fails_the_byte_oracle_and_false_keeps_earlier_stores ... ok
+test systems_region_library::tests::inode_modes::inode_mode_debugger_observes_actual_source_facts_effects_and_caller_reclamation ... ok
+test systems_region_library::tests::inode_modes::inode_mode_source_binds_an_independent_instance_and_complete_costs ... ok
+test systems_region_library::tests::inode_modes::inode_source_large_nat_facts_refuse_before_observing_inaccessible_owner_payload ... ok
+test systems_region_library::tests::instance_objects_bind_distinct_namespaces_hooks_counts_and_canonical_identity ... ok
+test systems_region_library::tests::isolated_region_modules_reject_caller_scope_and_changed_helpers_fail_the_byte_oracle ... ok
+test systems_region_library::tests::namespace_actions::namespace_fixed_byte_helpers_have_complete_source_bounds ... ok
+test systems_region_library::tests::namespace_actions::namespace_metadata_action_has_complete_bounds_and_exact_native_effects ... ok
+test systems_region_library::tests::namespace_actions::native_oracle::native_entry_components_use_separate_name_slots_and_checked_link_associations ... ok
+test systems_region_library::tests::namespace_actions::native_oracle::native_final_helpers_classify_without_traversing_and_bind_checked_entry_slots ... ok
+test systems_region_library::tests::namespace_actions::native_oracle::native_namespace_oracle_checks_every_byte_and_erases_without_publication ... ok
+test systems_region_library::tests::namespace_actions::native_oracle::native_parent_walk_defers_final_disposition_and_preserves_copied_bytes ... ok
+test systems_region_library::tests::namespace_actions::native_oracle::v6_namespace_personality_emission_closes_all_routes_without_publication ... ok
+test systems_region_library::tests::namespace_actions::qualified_namespace_source_can_fail_after_stores_or_return_a_wrong_association ... ok
+test systems_region_library::tests::namespace_actions::shared_region_code_still_charges_every_view_and_refuses_the_original_limit ... ok
+test systems_region_library::tests::region_certificate_reproduction_rejects_undercharge_wrong_protocol_and_changed_objects ... ok
+test systems_region_library::tests::region_source_bounds_reject_temporary_view_and_numeric_overflow_before_object_emission ... ok
+test systems_region_library::tests::region_source_checks_dynamic_refusals_rights_and_argument_effect_order ... ok
+test systems_region_library::tests::unsigned::unsigned_fields_execute_all_formats_and_whole_preflight_on_guarded_payloads ... ok
+test systems_region_library::tests::unsigned::unsigned_load_store_costs_and_optional_runtime_presence_are_exactly_bound ... ok
+test systems_region_library::tests::unsigned::unsigned_native_debugger_observes_values_payload_access_and_complete_erasure ... ok
+test systems_region_library::tests::unsigned::unsigned_runtime_fact_evaluation_precedes_native_role_assignment ... ok
+test systems_region_library::tests::unsigned::unsigned_unit_instance_and_unselected_runtime_inputs_keep_exact_profile_binding ... ok
+test systems_region_root_tests::root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampering ... ok
+test systems_retained_layout::tests::checked_source_nested_layout_matches_an_independent_native_c_aggregate ... ok
+test systems_retained_layout::tests::invalid_structured_source_fields_cannot_modify_the_published_or_prepared_graph ... ok
+test systems_retained_layout::tests::structured_adapter_preserves_whole_values_and_all_nested_order_combinations ... ok
+test systems_tail_component::tests::actual_native_aliased_successor_roots_receive_independent_bank_copies ... ok
+test systems_tail_component::tests::actual_native_boolean_state_is_transferred_as_ordinary_values ... ok
+test systems_tail_component::tests::actual_native_clearer_reuses_banks_beyond_the_old_extent_and_preserves_fatal_effects ... ok
+test systems_tail_component::tests::actual_native_optional_reads_reuse_work_without_fabricating_writes ... ok
+test systems_tail_component::tests::actual_native_readonly_multilimb_constants_are_copied_before_retirement ... ok
+test systems_tail_component::tests::actual_native_signed_source_preserves_values_after_each_retirement ... ok
+test systems_tail_component::tests::actual_native_unit_terminal_has_a_private_outcome_without_a_source_value ... ok
+test systems_tail_component::tests::actual_private_stack_boundary_reclaims_all_steps_and_admitted_source_failures ... ok
+test systems_tail_component::tests::actual_source_step_preserves_order_and_binds_a_distinct_runtime ... ok
+test systems_tail_component::tests::defensive_ir_tail_control_flow_uses_the_selected_branch_and_storage_identity ... ok
+test systems_tail_component::tests::native_late_cleanup_failure_retains_history_after_header_erasure ... ok
+test systems_tail_component::tests::private_stack_boundary_does_not_resume_after_an_invalid_machine_outcome ... ok
+test systems_tail_component::tests::private_stack_boundary_preserves_scalar_roots_and_readonly_owners ... ok
+test systems_tail_component::tests::private_stack_boundary_reclaims_between_step_controller_failures ... ok
+test systems_tail_component::tests::provider_checkpoint_handles_nonunit_descent_and_unreachable_large_edges ... ok
+test systems_tail_component::tests::provider_checkpoint_retires_helpers_with_stack_passed_arguments ... ok
+test systems_tail_component::tests::provider_completion_reclaims_output_and_invocation_on_every_failure ... ok
+test systems_tail_component::tests::provider_hooks_preserve_all_scalar_roots_and_readonly_owners ... ok
+test systems_tail_component::tests::provider_hooks_refuse_forged_history_and_number_before_dereference ... ok
+test systems_tail_component::tests::provider_owned_hooks_execute_actual_clearer_and_controller_recovery ... ok
+test systems_tail_component::tests::provider_runtime_rebuilds_complete_layout_and_refuses_actual_context_overflow ... ok
+test systems_tail_component::tests::pure_signed_source_lowers_through_the_same_step_component ... ok
+test systems_tail_model::tests::actual_clear_source_binds_ranges_helper_scopes_and_owned_state ... ok
+test systems_tail_model::tests::ownerless_source_and_changed_graph_do_not_receive_owned_bindings ... ok
+test systems_tail_owner::frame_policy_tests::frame_metadata_policy_executes_owned_source_against_complete_state_oracle ... ok
+test systems_tail_owner::nat_tests::natural_owner_constructor_retains_the_exact_source_and_result_profile ... ok
+test systems_tail_owner::nat_tests::natural_owner_returns_complete_values_and_actual_metadata_positions ... ok
+test systems_tail_owner::tests::native_owner_admits_actual_context_runs_all_roles_and_preserves_history ... ok
+test systems_tail_owner::tests::owner_interface_refuses_other_signatures_without_widening_component_profiles ... ok
+test systems_tail_plan::tests::actual_checked_source_proves_natural_descent_without_emission_authority ... ok
+test systems_tail_plan::tests::actual_helper_graph_and_dependencies_are_bound_with_independent_order ... ok
+test systems_tail_plan::tests::actual_read_traversal_infers_reads_without_fabricating_write_rights ... ok
+test systems_tail_plan::tests::actual_region_source_retains_ordered_effects_and_legacy_refusal ... ok
+test systems_tail_plan::tests::all_branch_edges_need_progress_even_when_the_subject_is_constant ... ok
+test systems_tail_plan::tests::checked_body_changes_cannot_keep_the_same_graph_fingerprint ... ok
+test systems_tail_plan::tests::checked_transport_widens_nat_but_never_invents_a_narrowing_proof ... ok
+test systems_tail_plan::tests::display_name_reuse_with_distinct_storage_does_not_shadow_a_parameter ... ok
+test systems_tail_plan::tests::every_guard_branch_and_helper_identity_is_checked ... ok
+test systems_tail_plan::tests::imported_helper_inputs_bind_identity_path_and_exact_bytes ... ok
+test systems_tail_plan::tests::limits_cover_unreachable_code_flat_work_and_parameter_fields ... ok
+test systems_tail_plan::tests::malformed_or_nonprogressing_edges_never_receive_a_plan ... ok
+test systems_tail_plan::tests::nonunit_steps_charge_the_terminal_step_and_early_finish_only_reduces_work ... ok
+test systems_tail_plan::tests::recursion_in_base_arguments_and_nontail_expressions_is_refused ... ok
+test systems_tail_plan::tests::shadowed_storage_cannot_fabricate_tail_progress_or_region_identity ... ok
+test systems_tail_plan::tests::signature_and_discovery_limits_fail_closed ... ok
+test systems_tail_plan::tests::source_selection_rejects_unproved_packaged_recursion_and_unsupported_entries ... ok
+test systems_tail_plan::tests::transitive_owner_effects_cannot_fit_an_explicit_empty_effect_row ... ok
+test systems_tail_publication::tests::fresh_source_objects_bind_complete_relocated_kernel_inputs ... ok
+test systems_tail_publication::tests::reconstructed_count_source_observes_full_owned_extent_and_isolated_modules ... ok
+test systems_tail_publication::tests::reconstruction_requires_real_root_and_complete_source_selection ... ok
+test systems_tail_publication::tests::source_bearing_publication_reconstructs_at_boot_and_executes_kernel ... ok
+test systems_tail_publication::tests::tail_publication_keeps_all_selected_kernel_source_libraries ... ok
+test systems_user_extent::source_fixture::default_abi_fixture_preserves_committed_generator_bytes ... ok
+test systems_user_extent::source_fixture::source_user_component_links_before_abi_image_construction ... ok
+test systems_user_extent::tests::native_user_extent_walk_preserves_guarded_tables_and_checks_every_level ... ok
+test systems_user_extent::tests::user_extent_direct_fstat_outputs_use_grown_split_page_heap ... ok
+test systems_user_extent::tests::user_extent_direct_newfstatat_paths_preserve_lookup_error_order ... ok
+test systems_user_extent::tests::user_extent_direct_shell_outputs_use_grown_split_page_heap ... ok
+test systems_user_extent::tests::user_extent_direct_startup_outputs_use_grown_split_page_heap ... ok
+test systems_user_extent::tests::user_extent_normal_guest_boot_and_memory_operations ... ok
+test systems_user_extent::tests::user_extent_owners_come_from_the_checked_root_without_changing_its_bytes ... ok
+test systems_user_extent::tests::user_extent_owns_real_kernel_tables_and_dynamic_heap_in_qemu ... ok
+test systems_user_extent::tests::user_extent_shared_callers_use_real_large_heap_buffers ... FAILED
+test systems_user_extent::tests::user_extent_shell_io_uses_actual_transfer_lengths ... ok
+test systems_user_extent::tests::user_extent_target_reconstructs_actual_owner_offsets_and_verifies_natively ... ok
+
+failures:
+
+---- systems_user_extent::tests::user_extent_shared_callers_use_real_large_heap_buffers stdout ----
+actual frame source root: /home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-library-1794422655920009054/temporary/user-extent-callers-2318086-1794426094846203002
+
+thread 'systems_user_extent::tests::user_extent_shared_callers_use_real_large_heap_buffers' (2333357) panicked at src/topal-compiler/src/systems_tail_nat_owner_tests.rs:20:5:
+guest: /home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-library-1794422655920009054/temporary/user-extent-callers-2318086-1794426094846203002
+Traceback (most recent call last):
+  File "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py", line 732, in <module>
+    harness.main(work_name='user-extent-callers',program_prefix=prefix,
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 input_scope='ordinary split-page and cross-table syscall buffers',
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 expect_backing=not focused,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 # The full fixture repeats startup over four process images.
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 guest_timeout_seconds=1200 if selection['shell_io_only'] else 900 if focused else 1800)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py", line 303, in main
+    assert time.monotonic() < deadline, f'full-root guest timed out ({guest_timeout_seconds}s)'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: full-root guest timed out (1800s)
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    systems_user_extent::tests::user_extent_shared_callers_use_real_large_heap_buffers
+
+test result: FAILED. 379 passed; 1 failed; 8 ignored; 0 measured; 0 filtered out; finished in 6130.95s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

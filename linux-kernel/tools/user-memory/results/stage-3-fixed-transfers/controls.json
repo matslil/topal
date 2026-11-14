@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "rejections": [
+    {
+      "name": "missing-edge",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Diagnostic graph/join JSON mutation only, including updated outer graph digest; unchanged first-party ELF, no VM or guest-state mutation"
+    },
+    {
+      "name": "extra-edge",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Diagnostic graph/join JSON mutation only, including updated outer graph digest; unchanged first-party ELF, no VM or guest-state mutation"
+    },
+    {
+      "name": "missing-root",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Diagnostic graph/join JSON mutation only, including updated outer graph digest; unchanged first-party ELF, no VM or guest-state mutation"
+    },
+    {
+      "name": "instruction-bytes",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Diagnostic graph/join JSON mutation only, including updated outer graph digest; unchanged first-party ELF, no VM or guest-state mutation"
+    },
+    {
+      "name": "missing-access-origin",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Diagnostic graph/join JSON mutation only, including updated outer graph digest; unchanged first-party ELF, no VM or guest-state mutation"
+    }
+  ],
+  "scope": "Consistency controls, not authentication against replacing an entire producer or native admission/lifetime evidence"
+}

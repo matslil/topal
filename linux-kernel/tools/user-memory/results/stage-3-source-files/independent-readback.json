@@ -1,0 +1,168 @@
+{
+  "passed": true,
+  "linked_text_bytes": 4685,
+  "text_sha256": "fd6603899afbdfc2a6849bed442c036ac2cc398650cea65f06f3219843251925",
+  "executable_load_flags": 5,
+  "adapters": {
+    "syscall3": "4889f84889f74889d64889ca0f05c3",
+    "syscall4": "4d89c24889f84889f74889d64889ca0f05c3",
+    "startup_bridge": "57565241524150415141544989e44883e4f04889c7498b742430498b542428498b4c24204d8b442418e882f1ffff4c89e4415c41594158415a5a5e5fc3",
+    "source_target": 5702592,
+    "call_sites": [
+      4874742,
+      4874854,
+      4874919,
+      4875104,
+      4875216,
+      4878817,
+      4879052,
+      4879443,
+      4879928,
+      4879988,
+      4880234,
+      4881546,
+      4881616,
+      4881857,
+      4882048,
+      4882203,
+      4882476,
+      4882548,
+      4882789,
+      4882976,
+      4883193,
+      4883592,
+      4884024,
+      4884422,
+      4885104
+    ]
+  },
+  "user_stack_bytes": 1720,
+  "static_frames": [
+    {
+      "function": "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/source-cases.c:9:12:split_uname",
+      "bytes": 448
+    },
+    {
+      "function": "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/source-cases.c:23:6:topal_user_extent_source_cases",
+      "bytes": 32
+    },
+    {
+      "function": "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/startup-cases.c:9:13:output_call",
+      "bytes": 8
+    },
+    {
+      "function": "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/startup-cases.c:15:6:topal_user_extent_startup_cases",
+      "bytes": 144
+    },
+    {
+      "function": "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/file-cases.c:12:13:output_cases",
+      "bytes": 272
+    },
+    {
+      "function": "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/file-cases.c:45:6:topal_user_extent_file_cases",
+      "bytes": 112
+    }
+  ],
+  "shared_invocations": 4,
+  "shared_syscalls": 56,
+  "startup_invocations": 20,
+  "startup_syscalls": 200,
+  "bridge_returns": 40,
+  "file_invocations": 20,
+  "file_syscalls": 176,
+  "stack_frame_costs": {
+    "source-cases": 496,
+    "startup-cases": 168,
+    "file-cases": 400
+  },
+  "kernel_comparisons": [
+    {
+      "path": "root.o",
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    {
+      "path": "source.o",
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    },
+    {
+      "path": "runtime.o",
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    {
+      "path": "owner.o",
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    {
+      "path": "controller.o",
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    {
+      "path": "target.o",
+      "bytes": 27320,
+      "sha256": "b7abc95d8f6d85a69adb77ff0759193b40642e74cb29350e0908e80ce47a0a2e"
+    },
+    {
+      "path": "dispatch.o",
+      "bytes": 12832,
+      "sha256": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457"
+    },
+    {
+      "path": "gateway.o",
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    {
+      "path": "boundary.o",
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    {
+      "path": "extent.o",
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    {
+      "path": "extent-bridge.o",
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    {
+      "path": "extent-callers.o",
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    {
+      "path": "provider.o",
+      "bytes": 1061624,
+      "sha256": "dc128426886ef18674b96c48dca73d90bd2fddae631e4f4eed1636e7c4ff3618"
+    },
+    {
+      "path": "predecessor-provider.o",
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    {
+      "path": "predecessor-gateway.o",
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    {
+      "path": "kernel.elf",
+      "bytes": 1665296,
+      "sha256": "b0cd5685fb82879a8466f657b431aeee911977f1f3773888c7cfb2ca5777e175"
+    },
+    {
+      "path": "bzImage",
+      "bytes": 45232768,
+      "sha256": "5732aa9a697f1e995fcafde331d42d966a06469c63baa31859751ddc2d7ead31"
+    }
+  ],
+  "serial_bytes": 7606,
+  "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+  "scope": "Selected native file/startup/shared calls and separate ELF byte parsing; no complete caller or production qualification"
+}

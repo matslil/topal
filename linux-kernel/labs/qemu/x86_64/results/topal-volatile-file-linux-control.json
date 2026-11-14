@@ -1,0 +1,21 @@
+{
+  "disposable_overlay": true,
+  "executable_sha256": "d826a9fcc3924ef541958d6b95aac2e1bc9087926654ea05371d652c326a597f",
+  "filesystem": "tmpfs rw,noatime,size=32k,nr_inodes=5",
+  "guest_libc": "2.41-12+deb13u4",
+  "harness_sha256": "b47b003a83708c7912af62fe36db9620e1038c351c2331d5563ec12ec2b499dd",
+  "kernel_release": "7.2.9",
+  "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+  "needed_glibc": [
+    "2.2.5",
+    "2.33",
+    "2.34",
+    "2.38"
+  ],
+  "output": "VOLATILE_FILE_CONTROL_PASS sparse aliases truncate regrowth page-budget object-budget append fork exec cloexec private-umask",
+  "reference_kernel_sha256": "c005235648520b35e104e3d8025abf48f6f523697a54f491b9cf692db53fae0c",
+  "result": "pass",
+  "schema": "topal-volatile-file-linux-control/1",
+  "scope": "generic sparse-file and descriptor/process lifetime laws; no full tmpfs-driver equivalence",
+  "source_sha256": "f8bcdc91beb26f010a2f52a969e80e043a7b359e67d0dbc2c569c0596098b85e"
+}

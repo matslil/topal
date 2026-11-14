@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "call_count": 91,
+  "directions": {
+    "runtime-readable-extent": 46,
+    "runtime-writable-extent": 45
+  },
+  "source_sha256": {
+    "src/topal-compiler/src/systems_process_runtime.rs": "64cbb2575a19232899b9512d5524e53835751343534270546b134ccdae9cbd5d",
+    "src/topal-compiler/src/systems_positional_transfer.rs": "015de3df1c66fb1fad9ce076a927078efb98d84f17b96efdf5e74a8ffd646b5c",
+    "src/topal-compiler/src/systems_file_descriptions.rs": "22ffae54b1b75c77dc0e9476dad0d66db7faa98df8564a99d7500b60ed626119",
+    "src/topal-compiler/src/systems_process_signals.rs": "c60d759f85f69ccf465c311b7873dded9843b001bf7531e767bb05e41e5fafd1",
+    "src/topal-compiler/src/systems_namespace_walk.rs": "85cdbd199c024bfc39fcd5b4927696af593c4785517fd8e1f3fd89f0be5ede4a",
+    "src/topal-compiler/src/systems_process_namespace.rs": "0be5352d68b97c56714466d3b2f4235b08b3ebc15ef456cba1ebb2d188f6967a",
+    "src/topal-compiler/src/systems_namespace_named.rs": "41892ebde8a42224c48756b7975be856c279fae5467b1423a773424490a01bca",
+    "src/topal-compiler/src/systems_process_realtime.rs": "786fd35064224a2bcf18e58570492a82341cf85897bdca93dc4f4d11a20262fa",
+    "src/topal-compiler/src/systems_process_observations.rs": "9fa8dee42aaeeede3f808447b7f292782a391902a518e0bbac0f90e052900a99",
+    "src/topal-compiler/src/systems_process_time.rs": "0906bfefd0dae9fd9431aeb1b856181318a1b8c3ee493bbde61cd0d4dba6e611",
+    "src/topal-compiler/src/systems_process_children.rs": "eed4eb4741265e46132f62da63e0dfd9b557759a8de330eda3c9aa6ada56df87",
+    "src/topal-compiler/src/systems_pipe_create.rs": "208b965e233443a6a3d6a48abd3ce8d7c7a56f04d698b6bacd7fdf0464e00b68",
+    "src/topal-compiler/src/systems_pipe_transfer.rs": "0103921cd08d7ac92a486b1465cf999208e85e18a0537930f2c7d093ecc47fb9",
+    "src/topal-compiler/src/systems_process_pipes.rs": "4cb13ca86d086a7b80003a8b20e075e9ba81274f4910fb3428822adb7201ee85",
+    "src/topal-compiler/src/systems_volatile_transfer.rs": "e84f3aac1f491c9a66d64712778d2a77b2728701c6f24f91077bf2c3f2aa6051",
+    "src/topal-compiler/src/systems_exec_environment.rs": "dd2ac18936d522fb985d4117f9bdd1ebb847555f694e1dcbdc5d7cdba633469d"
+  },
+  "provider_sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+  "inventory_sha256": "1408d6f9916bd5a0c37000b98ce1e8c38e6bad793e780366177b9af4e9136711",
+  "disassembly_sha256": "bd0e6316503c4abe3eda51d6075c1af3d079e8ee91998d5fe166c475937d277a",
+  "scope": "Selected emitted calls to the two owned extent stubs; not a complete direct-user-access inventory, proof of load/store dominance, runtime coverage or production qualification"
+}

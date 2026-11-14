@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/trace_process_origins.py", line 122, in <module>
+    inspect(Path(sys.argv[1]).resolve(),Path(sys.argv[2]).resolve())
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/trace_process_origins.py", line 80, in inspect
+    assert bytes.fromhex(node['bytes']) == linked[node['offset']:node['offset']+node['size']]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

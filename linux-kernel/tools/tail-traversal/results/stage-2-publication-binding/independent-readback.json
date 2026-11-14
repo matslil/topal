@@ -1,0 +1,12 @@
+{
+  "schema": "topal.tail-publication-readback/1",
+  "exit_code": 0,
+  "scope": "Independent retained-source/native/VM readback and separate ELF relocation/load comparison. One bounded factual design-label correction is checked against original frozen snapshots; original qualification/machine inputs are unchanged.",
+  "files": {
+    "qualification.json": "12fe9a1ee8c66cfae8c325a72f243b3ecc98649714101fbb446e51e63285cc4c",
+    "independent-readback.py.txt": "3cb9e3ebe3b1ad1016cdade6dea5fa463eba5e605204f9a9592e876b97f54383",
+    "independent-readback.stdout.log": "c4baad481fc055fbf8d4afd3a2baae5fab1ec99f97e5279d4975d109752a9efb",
+    "independent-readback.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scope_correction_sha256": "82b0fb0fe504a74974434ae6313d316014f96c952c1c6d5a5c549e2cb54697fb"
+}

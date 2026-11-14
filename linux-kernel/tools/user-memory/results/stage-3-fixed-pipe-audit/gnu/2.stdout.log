@@ -1,0 +1,15 @@
+
+linux-kernel/.cache/x86_64/user-extent-source-poll-2340765-1794433349203271869/kernel.elf:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000002bc0f47 <topal_x86_frame_mm_cleanup_return_v1+0x18183>:
+ 2bc0f47:	49 89 d0                                        	mov    r8,rdx
+ 2bc0f4a:	49 b9 04 00 00 00 00 00 00 00                   	movabs r9,0x4
+ 2bc0f54:	e8 a5 dc fe ff                                  	call   2baebfe <topal_x86_frame_mm_cleanup_return_v1+0x5e3a>
+ 2bc0f59:	48 c7 44 24 f8 00 00 00 00                      	mov    QWORD PTR [rsp-0x8],0x0
+ 2bc0f62:	0f 82 92 06 00 00                               	jb     2bc15fa <topal_x86_frame_mm_cleanup_return_v1+0x18836>
+ 2bc0f68:	e8 d6 fc ff ff                                  	call   2bc0c43 <topal_x86_frame_mm_cleanup_return_v1+0x17e7f>
+ 2bc0f6d:	49 8b 82 28 00 00 00                            	mov    rax,QWORD PTR [r10+0x28]
+ 2bc0f74:	41 89 00                                        	mov    DWORD PTR [r8],eax

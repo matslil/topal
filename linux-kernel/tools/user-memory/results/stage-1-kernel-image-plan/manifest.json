@@ -1,0 +1,74 @@
+{
+  "methods/collector.py.gz": {
+    "bytes": 2175,
+    "sha256": "c9cb1e14d3077dfd296875bae76b639e73285aa5a9ad8ce31c425c484cb744e2"
+  },
+  "methods/driver.py.gz": {
+    "bytes": 1201,
+    "sha256": "caf38aa8f8b6f59c84b85422f45282d767fe3647642d91d64e92f9f3f7dd39ee"
+  },
+  "methods/replay.py": {
+    "bytes": 2089,
+    "sha256": "e97ed5472a7d617388a24c7afd6d59825eb5a1d88579511be315073ef19fabb9"
+  },
+  "qualification/process-memory.stderr.log.gz": {
+    "bytes": 56,
+    "sha256": "7a2c6df3fb1a058cebf027efcffc46db74e139b4ef0be6e92f029391b8add241"
+  },
+  "qualification/process-memory.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "qualification/run.json.gz": {
+    "bytes": 75058,
+    "sha256": "7598448c021684ee2d9d9ee94e0d80176f0d93ccf2cbde1c52d2b58d719bb438"
+  },
+  "qualification/user-memory.stderr.log.gz": {
+    "bytes": 58,
+    "sha256": "5c33af23fa18f06e0564c7627350f157f7ac5b2058ff02046b4ca4e46c51ca28"
+  },
+  "qualification/user-memory.stdout.log.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "report.json": {
+    "bytes": 557591,
+    "sha256": "bae977919ebee8cd6a60002014cc2936247e7007c4b4fdc0644fb2c8e793bd38"
+  },
+  "sources/docs/systems-profile.md.gz": {
+    "bytes": 44042,
+    "sha256": "05a914bd33ae557e7c7f2d691799dfbd9e83ddcf616997bd30c527434007b0c9"
+  },
+  "sources/linux-kernel/design/decision-register.md.gz": {
+    "bytes": 45246,
+    "sha256": "26f6798986f7f99f533ddf294608520ded328b0fdeba584b392e509342da6cf4"
+  },
+  "sources/linux-kernel/design/kernel-image-protection.md.gz": {
+    "bytes": 4049,
+    "sha256": "2d953d030e60ea2d53d2a2ad2190ac3be0a06decd76cfa2b51ad2970240d2cc8"
+  },
+  "sources/linux-kernel/step-4-status.md.gz": {
+    "bytes": 14092,
+    "sha256": "30923b069e0cf42d2638c5ad81528b0ab499738f2d40fbdb09fee53abc57e828"
+  },
+  "sources/linux-kernel/tools/user-memory/kernel_image_plan.py.gz": {
+    "bytes": 2473,
+    "sha256": "a85f30cca18cbb184478bc285703a08f6b6227af1057ddbe3b738d70410f2f63"
+  },
+  "sources/linux-kernel/tools/user-memory/test_kernel_image_plan.py.gz": {
+    "bytes": 1958,
+    "sha256": "1785fb386d4ad4358be667f7097a47eb15d537a398187d060e5abb9859ad637b"
+  },
+  "sources/se/requirements.md.gz": {
+    "bytes": 40472,
+    "sha256": "9ce493934d3af581714a5a721208e09050ed6558d02b7da48a2c2d4ecae76ea6"
+  },
+  "sources/spec/systems-profile.md.gz": {
+    "bytes": 174697,
+    "sha256": "d4dad49ee360745a11c016bee8563c4f2f74f7658df4ed39cbfc5746fd941dc5"
+  },
+  "sources/src/topal-compiler/se-requirements.md.gz": {
+    "bytes": 174931,
+    "sha256": "04b3cca1f95cc08cf22c8051a38a533c09a1c36c36240d6c4d6cb2f0c8bceafc"
+  }
+}

@@ -1,0 +1,1274 @@
+{
+  "passed": true,
+  "files": {
+    "README.md": {
+      "sha256": "9090cd29387f26fc90ae26d1256e47a0d7759fc68aa8cc2ceff18135911e8a87",
+      "bytes": 5012
+    },
+    "archive-fixed-pipe-native.py": {
+      "sha256": "ce5b9832d0c8294ba7915a70480637660d4b31349491c095e80c13cb497a35e8",
+      "bytes": 9524
+    },
+    "artifact-identity.json": {
+      "sha256": "78e1cd74906c25beeff8fc36aa6503186148d4fc1140e09c244049ac3e898866",
+      "bytes": 4232
+    },
+    "artifacts/initramfs.cpio.gz": {
+      "sha256": "70103256e945143847cf90f111093254e2d76547559dd3fc829536dadf172e56",
+      "bytes": 18746
+    },
+    "artifacts/pipe-fixed-output-audit.json.gz": {
+      "sha256": "69913f460d737831e15735e4311bfa9f38b0ac11e7849236e25e624478550a89",
+      "bytes": 3373
+    },
+    "artifacts/source-user.elf.gz": {
+      "sha256": "dc8c1cdb9a0393aaafb3557bd70c6c458441b2a73772d3fb12835f28986fa9ea",
+      "bytes": 19110
+    },
+    "artifacts/static-elf-abi-fixture.elf.gz": {
+      "sha256": "f1eebe5a10f16df8733069a4ece701deb86295bda52f496eb2566ac711518446",
+      "bytes": 16650
+    },
+    "baseline-identities.json": {
+      "sha256": "17563fe710baef439fd07d02a8d41e042a8c6785fc7e686f835e7749a1f9ab2c",
+      "bytes": 1194
+    },
+    "caller-access-index.json": {
+      "sha256": "15606c12da0ab8a54b6b844b4ade74906a7a07ad5a03abeff3bdf715c3391bda",
+      "bytes": 15945
+    },
+    "failures/missing-model-module-models.log.gz": {
+      "sha256": "be11a4b70005a6fd09aa345bbaa8c9e5b41cbe60de301956b97bdc2d736e52f6",
+      "bytes": 2226
+    },
+    "failures/missing-model-tests-models.log.gz": {
+      "sha256": "5c9a29e997aa647f3988048edaf1ef6c16c6694c6a091bd4b8df0f2b85dc7ada",
+      "bytes": 1764
+    },
+    "history/preceding-source-user.elf.gz": {
+      "sha256": "915d703de0cd402cf34145d862617fe3a656026765d10109f2a3c8db41b02417",
+      "bytes": 19109
+    },
+    "inputs/linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py.gz": {
+      "sha256": "504aede8480c5dba8e085bffe0963088d93809178b73c94ef719a8ca6d21351d",
+      "bytes": 2001
+    },
+    "inputs/linux-kernel/labs/qemu/x86_64/user_extent_pipe_fixed_observer.py.gz": {
+      "sha256": "6886cef809ea5e0c2f848539d2edadf7b9534560e641ffbd200fe37dbc598f9c",
+      "bytes": 2870
+    },
+    "inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz": {
+      "sha256": "950f789591f7d35e66344115e409031967b789d6e5266ad7374651ec82eea0f2",
+      "bytes": 6311
+    },
+    "inputs/linux-kernel/tools/user-memory/model.py.gz": {
+      "sha256": "ddb0c8e78b59c2f6c3fc9a53e0afa6be82ac52f1618a8ee06e854b950653a9ac",
+      "bytes": 2103
+    },
+    "inputs/linux-kernel/tools/user-memory/test_model.py.gz": {
+      "sha256": "34f09dda3bc3efbbac1b52bb25dfec553651085c5db79fd2e9401847dbaf2436",
+      "bytes": 3046
+    },
+    "inputs/linux-kernel/tools/user-memory/test_observer_selection.py.gz": {
+      "sha256": "a9547d1ec7f70e570fb8e9e924432c6d267184408ea8a80da89ca0facd15ccfb",
+      "bytes": 1745
+    },
+    "inputs/linux-kernel/tools/user-memory/test_pipe_fixed_observer.py.gz": {
+      "sha256": "99f02010d693d96dccca2ef5b2a81cfc254443971afb173b6ee9bfb01012a0b6",
+      "bytes": 2119
+    },
+    "native/observation/gdb.stderr.log.gz": {
+      "sha256": "8a2df093e71e75da22ecdef80f0f333c45c864359179bbd195b66f655ea8de90",
+      "bytes": 181
+    },
+    "native/observation/gdb.stdout.log.gz": {
+      "sha256": "ba1f97e72d55ee61853c4f6c152090958719fc9df9df46d5f376206271abc0bd",
+      "bytes": 186
+    },
+    "native/observation/inspect.gdb.gz": {
+      "sha256": "65fa69fbf448a84f03f0dcf62f5913a5bfdbf15ca4d8504521941724a91c0295",
+      "bytes": 81603
+    },
+    "native/observation/observations.json.gz": {
+      "sha256": "3e243921e9e354977d0a379d4060452a36d8530d0e606b0225668dc9614b198a",
+      "bytes": 35871
+    },
+    "native/observation/qemu.command.json.gz": {
+      "sha256": "6e1c33d6e1cc058ec7afc0793a33e70a0360b2406fd21e8778fad269424988dd",
+      "bytes": 610
+    },
+    "native/observation/qemu.stderr.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "native/observation/qemu.stdout.log.gz": {
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20
+    },
+    "native/observation/serial.log.gz": {
+      "sha256": "6e124432abf990a1c8fcca955ef14875f427bd04592b09a7bc1744900466f66c",
+      "bytes": 1542
+    },
+    "native/run.json": {
+      "sha256": "245732c5a777fd3926ee0a5f3a9d1a05aa32ffb8c34211189d98a891b75624ab",
+      "bytes": 2168
+    },
+    "native/source-component.json.gz": {
+      "sha256": "6b008a13192508d36269dd47daa01e8534d8ea7a5f30fa761156facbbd746a3b",
+      "bytes": 742
+    },
+    "native/test.log.gz": {
+      "sha256": "97e64dd98ac5f8839b84793abdb87a04f7bfea02673bcc907843ca9cfe2bb347",
+      "bytes": 366
+    },
+    "native-coverage.json": {
+      "sha256": "d621585a0d6e42064f9e81cafb2de5861f130b3fa09b141f7b067676bd1e6c30",
+      "bytes": 348
+    },
+    "native-readback.json": {
+      "sha256": "f907879de26d2fb6e9466436f39acdf646dbbee8535bf517006d847d221dd771",
+      "bytes": 10924
+    },
+    "preceding-link-identity.json": {
+      "sha256": "93dce434eeb50c8d86b76844aa29efbc466cf5990c62b6afaee3b784dface8bb",
+      "bytes": 244
+    },
+    "prior-component-binding.json": {
+      "sha256": "d6d88a64e88c9b4b79a10bf569b77137ca693ac80eb9c542254f07b142c1db9c",
+      "bytes": 586
+    },
+    "readback-fixed-pipe-native.py": {
+      "sha256": "d58451693daf9268decbde46f8efab30aa50747ca55b602ad993e23fcf7a1c2e",
+      "bytes": 6654
+    },
+    "readback-source-link-sections.py": {
+      "sha256": "b08d3ea902535ec9d6c3361540746d071873659c432384f2bf6577f171f5be5a",
+      "bytes": 2046
+    },
+    "replay-fixed-pipe-native.py": {
+      "sha256": "d47a91bbf14ff7ffda0879a1ced28aefac6820b1dc26a76d7cdccfca11f31ddc",
+      "bytes": 4098
+    },
+    "replay.json": {
+      "sha256": "adb485a1009907e09bcf50e0fe0d37bdcf97f5e9c2b8179e0a0155d9ac2d559f",
+      "bytes": 422
+    },
+    "review.json": {
+      "sha256": "b0f356def6059b073766e042d619aa0e392282816f96176da6a7e39157a9d3bc",
+      "bytes": 2013
+    },
+    "run-staging-focused-tests.py": {
+      "sha256": "8664d66e2c378f23585c742e558c409eb13696cc5c565a4dbb8223ad10072342",
+      "bytes": 2490
+    },
+    "source-identity.json": {
+      "sha256": "11e5a3f7d24b047714f53571e8991dbc5cc7a744c635e5b0f75fa3232fb8e8aa",
+      "bytes": 44637
+    },
+    "source-link-section-difference.json": {
+      "sha256": "099b030ac4f4dc2b031b29c009f8c6a507320286cc1c5792fdf565f2344c4f1e",
+      "bytes": 1130
+    },
+    "validate-archive.py": {
+      "sha256": "ffad98aa46fb7d8397489acd03db8fd3aaafcefd416e41d0e2120af63818645b",
+      "bytes": 6464
+    }
+  },
+  "snapshot_references": {
+    "sources/AGENTS.md": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/AGENTS.md.gz",
+      "sha256": "a0744879fcd5de2a5befbd9cdcc3346c86afd7233c7c0a8eb0bc7e8d6b92659d",
+      "snapshot_sha256": "f4f40e44b022d43b3782e5b020ac83379bbef71c8e8eda12eb9b3378da9c28f1"
+    },
+    "sources/docs/systems-profile.md": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/docs/systems-profile.md.gz",
+      "sha256": "c2549736eac0f7e7c09ed1c0a669f6e2d140ea758728cf63b3c11674257b205f",
+      "snapshot_sha256": "6df62fec1dc4b880138ccfd62a38e4a269c257e152fbf51700265ce61b56acb7"
+    },
+    "sources/linux-kernel/design/owned-user-extents.md": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/design/owned-user-extents.md.gz",
+      "sha256": "d746ee4732c8ffa48e69e62156b134cc5a8a08da713c49a0cff443f893c5f693",
+      "snapshot_sha256": "5ff6c05a6d622e5f469438ded328b59762fca81c1c8ade9de457317a91f83e4b"
+    },
+    "sources/linux-kernel/design/reusable-static-file-descriptions.md": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/design/reusable-static-file-descriptions.md.gz",
+      "sha256": "49835bdc496befdf5519d54127ec93f92a40ee44a2abfa3374b417dbfe609425",
+      "snapshot_sha256": "d9033acccc9bdd23c9a6f3177e29249ffa2592fafe7164f16f3e1f6b0be594a7"
+    },
+    "sources/linux-kernel/kernel/arch/x86_64/policy/static-linux-dispatch-v6.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/arch/x86_64/policy/static-linux-dispatch-v6.t.gz",
+      "sha256": "2141b17cd3b4b9858843f48ddc98213c8b4c6c935733c8a90af8eb9a19125212",
+      "snapshot_sha256": "87df43b86f4e5348a8868cd6e9e18102770776ebd1332e40d8b69ab95ce5c5a8"
+    },
+    "sources/linux-kernel/kernel/arch/x86_64/toolchain-gate.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/arch/x86_64/toolchain-gate.t.gz",
+      "sha256": "132dbf3cdb3a806a07e11129a56a01366c35b5ff2dd48497040c6545caafbd56",
+      "snapshot_sha256": "1d8ece8c2d89ff77eeb545a3dbf415a18c710b43a1d8c17a1b2da83251564366"
+    },
+    "sources/linux-kernel/kernel/policy/file-open-access.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/policy/file-open-access.t.gz",
+      "sha256": "0b9ca8e42900850f8da60824aa10b6c15558a7b586d7547e8072dcdcebdf4c2e",
+      "snapshot_sha256": "e9ccc1bf408e1b415df0588fd8b1aa750d732cb69e7a296d49df4969beedcd0a"
+    },
+    "sources/linux-kernel/kernel/policy/relative-sleep-deadline.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/policy/relative-sleep-deadline.t.gz",
+      "sha256": "6d9f5f63b19fe96bc1bf7930e735a0c5b32949f5ca5677c7c4b8c44f8c22204d",
+      "snapshot_sha256": "8012a693008f6aa95ec4b72119d4e100f4ba2b70b0aaba0bef0c15f770fb3c53"
+    },
+    "sources/linux-kernel/kernel/policy/static-elf64-header.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/policy/static-elf64-header.t.gz",
+      "sha256": "3fd7a283cd7a2d0c94111ab32a959b3c07b5a7f960dc888a52cad34e29b2347d",
+      "snapshot_sha256": "d3f462a996365a667ee3bcdfe39bdec2b2556210c911b1e3a95162b172e1d254"
+    },
+    "sources/linux-kernel/kernel/policy/structured-process-identity.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/policy/structured-process-identity.t.gz",
+      "sha256": "0432f164804d9d58cce0aaa566f86ddee3a6ca36654923f529425a6fe74766ee",
+      "snapshot_sha256": "e4bf5e3f7e16d68f91a08d71cef9b9096de46f6006e1374bace7e843af39199e"
+    },
+    "sources/linux-kernel/kernel/support/clock.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/support/clock.t.gz",
+      "sha256": "dbadee3f0f3888a6d2e0367a9aa27c28870a35181bfe5bba2dbd8f2023cae32a",
+      "snapshot_sha256": "384afe6fee5812372fe8e48800881f9289ca4b86eb18e4c2fd9a8480edc291d4"
+    },
+    "sources/linux-kernel/kernel/support/elf.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/support/elf.t.gz",
+      "sha256": "0d6f9c69a9a6a1fa1c5024232533da72d459ede876eddbc319a9bdd36b9fc5ad",
+      "snapshot_sha256": "5d5de6f561bf63f80daa229bd23458a6d33574e9a04527249d43421f924458d8"
+    },
+    "sources/linux-kernel/kernel/support/identity-history.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/support/identity-history.t.gz",
+      "sha256": "2ecd3fb3d323fe50e8f091bdc08c5c824aefe1f986f7cd57dd006ae8212a1ee0",
+      "snapshot_sha256": "5753f6bc25cd18e9c7368fcfa71246cc4190629f683875c1f849f000df38a594"
+    },
+    "sources/linux-kernel/kernel/support/process-identity.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/support/process-identity.t.gz",
+      "sha256": "f28a36b5461e19f8cff21a9ec7110115f7dc2c8c7784a68b07506983068b11c9",
+      "snapshot_sha256": "f491ce8244a3387dc893805a9b384857aee33bfa82025c055003da58e9572a74"
+    },
+    "sources/linux-kernel/kernel/support/syscall.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/kernel/support/syscall.t.gz",
+      "sha256": "6fb8df476cfb3bd4aa6fc2adfca084c82755eae83bba59c6b05b574df552ea0c",
+      "snapshot_sha256": "47be50dcfbd17d0b676f222cc2a101c509dc8908a3ebd2f37123e208c5d525a7"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/frame_memory_inspect.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/frame_memory_inspect.py.gz",
+      "sha256": "9a5cdcff5f649511bfb2e8ef5d2f9d216825eff9e6e8550a51efaf63b58c3bab",
+      "snapshot_sha256": "bd64b679a4ba1b3ca66ea9ac0e1ab73a44c95ab28e7daefe8398e7c68605b12a"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz",
+      "sha256": "fcadfbd0777b8ec22977bd9aeb81dc75d23bf639d2aa7a50d91e28445117b773",
+      "snapshot_sha256": "5d4f284869b241892923a43f04f8fc3774c7032816d3355b3be6954d17074097"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t.gz",
+      "sha256": "40495fcdfa7c80fee6af4fb1c76b7b05303a2d0ab6db2039e1ab23bd9a794707",
+      "snapshot_sha256": "62782ba401684b81979945cd5ad0d421748b75bd703a1cae20d3eae29a011c48"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/private_clean_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/private_clean_cases.c.gz",
+      "sha256": "0d45828cc594a093684335b1034aa3da1581893e6c05e669fa3c6fe3ef0dd357",
+      "snapshot_sha256": "827df67fb23978bf4dcb47b4f2b67d23d4d5c17e0fa3ad3d6b98d611aba7e357"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/test_frame_progress.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/test_frame_progress.py.gz",
+      "sha256": "c8f5ae07b52aaa0ec7796aac6f842984591024bcff54a275ec89994b5129d1c5",
+      "snapshot_sha256": "1132acd5f4b03853114d14ba373c9244782d382956f3c295dee8d67b5f4c2791"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/test_frame_word_decoding.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/test_frame_word_decoding.py.gz",
+      "sha256": "a3e6b0dd0d7e8cb38b79f07df460541c5fd38eb45adebe4975ab1450eb538993",
+      "snapshot_sha256": "2686e9651a217f63c48796ea15ee46dcbfdad8864a1ef1bd50dfe0fb5b9ffe23"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_application_inspect.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_application_inspect.py.gz",
+      "sha256": "faffbc8721da758949bf2a447f4b317160f00997dfdaad9187561cb9b957c1a8",
+      "snapshot_sha256": "10885c6f9e58248dde4ffb180ed79b484ecb45e9cde9ab7ff7efab0fb55cd09c"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py.gz",
+      "sha256": "6601abdce22f8cd9ae68da3a5b16629f35a7bbdc3b97d9e2ecb51d6099f498e5",
+      "snapshot_sha256": "504aede8480c5dba8e085bffe0963088d93809178b73c94ef719a8ca6d21351d"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_callback_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_callback_observer.py.gz",
+      "sha256": "13731615638055d57f65f264b3c37d97ff9ed608229fca2cb6fcbd68fa32ceda",
+      "snapshot_sha256": "a39646596b227bd09ba867a57d19a5115e601967b7de700952165faa9d117535"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py.gz",
+      "sha256": "21e36cf9ef8b6616f98a1250637ff88a4d6043fabbb5a14caa91a25f61ed2d9d",
+      "snapshot_sha256": "66c12d837a5a30ad22001a8188dd71fbb242776a1bd584ac05bdb876aa819e89"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_command_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_command_cases.c.gz",
+      "sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+      "snapshot_sha256": "0ea6b67a65fd27fdfff3d0f800b332bc4300bf28c551c641b6953910ea0df466"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/user_extent_copy_observer.py.gz",
+      "sha256": "869f7c7abc7bd4e2827ef044a207b1a0d4cb1ccd7f40e6f1f3bc6b7764dda583",
+      "snapshot_sha256": "f61339e14c633018566f0d6e06b7726bce4903b9bb45160d4cbb68556862f33d"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_exec_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_exec_observer.py.gz",
+      "sha256": "515a9b2bf726f36416ea2d86291595950cfaeaf5bf307985450fbb38aeccb5f6",
+      "snapshot_sha256": "58ea7901354d451f5b8b053b9eb859d77bc2af239877c9457795e5b520ad324e"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_file_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_file_cases.c.gz",
+      "sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+      "snapshot_sha256": "7c2a30a0282a13a0610cc96e84f57484655aff88aefa2c7a30eab10d9672d06b"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_pipe_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_pipe_cases.c.gz",
+      "sha256": "9c60c23c96c582163f8688c7e5fcb2253808cc9da8fa535218a8d98a92beec67",
+      "snapshot_sha256": "f6d24326b3d96999816326b082f55fa68a12c0cfccab4fe00417a5081a86a5c1"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_pipe_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_pipe_observer.py.gz",
+      "sha256": "fac5f77075f391e2dce2b1fdc1ed83d211cd5a0d7fd20f75f09919e6260e911b",
+      "snapshot_sha256": "7e1ff3905478082afa2299a2b3fcfe16638bd45c163a2ba28ae608f9921d5a0e"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_poll_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_poll_cases.c.gz",
+      "sha256": "4cfcb2ad6874f7670948c0b2786cabab1ad26e7246c48fac24d11a8333541e79",
+      "snapshot_sha256": "e5ec76778e5f508a0d73ea42c8ff402536145dc84c31f4581bcc6bbaf08d3212"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_poll_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_poll_observer.py.gz",
+      "sha256": "fb638dafca87766a1cd11542b1ddb2771a821fe1113e85c6033793a37b7fd1a2",
+      "snapshot_sha256": "ea7e55cfbd411b3b6e234497535e1074c6a92b9f53a6c36d9bb5fa3553292720"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_serial_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_serial_cases.c.gz",
+      "sha256": "d3b041c02813fd46d47299120535f0d5279dae80fce4297952f75180b163e601",
+      "snapshot_sha256": "76edc67829dd22b5b8fd68bb63aaa8dbb5b36253d498021c793c15c82de13371"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_serial_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_serial_observer.py.gz",
+      "sha256": "776f173d60ce139eabe159b406bd492c65c792bf5ff21d08cabacbbac84ed655",
+      "snapshot_sha256": "a9c856b8079d9f4b0edfa4cba1c7f685509667bc9e2602f24b413733c20f072c"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_shell_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_shell_cases.c.gz",
+      "sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+      "snapshot_sha256": "a364707f1145d23bfb79c617289d2052bbd4099828ce7e54e36c0b2d01d64325"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_shell_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_shell_observer.py.gz",
+      "sha256": "6ba36c58ec144d748b840b957932c49d8535643ad82ab0b58b764779d0329200",
+      "snapshot_sha256": "f35ab48e6c20f70ee3c76f20ce28965f35985f6823b691c05084ff80debebc8c"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_signal_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_signal_observer.py.gz",
+      "sha256": "fc6fdc9f205d1a26d88518e8e7d644e533b6a94076e1b46c1cc37749760ffe42",
+      "snapshot_sha256": "a82b07bdc5379f9a521b727bafeaa10d1c97eb4028b6e45f7e68b9ede1458102"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c.gz",
+      "sha256": "49758cc99552709eb1fe062b26dbcb189ae93ead0755139a56f0dd532017ca6c",
+      "snapshot_sha256": "0c6d6fcb8d411d5148f3e58e672ed8217c1f96b6793143f4c401975fcdb6a825"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz",
+      "sha256": "cbbacf0618f83b6d8a52dc0f5340c79cd6916e8e8ebe7c66dd9edc3a44387dc3",
+      "snapshot_sha256": "950f789591f7d35e66344115e409031967b789d6e5266ad7374651ec82eea0f2"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_staged_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-staged-refusals/inputs/linux-kernel/labs/qemu/x86_64/user_extent_staged_observer.py.gz",
+      "sha256": "1b665e0c6a2b2cef452ddce00b0b6ca1ff94455ea3c1417658ebb782152a6a00",
+      "snapshot_sha256": "540ae31e930f59e70461fc9a92bb3d47eea5ebf7035a127d3dc4bd9499532c6f"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_startup_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_startup_cases.c.gz",
+      "sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+      "snapshot_sha256": "c03b47279c3428fec3522bcadd48775668a438085c58b016c048e7780701a127"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_storage_cases.c": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_storage_cases.c.gz",
+      "sha256": "9f1a971d58b7f9b437fd0f159c08fef922241fa1b6007a2e26187b091edd5f3c",
+      "snapshot_sha256": "523279deae02d76f114d3484f05f4252d64d9ea91cfcab27509dc18d1638589d"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_storage_observer.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/labs/qemu/x86_64/user_extent_storage_observer.py.gz",
+      "sha256": "70eb0e605693571bb5341a38b2488da5d09e591c5f8c4fe5bb43533708b213a6",
+      "snapshot_sha256": "56632507af6305fc84ccc8d3bd7079bac88c2f6e5dbbd4be5225dffd2df9ddd2"
+    },
+    "sources/linux-kernel/tools/user-memory/audit_additional_scalars.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-additional-scalars/inputs/linux-kernel/tools/user-memory/audit_additional_scalars.py.gz",
+      "sha256": "98ed00619c2dd00c0012865aa15a7377eb142ce6afedb050fcc1e0b303f5489d",
+      "snapshot_sha256": "158dddb963503b23e4928634c4495ad056efe4b920db816b96b2e9e76c664d61"
+    },
+    "sources/linux-kernel/tools/user-memory/audit_copy_transfers.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/tools/user-memory/audit_copy_transfers.py.gz",
+      "sha256": "f0c91de04e0afe0f4ecaa7861d81bebb9b537ac18bfc928789fecd25fe4e4105",
+      "snapshot_sha256": "e23814c7ab43d2de58d2fbf70331954cefe3dec326628442c8b856710af3e5d8"
+    },
+    "sources/linux-kernel/tools/user-memory/audit_fixed_transfers.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-additional-scalars/inputs/linux-kernel/tools/user-memory/audit_fixed_transfers.py.gz",
+      "sha256": "88409337a0f7a3a8ec655e1c400eda579378a5c15ccb9a8cb2f0fd295d111705",
+      "snapshot_sha256": "ae696ce6cee00634fa43b1f6dd2fdadf15d07f383b77e9767d13e190d73ac7fc"
+    },
+    "sources/linux-kernel/tools/user-memory/audit_staged_transfers.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-additional-scalars/inputs/linux-kernel/tools/user-memory/audit_staged_transfers.py.gz",
+      "sha256": "731a78cba5ea243387beb7284b521ec58bde2ed2284c84dcbff69901b1f5932e",
+      "snapshot_sha256": "6a0718961abf3820ec44fa2c1525846ece71a84eb8443246e70e38f0505f088c"
+    },
+    "sources/linux-kernel/tools/user-memory/audit_staging_copies.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/tools/user-memory/audit_staging_copies.py.gz",
+      "sha256": "6fec74012264fdf5815f86c3f30c6180bb9dccc2ad56071b31ed1b8ea2d8317b",
+      "snapshot_sha256": "2f87a8da7d1a2736b2f909f7bce56cf71432dc43cbbb4abdc727f2e4a55746cf"
+    },
+    "sources/linux-kernel/tools/user-memory/audit_transfer_guards.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/tools/user-memory/audit_transfer_guards.py.gz",
+      "sha256": "e5bb7a6c1062407f848aed47059f60b2dc34287f91629af9bfe6a1f596f07356",
+      "snapshot_sha256": "ad75433878606caaa2c633107e32c3ef0491a2eccd55b3847ab246229456460d"
+    },
+    "sources/linux-kernel/tools/user-memory/inspect_call_inventory.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/tools/user-memory/inspect_call_inventory.py.gz",
+      "sha256": "c78251433f3c07f686e78261f391fa0ab719705cc29bbd9e54ca920b3a607807",
+      "snapshot_sha256": "b4ac3023ad85ae68c887b068128d7b636c4f26212540fcfad24070ab94855e5b"
+    },
+    "sources/linux-kernel/tools/user-memory/inspect_callback_bindings.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/tools/user-memory/inspect_callback_bindings.py.gz",
+      "sha256": "360cf97d8323cc2e149370de581ef83ac3197738f0d71ee786bb509c2c5743fa",
+      "snapshot_sha256": "99498beda4b0f4e805fdeed5d4f65e39ded7648e5f3a21a01c4e47ee372cac8f"
+    },
+    "sources/linux-kernel/tools/user-memory/inventory_process_accesses.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/tools/user-memory/inventory_process_accesses.py.gz",
+      "sha256": "c8471ba3f6bd9e30618f10c7bbbb3abbc6a07238d3777abe40d533a089625808",
+      "snapshot_sha256": "52e4b5c1759d2b08fba1f07b676b37d47e0e77a249bd935069aded2cfe9b07d6"
+    },
+    "sources/linux-kernel/tools/user-memory/test_additional_scalars.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-additional-scalars/inputs/linux-kernel/tools/user-memory/test_additional_scalars.py.gz",
+      "sha256": "580e2e98d2a745b3ecb1ae97d2623aecf9781b556a7fe10ad7526b44ad7ee400",
+      "snapshot_sha256": "4b50966439d2aeaa4fd9956908c972b84180cb971572f32fd500dc47c2b3c6aa"
+    },
+    "sources/linux-kernel/tools/user-memory/test_copy_transfers.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-copy-transfers/inputs/linux-kernel/tools/user-memory/test_copy_transfers.py.gz",
+      "sha256": "cfabaf44fc6d6abe653a5701c1c2232e6e2d9c854531a60ba92d255188de32ad",
+      "snapshot_sha256": "d638a172c3bbdc3a870306087c389c517dbdf0b39935fb8ac6bbc1d2dedff5d8"
+    },
+    "sources/linux-kernel/tools/user-memory/test_fixed_transfers.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-fixed-transfers/inputs/linux-kernel/tools/user-memory/test_fixed_transfers.py.gz",
+      "sha256": "1978ff3693c41c1306c9482e57185dc3f9522c6fd3375389426a7f34b59c1934",
+      "snapshot_sha256": "e6c852a743e3c60d9694c3a1b07d616c39686437ab8f2377c21db638bb4177a9"
+    },
+    "sources/linux-kernel/tools/user-memory/test_observer_selection.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_observer_selection.py.gz",
+      "sha256": "25db1ca302279a2abc22b81893fc9bfcb3981f13cc1ddb5022af306920b04803",
+      "snapshot_sha256": "a9547d1ec7f70e570fb8e9e924432c6d267184408ea8a80da89ca0facd15ccfb"
+    },
+    "sources/linux-kernel/tools/user-memory/test_staged_transfers.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-staged-transfers/inputs/linux-kernel/tools/user-memory/test_staged_transfers.py.gz",
+      "sha256": "572ea606dd15e0cdca2922016742ef06ba0926a23b1933cae27009cc7a71ae97",
+      "snapshot_sha256": "b0de9ad1dce956ae01783f7a420463cea7bd3037f1726fc8fa8ce7d217763b66"
+    },
+    "sources/linux-kernel/tools/user-memory/test_staging_copies.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/linux-kernel/tools/user-memory/test_staging_copies.py.gz",
+      "sha256": "bb02bae411354d5a21f32d96997cc6679c0eeac6cba1609fb51533af2928f68d",
+      "snapshot_sha256": "1ee9165f2c97b17ce02461eb01d8e360375e90f7efefefb68f5844f9379e3b47"
+    },
+    "sources/linux-kernel/tools/user-memory/trace_process_origins.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/linux-kernel/tools/user-memory/trace_process_origins.py.gz",
+      "sha256": "405fc43a889b4232b4dfcdf60f6924a86cc934fe0a384b6e99f74ad2c82f9bb2",
+      "snapshot_sha256": "af57a6155ab11fda77c1936a73c177600dd129626a4aaf5bdb1c6b356fb479e5"
+    },
+    "sources/se/requirements.md": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/se/requirements.md.gz",
+      "sha256": "0e1ad7bfd9a01b014e9455a2d938e64715fee92db61358d7b09020f5d5a4ca8b",
+      "snapshot_sha256": "febe901a22f4e347318c4174dc2e7245363f361da848bc57f078cd7a265eb53d"
+    },
+    "sources/spec/systems-profile.md": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/spec/systems-profile.md.gz",
+      "sha256": "c528834ee0401b1352cb7b2fd28029fbc4487f1cc7cfb582c99e4a38124e63fe",
+      "snapshot_sha256": "b1624cf2fd8f44b6926047cc554b8998fdd6cc4bfe133cf77ec1e0ac8fd6eaea"
+    },
+    "sources/src/topal-compiler/se-requirements.md": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/se-requirements.md.gz",
+      "sha256": "a44bb5abe02f2d5b23117bd9e71dc7f5155ed061ccc52b55213e36e8755c0213",
+      "snapshot_sha256": "c2c12d3eb2c4b6ac5efec69c7aa0188fd4c18f0ed99a5ab3f2df292bee3cd3d9"
+    },
+    "sources/src/topal-compiler/src/codegen/freestanding_numeric_library.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/codegen/freestanding_numeric_library.rs.gz",
+      "sha256": "7c9cbf2b52bf180c50e6c3311cf5718ff6d3cffd91aca90c7b07297c9b89d8c1",
+      "snapshot_sha256": "3765302cf18241c2e0eddf5161da231175625b5772a46cfa4a4372f6341d9dd0"
+    },
+    "sources/src/topal-compiler/src/runtime/kernel_user_extent_clean.ll": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/runtime/kernel_user_extent_clean.ll.gz",
+      "sha256": "383acf13bef9959641de5f52bbe0bf16b0f18f11872972c363184ca64bba66b5",
+      "snapshot_sha256": "33d42001ec86711b44fff7c7a7e1761e40e6bb0feaaa89b2d69bc18e75acd8bc"
+    },
+    "sources/src/topal-compiler/src/systems_artifact_operations.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_artifact_operations.rs.gz",
+      "sha256": "8c45350619bc581251d9eb273c2ebe0ef347e3b9c967fbe4080dffb77ecc2728",
+      "snapshot_sha256": "122f3ed64265617763540185f12ba6d1ad6384315e3647f906b9f87db0ad9e92"
+    },
+    "sources/src/topal-compiler/src/systems_artifact_static_image.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_artifact_static_image.rs.gz",
+      "sha256": "1c1bbfde2003891ab575b8304bf90fdf143626b366161cbdaa5c7b280efe6a57",
+      "snapshot_sha256": "cc8d02f6e2133e6f8afb441a927e59cf67d311b39339eaabf5eaa1c7fe7e8c17"
+    },
+    "sources/src/topal-compiler/src/systems_exec_environment.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_exec_environment.rs.gz",
+      "sha256": "dd2ac18936d522fb985d4117f9bdd1ebb847555f694e1dcbdc5d7cdba633469d",
+      "snapshot_sha256": "8fdffd399d154418ea66c6c911a81ce74164a69a5092b833391b16b59b02d0cc"
+    },
+    "sources/src/topal-compiler/src/systems_file_descriptions.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/systems_file_descriptions.rs.gz",
+      "sha256": "c256c6462108f66cf89c33308cd2ee55a21833cf5dda79f22dcc6ba18f950c60",
+      "snapshot_sha256": "9829f05ebba1fbd2f53542662a68e01d09ead69a5851f9dcca1c702586acd08b"
+    },
+    "sources/src/topal-compiler/src/systems_file_region.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_file_region.rs.gz",
+      "sha256": "97d372efd31f9cf14d67390869a262f9711ba92efd91babf3a9c453c0182160b",
+      "snapshot_sha256": "033a9e97a756061f2c8ddfaeff55e6ef529bc3d62147d3fb1983b95c3007f3e7"
+    },
+    "sources/src/topal-compiler/src/systems_frame_root_tests.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/inputs/src/topal-compiler/src/systems_frame_root_tests.rs.gz",
+      "sha256": "8e1fca3b1050d945f3dc0366b7e4f5fc163bad4a3ff8a085616680e1fad29ffd",
+      "snapshot_sha256": "7373ed2cb9323cc16ffa198a8db2ec9e0385ce8e2b7de0099e0b7804db5de698"
+    },
+    "sources/src/topal-compiler/src/systems_inode_services.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_inode_services.rs.gz",
+      "sha256": "67ba875a2d494972712aba46c41703e4e9ca4ffa7013e21d442a8e305731c457",
+      "snapshot_sha256": "ca8ac81c3c203d582f57530672ab644336ac13137fdb2d6d4ec434614a20d867"
+    },
+    "sources/src/topal-compiler/src/systems_library.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_library.rs.gz",
+      "sha256": "6acdfcfde992b1b625806214c5d33e01c437ac7d9d521daa92bba4fc51eacc8f",
+      "snapshot_sha256": "64980193ff0e7c5799e9a21703a749493a0b5c7bef736f10a27ae9aa0317cd60"
+    },
+    "sources/src/topal-compiler/src/systems_library_modules.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_library_modules.rs.gz",
+      "sha256": "1bd4d60552668df1fb84415dd442a01e04624d14d27c2630a99dee8c1cefe4bc",
+      "snapshot_sha256": "70da5130ac73550b3bc78b24d8f83826966046781683f5b807001206c6c0d872"
+    },
+    "sources/src/topal-compiler/src/systems_library_object.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_library_object.rs.gz",
+      "sha256": "caaada94c2128c5132410c55408d029f25d263cd94ac700be7c8bab03abca332",
+      "snapshot_sha256": "4ab7eb21ab72ad81507b62a3820830ad167440d619642116434c460894e7f44a"
+    },
+    "sources/src/topal-compiler/src/systems_namespace_entries.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_namespace_entries.rs.gz",
+      "sha256": "e72e342a16a004f43d48ac2cc69bad9687594e1e302512a9363db4b02b4b2fa2",
+      "snapshot_sha256": "7885a3f3ad651943585070562c92678e2762901178724048e724bbc15d9dec6a"
+    },
+    "sources/src/topal-compiler/src/systems_namespace_link_native.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_namespace_link_native.rs.gz",
+      "sha256": "79f07c11db8cd61e948f278b9d3d80f4ec9ae13900e7daf0d81731c44f373b28",
+      "snapshot_sha256": "2f31681e11a389125f74901004cd6202defffe80f2e53f517f07fc8eeadcf62d"
+    },
+    "sources/src/topal-compiler/src/systems_namespace_named.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_namespace_named.rs.gz",
+      "sha256": "41892ebde8a42224c48756b7975be856c279fae5467b1423a773424490a01bca",
+      "snapshot_sha256": "ae8649f20e9f33fc58d7fdfbc9cd6b317e3e3e8ceeddb019df4a78a9fa07bf87"
+    },
+    "sources/src/topal-compiler/src/systems_namespace_rename_native.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_namespace_rename_native.rs.gz",
+      "sha256": "4c1917c13cf2c707bb97b577fb87d0ca9b1fdb769a8da56028d687d9c0235ef8",
+      "snapshot_sha256": "e814986a025cb7d94311e558b7c2d8177b878d1b031c745a88f5065d1d21cf5c"
+    },
+    "sources/src/topal-compiler/src/systems_namespace_transaction_commit.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_namespace_transaction_commit.rs.gz",
+      "sha256": "e284c337349301170b179d79dcaa20bc69a60f0f22a2d5f2791951de40cceac4",
+      "snapshot_sha256": "8da42f86a1e1b28549d986fcb0fd0f66e3c1f9f42a9f608c5a58cef7b880368f"
+    },
+    "sources/src/topal-compiler/src/systems_namespace_transactions_native.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_namespace_transactions_native.rs.gz",
+      "sha256": "4f1c447400eae7e62bf2e51aecc46c9fbab342af77736dec3ba22088af639000",
+      "snapshot_sha256": "263c724f28ddeeee3ed3e4cb9eb3d8a035e60573e8cad493acad41bf2348237d"
+    },
+    "sources/src/topal-compiler/src/systems_namespace_walk.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_namespace_walk.rs.gz",
+      "sha256": "85cdbd199c024bfc39fcd5b4927696af593c4785517fd8e1f3fd89f0be5ede4a",
+      "snapshot_sha256": "948b092169b270807b9a25bbe7942c9f8b9ba35ca69f25d0b3ed0fc59913406b"
+    },
+    "sources/src/topal-compiler/src/systems_numeric_library.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_numeric_library.rs.gz",
+      "sha256": "2f6ecc6ee5e3db73e7aa724be478ea21849849fe11f91f2429e7a6fb78cd33ff",
+      "snapshot_sha256": "ffd89749dafd847bad0ab6799a24f0ba9139b16ef044ac97d9173767f4fd1452"
+    },
+    "sources/src/topal-compiler/src/systems_numeric_object.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_numeric_object.rs.gz",
+      "sha256": "8f68bddd6e6d91f973534655de89f9e3dc288440fa4e2d1cd4cb74cd745a144c",
+      "snapshot_sha256": "63304b64313fda9f730a42db6516ea50df59f7b4f35b8d955727e9af1ff8732d"
+    },
+    "sources/src/topal-compiler/src/systems_pipe_create.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_pipe_create.rs.gz",
+      "sha256": "208b965e233443a6a3d6a48abd3ce8d7c7a56f04d698b6bacd7fdf0464e00b68",
+      "snapshot_sha256": "e9c79a712862856b381e6c5e6c0ae04bf7cded2fabc3a8ef3ec0d484c54642bf"
+    },
+    "sources/src/topal-compiler/src/systems_pipe_transfer.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_pipe_transfer.rs.gz",
+      "sha256": "0103921cd08d7ac92a486b1465cf999208e85e18a0537930f2c7d093ecc47fb9",
+      "snapshot_sha256": "7842ee875f60deab4877758347ceabb3161f8d930701e5a801a5434524dbb607"
+    },
+    "sources/src/topal-compiler/src/systems_pipe_wait.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_pipe_wait.rs.gz",
+      "sha256": "2617235f98e3d95c19f77c338f136c81995ce14beef22472d716423a477c9862",
+      "snapshot_sha256": "e0957c210518a85f2e41b2f925e0fda63eb4b6845338d524d8ed7de95f33bf4f"
+    },
+    "sources/src/topal-compiler/src/systems_policy_inputs.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_policy_inputs.rs.gz",
+      "sha256": "0f981631d13b5feb8558e09f64eb60219cb26005ac664c57e3672b833040da3b",
+      "snapshot_sha256": "759a877996795df0da49f0f2510a72e9c45ecafbad1fb7bd8f7dad0a9bbc35ce"
+    },
+    "sources/src/topal-compiler/src/systems_positional_transfer.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/systems_positional_transfer.rs.gz",
+      "sha256": "7879a014a4a7868268af73eed6880534217be948d72210bb42456519b0666470",
+      "snapshot_sha256": "f90b44c40f65192f8b083b942817a3d7a3d2411dd3fc3b46f1f3392c56ae5c6b"
+    },
+    "sources/src/topal-compiler/src/systems_process_children.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_children.rs.gz",
+      "sha256": "eed4eb4741265e46132f62da63e0dfd9b557759a8de330eda3c9aa6ada56df87",
+      "snapshot_sha256": "a7468b49ffcab34e64c045c6a2f306fafe97242ffe034eadbd9d972640c0c316"
+    },
+    "sources/src/topal-compiler/src/systems_process_credentials.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_credentials.rs.gz",
+      "sha256": "6f597242be71db608a1dc6645d031e914b998e8d73ddddd88d34e25dd655fdaa",
+      "snapshot_sha256": "581278cce6b021dc98b49ce0deea68f1eb77b1450d5d665718220d4210caa677"
+    },
+    "sources/src/topal-compiler/src/systems_process_dispatch.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_dispatch.rs.gz",
+      "sha256": "52ef0f97dc0c202d195d15ae3563ecd2d5692b50c92eb77c128283b0756108bb",
+      "snapshot_sha256": "9e0b9961decf7af680f4f92c9cfd23dc0f4423fc5a0cd8b24f9a63b7ac8b3ef2"
+    },
+    "sources/src/topal-compiler/src/systems_process_entry_completion.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_entry_completion.rs.gz",
+      "sha256": "4a808fb844bd3df16e5e5d3185276e90151f8ce80efe2e0f2fbeea2e9f603c9b",
+      "snapshot_sha256": "e17412033a015c65c998fbebdf5e73517b63e101e9fa935e5e88a408ed926e3c"
+    },
+    "sources/src/topal-compiler/src/systems_process_entry_files.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_entry_files.rs.gz",
+      "sha256": "73778e9645f6ab481907f16e37e4bb12ae1c69f0d294f4a03b532b31c1e532b4",
+      "snapshot_sha256": "cbb10538d67eb4d405719a0a093430560a003969505c00daed920e73d57ccbe7"
+    },
+    "sources/src/topal-compiler/src/systems_process_entry_output.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_entry_output.rs.gz",
+      "sha256": "08ca483949524a3336021f952e6115d738c6774cbee862ead79b9250d3c50540",
+      "snapshot_sha256": "e98fe3a9556908c875abcf3da3163e1e0c31ed4b3e53008ecb2627d1224aff55"
+    },
+    "sources/src/topal-compiler/src/systems_process_entry_read_exec.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_entry_read_exec.rs.gz",
+      "sha256": "d57d5f558b4888928c3e5711bd1a714beaef62eb45e6d913bdbc4d1d13cceb20",
+      "snapshot_sha256": "7e17f37871db536ca570e4bd09fe04ace518db856fd1474595d9acd80b39e980"
+    },
+    "sources/src/topal-compiler/src/systems_process_entry_start.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_entry_start.rs.gz",
+      "sha256": "f807dd8b9f44bd9b0f947e81098c5921a933f7d6c7519d6ec43249d55b87a500",
+      "snapshot_sha256": "7b4f84f246eacc115127278fd2e605e7e9801f9729c674eca1f0a46f707c09d5"
+    },
+    "sources/src/topal-compiler/src/systems_process_frame_memory.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_frame_memory.rs.gz",
+      "sha256": "1a2606551dc7755ad7a2c960deaee90619e3709ae34069ccea9cc540fe506296",
+      "snapshot_sha256": "dcdbb2ad555c99f8612676880b530abd46664518032f4ecf9048a7ec43262066"
+    },
+    "sources/src/topal-compiler/src/systems_process_header.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_header.rs.gz",
+      "sha256": "336049ff6a55dc331a2e4176c0701a7e89257a09e960656a082af3c92d3d2012",
+      "snapshot_sha256": "f1a634e5168d44aede4408992f09161e6543d20bcac4a56cca350aefa1aca3bb"
+    },
+    "sources/src/topal-compiler/src/systems_process_identity.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_identity.rs.gz",
+      "sha256": "7a8f3d84e133be38cb2f90d5726a057098cb67672a2fefdfcf48a514639106d1",
+      "snapshot_sha256": "22198698854e6f3aac7e93e37e8e0bf5b33763c49760ddf804bd92bc8828b2db"
+    },
+    "sources/src/topal-compiler/src/systems_process_namespace.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_namespace.rs.gz",
+      "sha256": "0be5352d68b97c56714466d3b2f4235b08b3ebc15ef456cba1ebb2d188f6967a",
+      "snapshot_sha256": "e33e0b53cc0fd168751b769a0c569d2256c39c122e698f006b894d804b4be04c"
+    },
+    "sources/src/topal-compiler/src/systems_process_numeric.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_numeric.rs.gz",
+      "sha256": "5366f9833ce46ac1c8a4eae67b0afdafedb073bddf9f280cc7e473f93a3533c4",
+      "snapshot_sha256": "826b9cca0ca3ad3a52f2fa0b677c5114565a74eaa5328c69948094e5dd2adc18"
+    },
+    "sources/src/topal-compiler/src/systems_process_observations.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_observations.rs.gz",
+      "sha256": "9fa8dee42aaeeede3f808447b7f292782a391902a518e0bbac0f90e052900a99",
+      "snapshot_sha256": "b8246b11ce133a931dcd6ea290fb82ba7ef41fc2dd04f10497f5667bcb0ff70e"
+    },
+    "sources/src/topal-compiler/src/systems_process_pair.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_pair.rs.gz",
+      "sha256": "42600a5cbee9afb9050733d3f499fa4bc64c81f2c08fae50b5b90992e6bd3847",
+      "snapshot_sha256": "4524491eb7c4a00770ea9fc069686da963434edb50384d155d2d6df5f250b0fe"
+    },
+    "sources/src/topal-compiler/src/systems_process_pipes.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_pipes.rs.gz",
+      "sha256": "4cb13ca86d086a7b80003a8b20e075e9ba81274f4910fb3428822adb7201ee85",
+      "snapshot_sha256": "7e353debe282a104e0130a898f46c5df5adee125452a0b473aab0ca8af57499b"
+    },
+    "sources/src/topal-compiler/src/systems_process_policy.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_policy.rs.gz",
+      "sha256": "b27826283b82ede0f99a02862e253685a612e41ccd627037a1213bb3fdddeb7d",
+      "snapshot_sha256": "e8b3b9537aa3f8077bfbadf3dcc8bed2393d1c5e5f33b57bd67114acc49fd0e5"
+    },
+    "sources/src/topal-compiler/src/systems_process_realtime.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_realtime.rs.gz",
+      "sha256": "786fd35064224a2bcf18e58570492a82341cf85897bdca93dc4f4d11a20262fa",
+      "snapshot_sha256": "6e5a12dc634ad4ec0f2e00289c13a467ffaddea1fd164e7756c845a06e5c79f7"
+    },
+    "sources/src/topal-compiler/src/systems_process_retained.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_retained.rs.gz",
+      "sha256": "f16f19523869c31548115e1f2909e231e6d6576011b0830773fb1321ca7b3a50",
+      "snapshot_sha256": "d7057a02d59642ca7deaae757ca442ccb71b2b5416579d726a9bb3d977850b30"
+    },
+    "sources/src/topal-compiler/src/systems_process_runtime.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/systems_process_runtime.rs.gz",
+      "sha256": "a8bf5b5fbb1f2a58a389380b5058120447bfa9bae2e3d16817b7c4e204cfb02d",
+      "snapshot_sha256": "3f223d3e7552357cfa23806ae8415e977ae7af87d8652176ff66df416655335d"
+    },
+    "sources/src/topal-compiler/src/systems_process_signals.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_signals.rs.gz",
+      "sha256": "c60d759f85f69ccf465c311b7873dded9843b001bf7531e767bb05e41e5fafd1",
+      "snapshot_sha256": "415a523d7c9ff818b881390a5690869ad81445147705eb5bf971695f829a94af"
+    },
+    "sources/src/topal-compiler/src/systems_process_time.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_process_time.rs.gz",
+      "sha256": "0906bfefd0dae9fd9431aeb1b856181318a1b8c3ee493bbde61cd0d4dba6e611",
+      "snapshot_sha256": "6071142640ce2c195bf4b169b5efa67ddcbd664ef35ad0fca8875c9060873caf"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_encoding.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_encoding.rs.gz",
+      "sha256": "189c1148f540db2295acdc86da20ada6611f52b48d76617290eec0ca4025cdbf",
+      "snapshot_sha256": "25a4933e97b08c258cebd3cd27df2d3f539cb7bf1d522930285723f2a20efb51"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_image_mapping.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_image_mapping.rs.gz",
+      "sha256": "4e60e9523046a0fe2244dce520af90ebd17b0687d8c7b9e651bdaea9932c7c8e",
+      "snapshot_sha256": "1d0eeea8dc3aa396e8658fe898446464a269a2d13541707064b77fdbe0d03868"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_process_entry.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_process_entry.rs.gz",
+      "sha256": "b43fe16065d806d047bd039160e82834bbbfe5992805f3180d851b0192b47a7d",
+      "snapshot_sha256": "1a56b8e9c3026ad3cced4c31fc6a06fde611473d83491d1d04503c90a7015815"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_publication.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_publication.rs.gz",
+      "sha256": "960d66dc47ac2bc87938e39c0f0bec6328c257dde55a9fc803c86c433bc55465",
+      "snapshot_sha256": "2c8c454c4ad6e86f676316d43894c4ac3f2fdbc0c9dc79238018f171806822eb"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_stack_headers.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_stack_headers.rs.gz",
+      "sha256": "65c621e48c0452a4079c92850648dfa257b12a607f37c2e36982d5916a617520",
+      "snapshot_sha256": "6318a808919c04126e71e31b71a5da8f0301643ff19c53e2b3673ff2c9e60639"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_stack_platform.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_stack_platform.rs.gz",
+      "sha256": "81f11326340449bbf31a4d581bb5e3fb4925f2f2ddc2b9a1e4f1358b9be5d3ed",
+      "snapshot_sha256": "9e7ffb28c14ba88903ed93331b0be57bc96cd18c292f743f5c66a5af607e05c4"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_static_image_leaves.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_static_image_leaves.rs.gz",
+      "sha256": "0c54e4412fe90d6c12396ca6110ac9435b1c73ea5b8b66d8c8ab5fa7fb771ed9",
+      "snapshot_sha256": "a02d6151cb13982622400dfdff37ef1c2e640c9f6d68da924bfe23b513ea74b9"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_translation.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_translation.rs.gz",
+      "sha256": "43fd3b5065372f3b71dfbe34a2d7db36a3ea17197d3ac4d58c64f65330ee4d64",
+      "snapshot_sha256": "b766e171f36137b3733d53b90c5f30771a807d51322a7ef75da8d52558439ab7"
+    },
+    "sources/src/topal-compiler/src/systems_provider_emit_user_context.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_emit_user_context.rs.gz",
+      "sha256": "f6daeec3b70d51ec45f3a23c58cad5873c57b8050a5509200883986b6f98ddcf",
+      "snapshot_sha256": "cb2338a0f6fa5888814375e1add36cdeb1c9d8c65b7480df5bdf25dd4f74dd05"
+    },
+    "sources/src/topal-compiler/src/systems_provider_object.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_provider_object.rs.gz",
+      "sha256": "fe2d70d9a7b99f1a35743b057bf4f6395420863d1ba024dad4a3ec08853a8ed6",
+      "snapshot_sha256": "9622be37ef2282aad2777c09651b240b298ba410a5b32c74294d0d0d44f8005e"
+    },
+    "sources/src/topal-compiler/src/systems_ram_page_region.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_ram_page_region.rs.gz",
+      "sha256": "6fd19a65a41b01bf854b1ce607b514ef50c8cbdf38f83a53315678a57c7b6b6c",
+      "snapshot_sha256": "d22b5ec85f4a06495ea2e335333ea141ce387854c1c9a03b667a7f7addb53179"
+    },
+    "sources/src/topal-compiler/src/systems_retained_validation.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_retained_validation.rs.gz",
+      "sha256": "94620afcff659a0fdc2bbc72cc109be0e28dd7528358faacfd2f0c1726c39743",
+      "snapshot_sha256": "487feaf5b1d0500c1b427b7de36f07f913d62720eb71ec16c48c4b16abda91b7"
+    },
+    "sources/src/topal-compiler/src/systems_root_encoder_entropy_qualification.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_root_encoder_entropy_qualification.rs.gz",
+      "sha256": "754094fc95eed620ccd6b47988650f51bf81e05bc9e3b4e5956b8884cb3550d4",
+      "snapshot_sha256": "a915ab1d3dda31bd392ec8d258707c10d7782953ff541473c5ed8e42e0f39201"
+    },
+    "sources/src/topal-compiler/src/systems_shell_input.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_shell_input.rs.gz",
+      "sha256": "78629fdb0971123d5a2e989124952fcde8eea31e2adee86f574e4bf7a2948a63",
+      "snapshot_sha256": "ecacf6ec855e8b66a78b71f66fd4f46d8c84b2d5facfc9e663b6d7bd72bb896e"
+    },
+    "sources/src/topal-compiler/src/systems_time_checks.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_time_checks.rs.gz",
+      "sha256": "02a366b2826cbc49c7f65adacc64765a4de161fe962b16f9c97cfac9104bfa6c",
+      "snapshot_sha256": "db9d207cb6c44125db18c0e4000aab59ab9f2aa1d6026b2272ce9dc1dd621679"
+    },
+    "sources/src/topal-compiler/src/systems_user_extent.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/systems_user_extent.rs.gz",
+      "sha256": "ea9c09eccfd8e243158f0ed22eba78f0163a295a5b06e31e2fd35c68a9f45771",
+      "snapshot_sha256": "d0c66a4a392134401713b9c8e55b25d42194f4fc51bbedc8c25e7ae9b942ee11"
+    },
+    "sources/src/topal-compiler/src/systems_user_extent_clean.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/systems_user_extent_clean.rs.gz",
+      "sha256": "a8784718accfb2a64b565d7d99554c99f3ce26e61498d07bd35bd311d806b67f",
+      "snapshot_sha256": "907590e614ae71cab9732fb6bb2c5dd147894e54b8a6576c61cda0fe68b89963"
+    },
+    "sources/src/topal-compiler/src/systems_user_extent_clean_tests.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/systems_user_extent_clean_tests.rs.gz",
+      "sha256": "a69519a7f4746e319ca2b15a942f38cc987810e940a5acd5063a11007176fa3c",
+      "snapshot_sha256": "97b18a7aba6fa4828527eb0d360ce69b752b62c5f7e60aa67309adc00f5c974a"
+    },
+    "sources/src/topal-compiler/src/systems_user_extent_inventory.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_user_extent_inventory.rs.gz",
+      "sha256": "5fd57d748555febca17ed766c1d8bbcd24440e0211d50e78b5c68104bb8faca5",
+      "snapshot_sha256": "ff61d910cfe8ef2a39bcb99a53c6ebc5a58efe830a55bbc7966ca3a7a300a20d"
+    },
+    "sources/src/topal-compiler/src/systems_user_source_fixture.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/inputs/src/topal-compiler/src/systems_user_source_fixture.rs.gz",
+      "sha256": "7d50a5241b0afdc418103e32edbca6c26dd91b3c9097be37db2d10bc1c177b10",
+      "snapshot_sha256": "a490d8504d4bb6505a783ca4c51beb7dc2172845a1329146340c32fb7fabec2e"
+    },
+    "sources/src/topal-compiler/src/systems_volatile_create.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_volatile_create.rs.gz",
+      "sha256": "30283793d610da03d0066907cb15b5812dad17dadba386e195d8aa0b012286cf",
+      "snapshot_sha256": "6542a69f4ce7e9f74e952ef87d845b95d040b5b1e21fbc4aa35b5e4537935183"
+    },
+    "sources/src/topal-compiler/src/systems_volatile_files.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_volatile_files.rs.gz",
+      "sha256": "91f359f6115772c7eca83c6d1a0168f14508296adc8459bba7888870baad4fd4",
+      "snapshot_sha256": "7eb136ba3a0216a8f6c6c09b09563e4ce9303f70235372e5d29b89c0eaed91e0"
+    },
+    "sources/src/topal-compiler/src/systems_volatile_transfer.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_volatile_transfer.rs.gz",
+      "sha256": "e84f3aac1f491c9a66d64712778d2a77b2728701c6f24f91077bf2c3f2aa6051",
+      "snapshot_sha256": "167b1272904cfa92c8d5411163daa8bd490faa382bf131733b67167641a9e529"
+    },
+    "sources/src/topal-compiler/src/systems_x86_function.rs": {
+      "snapshot": "../stage-3-fixed-pipe-audit/../stage-3-staging-copies/../stage-3-process-origins/inputs/src/topal-compiler/src/systems_x86_function.rs.gz",
+      "sha256": "81a1d13ff6fe779f52001f312553d10c96986b845015bf70841a97c9baee243f",
+      "snapshot_sha256": "1090e3bd276152d654798ea4db0bef7ff87db5d7783ebc9ce425be333ff7a0bd"
+    },
+    "sources/linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/inputs/linux-kernel/tools/user-memory/audit_pipe_fixed_outputs.py.gz",
+      "sha256": "dcf30af63cdad04f1ad1fd6a26058351c7fd07d9e706d38465427604ae67cafd",
+      "snapshot_sha256": "f8e567ad417be38e337475288a46fd88e36d865f15913aace3c317e80c6a18c0"
+    },
+    "sources/linux-kernel/tools/user-memory/test_pipe_fixed_outputs.py": {
+      "snapshot": "../stage-3-fixed-pipe-audit/inputs/linux-kernel/tools/user-memory/test_pipe_fixed_outputs.py.gz",
+      "sha256": "2ca5dc460edfaeae34dd1cff40dba801cb2d6a424a3d541135e1b7c5f5fab2c8",
+      "snapshot_sha256": "0b9a2b68994d5498337890beca1acd9bcd135c73ee2dc4ab96d395b965c15f93"
+    },
+    "sources/linux-kernel/labs/qemu/x86_64/user_extent_pipe_fixed_observer.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_pipe_fixed_observer.py.gz",
+      "sha256": "aafa89a01218bd325ec71b26686036126e1091c28b3bd4f46f47a75674728799",
+      "snapshot_sha256": "6886cef809ea5e0c2f848539d2edadf7b9534560e641ffbd200fe37dbc598f9c"
+    },
+    "sources/linux-kernel/tools/user-memory/test_pipe_fixed_observer.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_pipe_fixed_observer.py.gz",
+      "sha256": "f6919ed5e940314acc0033f575b75994548e62a11fea4706ec9073cfdc3fcd5f",
+      "snapshot_sha256": "99f02010d693d96dccca2ef5b2a81cfc254443971afb173b6ee9bfb01012a0b6"
+    },
+    "sources/linux-kernel/tools/user-memory/test_model.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_model.py.gz",
+      "sha256": "172e562d53005ae3939e3f5b8e6f17e0f15e5625e6f7bf59214dfa864f6e7767",
+      "snapshot_sha256": "34f09dda3bc3efbbac1b52bb25dfec553651085c5db79fd2e9401847dbaf2436"
+    },
+    "sources/linux-kernel/tools/user-memory/model.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/model.py.gz",
+      "sha256": "7f4a7d6a2f9de48b736c5a7df04f7bd0a48bb4765d6533bd616788abda08b291",
+      "snapshot_sha256": "ddb0c8e78b59c2f6c3fc9a53e0afa6be82ac52f1618a8ee06e854b950653a9ac"
+    },
+    "artifacts/provider.o": {
+      "snapshot": "../stage-3-staging-copies/artifacts/provider.o.gz",
+      "sha256": "363b01c4f75056b0eca0e76628e480ff6dcbc1aad0db885ac8dd205e79f729c6",
+      "snapshot_sha256": "3f315406a0315765a1ee0f89624bfd5df82464aec48131b4451fd749fa62c609"
+    },
+    "artifacts/kernel.elf": {
+      "snapshot": "../stage-3-staging-copies/artifacts/kernel.elf.gz",
+      "sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+      "snapshot_sha256": "2b23ad957cd48c752ccc6a185e9b086707e81c38c9c1c56fb34564b730fd4116"
+    },
+    "artifacts/extent-call-inventory.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/extent-call-inventory.json.gz",
+      "sha256": "7e27b70623f25ae6fd463463d05c8a8fbe937f0be3b4345c20df3a2c83dfadc9",
+      "snapshot_sha256": "aee758d4cf5a6176eb0ad9ff7201670e86d8f984581c013f61645cd7c3164d3e"
+    },
+    "artifacts/process-access-inventory.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/process-access-inventory.json.gz",
+      "sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa",
+      "snapshot_sha256": "422757def0e1b4d047726bb9dd115dd52721c5a598cd7858a6cf8db48353c468"
+    },
+    "artifacts/process-access-origins.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/process-access-origins.json.gz",
+      "sha256": "b5c1ecd7dd3afe0131f2a4da303a80d882960aabb2a86f7de5f68ef07364ed41",
+      "snapshot_sha256": "dd2e7bce882260cccc1a876c869a1622a663cda9f3cbeb97a128583d61b73eb6"
+    },
+    "artifacts/fixed-transfer-audit.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/fixed-transfer-audit.json.gz",
+      "sha256": "b4a6f0f0f66f0c782613e180aa24e4a735888f24ec14e178f790110db24b6479",
+      "snapshot_sha256": "e3992216bbf32c5c0245ef2812fc71fa5f3b81f06d96dd5c7fa516ac9917ec4b"
+    },
+    "artifacts/copy-transfer-audit.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/copy-transfer-audit.json.gz",
+      "sha256": "572ea9aa5675844e723c6e71e3da0cba89aa43a4de29ddb8b9f805b835a61077",
+      "snapshot_sha256": "ae12fe34b62a42bdfb41ecc74663169be440c110ff3abe5c9b13d314dcbb47e6"
+    },
+    "artifacts/staged-transfer-audit.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/staged-transfer-audit.json.gz",
+      "sha256": "64d256f7b4f3f052341f48eab6dfd0925dedcb9da5afee1d3e8d0848d282dfe8",
+      "snapshot_sha256": "6f8d4923baefbdf775f2f2166599269089b46d0e9819faf3a4f08a5bcb64a9a3"
+    },
+    "artifacts/additional-scalar-audit.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/additional-scalar-audit.json.gz",
+      "sha256": "e7983ab9f8c468c61fc98c7fbbfc1931e6afd9a02d069cf8aa4d9e6f3db4e435",
+      "snapshot_sha256": "b50b56193b9d94d78e626b8ccd13bdb1e6dbd77de0a33e048e3f7d84db958b18"
+    },
+    "artifacts/staging-copy-audit.json": {
+      "snapshot": "../stage-3-staging-copies/artifacts/staging-copy-audit.json.gz",
+      "sha256": "c8e6cbce30b2b34efc3dd86eb6bb27c68f58528fa93a2ef0ac61266f41c31de6",
+      "snapshot_sha256": "403e57da3236f70d24b5459658e46daa8b35eacaa5c2a9472fcf8ebec1af510f"
+    },
+    "artifacts/pipe-fixed-output-audit.json": {
+      "snapshot": "artifacts/pipe-fixed-output-audit.json.gz",
+      "sha256": "16b71dd3fbc06c1c5e990343fbc992696fdedaadaa67c4b676561696b7eba370",
+      "snapshot_sha256": "69913f460d737831e15735e4311bfa9f38b0ac11e7849236e25e624478550a89"
+    },
+    "artifacts/static-elf-abi-fixture.elf": {
+      "snapshot": "artifacts/static-elf-abi-fixture.elf.gz",
+      "sha256": "1fe291d3850131cea0d374be8ec9c0225cf953e5f4923b502b65453492338b12",
+      "snapshot_sha256": "f1eebe5a10f16df8733069a4ece701deb86295bda52f496eb2566ac711518446"
+    },
+    "artifacts/initramfs.cpio": {
+      "snapshot": "artifacts/initramfs.cpio.gz",
+      "sha256": "169b88b8958f94f334b193664e45b9c7af297fa99e459b86d8992c75f2815c9d",
+      "snapshot_sha256": "70103256e945143847cf90f111093254e2d76547559dd3fc829536dadf172e56"
+    },
+    "artifacts/source-user.elf": {
+      "snapshot": "artifacts/source-user.elf.gz",
+      "sha256": "666e8d84c405460e1b6614882ef60fe2ec3573cad50d6976fd4b809a3cd99d25",
+      "snapshot_sha256": "dc8c1cdb9a0393aaafb3557bd70c6c458441b2a73772d3fb12835f28986fa9ea"
+    },
+    "history/preceding-source-user.elf": {
+      "snapshot": "history/preceding-source-user.elf.gz",
+      "sha256": "1ddae843df0cce25d0cce1b4ccefdfb419e175abc5c70730c4fc11a1a7c5e893",
+      "snapshot_sha256": "915d703de0cd402cf34145d862617fe3a656026765d10109f2a3c8db41b02417"
+    }
+  },
+  "local_links": [
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "../../../../labs/qemu/x86_64/user_extent_pipe_fixed_observer.py"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "../stage-3-fixed-pipe-audit/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "native/run.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "native-readback.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "source-link-section-difference.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "native-coverage.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "caller-access-index.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "source-identity.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "artifact-identity.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "replay.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/results/stage-3-fixed-pipe-native/README.md",
+      "target": "review.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "design/owned-user-extents.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-call-census/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-pipes/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-storage/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-serial/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-transfer-guards/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-process-accesses/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-callback-bindings/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-process-origins/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-fixed-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-copy-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-staged-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-staged-refusals/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-additional-scalars/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "knowledge/x86_64/user-memory-research.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1/independent-readback.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1-harness-path-failure/failure.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-1/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/qualification.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/independent-readback.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/replay.json"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-2/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-application-checkpoint/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "../AGENTS.md#kernel-and-systems-validation"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-fixture/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-startup/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-files/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-shell/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-exec/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-source-signals/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/caller-routing.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-owned-poll/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-staging-copies/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-fixed-pipe-audit/README.md"
+    },
+    {
+      "document": "linux-kernel/step-4-owned-user-extents.md",
+      "target": "tools/user-memory/results/stage-3-fixed-pipe-native/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-signals/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_completion.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-startup/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_read_exec.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_file_descriptions.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_start.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_signals.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_read_exec.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-owned-poll/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-call-census/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-pipes/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-storage/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-source-serial/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-transfer-guards/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_output.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_completion.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "../../../src/topal-compiler/src/systems_process_entry_completion.rs"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-process-accesses/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-callback-bindings/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-process-origins/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-process-origins/writer-index.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-fixed-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-copy-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staged-transfers/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staged-transfers/caller-access-index.json"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staged-refusals/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-additional-scalars/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-staging-copies/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-fixed-pipe-audit/README.md"
+    },
+    {
+      "document": "linux-kernel/tools/user-memory/caller-routing.md",
+      "target": "results/stage-3-fixed-pipe-native/README.md"
+    }
+  ],
+  "scope": "Selected archived byte/reference/link/index/source equality checks only; no complete producer, continuous ownership/lifetime or canonical qualification"
+}

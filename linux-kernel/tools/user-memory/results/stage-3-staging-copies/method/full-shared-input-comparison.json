@@ -1,0 +1,50 @@
+{
+  "artifacts": {
+    "kernel.elf": {
+      "equal": true,
+      "before_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+      "after_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f"
+    },
+    "static-elf-abi-fixture.elf": {
+      "equal": true,
+      "before_sha256": "4eca8fefc90c003493a62bc6c9e53d121fb19bf875bd0060e43b57bcdf98618d",
+      "after_sha256": "4eca8fefc90c003493a62bc6c9e53d121fb19bf875bd0060e43b57bcdf98618d"
+    },
+    "initramfs.cpio": {
+      "equal": true,
+      "before_sha256": "f7ec90f53b66b88aa013f1d89c50bc36a0b806005c0e1ac26eac7390e1849775",
+      "after_sha256": "f7ec90f53b66b88aa013f1d89c50bc36a0b806005c0e1ac26eac7390e1849775"
+    },
+    "caller-observation.json": {
+      "equal": true,
+      "before_sha256": "84d347c2a5b58d8304cd86fa5c2031bc666e94a8ffb0f31e06ef07a7d55a4c98",
+      "after_sha256": "84d347c2a5b58d8304cd86fa5c2031bc666e94a8ffb0f31e06ef07a7d55a4c98"
+    },
+    "caller-fixture-sites.json": {
+      "equal": true,
+      "before_sha256": "054f924ef7a1e57eb0e1181033db409893f4d1d7f18b38d3635f989d667f68be",
+      "after_sha256": "054f924ef7a1e57eb0e1181033db409893f4d1d7f18b38d3635f989d667f68be"
+    },
+    "user-owners.json": {
+      "equal": true,
+      "before_sha256": "15c924bc1d1829ba690333e21aa96216b82e84606472648cdd9480e30c24bf6c",
+      "after_sha256": "15c924bc1d1829ba690333e21aa96216b82e84606472648cdd9480e30c24bf6c"
+    }
+  },
+  "debugger_program_equal_after_build_path_normalization": false,
+  "scope": "Actual same kernel, user image, initramfs, caller selection/sites/owners and saved GDB program after only exact build-root paths and the one loopback debugger port are normalized. Host full-workload timeout/watchdog differs as documented. Not terminal workload acceptance or a pass under the old deadline.",
+  "debugger_programs": [
+    {
+      "raw_sha256": "d03686805107b986e266acff04b6f8b3aa9abf37eef6e2e51cc3c288a6ecc14c",
+      "normalized_sha256": "fde65d9bdeb9e6bd99af51b4f67280918488219aaf08dd681610b5ee05f8113d",
+      "loopback_connection_line": "target remote 127.0.0.1:59599"
+    },
+    {
+      "raw_sha256": "6e5a64b9eb5c182d7c79be98f0a6ea56ddae814ab5c68322ad0810826e93d3fe",
+      "normalized_sha256": "fde65d9bdeb9e6bd99af51b4f67280918488219aaf08dd681610b5ee05f8113d",
+      "loopback_connection_line": "target remote 127.0.0.1:48167"
+    }
+  ],
+  "debugger_program_equal_after_build_path_and_loopback_port_normalization": true,
+  "passed": true
+}

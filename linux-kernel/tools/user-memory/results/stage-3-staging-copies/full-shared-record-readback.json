@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "input_kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "observations_sha256": "23e0c34a80bf1a86897f5ce1ad4b328827a8530742c4ff129c821ce627bb74e2",
+  "compressed_records_sha256": "7c503c4eb3aff6350aff556c9d60b90473ca3429a44b371067027b10419dbe05",
+  "streamed_records": 19383,
+  "summary_records": 19383,
+  "maximum_record_bytes": 23817,
+  "complete_gzip_stream": true,
+  "all_record_hashes_and_non_snapshot_fields_equal": true,
+  "identical_six_full_workload_inputs": true,
+  "normalized_debugger_programs_equal": true,
+  "scope": "Streaming correspondence of archived full native records, actual summaries and compared inputs/programs. Not another guest run, a new permission/owner model, complete lifetime qualification or an old-budget performance pass."
+}

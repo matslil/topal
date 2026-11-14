@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_random_outputs.py", line 206, in <module>
+    if __name__=='__main__': audit(Path(sys.argv[1]).resolve())
+                             ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_random_outputs.py", line 146, in audit
+    callee=extract_contract(body,nodes,roots,successors,predecessors,extract_entry)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_random_outputs.py", line 22, in extract_contract
+    decoded={at:effects(bytes.fromhex(nodes[at]['bytes'])) for at in local}
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/random_extract_effects.py", line 31, in effects
+    assert width==4 and base in data_registers
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

@@ -1,0 +1,17 @@
+{
+  "command": ["cargo", "test", "-p", "topal-compiler", "--lib", "--locked", "-j1"],
+  "bounded_scope": "topal-bounded-2308833-013f498f.scope",
+  "exec_session": 80086,
+  "terminal_exit_code": 101,
+  "passed": 293,
+  "failed": 87,
+  "ignored": 8,
+  "elapsed_test_seconds": 381.30,
+  "observed_failure": "Os { code: 122, kind: QuotaExceeded, message: \"Disk quota exceeded\" }",
+  "examples": [
+    "systems_frame_target::tests::bootstrap_frame_target_constructs_the_real_map_and_zeroes_owned_extents: cannot write /tmp/frame-target-2310144-1794421436739683249",
+    "systems_frame_target::root_tests::frame_root_replaces_real_allocation_release_and_mapping_lifetimes: LLVM output stream reports Disk quota exceeded",
+    "systems_user_extent::source_fixture::source_user_component_links_before_abi_image_construction: C compiler cannot write /tmp/ccFlQRRH.s"
+  ],
+  "scope": "Summary and selected failure messages transcribed from terminal tool output; not a retained full transcript or a final cgroup-resource record. Source changed only in the already compiled C fixture and Python observer during this test run. This failed run is not final-source acceptance. Disk-backed TMPDIR retry retains full logs, the existing bounded memory rules and unchanged tests. No AI safeguard notice was reported."
+}

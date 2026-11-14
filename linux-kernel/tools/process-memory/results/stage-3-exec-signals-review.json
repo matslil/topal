@@ -1,0 +1,979 @@
+{
+  "archive_manifest": {
+    "bytes": 178682,
+    "sha256": "335595b6c687e48f6606ba0f8da73d9bbbe284d38a0dcd9b294fd1b5167ea5e3"
+  },
+  "entries": 1021,
+  "frozen_sources": 750,
+  "passed": true,
+  "replay": "Corrected reader, original reader failure and 330 models from frozen inputs; no native execution",
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3404443648",
+    "memory.peak": "934866944",
+    "memory.swap.max": "0"
+  },
+  "summary": {
+    "allocation_free_queries": 28,
+    "allocation_free_within_page_changes": 4,
+    "cases": 4,
+    "child_exec_controls": [
+      {
+        "name": "child-exec-changes-parent-byte",
+        "reason": "changed retained inactive",
+        "rejected": true
+      },
+      {
+        "name": "child-exec-restores-old-MM",
+        "reason": "exec MM generation",
+        "rejected": true
+      },
+      {
+        "name": "child-exec-restores-old-generation",
+        "reason": "exec MM generation",
+        "rejected": true
+      },
+      {
+        "name": "child-exec-retires-parent",
+        "reason": "MM state",
+        "rejected": true
+      },
+      {
+        "name": "child-entry-old-stack",
+        "reason": "child exec initial stack",
+        "rejected": true
+      },
+      {
+        "name": "child-entry-lost-parent",
+        "reason": "empty inactive owner",
+        "rejected": true
+      },
+      {
+        "name": "child-entry-retained-old-heap",
+        "reason": "fresh child heap",
+        "rejected": true
+      },
+      {
+        "name": "child-entry-retained-FS",
+        "reason": "child exec FS reset",
+        "rejected": true
+      },
+      {
+        "name": "child-entry-retained-TID",
+        "reason": "child exec registration reset",
+        "rejected": true
+      },
+      {
+        "name": "child-entry-retained-robust-list",
+        "reason": "child exec registration reset",
+        "rejected": true
+      }
+    ],
+    "child_exec_entries": [
+      {
+        "generation": 1,
+        "mm": 3,
+        "parent_mm": 1,
+        "parent_pages": 67,
+        "pid": 2
+      },
+      {
+        "generation": 2,
+        "mm": 6,
+        "parent_mm": 4,
+        "parent_pages": 67,
+        "pid": 3
+      },
+      {
+        "generation": 3,
+        "mm": 9,
+        "parent_mm": 7,
+        "parent_pages": 67,
+        "pid": 4
+      },
+      {
+        "generation": 4,
+        "mm": 12,
+        "parent_mm": 10,
+        "parent_pages": 67,
+        "pid": 5
+      }
+    ],
+    "comparisons": [
+      {
+        "active_pages": 0,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 2,
+        "inactive_pages": 67,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 2,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 2,
+        "inactive_pages": 67,
+        "operation": 7,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 2,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 2,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 2,
+        "inactive_pages": 35,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 2,
+        "inactive_pages": 35,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 7,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 3,
+        "inactive_pages": 67,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 3,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 3,
+        "inactive_pages": 67,
+        "operation": 7,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 3,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 3,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 3,
+        "inactive_pages": 35,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 3,
+        "inactive_pages": 35,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 7,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 4,
+        "inactive_pages": 67,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 4,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 4,
+        "inactive_pages": 67,
+        "operation": 7,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 4,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 4,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 4,
+        "inactive_pages": 35,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 4,
+        "inactive_pages": 35,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 7,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 1,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 5,
+        "inactive_pages": 67,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 5,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 5,
+        "inactive_pages": 67,
+        "operation": 7,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 5,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 5,
+        "inactive_pages": 67,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 67,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 101,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 5,
+        "inactive_pages": 35,
+        "operation": 11,
+        "passed": true
+      },
+      {
+        "active_pages": 101,
+        "active_pid": 5,
+        "inactive_pages": 35,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 35,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 5,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 6,
+        "inactive_pages": 34,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 7,
+        "inactive_pages": 34,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 8,
+        "inactive_pages": 34,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 9,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 9,
+        "inactive_pages": 34,
+        "operation": 10,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 12,
+        "passed": true
+      },
+      {
+        "active_pages": 34,
+        "active_pid": 1,
+        "inactive_pages": 0,
+        "operation": 13,
+        "passed": true
+      },
+      {
+        "active_pages": 0,
+        "active_pid": 0,
+        "inactive_pages": 0,
+        "operation": 6,
+        "passed": true
+      }
+    ],
+    "controls": [
+      {
+        "name": "prepared-pin-missing",
+        "reason": "heap backing/pin",
+        "rejected": true
+      },
+      {
+        "name": "prepared-wrong-epoch",
+        "reason": "prepared entry receipt",
+        "rejected": true
+      },
+      {
+        "name": "prepared-wrong-source-generation",
+        "reason": "prepared source owner",
+        "rejected": true
+      },
+      {
+        "name": "prepared-truncated-to-old-34-pages",
+        "reason": "whole allocation bytes",
+        "rejected": true
+      },
+      {
+        "name": "child-adopts-parent-MM",
+        "reason": "inactive MM identity",
+        "rejected": true
+      },
+      {
+        "name": "child-identity-counter-restored",
+        "reason": "active MM identity",
+        "rejected": true
+      },
+      {
+        "name": "handoff-loses-parent",
+        "reason": "MM state",
+        "rejected": true
+      },
+      {
+        "name": "handoff-reuses-heap-PTE",
+        "reason": "selected heap translations",
+        "rejected": true
+      },
+      {
+        "name": "exit-missing-retirement",
+        "reason": "complete retirement set",
+        "rejected": true
+      },
+      {
+        "name": "exit-truncated-erasure",
+        "reason": "complete retirement geometry",
+        "rejected": true
+      },
+      {
+        "name": "exit-retains-child-MM",
+        "reason": "inactive MM identity",
+        "rejected": true
+      },
+      {
+        "name": "hardware-root-changed",
+        "reason": "actual live root/context",
+        "rejected": true
+      },
+      {
+        "name": "write-protection-disabled",
+        "reason": "paging/write protection",
+        "rejected": true
+      },
+      {
+        "name": "retained-resize-candidate",
+        "reason": "token binding",
+        "rejected": true
+      },
+      {
+        "name": "query-consumes-frame-identity",
+        "reason": "query/within-page allocation",
+        "rejected": true
+      },
+      {
+        "name": "wrong-syscall",
+        "reason": "syscall identity",
+        "rejected": true
+      },
+      {
+        "name": "wrong-child-copy-beyond-page-34",
+        "reason": "incomplete fork copy",
+        "rejected": true
+      },
+      {
+        "name": "exit-nonzero-erasure",
+        "reason": "retired backing not consumed/zero",
+        "rejected": true
+      },
+      {
+        "name": "resize-loses-retained-byte",
+        "reason": "resize retained prefix",
+        "rejected": true
+      },
+      {
+        "name": "resize-new-page-nonzero",
+        "reason": "new heap pages not zero",
+        "rejected": true
+      }
+    ],
+    "copied_heap_bytes": 1654784,
+    "erased_released_bytes": 7766016,
+    "operations": {
+      "10": 8,
+      "11": 8,
+      "12": 8,
+      "13": 1,
+      "5": 60,
+      "6": 1,
+      "7": 7,
+      "9": 8
+    },
+    "passed": true,
+    "restored_parent_signals": 4,
+    "retired_extents": 36,
+    "scope": "Experimental child exec, retained parent and early ordinary services; not public ELF-loader, continuous lifetime, cancellation or fatal-path qualification",
+    "signal_controls": [
+      {
+        "name": "lost-ignore",
+        "reason": "exec reset and blocked-mask preservation",
+        "rejected": true
+      },
+      {
+        "name": "retained-caught-handler",
+        "reason": "exec reset and blocked-mask preservation",
+        "rejected": true
+      },
+      {
+        "name": "retained-flags",
+        "reason": "exec reset and blocked-mask preservation",
+        "rejected": true
+      },
+      {
+        "name": "retained-restorer",
+        "reason": "exec reset and blocked-mask preservation",
+        "rejected": true
+      },
+      {
+        "name": "retained-action-mask",
+        "reason": "exec reset and blocked-mask preservation",
+        "rejected": true
+      },
+      {
+        "name": "lost-blocked-mask",
+        "reason": "exec reset and blocked-mask preservation",
+        "rejected": true
+      },
+      {
+        "name": "entry-lost-mask",
+        "reason": "exec reset and blocked-mask preservation",
+        "rejected": true
+      },
+      {
+        "name": "vacuous-before-mask",
+        "reason": "nonempty child blocked mask before exec",
+        "rejected": true
+      },
+      {
+        "name": "changed-parent-mask",
+        "reason": "parent signal state restored after child exec/wait",
+        "rejected": true
+      }
+    ],
+    "signal_exec_transitions": 4,
+    "signal_scope": "Registration/query through ordinary fork/exec/yield/wait; no delivery, pending signals, frames, restart, rt_sigreturn or complete Linux qualification"
+  }
+}

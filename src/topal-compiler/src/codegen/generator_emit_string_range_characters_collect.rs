@@ -727,6 +727,9 @@ impl Generator<'_> {
         let negative = usize::from(sign == Sign::Minus);
         let name = format!(".topal.int.{}", self.next_global);
         self.next_global += 1;
+        if self.kernel_tail_component {
+            self.tail_readonly_integers.insert(name.clone(), 16 + 4 * limbs.len() as u64);
+        }
         let values = limbs
             .iter()
             .map(|limb| format!("i32 {limb}"))

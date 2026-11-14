@@ -1,0 +1,22 @@
+{
+  "kernel.elf": {
+    "bytes": 1665328,
+    "sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f"
+  },
+  "provider.o": {
+    "bytes": 1061624,
+    "sha256": "363b01c4f75056b0eca0e76628e480ff6dcbc1aad0db885ac8dd205e79f729c6"
+  },
+  "static-elf-abi-fixture.elf": {
+    "bytes": 2024544,
+    "sha256": "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
+  },
+  "initramfs.cpio": {
+    "bytes": 2037200,
+    "sha256": "a279fb8053f540b6c11576a4cbeaea6207f4d92ff9a030b8a6cae6160ab625b1"
+  },
+  "stat-output-audit.json": {
+    "bytes": 559622,
+    "sha256": "e7e83feb07e4be249561927e4b2da9d3fc880404320c658a30007e961120d30d"
+  }
+}

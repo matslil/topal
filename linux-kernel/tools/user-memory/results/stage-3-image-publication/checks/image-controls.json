@@ -1,0 +1,89 @@
+{
+  "passed": true,
+  "observation_sha256": "62a722390c5650bd292507e77a57ea8c763b464bf790a3a4741cea09289fc172",
+  "runner_sha256": "5964ff842930467c0f29bfd2bb97fab108d5700f08518991f562c10bd96ed67e",
+  "controls": [
+    {
+      "name": "missing-complete-generation",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "reused-generation-traces",
+      "rejected": true,
+      "error": "missing, reused or mismatched image trace interval"
+    },
+    {
+      "name": "missing-relro-record",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "missing-exec-record",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "missing-invalidation",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "false-publication-barrier",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "false-final-relro-barrier",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "invented-final-exec-barrier",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "wrong-relro-write-bit",
+      "rejected": true,
+      "error": "published image leaf differs"
+    },
+    {
+      "name": "wrong-relro-physical-leaf",
+      "rejected": true,
+      "error": "published image leaf differs"
+    },
+    {
+      "name": "wrong-owner-pin",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "wrong-syscall-epoch",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "changed-cr3-before-return",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "changed-copy-cpu",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "missing-raw-trace",
+      "rejected": true,
+      "error": ""
+    },
+    {
+      "name": "false-raw-log-hash",
+      "rejected": true,
+      "error": ""
+    }
+  ],
+  "baseline_publications": 7,
+  "scope": "Sixteen altered saved-JSON controls only; no modified guest state, third-party program or native negative execution"
+}

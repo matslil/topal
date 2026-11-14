@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "text_bytes": 895,
+  "text_sha256": "97abc5c14d3eeafc9ccc976df26de102dcd0f7fb6f7b5c714d99ec5e923a3f26",
+  "executable_read_only_load_verified": true,
+  "linked_entry": 5701888,
+  "adapter_hex": "4889f84889f74889d64889ca0f05c3",
+  "conservative_user_stack_bytes": 528,
+  "executions": 4,
+  "source_syscalls": 56,
+  "physical_command_retirement_observed": true,
+  "scope": "Independent load inclusion, ABI adapter, stack and retained runtime checks; not complete production reconstruction"
+}

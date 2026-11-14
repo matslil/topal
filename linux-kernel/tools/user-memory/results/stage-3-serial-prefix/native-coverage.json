@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "matching_kernel_union": 88,
+  "fresh_first_reach_sites": {
+    "serial": 76,
+    "pinned": 38
+  },
+  "preceding_record": "../stage-3-staging-copies/native-summary.json",
+  "preceding_record_sha256": "0fe98a686f936fb55325079c36ac7e2c4f84a3bdee87179ba243aa3157a956e7",
+  "scope": "Matching-kernel first-reach subsets only; not full transfer or production qualification"
+}

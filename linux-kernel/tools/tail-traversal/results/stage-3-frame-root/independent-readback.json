@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "elapsed_seconds": 3.522615428082645,
+  "files": {
+    "reader.py.txt": {
+      "file": "independent-readback-reader.py.txt",
+      "sha256": "79e862d71bbad6b6d46d93563b8e864ddb9e6b4875b9dfe0a2558c0ecfbfdd33",
+      "bytes": 12032
+    },
+    "stdout.log": {
+      "file": "independent-readback-stdout.log",
+      "sha256": "d291ff3db4cff904977f065d818cbb4a250709afa3647e5cd0f1a499b6bf8563",
+      "bytes": 620
+    },
+    "stderr.log": {
+      "file": "independent-readback-stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  }
+}

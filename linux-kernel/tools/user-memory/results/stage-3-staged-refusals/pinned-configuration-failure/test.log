@@ -1,0 +1,19 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 1 test
+test systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state ... actual frame source root: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-application-2301397-1794416916428546709
+
+thread 'systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state' (2301398) panicked at src/topal-compiler/src/systems_frame_root_tests.rs:340:14:
+provide the pinned BusyBox ELF through TOPAL_PINNED_STATIC_USER_IMAGE
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 387 filtered out; finished in 0.86s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

@@ -1,0 +1,197 @@
+{
+  "passed": true,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "audit_sha256": "598a31450ea2a2baa51d113dbdc39629b1e102d494ff698dc77bc649f813f692",
+  "observation_sha256": "5cee33a9d604c1b4ca2fac582d382c44649a1257d87f1ac2491e85d22c65da33",
+  "source_syscalls": 64,
+  "serial_admission_records": 28,
+  "counts": {
+    "attempts": 28,
+    "admitted": 12,
+    "refused": 16,
+    "completed": 12,
+    "bytes": 64
+  },
+  "short_prefixes": [
+    {
+      "args": [
+        0,
+        6528768,
+        512
+      ],
+      "admission": {
+        "candidate": 6528768,
+        "length": 256
+      },
+      "result": 8
+    },
+    {
+      "args": [
+        0,
+        6528768,
+        512
+      ],
+      "admission": {
+        "candidate": 6528768,
+        "length": 256
+      },
+      "result": 8
+    },
+    {
+      "args": [
+        0,
+        6528768,
+        512
+      ],
+      "admission": {
+        "candidate": 6528768,
+        "length": 256
+      },
+      "result": 8
+    },
+    {
+      "args": [
+        0,
+        6528768,
+        512
+      ],
+      "admission": {
+        "candidate": 6528768,
+        "length": 256
+      },
+      "result": 8
+    }
+  ],
+  "early_results_without_output_admission": [
+    {
+      "args": [
+        0,
+        18446744073709551615,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "args": [
+        1,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        99,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        0,
+        6529024,
+        0
+      ],
+      "result": 0
+    },
+    {
+      "args": [
+        0,
+        18446744073709551615,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "args": [
+        1,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        99,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        0,
+        6529024,
+        0
+      ],
+      "result": 0
+    },
+    {
+      "args": [
+        0,
+        18446744073709551615,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "args": [
+        1,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        99,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        0,
+        6529024,
+        0
+      ],
+      "result": 0
+    },
+    {
+      "args": [
+        0,
+        18446744073709551615,
+        8
+      ],
+      "result": -14
+    },
+    {
+      "args": [
+        1,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        99,
+        18446744073709551615,
+        8
+      ],
+      "result": -9
+    },
+    {
+      "args": [
+        0,
+        6529024,
+        0
+      ],
+      "result": 0
+    }
+  ],
+  "saved_observer_programs_present": true,
+  "scope": "Independent saved syscall/UART payload/admission/return reconstruction and aggregate REP-count correspondence. Runtime boundary translation/payload checks remain live-observer evidence; not a complete per-copy saved event transcript, second native run, actual owners/lifetime or production qualification"
+}

@@ -1,0 +1,11 @@
+{
+  "stage_complete": false,
+  "production_activation": false,
+  "remaining": [
+    "all other scalar/indexed/string access regions and complete syscall effects/error ordering",
+    "continuous check-to-copy lifetime, complete table/backing and counterparty ownership",
+    "remaining helper/root/callee/exception and native mode/stale-state obligations",
+    "three fallback obligations, canonical production binding and committed cold reconstruction",
+    "the complete original kernel/distribution/device/driver/container/VM-host requirements"
+  ]
+}

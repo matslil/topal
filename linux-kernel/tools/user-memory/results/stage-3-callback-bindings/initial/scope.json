@@ -1,0 +1,5 @@
+{
+  "scope": "Passing earlier source-poll and pinned-exit runs with the frozen initial observer; not evidence for final observer bytes",
+  "qualification": "The source-poll cohort executes 120 source syscalls and five callback sites (1064 returns). Its eight-fact anonymous-create site is unobserved. The initial observer had a narrower unused five-bit policy assertion; source review corrected it to eight Boolean facts and the exact anonymous-create plan before the final all-six-site storage and pinned-application runs.",
+  "source_observer_sha256": "56929ae05ac0c89757309f8fece6b1b2c6e6fc46733e60df3a65cd92a8fe6163"
+}

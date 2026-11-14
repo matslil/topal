@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "audit_sha256": "dad9f028a9e79e5c7b696e398dd22daa7ff44c69c5ff342b4b4151ba3b21678d",
+  "observation_sha256": "b063e90fa1d0f40720df8110a1b96fe8e2968b43c698e372dd25f3264bdf5285",
+  "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+  "events": [
+    {
+      "selector": 196865,
+      "candidate": 8387488,
+      "size": 4,
+      "scalar_loads": 1,
+      "payload_sha256": "07ddbcc07afac4897d7a40e75d7adb83e0a8e2b3edd2bbb11c5ee47ec844f2b0"
+    },
+    {
+      "selector": 16974081,
+      "candidate": 8387488,
+      "size": 40,
+      "scalar_loads": 5,
+      "payload_sha256": "2f4c8fff1736388edb9ac56e18bc9504a77008f3d2058a8f1da81315076b3177"
+    },
+    {
+      "selector": 33751297,
+      "candidate": 8387488,
+      "size": 1,
+      "scalar_loads": 1,
+      "payload_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    }
+  ],
+  "total_bytes": 45,
+  "scalar_loads": 7,
+  "exact_order_payload_and_first_reach_equal": true,
+  "saved_observer_program_present": true,
+  "scope": "Independent saved-record selector order, admitted lengths, scalar operands/payloads and staged bytes, joined to first reach and actual serial warning. Register/helper/mapping assertions retain their native observer evidence; not another native run, refusal coverage, continuous lifetime, independent owners or complete warning/production qualification"
+}

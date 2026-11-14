@@ -1,0 +1,8 @@
+{
+  "argv": [
+    "python3",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/audit_staged_transfers.py",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-application-2296397-1794411827879912888"
+  ],
+  "exit_code": 0
+}

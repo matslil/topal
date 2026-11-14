@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "rejections": [
+    {
+      "name": "missing-shared-caller",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline in-process checker configuration/effect fault injection; unchanged guest ELF/metadata and no VM execution or state mutation"
+    },
+    {
+      "name": "lost-helper-alias",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline in-process checker configuration/effect fault injection; unchanged guest ELF/metadata and no VM execution or state mutation"
+    },
+    {
+      "name": "sampler-clobber",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline in-process checker configuration/effect fault injection; unchanged guest ELF/metadata and no VM execution or state mutation"
+    },
+    {
+      "name": "missing-cld",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline in-process checker configuration/effect fault injection; unchanged guest ELF/metadata and no VM execution or state mutation"
+    },
+    {
+      "name": "copy-count-mismatch",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline in-process checker configuration/effect fault injection; unchanged guest ELF/metadata and no VM execution or state mutation"
+    },
+    {
+      "name": "copy-pointer-mismatch",
+      "rejected": true,
+      "exit_code": 1,
+      "scope": "Offline in-process checker configuration/effect fault injection; unchanged guest ELF/metadata and no VM execution or state mutation"
+    }
+  ]
+}

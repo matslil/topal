@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "exact_process_origin_report_equal": true,
+  "spans": 45005,
+  "source_locations": 9380,
+  "potential_access_instructions": 14584,
+  "scope": "Frozen first-party artifact/source join replay only; no kernel rebuild, VM/native execution, compiler conformance, pointer authority or lifetime qualification"
+}

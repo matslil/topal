@@ -1,0 +1,9 @@
+{
+  "stage": "pre-native targeted image reader tests",
+  "exit_code": 2,
+  "notice": "run-bounded: [Errno 30] Read-only file system: '/run/user/1000/topal-bounded-1000.lock'",
+  "classification": "Filesystem sandbox restriction on the existing bounded-wrapper host-budget lock, not a model/provider safeguard notice or a guest failure",
+  "retry": "Normal approved permission escalation for the same bounded tests; ten tests passed with the wrapper, host reserve, cgroup and zero swap retained",
+  "host_security_relaxed": false,
+  "new_guest_execution": false
+}

@@ -1,0 +1,11 @@
+{
+  "complete": false,
+  "passed": false,
+  "reason": "Stopped for native target review finding: backing callback lacks explicit translation-storage disjointness under inconsistent private heap token/base/PTE state. Actual VM counterexample pending; no regression failure or complete workspace result claimed.",
+  "resources": {
+    "memory.max": "3116285952",
+    "memory.peak": "1125507072",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.swap.max": "0"
+  }
+}

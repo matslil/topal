@@ -1,0 +1,11 @@
+{
+  "name": "root-code-argument",
+  "kernel_file_offset": 92157,
+  "original_byte": 159,
+  "changed_byte": 158,
+  "corrected_outer_kernel_sha256": "e3860aee7c0120b81f900ab690b6b2ef80e96de64cd417e379379d5c8ea83eea",
+  "exit_code": 1,
+  "rejected": true,
+  "expected_gate": "assert linked_root['value']+field+4",
+  "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+}

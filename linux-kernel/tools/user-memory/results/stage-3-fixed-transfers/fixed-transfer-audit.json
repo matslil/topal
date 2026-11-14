@@ -1,0 +1,1208 @@
+{
+  "passed": true,
+  "function": "topal_x86_systems_static_image_process_enter",
+  "kernel_sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+  "provider_sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+  "linked_function_sha256": "b5555dab7fa1f48e353051e0f6eddd2b5279ac5a9f32dee95177b65ceba1396b",
+  "graph_sha256": "afdacb7c3705041ec40dac4f9f6ab45fb58a62a64afe468c4c71d91768a4da32",
+  "origin_join_sha256": "69334db70692bda46c54789b356513aca31d51f70378bb645f2a2007e29ca263",
+  "census_sha256": "1408d6f9916bd5a0c37000b98ce1e8c38e6bad793e780366177b9af4e9136711",
+  "roots": [
+    {
+      "offset": 0,
+      "source": "selected function entry"
+    },
+    {
+      "offset": 14561,
+      "source": "actual RIP-relative LSTAR setup",
+      "setup_offset": 14161
+    },
+    {
+      "offset": 22013,
+      "source": "exported symbol",
+      "symbol": "topal_x86_frame_mm_brk_return_v1"
+    },
+    {
+      "offset": 109092,
+      "source": "exported symbol",
+      "symbol": "topal_x86_frame_mm_cleanup_return_v1"
+    },
+    {
+      "offset": 49094,
+      "source": "exported symbol",
+      "symbol": "topal_x86_frame_mm_exec_return_v1"
+    },
+    {
+      "offset": 14370,
+      "source": "exported symbol",
+      "symbol": "topal_x86_user_extent_wp_before_v1"
+    },
+    {
+      "offset": 14379,
+      "source": "exported symbol",
+      "symbol": "topal_x86_user_extent_wp_ready_v1"
+    }
+  ],
+  "cases": [
+    {
+      "name": "echo",
+      "census_label": "static-process-shell-echo-candidate-ready",
+      "call_offset": 93521,
+      "candidate_setup_offset": 93508,
+      "candidate_register": 6,
+      "admitted_direction": "read",
+      "admitted_bytes": 6,
+      "success_edge": [
+        93535,
+        93541
+      ],
+      "local_end": 93549,
+      "access_instructions": [
+        {
+          "offset": 93541,
+          "action": "read",
+          "candidate_offset": 0,
+          "width": 4,
+          "base_register": 6,
+          "bytes": "448b06",
+          "instruction": "mov\tr8d, dword ptr [rsi]",
+          "byte_origins": [
+            {
+              "start": 93541,
+              "end": 93544,
+              "location": 4541
+            }
+          ]
+        },
+        {
+          "offset": 93544,
+          "action": "read",
+          "candidate_offset": 4,
+          "width": 2,
+          "base_register": 6,
+          "bytes": "440fb74e04",
+          "instruction": "movzx\tr9d, word ptr [rsi + 0x4]",
+          "byte_origins": [
+            {
+              "start": 93544,
+              "end": 93549,
+              "location": 4541
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        6
+      ],
+      "local_instructions": [
+        {
+          "offset": 93541,
+          "bytes": "448b06",
+          "instruction": "mov\tr8d, dword ptr [rsi]"
+        },
+        {
+          "offset": 93544,
+          "bytes": "440fb74e04",
+          "instruction": "movzx\tr9d, word ptr [rsi + 0x4]"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 88
+    },
+    {
+      "name": "exec-signal-reset",
+      "census_label": "static-process-execve-signal-number-ready",
+      "call_offset": 94708,
+      "candidate_setup_offset": 94695,
+      "candidate_register": 6,
+      "admitted_direction": "read",
+      "admitted_bytes": 32,
+      "success_edge": [
+        94722,
+        94728
+      ],
+      "local_end": 94780,
+      "access_instructions": [
+        {
+          "offset": 94728,
+          "action": "read",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48833e00",
+          "instruction": "cmp\tqword ptr [rsi], 0x0",
+          "byte_origins": [
+            {
+              "start": 94728,
+              "end": 94732,
+              "location": 4605
+            }
+          ]
+        },
+        {
+          "offset": 94738,
+          "action": "read",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48817e0800000004",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], 0x4000000",
+          "byte_origins": [
+            {
+              "start": 94738,
+              "end": 94746,
+              "location": 4607
+            }
+          ]
+        },
+        {
+          "offset": 94752,
+          "action": "read",
+          "candidate_offset": 16,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48817e1040974a00",
+          "instruction": "cmp\tqword ptr [rsi + 0x10], 0x4a9740",
+          "byte_origins": [
+            {
+              "start": 94752,
+              "end": 94756,
+              "location": 4608
+            },
+            {
+              "start": 94756,
+              "end": 94760,
+              "location": 4609
+            }
+          ]
+        },
+        {
+          "offset": 94776,
+          "action": "read",
+          "candidate_offset": 24,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48394618",
+          "instruction": "cmp\tqword ptr [rsi + 0x18], rax",
+          "byte_origins": [
+            {
+              "start": 94776,
+              "end": 94780,
+              "location": 4612
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        6,
+        8
+      ],
+      "local_instructions": [
+        {
+          "offset": 94728,
+          "bytes": "48833e00",
+          "instruction": "cmp\tqword ptr [rsi], 0x0"
+        },
+        {
+          "offset": 94732,
+          "bytes": "0f8504720000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 94738,
+          "bytes": "48817e0800000004",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], 0x4000000"
+        },
+        {
+          "offset": 94746,
+          "bytes": "0f85f6710000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 94752,
+          "bytes": "48817e1040974a00",
+          "instruction": "cmp\tqword ptr [rsi + 0x10], 0x4a9740"
+        },
+        {
+          "offset": 94760,
+          "bytes": "0f85e8710000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 94766,
+          "bytes": "48b8ffffff7ffeffffff",
+          "instruction": "movabs\trax, -0x180000001"
+        },
+        {
+          "offset": 94776,
+          "bytes": "48394618",
+          "instruction": "cmp\tqword ptr [rsi + 0x18], rax"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 48
+    },
+    {
+      "name": "sigchld-install",
+      "census_label": "static-process-shell-sigchld-install",
+      "call_offset": 95395,
+      "candidate_setup_offset": 95382,
+      "candidate_register": 6,
+      "admitted_direction": "read",
+      "admitted_bytes": 32,
+      "success_edge": [
+        95409,
+        95415
+      ],
+      "local_end": 95430,
+      "access_instructions": [
+        {
+          "offset": 95415,
+          "action": "read",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "4c8b06",
+          "instruction": "mov\tr8, qword ptr [rsi]",
+          "byte_origins": [
+            {
+              "start": 95415,
+              "end": 95418,
+              "location": 4652
+            }
+          ]
+        },
+        {
+          "offset": 95418,
+          "action": "read",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "4c8b4e08",
+          "instruction": "mov\tr9, qword ptr [rsi + 0x8]",
+          "byte_origins": [
+            {
+              "start": 95418,
+              "end": 95422,
+              "location": 4652
+            }
+          ]
+        },
+        {
+          "offset": 95422,
+          "action": "read",
+          "candidate_offset": 16,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "4c8b5e10",
+          "instruction": "mov\tr11, qword ptr [rsi + 0x10]",
+          "byte_origins": [
+            {
+              "start": 95422,
+              "end": 95426,
+              "location": 4652
+            }
+          ]
+        },
+        {
+          "offset": 95426,
+          "action": "read",
+          "candidate_offset": 24,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "4c8b6618",
+          "instruction": "mov\tr12, qword ptr [rsi + 0x18]",
+          "byte_origins": [
+            {
+              "start": 95426,
+              "end": 95430,
+              "location": 4652
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        6
+      ],
+      "local_instructions": [
+        {
+          "offset": 95415,
+          "bytes": "4c8b06",
+          "instruction": "mov\tr8, qword ptr [rsi]"
+        },
+        {
+          "offset": 95418,
+          "bytes": "4c8b4e08",
+          "instruction": "mov\tr9, qword ptr [rsi + 0x8]"
+        },
+        {
+          "offset": 95422,
+          "bytes": "4c8b5e10",
+          "instruction": "mov\tr11, qword ptr [rsi + 0x10]"
+        },
+        {
+          "offset": 95426,
+          "bytes": "4c8b6618",
+          "instruction": "mov\tr12, qword ptr [rsi + 0x18]"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 55
+    },
+    {
+      "name": "process-name",
+      "census_label": "static-process-initial-process-name",
+      "call_offset": 95961,
+      "candidate_setup_offset": 95948,
+      "candidate_register": 6,
+      "admitted_direction": "write",
+      "admitted_bytes": 16,
+      "success_edge": [
+        95975,
+        95981
+      ],
+      "local_end": 96187,
+      "access_instructions": [
+        {
+          "offset": 96159,
+          "action": "write",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "488906",
+          "instruction": "mov\tqword ptr [rsi], rax",
+          "byte_origins": [
+            {
+              "start": 96159,
+              "end": 96162,
+              "location": 4696
+            }
+          ]
+        },
+        {
+          "offset": 96162,
+          "action": "write",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48c7460800000000",
+          "instruction": "mov\tqword ptr [rsi + 0x8], 0x0",
+          "byte_origins": [
+            {
+              "start": 96162,
+              "end": 96170,
+              "location": 4696
+            }
+          ]
+        },
+        {
+          "offset": 96173,
+          "action": "read",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax",
+          "byte_origins": [
+            {
+              "start": 96173,
+              "end": 96176,
+              "location": 4697
+            }
+          ]
+        },
+        {
+          "offset": 96182,
+          "action": "read",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48837e0800",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], 0x0",
+          "byte_origins": [
+            {
+              "start": 96182,
+              "end": 96187,
+              "location": 4699
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        6,
+        8
+      ],
+      "local_instructions": [
+        {
+          "offset": 95981,
+          "bytes": "658a0425b8000000",
+          "instruction": "mov\tal, byte ptr gs:[0xb8]"
+        },
+        {
+          "offset": 95989,
+          "bytes": "3c02",
+          "instruction": "cmp\tal, 0x2"
+        },
+        {
+          "offset": 95991,
+          "bytes": "0f82196d0000",
+          "instruction": "jb\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 95997,
+          "bytes": "3c03",
+          "instruction": "cmp\tal, 0x3"
+        },
+        {
+          "offset": 95999,
+          "bytes": "0f87116d0000",
+          "instruction": "ja\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96005,
+          "bytes": "6548833c25a800000000",
+          "instruction": "cmp\tqword ptr gs:[0xa8], 0x0"
+        },
+        {
+          "offset": 96015,
+          "bytes": "0f85016d0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96021,
+          "bytes": "6548833c25b000000000",
+          "instruction": "cmp\tqword ptr gs:[0xb0], 0x0"
+        },
+        {
+          "offset": 96031,
+          "bytes": "0f85f16c0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96037,
+          "bytes": "6548833c25e000000000",
+          "instruction": "cmp\tqword ptr gs:[0xe0], 0x0"
+        },
+        {
+          "offset": 96047,
+          "bytes": "0f85e16c0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96053,
+          "bytes": "6548833c25e800000000",
+          "instruction": "cmp\tqword ptr gs:[0xe8], 0x0"
+        },
+        {
+          "offset": 96063,
+          "bytes": "0f85d16c0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96069,
+          "bytes": "6548833c25f000000000",
+          "instruction": "cmp\tqword ptr gs:[0xf0], 0x0"
+        },
+        {
+          "offset": 96079,
+          "bytes": "0f85c16c0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96085,
+          "bytes": "6548833c25f800000000",
+          "instruction": "cmp\tqword ptr gs:[0xf8], 0x0"
+        },
+        {
+          "offset": 96095,
+          "bytes": "0f85b16c0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96101,
+          "bytes": "6548833c251001000000",
+          "instruction": "cmp\tqword ptr gs:[0x110], 0x0"
+        },
+        {
+          "offset": 96111,
+          "bytes": "0f85a16c0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96117,
+          "bytes": "6548833c250001000000",
+          "instruction": "cmp\tqword ptr gs:[0x100], 0x0"
+        },
+        {
+          "offset": 96127,
+          "bytes": "0f84916c0000",
+          "instruction": "je\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96133,
+          "bytes": "6548833c250801000000",
+          "instruction": "cmp\tqword ptr gs:[0x108], 0x0"
+        },
+        {
+          "offset": 96143,
+          "bytes": "0f84816c0000",
+          "instruction": "je\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96149,
+          "bytes": "48b862757379626f7800",
+          "instruction": "movabs\trax, 0x786f6279737562"
+        },
+        {
+          "offset": 96159,
+          "bytes": "488906",
+          "instruction": "mov\tqword ptr [rsi], rax"
+        },
+        {
+          "offset": 96162,
+          "bytes": "48c7460800000000",
+          "instruction": "mov\tqword ptr [rsi + 0x8], 0x0"
+        },
+        {
+          "offset": 96170,
+          "bytes": "0faef0",
+          "instruction": "mfence"
+        },
+        {
+          "offset": 96173,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax"
+        },
+        {
+          "offset": 96176,
+          "bytes": "0f85606c0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 96182,
+          "bytes": "48837e0800",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], 0x0"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 65
+    },
+    {
+      "name": "missing-path",
+      "census_label": "static-process-shell-root-directory-stat-profile-ready",
+      "call_offset": 101802,
+      "candidate_setup_offset": 101789,
+      "candidate_register": 6,
+      "admitted_direction": "read",
+      "admitted_bytes": 9,
+      "success_edge": [
+        101816,
+        101822
+      ],
+      "local_end": 101854,
+      "access_instructions": [
+        {
+          "offset": 101841,
+          "action": "read",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax",
+          "byte_origins": [
+            {
+              "start": 101841,
+              "end": 101844,
+              "location": 4964
+            }
+          ]
+        },
+        {
+          "offset": 101850,
+          "action": "read",
+          "candidate_offset": 8,
+          "width": 1,
+          "base_register": 6,
+          "bytes": "807e0800",
+          "instruction": "cmp\tbyte ptr [rsi + 0x8], 0x0",
+          "byte_origins": [
+            {
+              "start": 101850,
+              "end": 101854,
+              "location": 4966
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        6,
+        8
+      ],
+      "local_instructions": [
+        {
+          "offset": 101822,
+          "bytes": "65488b0c2528010000",
+          "instruction": "mov\trcx, qword ptr gs:[0x128]"
+        },
+        {
+          "offset": 101831,
+          "bytes": "48b82f6d697373696e67",
+          "instruction": "movabs\trax, 0x676e697373696d2f"
+        },
+        {
+          "offset": 101841,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax"
+        },
+        {
+          "offset": 101844,
+          "bytes": "0f853c560000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 101850,
+          "bytes": "807e0800",
+          "instruction": "cmp\tbyte ptr [rsi + 0x8], 0x0"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 77
+    },
+    {
+      "name": "mail-path",
+      "census_label": "static-process-shell-mailpath-stat-miss",
+      "call_offset": 102873,
+      "candidate_setup_offset": 102860,
+      "candidate_register": 6,
+      "admitted_direction": "read",
+      "admitted_bytes": 21,
+      "success_edge": [
+        102887,
+        102893
+      ],
+      "local_end": 102958,
+      "access_instructions": [
+        {
+          "offset": 102912,
+          "action": "read",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax",
+          "byte_origins": [
+            {
+              "start": 102912,
+              "end": 102915,
+              "location": 5001
+            }
+          ]
+        },
+        {
+          "offset": 102931,
+          "action": "read",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48394608",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], rax",
+          "byte_origins": [
+            {
+              "start": 102931,
+              "end": 102935,
+              "location": 5005
+            }
+          ]
+        },
+        {
+          "offset": 102941,
+          "action": "read",
+          "candidate_offset": 16,
+          "width": 4,
+          "base_register": 6,
+          "bytes": "817e10726f6f74",
+          "instruction": "cmp\tdword ptr [rsi + 0x10], 0x746f6f72",
+          "byte_origins": [
+            {
+              "start": 102941,
+              "end": 102944,
+              "location": 5007
+            },
+            {
+              "start": 102944,
+              "end": 102948,
+              "location": 5008
+            }
+          ]
+        },
+        {
+          "offset": 102954,
+          "action": "read",
+          "candidate_offset": 20,
+          "width": 1,
+          "base_register": 6,
+          "bytes": "807e1400",
+          "instruction": "cmp\tbyte ptr [rsi + 0x14], 0x0",
+          "byte_origins": [
+            {
+              "start": 102954,
+              "end": 102958,
+              "location": 5010
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        6,
+        8
+      ],
+      "local_instructions": [
+        {
+          "offset": 102893,
+          "bytes": "65488b0c2528010000",
+          "instruction": "mov\trcx, qword ptr gs:[0x128]"
+        },
+        {
+          "offset": 102902,
+          "bytes": "48b82f7661722f73706f",
+          "instruction": "movabs\trax, 0x6f70732f7261762f"
+        },
+        {
+          "offset": 102912,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax"
+        },
+        {
+          "offset": 102915,
+          "bytes": "0f850d520000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 102921,
+          "bytes": "48b86f6c2f6d61696c2f",
+          "instruction": "movabs\trax, 0x2f6c69616d2f6c6f"
+        },
+        {
+          "offset": 102931,
+          "bytes": "48394608",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], rax"
+        },
+        {
+          "offset": 102935,
+          "bytes": "0f85f9510000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 102941,
+          "bytes": "817e10726f6f74",
+          "instruction": "cmp\tdword ptr [rsi + 0x10], 0x746f6f72"
+        },
+        {
+          "offset": 102948,
+          "bytes": "0f85ec510000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 102954,
+          "bytes": "807e1400",
+          "instruction": "cmp\tbyte ptr [rsi + 0x14], 0x0"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 47
+    },
+    {
+      "name": "config-path",
+      "census_label": "static-process-config-path-ready",
+      "call_offset": 103476,
+      "candidate_setup_offset": 103463,
+      "candidate_register": 6,
+      "admitted_direction": "read",
+      "admitted_bytes": 18,
+      "success_edge": [
+        103490,
+        103496
+      ],
+      "local_end": 103549,
+      "access_instructions": [
+        {
+          "offset": 103515,
+          "action": "read",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax",
+          "byte_origins": [
+            {
+              "start": 103515,
+              "end": 103518,
+              "location": 5043
+            }
+          ]
+        },
+        {
+          "offset": 103534,
+          "action": "read",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 6,
+          "bytes": "48394608",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], rax",
+          "byte_origins": [
+            {
+              "start": 103534,
+              "end": 103538,
+              "location": 5047
+            }
+          ]
+        },
+        {
+          "offset": 103544,
+          "action": "read",
+          "candidate_offset": 16,
+          "width": 2,
+          "base_register": 6,
+          "bytes": "66837e1066",
+          "instruction": "cmp\tword ptr [rsi + 0x10], 0x66",
+          "byte_origins": [
+            {
+              "start": 103544,
+              "end": 103549,
+              "location": 5049
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        6,
+        8
+      ],
+      "local_instructions": [
+        {
+          "offset": 103496,
+          "bytes": "65488b0c2528010000",
+          "instruction": "mov\trcx, qword ptr gs:[0x128]"
+        },
+        {
+          "offset": 103505,
+          "bytes": "48b82f6574632f627573",
+          "instruction": "movabs\trax, 0x7375622f6374652f"
+        },
+        {
+          "offset": 103515,
+          "bytes": "483906",
+          "instruction": "cmp\tqword ptr [rsi], rax"
+        },
+        {
+          "offset": 103518,
+          "bytes": "0f85b24f0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 103524,
+          "bytes": "48b879626f782e636f6e",
+          "instruction": "movabs\trax, 0x6e6f632e786f6279"
+        },
+        {
+          "offset": 103534,
+          "bytes": "48394608",
+          "instruction": "cmp\tqword ptr [rsi + 0x8], rax"
+        },
+        {
+          "offset": 103538,
+          "bytes": "0f859e4f0000",
+          "instruction": "jne\t0x2bac796 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 103544,
+          "bytes": "66837e1066",
+          "instruction": "cmp\tword ptr [rsi + 0x10], 0x66"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 43
+    },
+    {
+      "name": "stack-limit",
+      "census_label": "static-process-stack-limit",
+      "call_offset": 107362,
+      "candidate_setup_offset": 107349,
+      "candidate_register": 10,
+      "admitted_direction": "write",
+      "admitted_bytes": 16,
+      "success_edge": [
+        107376,
+        107382
+      ],
+      "local_end": 107400,
+      "access_instructions": [
+        {
+          "offset": 107385,
+          "action": "write",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 10,
+          "bytes": "49c70200008000",
+          "instruction": "mov\tqword ptr [r10], 0x800000",
+          "byte_origins": [
+            {
+              "start": 107385,
+              "end": 107392,
+              "location": 5204
+            }
+          ]
+        },
+        {
+          "offset": 107392,
+          "action": "write",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 10,
+          "bytes": "49c74208ffffffff",
+          "instruction": "mov\tqword ptr [r10 + 0x8], -0x1",
+          "byte_origins": [
+            {
+              "start": 107392,
+              "end": 107400,
+              "location": 5205
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        8,
+        10
+      ],
+      "local_instructions": [
+        {
+          "offset": 107382,
+          "bytes": "4d89c2",
+          "instruction": "mov\tr10, r8"
+        },
+        {
+          "offset": 107385,
+          "bytes": "49c70200008000",
+          "instruction": "mov\tqword ptr [r10], 0x800000"
+        },
+        {
+          "offset": 107392,
+          "bytes": "49c74208ffffffff",
+          "instruction": "mov\tqword ptr [r10 + 0x8], -0x1"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 37
+    },
+    {
+      "name": "descriptor-limit",
+      "census_label": "fd-limit-publish",
+      "call_offset": 144285,
+      "candidate_setup_offset": 144275,
+      "candidate_register": 8,
+      "admitted_direction": "write",
+      "admitted_bytes": 16,
+      "success_edge": [
+        144299,
+        144305
+      ],
+      "local_end": 144329,
+      "access_instructions": [
+        {
+          "offset": 144315,
+          "action": "write",
+          "candidate_offset": 0,
+          "width": 8,
+          "base_register": 8,
+          "bytes": "49898000000000",
+          "instruction": "mov\tqword ptr [r8], rax",
+          "byte_origins": [
+            {
+              "start": 144315,
+              "end": 144322,
+              "location": 5911
+            }
+          ]
+        },
+        {
+          "offset": 144322,
+          "action": "write",
+          "candidate_offset": 8,
+          "width": 8,
+          "base_register": 8,
+          "bytes": "49898008000000",
+          "instruction": "mov\tqword ptr [r8 + 0x8], rax",
+          "byte_origins": [
+            {
+              "start": 144322,
+              "end": 144329,
+              "location": 5912
+            }
+          ]
+        }
+      ],
+      "candidate_aliases_at_end": [
+        8
+      ],
+      "local_instructions": [
+        {
+          "offset": 144305,
+          "bytes": "48b81000000000000000",
+          "instruction": "movabs\trax, 0x10"
+        },
+        {
+          "offset": 144315,
+          "bytes": "49898000000000",
+          "instruction": "mov\tqword ptr [r8], rax"
+        },
+        {
+          "offset": 144322,
+          "bytes": "49898008000000",
+          "instruction": "mov\tqword ptr [r8 + 0x8], rax"
+        }
+      ],
+      "unreachable_nodes_without_success_edge": 3
+    }
+  ],
+  "locations": {
+    "4541": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 167,
+      "source_line": "    code.bytes(&[0x44, 0x8b, 0x06, 0x44, 0x0f, 0xb7, 0x4e, 4]);"
+    },
+    "4605": {
+      "column": 18,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 285,
+      "source_line": "            code.bytes(&[0x48, 0x83, 0x3e, 0]);"
+    },
+    "4607": {
+      "column": 18,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 287,
+      "source_line": "            code.bytes(&[0x48, 0x81, 0x7e, 8, 0, 0, 0, 4]);"
+    },
+    "4608": {
+      "column": 18,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 289,
+      "source_line": "            code.bytes(&[0x48, 0x81, 0x7e, 16]);"
+    },
+    "4609": {
+      "column": 18,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 290,
+      "source_line": "            code.bytes(&0x004a_9740_u32.to_le_bytes());"
+    },
+    "4612": {
+      "column": 18,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 294,
+      "source_line": "            code.bytes(&[0x48, 0x39, 0x46, 24]);"
+    },
+    "4652": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 367,
+      "source_line": "    code.bytes(&["
+    },
+    "4696": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 488,
+      "source_line": "    code.bytes(&[0x48, 0x89, 0x06, 0x48, 0xc7, 0x46, 0x08, 0, 0, 0, 0]);"
+    },
+    "4697": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 489,
+      "source_line": "    code.bytes(&[0x0f, 0xae, 0xf0, 0x48, 0x39, 0x06]);"
+    },
+    "4699": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 491,
+      "source_line": "    code.bytes(&[0x48, 0x83, 0x7e, 0x08, 0]);"
+    },
+    "4964": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 947,
+      "source_line": "    code.bytes(&[0x48, 0x39, 0x06]);"
+    },
+    "4966": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 949,
+      "source_line": "    code.bytes(&[0x80, 0x7e, 8, 0]);"
+    },
+    "5001": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1004,
+      "source_line": "    code.bytes(&[0x48, 0x39, 0x06]);"
+    },
+    "5005": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1008,
+      "source_line": "    code.bytes(&[0x48, 0x39, 0x46, 8]);"
+    },
+    "5007": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1010,
+      "source_line": "    code.bytes(&[0x81, 0x7e, 16]);"
+    },
+    "5008": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1011,
+      "source_line": "    code.bytes(&u32::from_le_bytes(*b\"root\").to_le_bytes());"
+    },
+    "5010": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1013,
+      "source_line": "    code.bytes(&[0x80, 0x7e, 20, 0]);"
+    },
+    "5043": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1074,
+      "source_line": "    code.bytes(&[0x48, 0x39, 0x06]);"
+    },
+    "5047": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1078,
+      "source_line": "    code.bytes(&[0x48, 0x39, 0x46, 8]);"
+    },
+    "5049": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1080,
+      "source_line": "    code.bytes(&[0x66, 0x83, 0x7e, 0x10, 0x66]); // \"f\\0\""
+    },
+    "5204": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1328,
+      "source_line": "    code.bytes(&[0x49, 0xc7, 0x02, 0, 0, 0x80, 0]);"
+    },
+    "5205": {
+      "column": 10,
+      "file": "src/topal-compiler/src/systems_process_entry_completion.rs",
+      "line": 1329,
+      "source_line": "    code.bytes(&[0x49, 0xc7, 0x42, 0x08, 0xff, 0xff, 0xff, 0xff]);"
+    },
+    "5911": {
+      "column": 7,
+      "file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "line": 652,
+      "source_line": "    e.store(R8, 0, A);"
+    },
+    "5912": {
+      "column": 7,
+      "file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "line": 653,
+      "source_line": "    e.store(R8, 8, A);"
+    }
+  },
+  "transfer_regions": 9,
+  "scalar_access_instructions": 27,
+  "scope": "Selected scalar intervals only: exact candidate/count setup, immediate CF result gate, nonvacuous success-edge dominance in the listed direct-control overapproximation, no alternate local entries, raw scalar effects, preserved aliases, direction and complete byte bounds. Writable x86 admission also permits readback. Conditional on decoder semantics outside these intervals, shared helper preservation/soundness, correct root/callee/exception contracts and stable owned mappings. No native transfer-execution, whole-syscall/full-access classification, lifetime or production qualification"
+}

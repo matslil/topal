@@ -1,0 +1,9 @@
+{
+  "exit_code": 1,
+  "error": "KeyError: 'snapshot_sha256'",
+  "stage": "restoring inherited source snapshots, before any reader, model or native execution",
+  "source": "initial-replay.py.gz",
+  "reason": "Some historical inherited records bind the decompressed source digest but omit packed digest and byte count. Replay incorrectly required both optional historical fields.",
+  "correction": "Verify the decompressed digest unconditionally and verify packed digest and byte count when provided, matching the preceding archive reader. The archive manifest separately binds every actual packed reference.",
+  "scope": "Archive replay input-shape error; not a guest failure, resource failure or reported AI safeguard notice. The failed output directory remains separate."
+}

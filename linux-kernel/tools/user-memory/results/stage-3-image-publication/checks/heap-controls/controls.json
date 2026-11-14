@@ -1,0 +1,98 @@
+{
+  "passed": true,
+  "observation_sha256": "62a722390c5650bd292507e77a57ea8c763b464bf790a3a4741cea09289fc172",
+  "runner_sha256": "b26c3b85bf3169cc92d8c8d4144161716b8d2051dace043336f11b60a3f40aa9",
+  "controls": [
+    {
+      "name": "wrong-published-tail",
+      "rejected": true,
+      "assertion": "published heap leaf differs"
+    },
+    {
+      "name": "wrong-invalidation-address",
+      "rejected": true,
+      "assertion": "QEMU CPU log and invalidation record differ"
+    },
+    {
+      "name": "missing-final-invalidation",
+      "rejected": true,
+      "assertion": "QEMU CPU log and invalidation record differ"
+    },
+    {
+      "name": "duplicated-invalidation-index",
+      "rejected": true,
+      "assertion": "QEMU CPU log and invalidation record differ"
+    },
+    {
+      "name": "different-invalidation-cpu",
+      "rejected": true,
+      "assertion": "QEMU CPU log and invalidation record differ"
+    },
+    {
+      "name": "unsupported-pcid-mode",
+      "rejected": true,
+      "assertion": ""
+    },
+    {
+      "name": "missing-final-barrier",
+      "rejected": true,
+      "assertion": "missing final publication barrier"
+    },
+    {
+      "name": "missing-publish-barrier",
+      "rejected": true,
+      "assertion": "missing publication barrier observation"
+    },
+    {
+      "name": "wrong-publisher-return-stack",
+      "rejected": true,
+      "assertion": ""
+    },
+    {
+      "name": "missing-request-publication",
+      "rejected": true,
+      "assertion": ""
+    },
+    {
+      "name": "missing-old-erase",
+      "rejected": true,
+      "assertion": "missing old backing retirement event"
+    },
+    {
+      "name": "old-backing-still-pinned",
+      "rejected": true,
+      "assertion": "old backing was not unpinned after publication"
+    },
+    {
+      "name": "old-backing-not-erased",
+      "rejected": true,
+      "assertion": "old backing not completely erased before release"
+    },
+    {
+      "name": "missing-old-release",
+      "rejected": true,
+      "assertion": "missing old backing retirement event"
+    },
+    {
+      "name": "wrong-invalidation-site",
+      "rejected": true,
+      "assertion": "native publisher layout/source binding changed"
+    },
+    {
+      "name": "unrelated-mapping-change",
+      "rejected": true,
+      "assertion": "unrelated translation changed"
+    },
+    {
+      "name": "missing-terminal-root-switch",
+      "rejected": true,
+      "assertion": "missing observed terminal root handoff"
+    },
+    {
+      "name": "pcid-enabled-at-root-handoff",
+      "rejected": true,
+      "assertion": ""
+    }
+  ],
+  "scope": "Eighteen offline JSON-only publication/order/retirement/root-handoff/layout controls; no changed ELF, guest register, memory or program execution and no native refusal coverage"
+}

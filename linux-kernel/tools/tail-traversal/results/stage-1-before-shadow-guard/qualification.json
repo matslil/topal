@@ -1,0 +1,172 @@
+{
+  "schema": "topal.tail-source-plan-validation/1",
+  "complete": true,
+  "passed": true,
+  "base_commit": "3d734def9d3b3bdad15f2d1af0adef1888906774",
+  "scope": "Stage 1 source inspection only; no new native profile or VM evidence",
+  "sources": {
+    "src/topal-compiler/src/systems_tail_plan.rs": "0f92b4ba3efb9a4ffaf622b92b87084f7712263881092c6fe6b401064ac807dc",
+    "src/topal-compiler/src/systems_tail_plan_tests.rs": "2fd584d830b6e8b9951ec732a7a480bc176ea95644d5a851362b98486ffa3e18",
+    "src/topal-compiler/src/lib.rs": "f30f937355aba2abe1c278eec46a2cd7613ca5c13a8dce329f1c96a898bb2aeb",
+    "src/topal-language/src/compiler_model/kernel_regions.rs": "7fcc2a9b2caa6ff0ccd07ed9d3cf69582a7503b916529d676a8ac622714ba81a",
+    "src/topal-language/src/compiler_model/analysis_setup.rs": "da6cfd1e8a14ff6254a17256f69543f1887fa84e238e7e8b027c71553fd0ada4",
+    "linux-kernel/kernel/algorithms/clear-prefix.t": "3aff9cbf8dca4bf49eb805583ebc36c1b6b5eb7ac927b63efe2fc06bc76b5f58",
+    "docs/systems-profile.md": "bec221c9a636cdf8d3fc967ec8b8b69b1e49348e821d803dbc2d4ea36efa8d2d",
+    "spec/systems-profile.md": "138fb0b13c7cb3930009f84cb69a7cb9faeaf4a4859499740ddd57c94d44883c",
+    "se/requirements.md": "8829890e836bc89408800413c9c41132990b3b6eac5b7c6903f50ba8ad70a198",
+    "src/topal-compiler/se-requirements.md": "5f54fda2215178774fb265666b80cd166c7ed3a0939a713b1e0821d7dd15f230",
+    "scripts/run_bounded.py": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560"
+  },
+  "environment": {
+    "RUST_MIN_STACK": "16777216",
+    "TMPDIR": "/tmp/tk282-stage1-da995eb5",
+    "scratch_backing": "/home/mats/git/topal/linux-kernel/.cache/tk282-stage1-da995eb5"
+  },
+  "commands": [
+    {
+      "name": "tail-plan",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_tail_plan::tests"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 12.922497627325356,
+      "log": "tail-plan.log.gz",
+      "encoding": "gzip",
+      "sha256": "9295d5976817f7ea12cd401b71a6984c103c24e037765bcf69df73519570b856",
+      "uncompressed_sha256": "15f542b2bb3b97400726b1f66ac5916bd7a43cb80457e0cdd6e6a589141b37f2"
+    },
+    {
+      "name": "language",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-language",
+        "--lib",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 62.046466688625515,
+      "log": "language.log.gz",
+      "encoding": "gzip",
+      "sha256": "a0bf41345a9c96099514962eb1857c63c6711ed93fea711c15fbed5372e490da",
+      "uncompressed_sha256": "bc16bddd2fc486cb9f9b04e50006e70086e5512eb2761ae57726582a7169eb07"
+    },
+    {
+      "name": "compiler",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 330.78928595781326,
+      "log": "compiler.log.gz",
+      "encoding": "gzip",
+      "sha256": "512c52e718ae6b0eb2e830efb93795122e257dc0d95ba961d1055f9c385a0c8b",
+      "uncompressed_sha256": "7074ffb0429b0380b36d4a7d93523834add4d5836db992c1c5772d5d93399608"
+    },
+    {
+      "name": "check",
+      "argv": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 19.353607077151537,
+      "log": "check.log.gz",
+      "encoding": "gzip",
+      "sha256": "0cff46608df18c58d2c9d44c1b52cdd56390989fdbb0721f7c03dfc0a0dfb166",
+      "uncompressed_sha256": "64990149a4a8a30fb0dae12a024c058e79a765f10532d512c332151df54827f8"
+    },
+    {
+      "name": "coverage",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-language",
+        "--test",
+        "core_language_coverage",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.521809152327478,
+      "log": "coverage.log.gz",
+      "encoding": "gzip",
+      "sha256": "84008c833581a2ea0265a5c5347f08f22258311e0edc548f00a3bb0033df62d7",
+      "uncompressed_sha256": "83de48133a0e6a27f8d83cf23d65d55b7942bbb497f280d4feb3d853e8b67c38"
+    },
+    {
+      "name": "format",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.9288182547315955,
+      "log": "format.log.gz",
+      "encoding": "gzip",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "included-format",
+      "argv": [
+        "rustfmt",
+        "--edition",
+        "2024",
+        "--check",
+        "src/topal-language/src/compiler_model/kernel_regions.rs",
+        "src/topal-language/src/compiler_model/analysis_setup.rs"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.05570520553737879,
+      "log": "included-format.log.gz",
+      "encoding": "gzip",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source-size",
+      "argv": [
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.12927153892815113,
+      "log": "source-size.log.gz",
+      "encoding": "gzip",
+      "sha256": "ec2081fbbd4cb149c4e4e646f81381a93e7dde0d218193d6f9f9c9fc1f8e52cc",
+      "uncompressed_sha256": "8db4cdb6759817728df4a07d9be35f2f839b2e2af6c976fc8913b0a10073e66f"
+    }
+  ],
+  "runner_sha256": "c36f4c75284d87b19260bcf272f04917c8e12892297177b705f86deecba4ab1b",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+  "cgroup": {
+    "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-1357502-f4031a7c.scope",
+    "memory.max": "3098341376",
+    "memory.swap.max": "0"
+  }
+}

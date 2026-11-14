@@ -1,0 +1,1283 @@
+{
+  "passed": true,
+  "complete": false,
+  "function": "topal_x86_systems_static_image_process_enter",
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "provider_sha256": "363b01c4f75056b0eca0e76628e480ff6dcbc1aad0db885ac8dd205e79f729c6",
+  "linked_function_sha256": "352cb7fcdf07cef7132773155f3c5fa78f8720cac129b4c6621f483889eca5fa",
+  "census_sha256": "7e27b70623f25ae6fd463463d05c8a8fbe937f0be3b4345c20df3a2c83dfadc9",
+  "graph_sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa",
+  "origin_join_sha256": "b5c1ecd7dd3afe0131f2a4da303a80d882960aabb2a86f7de5f68ef07364ed41",
+  "cases": [
+    {
+      "name": "pipe-pair-output",
+      "census_label": "pipe-descriptions-ready",
+      "call_offset": 203301,
+      "candidate_register": 8,
+      "admitted_direction": "write",
+      "admitted_bytes": 8,
+      "candidate_setup_offset": 203282,
+      "success_edge": [
+        203315,
+        203321
+      ],
+      "local_end": 203806,
+      "local_instructions": [
+        {
+          "offset": 203321,
+          "size": 8,
+          "bytes": "4d8bac2480050000",
+          "instruction": "mov\tr13, qword ptr [r12 + 0x580]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203329,
+          "size": 7,
+          "bytes": "4d89bd08000000",
+          "instruction": "mov\tqword ptr [r13 + 0x8], r15",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203336,
+          "size": 8,
+          "bytes": "4d8b9c2498050000",
+          "instruction": "mov\tr11, qword ptr [r12 + 0x598]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203344,
+          "size": 7,
+          "bytes": "4d899d10000000",
+          "instruction": "mov\tqword ptr [r13 + 0x10], r11",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203351,
+          "size": 3,
+          "bytes": "4d89e6",
+          "instruction": "mov\tr14, r12",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203354,
+          "size": 7,
+          "bytes": "4981c640010000",
+          "instruction": "add\tr14, 0x140",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203361,
+          "size": 7,
+          "bytes": "4981fb10000000",
+          "instruction": "cmp\tr11, 0x10",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 203368,
+          "size": 6,
+          "bytes": "0f8607000000",
+          "instruction": "jbe\t0x2bbfe15 <topal_x86_frame_mm_cleanup_return_v1+0x17051>",
+          "mnemonic": "jbe",
+          "access_kinds": []
+        },
+        {
+          "offset": 203374,
+          "size": 7,
+          "bytes": "4981c6c0ca0300",
+          "instruction": "add\tr14, 0x3cac0",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203381,
+          "size": 3,
+          "bytes": "4c89d8",
+          "instruction": "mov\trax, r11",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203384,
+          "size": 7,
+          "bytes": "4881c0ffffffff",
+          "instruction": "add\trax, -0x1",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203391,
+          "size": 4,
+          "bytes": "48c1e006",
+          "instruction": "shl\trax, 0x6",
+          "mnemonic": "shl",
+          "access_kinds": []
+        },
+        {
+          "offset": 203395,
+          "size": 3,
+          "bytes": "4901c6",
+          "instruction": "add\tr14, rax",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203398,
+          "size": 10,
+          "bytes": "48b80500000000000000",
+          "instruction": "movabs\trax, 0x5",
+          "mnemonic": "movabs",
+          "access_kinds": []
+        },
+        {
+          "offset": 203408,
+          "size": 7,
+          "bytes": "49898600000000",
+          "instruction": "mov\tqword ptr [r14], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203415,
+          "size": 10,
+          "bytes": "48b80100000000000000",
+          "instruction": "movabs\trax, 0x1",
+          "mnemonic": "movabs",
+          "access_kinds": []
+        },
+        {
+          "offset": 203425,
+          "size": 7,
+          "bytes": "49898608000000",
+          "instruction": "mov\tqword ptr [r14 + 0x8], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203432,
+          "size": 3,
+          "bytes": "4889d8",
+          "instruction": "mov\trax, rbx",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203435,
+          "size": 7,
+          "bytes": "4881e000080000",
+          "instruction": "and\trax, 0x800",
+          "mnemonic": "and",
+          "access_kinds": []
+        },
+        {
+          "offset": 203442,
+          "size": 7,
+          "bytes": "4881c800000000",
+          "instruction": "or\trax, 0x0",
+          "mnemonic": "or",
+          "access_kinds": []
+        },
+        {
+          "offset": 203449,
+          "size": 7,
+          "bytes": "49898610000000",
+          "instruction": "mov\tqword ptr [r14 + 0x10], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203456,
+          "size": 7,
+          "bytes": "4d89be20000000",
+          "instruction": "mov\tqword ptr [r14 + 0x20], r15",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203463,
+          "size": 8,
+          "bytes": "498b842488050000",
+          "instruction": "mov\trax, qword ptr [r12 + 0x588]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203471,
+          "size": 4,
+          "bytes": "48c1e004",
+          "instruction": "shl\trax, 0x4",
+          "mnemonic": "shl",
+          "access_kinds": []
+        },
+        {
+          "offset": 203475,
+          "size": 3,
+          "bytes": "4c01e0",
+          "instruction": "add\trax, r12",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203478,
+          "size": 7,
+          "bytes": "4881c040000000",
+          "instruction": "add\trax, 0x40",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203485,
+          "size": 7,
+          "bytes": "4c899800000000",
+          "instruction": "mov\tqword ptr [rax], r11",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203492,
+          "size": 3,
+          "bytes": "4889d9",
+          "instruction": "mov\trcx, rbx",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203495,
+          "size": 4,
+          "bytes": "48c1e913",
+          "instruction": "shr\trcx, 0x13",
+          "mnemonic": "shr",
+          "access_kinds": []
+        },
+        {
+          "offset": 203499,
+          "size": 7,
+          "bytes": "4881e101000000",
+          "instruction": "and\trcx, 0x1",
+          "mnemonic": "and",
+          "access_kinds": []
+        },
+        {
+          "offset": 203506,
+          "size": 7,
+          "bytes": "48898808000000",
+          "instruction": "mov\tqword ptr [rax + 0x8], rcx",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203513,
+          "size": 8,
+          "bytes": "4d8b9c24a0050000",
+          "instruction": "mov\tr11, qword ptr [r12 + 0x5a0]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203521,
+          "size": 7,
+          "bytes": "4d899d18000000",
+          "instruction": "mov\tqword ptr [r13 + 0x18], r11",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203528,
+          "size": 3,
+          "bytes": "4d89e6",
+          "instruction": "mov\tr14, r12",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203531,
+          "size": 7,
+          "bytes": "4981c640010000",
+          "instruction": "add\tr14, 0x140",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203538,
+          "size": 7,
+          "bytes": "4981fb10000000",
+          "instruction": "cmp\tr11, 0x10",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 203545,
+          "size": 6,
+          "bytes": "0f8607000000",
+          "instruction": "jbe\t0x2bbfec6 <topal_x86_frame_mm_cleanup_return_v1+0x17102>",
+          "mnemonic": "jbe",
+          "access_kinds": []
+        },
+        {
+          "offset": 203551,
+          "size": 7,
+          "bytes": "4981c6c0ca0300",
+          "instruction": "add\tr14, 0x3cac0",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203558,
+          "size": 3,
+          "bytes": "4c89d8",
+          "instruction": "mov\trax, r11",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203561,
+          "size": 7,
+          "bytes": "4881c0ffffffff",
+          "instruction": "add\trax, -0x1",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203568,
+          "size": 4,
+          "bytes": "48c1e006",
+          "instruction": "shl\trax, 0x6",
+          "mnemonic": "shl",
+          "access_kinds": []
+        },
+        {
+          "offset": 203572,
+          "size": 3,
+          "bytes": "4901c6",
+          "instruction": "add\tr14, rax",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203575,
+          "size": 10,
+          "bytes": "48b80600000000000000",
+          "instruction": "movabs\trax, 0x6",
+          "mnemonic": "movabs",
+          "access_kinds": []
+        },
+        {
+          "offset": 203585,
+          "size": 7,
+          "bytes": "49898600000000",
+          "instruction": "mov\tqword ptr [r14], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203592,
+          "size": 10,
+          "bytes": "48b80100000000000000",
+          "instruction": "movabs\trax, 0x1",
+          "mnemonic": "movabs",
+          "access_kinds": []
+        },
+        {
+          "offset": 203602,
+          "size": 7,
+          "bytes": "49898608000000",
+          "instruction": "mov\tqword ptr [r14 + 0x8], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203609,
+          "size": 3,
+          "bytes": "4889d8",
+          "instruction": "mov\trax, rbx",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203612,
+          "size": 7,
+          "bytes": "4881e000080000",
+          "instruction": "and\trax, 0x800",
+          "mnemonic": "and",
+          "access_kinds": []
+        },
+        {
+          "offset": 203619,
+          "size": 7,
+          "bytes": "4881c801000000",
+          "instruction": "or\trax, 0x1",
+          "mnemonic": "or",
+          "access_kinds": []
+        },
+        {
+          "offset": 203626,
+          "size": 7,
+          "bytes": "49898610000000",
+          "instruction": "mov\tqword ptr [r14 + 0x10], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203633,
+          "size": 7,
+          "bytes": "4d89be20000000",
+          "instruction": "mov\tqword ptr [r14 + 0x20], r15",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203640,
+          "size": 8,
+          "bytes": "498b842490050000",
+          "instruction": "mov\trax, qword ptr [r12 + 0x590]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203648,
+          "size": 4,
+          "bytes": "48c1e004",
+          "instruction": "shl\trax, 0x4",
+          "mnemonic": "shl",
+          "access_kinds": []
+        },
+        {
+          "offset": 203652,
+          "size": 3,
+          "bytes": "4c01e0",
+          "instruction": "add\trax, r12",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203655,
+          "size": 7,
+          "bytes": "4881c040000000",
+          "instruction": "add\trax, 0x40",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 203662,
+          "size": 7,
+          "bytes": "4c899800000000",
+          "instruction": "mov\tqword ptr [rax], r11",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203669,
+          "size": 3,
+          "bytes": "4889d9",
+          "instruction": "mov\trcx, rbx",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 203672,
+          "size": 4,
+          "bytes": "48c1e913",
+          "instruction": "shr\trcx, 0x13",
+          "mnemonic": "shr",
+          "access_kinds": []
+        },
+        {
+          "offset": 203676,
+          "size": 7,
+          "bytes": "4881e101000000",
+          "instruction": "and\trcx, 0x1",
+          "mnemonic": "and",
+          "access_kinds": []
+        },
+        {
+          "offset": 203683,
+          "size": 7,
+          "bytes": "48898808000000",
+          "instruction": "mov\tqword ptr [rax + 0x8], rcx",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203690,
+          "size": 7,
+          "bytes": "4989ad48000000",
+          "instruction": "mov\tqword ptr [r13 + 0x48], rbp",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203697,
+          "size": 7,
+          "bytes": "4989ad50000000",
+          "instruction": "mov\tqword ptr [r13 + 0x50], rbp",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203704,
+          "size": 7,
+          "bytes": "4989ad58000000",
+          "instruction": "mov\tqword ptr [r13 + 0x58], rbp",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203711,
+          "size": 7,
+          "bytes": "4989ad60000000",
+          "instruction": "mov\tqword ptr [r13 + 0x60], rbp",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203718,
+          "size": 10,
+          "bytes": "48b88011000000000000",
+          "instruction": "movabs\trax, 0x1180",
+          "mnemonic": "movabs",
+          "access_kinds": []
+        },
+        {
+          "offset": 203728,
+          "size": 7,
+          "bytes": "49898540000000",
+          "instruction": "mov\tqword ptr [r13 + 0x40], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203735,
+          "size": 10,
+          "bytes": "48b80100000000000000",
+          "instruction": "movabs\trax, 0x1",
+          "mnemonic": "movabs",
+          "access_kinds": []
+        },
+        {
+          "offset": 203745,
+          "size": 7,
+          "bytes": "49898500000000",
+          "instruction": "mov\tqword ptr [r13], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203752,
+          "size": 8,
+          "bytes": "4d89bc2400e20300",
+          "instruction": "mov\tqword ptr [r12 + 0x3e200], r15",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203760,
+          "size": 8,
+          "bytes": "498b842488050000",
+          "instruction": "mov\trax, qword ptr [r12 + 0x588]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203768,
+          "size": 8,
+          "bytes": "498b8c2490050000",
+          "instruction": "mov\trcx, qword ptr [r12 + 0x590]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203776,
+          "size": 4,
+          "bytes": "48c1e120",
+          "instruction": "shl\trcx, 0x20",
+          "mnemonic": "shl",
+          "access_kinds": []
+        },
+        {
+          "offset": 203780,
+          "size": 3,
+          "bytes": "4809c8",
+          "instruction": "or\trax, rcx",
+          "mnemonic": "or",
+          "access_kinds": []
+        },
+        {
+          "offset": 203783,
+          "size": 7,
+          "bytes": "49898000000000",
+          "instruction": "mov\tqword ptr [r8], rax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203790,
+          "size": 7,
+          "bytes": "4d8b9800000000",
+          "instruction": "mov\tr11, qword ptr [r8]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 203797,
+          "size": 3,
+          "bytes": "4c39d8",
+          "instruction": "cmp\trax, r11",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 203800,
+          "size": 6,
+          "bytes": "0f85f8c7feff",
+          "instruction": "jne\t0x2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "jne",
+          "access_kinds": []
+        }
+      ],
+      "access_instructions": [
+        {
+          "offset": 203783,
+          "action": "write",
+          "width": 8,
+          "candidate_offset": 0,
+          "base_register": 8,
+          "bytes": "49898000000000",
+          "instruction": "mov\tqword ptr [r8], rax",
+          "byte_origins": [
+            {
+              "start": 203783,
+              "end": 203790,
+              "location": 8312
+            }
+          ]
+        },
+        {
+          "offset": 203790,
+          "action": "read",
+          "width": 8,
+          "candidate_offset": 0,
+          "base_register": 8,
+          "bytes": "4d8b9800000000",
+          "instruction": "mov\tr11, qword ptr [r8]",
+          "byte_origins": [
+            {
+              "start": 203790,
+              "end": 203797,
+              "location": 8313
+            }
+          ]
+        }
+      ],
+      "additional_effects": {
+        "register_writes": [
+          0,
+          1,
+          11,
+          13,
+          14
+        ],
+        "nested_calls": 0,
+        "private_store_bases": [
+          0,
+          12,
+          13,
+          14
+        ],
+        "fatal_boundaries": [
+          123926
+        ]
+      }
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "census_label": "pipe-ioctl",
+      "call_offset": 207796,
+      "candidate_register": 8,
+      "admitted_direction": "write",
+      "admitted_bytes": 4,
+      "candidate_setup_offset": 207783,
+      "success_edge": [
+        207810,
+        207816
+      ],
+      "local_end": 207831,
+      "local_instructions": [
+        {
+          "offset": 207816,
+          "size": 5,
+          "bytes": "e8d6fcffff",
+          "instruction": "call\t0x2bc0c43 <topal_x86_frame_mm_cleanup_return_v1+0x17e7f>",
+          "mnemonic": "call",
+          "access_kinds": [
+            "implicit-stack"
+          ]
+        },
+        {
+          "offset": 207821,
+          "size": 7,
+          "bytes": "498b8228000000",
+          "instruction": "mov\trax, qword ptr [r10 + 0x28]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207828,
+          "size": 3,
+          "bytes": "418900",
+          "instruction": "mov\tdword ptr [r8], eax",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        }
+      ],
+      "access_instructions": [
+        {
+          "offset": 207828,
+          "action": "write",
+          "width": 4,
+          "candidate_offset": 0,
+          "base_register": 8,
+          "bytes": "418900",
+          "instruction": "mov\tdword ptr [r8], eax",
+          "byte_origins": [
+            {
+              "start": 207828,
+              "end": 207831,
+              "location": 8644
+            }
+          ]
+        }
+      ],
+      "additional_effects": {
+        "register_writes": [
+          0,
+          1,
+          10,
+          11
+        ],
+        "nested_calls": 1,
+        "lookup_entry": 207011,
+        "borrowed_call_stack_bytes": 8
+      }
+    }
+  ],
+  "callee_contracts": [
+    {
+      "entry": 207011,
+      "end": 207281,
+      "instructions": [
+        {
+          "offset": 207011,
+          "size": 7,
+          "bytes": "4d8b9e20000000",
+          "instruction": "mov\tr11, qword ptr [r14 + 0x20]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207018,
+          "size": 7,
+          "bytes": "4981fb00000000",
+          "instruction": "cmp\tr11, 0x0",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207025,
+          "size": 6,
+          "bytes": "0f845fbbfeff",
+          "instruction": "je\t0x2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "je",
+          "access_kinds": []
+        },
+        {
+          "offset": 207031,
+          "size": 3,
+          "bytes": "4d89e2",
+          "instruction": "mov\tr10, r12",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 207034,
+          "size": 7,
+          "bytes": "4981c200e00300",
+          "instruction": "add\tr10, 0x3e000",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 207041,
+          "size": 10,
+          "bytes": "48b90400000000000000",
+          "instruction": "movabs\trcx, 0x4",
+          "mnemonic": "movabs",
+          "access_kinds": []
+        },
+        {
+          "offset": 207051,
+          "size": 7,
+          "bytes": "498b8200000000",
+          "instruction": "mov\trax, qword ptr [r10]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207058,
+          "size": 7,
+          "bytes": "4881f801000000",
+          "instruction": "cmp\trax, 0x1",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207065,
+          "size": 6,
+          "bytes": "0f8510000000",
+          "instruction": "jne\t0x2bc0c8f <topal_x86_frame_mm_cleanup_return_v1+0x17ecb>",
+          "mnemonic": "jne",
+          "access_kinds": []
+        },
+        {
+          "offset": 207071,
+          "size": 7,
+          "bytes": "498b8208000000",
+          "instruction": "mov\trax, qword ptr [r10 + 0x8]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207078,
+          "size": 3,
+          "bytes": "4c39d8",
+          "instruction": "cmp\trax, r11",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207081,
+          "size": 6,
+          "bytes": "0f8420000000",
+          "instruction": "je\t0x2bc0caf <topal_x86_frame_mm_cleanup_return_v1+0x17eeb>",
+          "mnemonic": "je",
+          "access_kinds": []
+        },
+        {
+          "offset": 207087,
+          "size": 7,
+          "bytes": "4981c280000000",
+          "instruction": "add\tr10, 0x80",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 207094,
+          "size": 7,
+          "bytes": "4881c1ffffffff",
+          "instruction": "add\trcx, -0x1",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 207101,
+          "size": 7,
+          "bytes": "4881f900000000",
+          "instruction": "cmp\trcx, 0x0",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207108,
+          "size": 6,
+          "bytes": "0f85c1ffffff",
+          "instruction": "jne\t0x2bc0c6b <topal_x86_frame_mm_cleanup_return_v1+0x17ea7>",
+          "mnemonic": "jne",
+          "access_kinds": []
+        },
+        {
+          "offset": 207114,
+          "size": 5,
+          "bytes": "e907bbfeff",
+          "instruction": "jmp\t0x2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "jmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207119,
+          "size": 7,
+          "bytes": "498b8220000000",
+          "instruction": "mov\trax, qword ptr [r10 + 0x20]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207126,
+          "size": 7,
+          "bytes": "4881f800100000",
+          "instruction": "cmp\trax, 0x1000",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207133,
+          "size": 6,
+          "bytes": "0f83f3bafeff",
+          "instruction": "jae\t0x2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "jae",
+          "access_kinds": []
+        },
+        {
+          "offset": 207139,
+          "size": 7,
+          "bytes": "498b8228000000",
+          "instruction": "mov\trax, qword ptr [r10 + 0x28]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207146,
+          "size": 7,
+          "bytes": "4881f800100000",
+          "instruction": "cmp\trax, 0x1000",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207153,
+          "size": 6,
+          "bytes": "0f87dfbafeff",
+          "instruction": "ja\t0x2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "ja",
+          "access_kinds": []
+        },
+        {
+          "offset": 207159,
+          "size": 3,
+          "bytes": "4c89f0",
+          "instruction": "mov\trax, r14",
+          "mnemonic": "mov",
+          "access_kinds": []
+        },
+        {
+          "offset": 207162,
+          "size": 3,
+          "bytes": "4c29e0",
+          "instruction": "sub\trax, r12",
+          "mnemonic": "sub",
+          "access_kinds": []
+        },
+        {
+          "offset": 207165,
+          "size": 7,
+          "bytes": "4881f800d00300",
+          "instruction": "cmp\trax, 0x3d000",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207172,
+          "size": 6,
+          "bytes": "0f8217000000",
+          "instruction": "jb\t0x2bc0d01 <topal_x86_frame_mm_cleanup_return_v1+0x17f3d>",
+          "mnemonic": "jb",
+          "access_kinds": []
+        },
+        {
+          "offset": 207178,
+          "size": 7,
+          "bytes": "4881c00030fcff",
+          "instruction": "add\trax, -0x3d000",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 207185,
+          "size": 4,
+          "bytes": "48c1e806",
+          "instruction": "shr\trax, 0x6",
+          "mnemonic": "shr",
+          "access_kinds": []
+        },
+        {
+          "offset": 207189,
+          "size": 7,
+          "bytes": "4881c011000000",
+          "instruction": "add\trax, 0x11",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 207196,
+          "size": 5,
+          "bytes": "e912000000",
+          "instruction": "jmp\t0x2bc0d13 <topal_x86_frame_mm_cleanup_return_v1+0x17f4f>",
+          "mnemonic": "jmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207201,
+          "size": 7,
+          "bytes": "4881c0c0feffff",
+          "instruction": "add\trax, -0x140",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 207208,
+          "size": 4,
+          "bytes": "48c1e806",
+          "instruction": "shr\trax, 0x6",
+          "mnemonic": "shr",
+          "access_kinds": []
+        },
+        {
+          "offset": 207212,
+          "size": 7,
+          "bytes": "4881c001000000",
+          "instruction": "add\trax, 0x1",
+          "mnemonic": "add",
+          "access_kinds": []
+        },
+        {
+          "offset": 207219,
+          "size": 7,
+          "bytes": "4d8b9e00000000",
+          "instruction": "mov\tr11, qword ptr [r14]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207226,
+          "size": 7,
+          "bytes": "4981fb05000000",
+          "instruction": "cmp\tr11, 0x5",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207233,
+          "size": 6,
+          "bytes": "0f8419000000",
+          "instruction": "je\t0x2bc0d40 <topal_x86_frame_mm_cleanup_return_v1+0x17f7c>",
+          "mnemonic": "je",
+          "access_kinds": []
+        },
+        {
+          "offset": 207239,
+          "size": 7,
+          "bytes": "4981fb06000000",
+          "instruction": "cmp\tr11, 0x6",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207246,
+          "size": 6,
+          "bytes": "0f8582bafeff",
+          "instruction": "jne\t0x2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "jne",
+          "access_kinds": []
+        },
+        {
+          "offset": 207252,
+          "size": 7,
+          "bytes": "498b8a18000000",
+          "instruction": "mov\trcx, qword ptr [r10 + 0x18]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207259,
+          "size": 5,
+          "bytes": "e907000000",
+          "instruction": "jmp\t0x2bc0d47 <topal_x86_frame_mm_cleanup_return_v1+0x17f83>",
+          "mnemonic": "jmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207264,
+          "size": 7,
+          "bytes": "498b8a10000000",
+          "instruction": "mov\trcx, qword ptr [r10 + 0x10]",
+          "mnemonic": "mov",
+          "access_kinds": [
+            "explicit-addressed-operand",
+            "general-address-operand"
+          ]
+        },
+        {
+          "offset": 207271,
+          "size": 3,
+          "bytes": "4839c8",
+          "instruction": "cmp\trax, rcx",
+          "mnemonic": "cmp",
+          "access_kinds": []
+        },
+        {
+          "offset": 207274,
+          "size": 6,
+          "bytes": "0f8566bafeff",
+          "instruction": "jne\t0x2bac7b6 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>",
+          "mnemonic": "jne",
+          "access_kinds": []
+        },
+        {
+          "offset": 207280,
+          "size": 1,
+          "bytes": "c3",
+          "instruction": "ret",
+          "mnemonic": "ret",
+          "access_kinds": [
+            "implicit-stack"
+          ]
+        }
+      ],
+      "normal_return_offset": 207280,
+      "fatal_boundaries": [
+        123926
+      ],
+      "register_writes": [
+        0,
+        1,
+        10,
+        11
+      ],
+      "preserved_registers": [
+        8,
+        9
+      ],
+      "borrowed_call_stack_bytes": 8,
+      "memory_writes": 0,
+      "maximum_object_records": 4,
+      "scope": "Exact normal-return register/control shape; private reads, entry/return-word ownership, fatal and exception effects remain unqualified"
+    }
+  ],
+  "transfer_regions": 2,
+  "scalar_access_instructions": 3,
+  "scope": "Two conditional local fixed-output intervals only: exact instruction contracts, R8/R9 preservation, writable admission and bounded readback, closed normal-return lookup, incoming-entry and success-edge checks. Private/table/stack/output owners and nonalias, continuous lifetime, helper/root/exception/fatal contracts, native transfers, other callers and production qualification remain open. This report alone does not extend the published qualified-site index"
+}

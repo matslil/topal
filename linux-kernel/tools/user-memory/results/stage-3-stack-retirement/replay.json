@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "selected_sources": 168,
+  "artifacts": 56,
+  "models": 132,
+  "exact_source_join_equal": true,
+  "exact_thirteen_reports_equal": true,
+  "exact_gnu_operand_readback_equal": true,
+  "exact_complete_emission_comparison_equal": true,
+  "exact_saved_native_readback_equal": true,
+  "scope": "Frozen selected source/artifact reconstruction, Python-only readers/models and saved GNU/native record joins. No ELF, compiler, GNU decoder, GDB or VM execution; not a complete clean producer, actual owners/lifetime, unreached paths or production qualification"
+}

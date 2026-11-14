@@ -1,0 +1,32 @@
+{
+  "exit_code": 1,
+  "elapsed_seconds": 57.57621211092919,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "copied_artifacts_equal": true,
+  "source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "1072abc9358f98e230ea51c40792f30ada33c415e8594db6da0742ef64709cd8",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "c0039c7a030f6be4c6a85cd08e3073e9c8387c53c66b6e6cff94d666bcf45ec4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_random_observer.py": "4c779a606b789c69589d483d33ed5a6f5deb027fb99a7e8c27a8b277e3fb2402",
+    "linux-kernel/tools/user-memory/audit_random_outputs.py": "8ce660e5eaf748eb2631f097e5d6b1872e40fd8753980641dfeb4cb771e68f25",
+    "linux-kernel/tools/user-memory/random_extract_effects.py": "3deefbdc4bd8e4a719ae5227b329af17fb3ea34c1ea002bc66fb5b3f75c82f85",
+    "linux-kernel/tools/user-memory/test_random_extract_effects.py": "22f8b846bd8eb32be4b8848854a16bef18a400406276d0851d88ba33308631e3",
+    "linux-kernel/tools/user-memory/test_random_outputs.py": "ab5fd25deeb7d363ed3ba2d98c8dbb9e63abb1b9b0e3b25588c93e52dbf37471"
+  },
+  "source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "1072abc9358f98e230ea51c40792f30ada33c415e8594db6da0742ef64709cd8",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "c0039c7a030f6be4c6a85cd08e3073e9c8387c53c66b6e6cff94d666bcf45ec4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_random_observer.py": "4c779a606b789c69589d483d33ed5a6f5deb027fb99a7e8c27a8b277e3fb2402",
+    "linux-kernel/tools/user-memory/audit_random_outputs.py": "8ce660e5eaf748eb2631f097e5d6b1872e40fd8753980641dfeb4cb771e68f25",
+    "linux-kernel/tools/user-memory/random_extract_effects.py": "3deefbdc4bd8e4a719ae5227b329af17fb3ea34c1ea002bc66fb5b3f75c82f85",
+    "linux-kernel/tools/user-memory/test_random_extract_effects.py": "22f8b846bd8eb32be4b8848854a16bef18a400406276d0851d88ba33308631e3",
+    "linux-kernel/tools/user-memory/test_random_outputs.py": "ab5fd25deeb7d363ed3ba2d98c8dbb9e63abb1b9b0e3b25588c93e52dbf37471"
+  },
+  "source_changes_during_run": false,
+  "resources": {
+    "memory.max": "3278618624",
+    "memory.swap.max": "0",
+    "memory.peak": "380534784",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "scope": "Diagnostic replay of copied unchanged first-party guest artifacts with read-only observer delta recording; not a fresh producer or passing regression"
+}

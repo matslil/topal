@@ -1,0 +1,21 @@
+{
+  "initial_pilot": {
+    "exit_code": 1,
+    "notice": "IndexError: list index out of range",
+    "source": "Tool-returned notice; complete initial stderr was not saved as a file",
+    "context": "inventory_process_accesses.py decoded_rows indexed an empty word list after an isolated prefix"
+  },
+  "second_pilot": {
+    "exit_code": 1,
+    "notice": "AssertionError",
+    "source": "Tool-returned branch-reader assertion; no complete stderr or failing row was saved",
+    "context": "The later pilot retains a REX-prefixed table jump as an unsupported transfer"
+  },
+  "recovery": {
+    "exit_code": 1,
+    "notice": "ValueError: decoder instruction boundary/bytes differ",
+    "stderr": "history/recovery/1.stderr.log.gz",
+    "context": "Complete raw stderr, commands, recovery windows and pre-fix reader sources retained; final reader leaves the decoder stop-tail unapplied"
+  },
+  "resource_scope": "Exact resource counters for these earlier method failures were not retained. No zero-event claim applies to them."
+}

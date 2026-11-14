@@ -1,0 +1,92 @@
+{
+  "passed": true,
+  "archive_manifest": {
+    "bytes": 168883,
+    "sha256": "243cf390588cbc17687c36fbee82abc13003ae9b17c4cd984f8f2dd82d140fe4"
+  },
+  "entries": 968,
+  "sources": 743,
+  "native_files": 185,
+  "comparison": {
+    "kernel_sha256": "b8212e5e9aca715d8db0d863cbc9655ed989c3884b938b57055c3e22e04d0a7c",
+    "old_image_sha256": "f8edc338c1371385303abcaf703c21b9099461179a47afb1f9d4908a9a1a6f8b",
+    "new_image_sha256": "6efb7d19f9bab3b2576cf6dfc173e734f6de9a0f7db9d3cfdf1950392b2371b2",
+    "image_bytes": 45243376,
+    "changed_offsets": [
+      566
+    ],
+    "boot_provenance_present": false
+  },
+  "frozen_commands": {
+    "boot": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/root/linux-kernel/tools/user-memory/inspect_boot_entries.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/root/linux-kernel/.cache/native/kernel.elf",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/root/linux-kernel/.cache/native/bzImage",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/boot.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.4617616357281804
+    },
+    "native-readback": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/root/linux-kernel/tools/process-memory/readback_publication.py",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/root/linux-kernel/.cache/native"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 24.504499952308834
+    },
+    "user-memory": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/root/linux-kernel/tools/user-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.9332729279994965
+    },
+    "process-memory": {
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/home/mats/git/topal/linux-kernel/.cache/x86_64/boot-header-correction-replay-2/root/linux-kernel/tools/process-memory",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.2301104292273521
+    }
+  },
+  "resources": {
+    "memory.max": "3367841792",
+    "memory.swap.max": "0",
+    "memory.peak": "783843328",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "compiler_receipt": "Two actual targeted compiler test commands each passed one test. Full compiler suite intentionally interrupted, not passed. Frozen review does not rerun Cargo or VM.",
+  "risk": "Moderate adapter compatibility change: cease advertising an unimplemented entry, while exact native comparison proves all payload bytes and the kernel unchanged. No memory protection, privilege or core-language semantic change. Single-agent design/formalization/implementation/self-review; independent human security review is not claimed.",
+  "scope": "One fresh source-built process-MM component VM, two targeted compiler tests and surrounding checks. Full compiler suite intentionally incomplete. The component has no production boot provenance; this is not production reconstruction, separate 64-bit loader qualification or complete Linux acceptance.",
+  "remaining": "Independent 64-bit loader support, all entry/effect/lifetime/ownership/production reconstruction and full initial Linux/distribution/container/VM-host acceptance remain incomplete."
+}

@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "/home/mats/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-objdump",
+    "-d",
+    "--x86-asm-syntax=intel",
+    "--start-address=45671296",
+    "--stop-address=45902959",
+    "/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-application-2279338-1794402953201096759/kernel.elf"
+  ],
+  "exit_code": 0
+}

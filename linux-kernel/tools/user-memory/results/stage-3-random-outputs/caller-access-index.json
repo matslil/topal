@@ -1,0 +1,473 @@
+{
+  "complete": false,
+  "kernel_sha256": "f7badd3c8116df8cbc47ce05962228e353ed5ab3d3604463759f18cd5fae1c0f",
+  "emitted_helper_calls": 91,
+  "calls_with_selected_local_intervals": 90,
+  "distinct_user_access_instructions": 325,
+  "selected_intervals": [
+    {
+      "name": "uname-loop",
+      "call_offset": 27139,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "cwd",
+      "call_offset": 27861,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "chdir",
+      "call_offset": 28626,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "pwd-cwd",
+      "call_offset": 29345,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "initial-cwd",
+      "call_offset": 29969,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "poll-input",
+      "call_offset": 33496,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "poll-result",
+      "call_offset": 33583,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "default-signal",
+      "call_offset": 36023,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "quit-signal",
+      "call_offset": 36684,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "header-command",
+      "call_offset": 38450,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "refill-command",
+      "call_offset": 39534,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "root-command",
+      "call_offset": 40444,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "header-byte",
+      "call_offset": 41322,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "pwd-command",
+      "call_offset": 42436,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "serial-command",
+      "call_offset": 43425,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "exec-path-byte",
+      "call_offset": 44431,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "exec-vector-word",
+      "call_offset": 44792,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "exec-argument-byte",
+      "call_offset": 44888,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "console-stat",
+      "call_offset": 52962,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "tty-path",
+      "call_offset": 55270,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "profile-path",
+      "call_offset": 56053,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "open-path",
+      "call_offset": 56936,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "reopen-path",
+      "call_offset": 57843,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "root-path",
+      "call_offset": 58659,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "bin-path",
+      "call_offset": 59435,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "root-stat",
+      "call_offset": 60174,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "empty-bin-stat",
+      "call_offset": 62337,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "profile-stat",
+      "call_offset": 64531,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "root-directory",
+      "call_offset": 68177,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "empty-bin-directory",
+      "call_offset": 70022,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "newline",
+      "call_offset": 75142,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "close-message",
+      "call_offset": 76007,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "terminal-warning-input",
+      "call_offset": 76915,
+      "audit": "../stage-3-warning-inputs/artifacts/warning-input-audit.json.gz"
+    },
+    {
+      "name": "prompt",
+      "call_offset": 80006,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "refill-prompt",
+      "call_offset": 81477,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "root-condition",
+      "call_offset": 82375,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "empty-bin-message",
+      "call_offset": 83237,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "executable-message",
+      "call_offset": 84283,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "nonempty-message",
+      "call_offset": 85284,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "open-message",
+      "call_offset": 86299,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "header-message",
+      "call_offset": 87305,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "pwd-output",
+      "call_offset": 89191,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "third-prompt",
+      "call_offset": 90027,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "fourth-prompt",
+      "call_offset": 91024,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "banner",
+      "call_offset": 92125,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "echo",
+      "call_offset": 93521,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "exec-signal-reset",
+      "call_offset": 94708,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "sigchld-install",
+      "call_offset": 95395,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "process-name",
+      "call_offset": 95961,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "stat-executable-path",
+      "call_offset": 98915,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "stat-directory-path",
+      "call_offset": 99039,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "named-stat",
+      "call_offset": 99332,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staged-transfer-audit.json.gz"
+    },
+    {
+      "name": "missing-path",
+      "call_offset": 101802,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "mail-path",
+      "call_offset": 102873,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "config-path",
+      "call_offset": 103476,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "stack-limit",
+      "call_offset": 107362,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "bounded-random-output",
+      "call_offset": 108204,
+      "audit": "artifacts/random-output-audit.json.gz"
+    },
+    {
+      "name": "console-input",
+      "call_offset": 131616,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "descriptor-pread-output",
+      "call_offset": 140524,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "descriptor-read-output",
+      "call_offset": 141378,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "serial-prefix-output",
+      "call_offset": 142304,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/serial-prefix-audit.json.gz"
+    },
+    {
+      "name": "descriptor-stat-output",
+      "call_offset": 143438,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/stat-output-audit.json.gz"
+    },
+    {
+      "name": "descriptor-limit",
+      "call_offset": 144249,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/fixed-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-action-input",
+      "call_offset": 145178,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-action-output",
+      "call_offset": 145548,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-mask-input",
+      "call_offset": 145747,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "signal-mask-output",
+      "call_offset": 145932,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "namespace-byte",
+      "call_offset": 151717,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "namespace-stat-output",
+      "call_offset": 155234,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/stat-output-audit.json.gz"
+    },
+    {
+      "name": "cwd-output",
+      "call_offset": 156794,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "directory-output",
+      "call_offset": 158540,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "named-directory-output",
+      "call_offset": 161398,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "seconds",
+      "call_offset": 177543,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "uname-output",
+      "call_offset": 185939,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "clock-time-output",
+      "call_offset": 186774,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "clock-resolution-output",
+      "call_offset": 186963,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "sleep-interval-input",
+      "call_offset": 187177,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/copy-transfer-audit.json.gz"
+    },
+    {
+      "name": "thread-local-base",
+      "call_offset": 190208,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "clear-registration",
+      "call_offset": 194595,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "wait-status",
+      "call_offset": 196521,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "pipe-pair-output",
+      "call_offset": 203301,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/pipe-fixed-output-audit.json.gz"
+    },
+    {
+      "name": "pipe-read-loop",
+      "call_offset": 204482,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/pipe-loop-audit.json.gz"
+    },
+    {
+      "name": "pipe-write-loop",
+      "call_offset": 205338,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/pipe-loop-audit.json.gz"
+    },
+    {
+      "name": "pipe-readable-count-output",
+      "call_offset": 207848,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/pipe-fixed-output-audit.json.gz"
+    },
+    {
+      "name": "sparse-read-output",
+      "call_offset": 221423,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "sparse-pread-output",
+      "call_offset": 222205,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/staging-copy-audit.json.gz"
+    },
+    {
+      "name": "volatile-write-input",
+      "call_offset": 223001,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/artifacts/file-input-audit.json.gz"
+    },
+    {
+      "name": "volatile-pwrite-input",
+      "call_offset": 224072,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/artifacts/file-input-audit.json.gz"
+    },
+    {
+      "name": "environment-word",
+      "call_offset": 231478,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    },
+    {
+      "name": "environment-byte",
+      "call_offset": 231574,
+      "audit": "../stage-3-warning-inputs/../stage-3-file-inputs/../stage-3-pipe-loops/artifacts/additional-scalar-audit.json.gz"
+    }
+  ],
+  "calls_without_selected_local_intervals": [
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-condition-write-clean",
+        "static-process-shell-named-root-condition-write-profile-ready"
+      ],
+      "offset": 88236,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    }
+  ],
+  "scope": "Twelve same-kernel conditional local reports; not complete owners/lifetime/callers/fallbacks or production qualification"
+}

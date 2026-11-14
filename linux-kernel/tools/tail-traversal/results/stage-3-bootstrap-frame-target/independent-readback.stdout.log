@@ -1,0 +1,43 @@
+format 0 []
+included-format 0 []
+source-size 0 []
+front-end 0 ['test result: ok. 647 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.74s']
+tail-count 0 ['test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 357 filtered out; finished in 2.67s']
+tail-natural 0 ['test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 356 filtered out; finished in 3.73s']
+frame-policy 0 ['test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 357 filtered out; finished in 1.98s']
+frame-source 0 ['test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 355 filtered out; finished in 2.35s']
+frame-controller 0 ['test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 357 filtered out; finished in 3.34s']
+frame-target 0 ['test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 357 filtered out; finished in 10.60s']
+semantics 0 ['test result: ok. 253 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.23s']
+compiler 0 ['test result: ok. 358 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 394.32s']
+compiler-cli 0 ['test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.23s']
+check 0 []
+coverage 0 ['test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s']
+NATIVE_TOTALS {'compiler': {'components': 62, 'cases': 751, 'calls': 444653, 'checkpoints': 444582, 'fatal': 87, 'work': 3936, 'private': 67328, 'denials': 13402, 'reentry': 4, 'temp': 3080192, 'stack': 192512, 'returns': 194, 'output': 2072, 'gdb': 31, 'admitted': 31, 'invalid': 16}}
+PROVIDER_FACTS {'compiler': {'clients': 37, 'stack': {488, 520, 584, 424, 456, 440}, 'checkpoint_stack': {312}, 'completion_stack': {184, 248}, 'context': {1248, 640, 704, 1280, 736, 1040, 400, 3056}, 'faults': {0: 29, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}, 'boundary_faults': {1: 1, 2: 1, 0: 35}, 'completion_faults': {0: 23, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 14: 1}, 'gdb': 28}}
+SOURCES 174 VERIFICATION 3 LOGS 15
+CGROUP {'path': '/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-1959326-de22f4f9.scope', 'memory.max': '3266543616', 'memory.swap.max': '0', 'memory.peak': '1865277440', 'memory.events': 'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n'}
+TOOL_WARNINGS 31 known GDB .debug_names compatibility warnings only
+OWNER_TOTALS {'compiler': {'clients': 3, 'admitted': 501, 'refused': 2252, 'fatal': 2, 'stack': {240}, 'combined': {688}, 'fixtures': {0, 1, 2}}}
+OWNER_RECORDS 3 OWNER_TOOL_WARNINGS []
+KERNEL_VM_TOTALS {'compiler': 10} CFI_ENTRY_RETURN_FATAL [90, '114 instructions; 114/115 debugger stops', 133]
+KERNEL_READBACK_PASS
+COUNT_NATIVE_COHORTS {'tail-count': [False, True], 'compiler': [False, True]} CASES_PER_COHORT 112
+PUBLICATION_TOTALS {'compiler': {'artifacts': 2, 'vms': 11, 'sections': [89, 105]}} KNOWN_GDB_WARNINGS 0
+TAIL_PUBLICATION_INDEPENDENT_READBACK_PASS
+NATURAL_COMPONENT tail-natural 0 SOURCE_STACK 600 OWNER_COMBINED 240 800
+NATURAL_COMPONENT tail-natural 1 SOURCE_STACK 456 OWNER_COMBINED 240 656
+NATURAL_COMPONENT tail-natural 2 SOURCE_STACK 456 OWNER_COMBINED 240 656
+NATURAL_COMPONENT compiler 0 SOURCE_STACK 600 OWNER_COMBINED 240 800
+NATURAL_COMPONENT compiler 1 SOURCE_STACK 456 OWNER_COMBINED 240 656
+NATURAL_COMPONENT compiler 2 SOURCE_STACK 456 OWNER_COMBINED 240 656
+NATURAL_OWNER_COHORTS {'tail-natural': [0, 1, 2], 'compiler': [0, 1, 2]} CASES_PER_COHORT 33
+NATURAL_QUERY_READBACK_PASS
+FRAME_POLICY_COMPONENT frame-policy FUNCTIONS 32 SOURCE_STACK 1368 OWNER_COMBINED 1568 TEMPORARY_BOUND 18592
+FRAME_POLICY_COMPONENT compiler FUNCTIONS 32 SOURCE_STACK 1368 OWNER_COMBINED 1568 TEMPORARY_BOUND 18592
+FRAME_POLICY_READBACK_PASS {'frame-policy': 1, 'compiler': 1} CASES_PER_COHORT 137
+FRAME_SOURCE_OBLIGATION_READBACK_PASS {'frame-source': ['original', 'policy-change', 'root-change'], 'compiler': ['original', 'policy-change', 'root-change']}
+FRAME_CONTROLLER_READBACK_PASS {'frame-controller': [0, 1, 2], 'compiler': [0, 1, 2]}
+FRAME_TARGET_COMPONENT frame-target ROOT_COMPONENT_PATHS {'topal_frame_allocator_allocate_v1': 1840, 'topal_frame_allocator_pin_v1': 200, 'topal_frame_allocator_release_v1': 1824, 'topal_frame_allocator_resolve_v1': 216, 'topal_x86_frame_allocator_create_v1': 208} REAL_MAP_FRAMES 152525
+FRAME_TARGET_COMPONENT compiler ROOT_COMPONENT_PATHS {'topal_frame_allocator_allocate_v1': 1840, 'topal_frame_allocator_pin_v1': 200, 'topal_frame_allocator_release_v1': 1824, 'topal_frame_allocator_resolve_v1': 216, 'topal_x86_frame_allocator_create_v1': 208} REAL_MAP_FRAMES 152525
+FRAME_TARGET_READBACK_PASS {'frame-target': 11, 'compiler': 11} NO_PRODUCTION_ROOT_OR_CALLER_RETIREMENT_CERTIFICATE

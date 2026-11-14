@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "selected_sources": 172,
+  "artifacts": 83,
+  "models": 141,
+  "exact_source_join_equal": true,
+  "exact_thirteen_reports_equal": true,
+  "exact_saved_metadata_delta_stat_clock_image_readback_equal": true,
+  "scope": "Frozen selected sources/artifacts, Python-only models/readers and saved actual native records. No ELF, compiler, GNU decoder, GDB or VM execution; not complete clean production reconstruction or actual kernel owner/nonalias/continuous-lifetime qualification"
+}

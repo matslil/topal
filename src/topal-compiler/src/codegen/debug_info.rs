@@ -28,6 +28,7 @@ impl DebugInfo {
             error_code_type: 0,
             error_domain_type: 0,
             source_location_type: 0,
+            kernel_region_type: 0,
             int_range_type: 0,
             rational_range_type: 0,
             result_int_type: 0,
@@ -64,6 +65,7 @@ impl DebugInfo {
             task_types: Vec::new(),
             location_types: Vec::new(),
             source,
+            source_modules: Vec::new(),
             filename,
         };
         debug.file = debug.node(format!(
@@ -559,6 +561,14 @@ impl DebugInfo {
             CompilerType::Generator(generator) => self.generator_type(generator),
             CompilerType::Task(task) => self.task_type(task),
             CompilerType::ExternalLocation(location) => self.location_type(location),
+            CompilerType::KernelByteRegion => {
+                if self.kernel_region_type == 0 {
+                    let opaque = self.node("!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalKernelRegionBorrow\", flags: DIFlagFwdDecl)".into());
+                    let pointer = self.node(format!("!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{opaque}, size: 64, align: 64)"));
+                    self.kernel_region_type = self.node(format!("!DIDerivedType(tag: DW_TAG_typedef, name: \"KernelByteRegion\", file: !{}, baseType: !{pointer})", self.file));
+                }
+                self.kernel_region_type
+            },
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
             CompilerType::Range(endpoint)
@@ -1085,25 +1095,18 @@ impl DebugInfo {
             return *type_id;
         }
 
-        let mut offset = 0;
-        let mut aggregate_alignment = 8;
+        let record_layout = ordinary_record_layout(fields);
+        let size = record_layout.value.size;
+        let aggregate_alignment = record_layout.value.alignment;
         let mut members = Vec::with_capacity(fields.len());
-        for (label, field) in fields {
+        for ((label, field), offset) in fields.iter().zip(record_layout.fields) {
             let layout = target_value_layout(field);
-            offset = align_bits(offset, layout.alignment);
-            aggregate_alignment = aggregate_alignment.max(layout.alignment);
             let field_type = self.type_id(field);
             members.push(self.node(format!(
                 "!DIDerivedType(tag: DW_TAG_member, name: \"{}\", file: !{}, baseType: !{field_type}, size: {}, align: {}, offset: {offset})",
                 llvm_string(label), self.file, layout.size, layout.alignment
             )));
-            offset += layout.size;
         }
-        for _ in fields {
-            offset = align_bits(offset, 32) + 32;
-            aggregate_alignment = aggregate_alignment.max(32);
-        }
-        let size = align_bits(offset, aggregate_alignment);
         debug_assert_eq!(size, target_value_layout(&value_type).size);
         let elements = self.node(format!(
             "!{{{}}}",
@@ -1236,6 +1239,26 @@ impl DebugInfo {
         self.enum_type(&generator_debug_enumeration(generator))
     }
 
+    fn install_source_modules(&mut self, dependencies: &[topal_language::CompilerDependency]) {
+        for dependency in dependencies {
+            let path = Path::new(&dependency.source_name);
+            let filename = path.file_name().unwrap_or_default().to_string_lossy();
+            let directory = path.parent().unwrap_or_else(|| Path::new("")).to_string_lossy();
+            let file = self.node(format!("!DIFile(filename: \"{}\", directory: \"{}\")",llvm_string(&filename),llvm_string(&directory)));
+            self.source_modules.push((dependency.source_span,
+                topal_source::SourceText::new(&dependency.source_text).expect("checked dependency text"),file));
+        }
+    }
+
+    fn source_position(&self, span: Span) -> (usize, topal_source::Position) {
+        for (range,source,file) in &self.source_modules {
+            if span.start >= range.start && span.start < range.end {
+                return (*file,source.position(span.start-range.start));
+            }
+        }
+        (self.file,self.source.position(span.start.min(self.source.as_str().len())))
+    }
+
     fn subprogram(
         &mut self,
         name: &str,
@@ -1256,15 +1279,13 @@ impl DebugInfo {
         }
         let types = self.node(format!("!{{{}}}", types.join(", ")));
         let signature = self.node(format!("!DISubroutineType(types: !{types})"));
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         self.node(format!(
             "distinct !DISubprogram(name: \"{}\", linkageName: \"{}\", scope: !{}, file: !{}, line: {}, type: !{}, scopeLine: {}, spFlags: DISPFlagDefinition, unit: !{})",
             llvm_string(name),
             llvm_string(linkage_name),
-            self.file,
-            self.file,
+            file,
+            file,
             position.line,
             signature,
             position.line,
@@ -1273,12 +1294,10 @@ impl DebugInfo {
     }
 
     fn lexical_block(&mut self, span: Span, scope: usize) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         self.node(format!(
             "distinct !DILexicalBlock(scope: !{scope}, file: !{}, line: {}, column: {})",
-            self.file, position.line, position.column
+            file, position.line, position.column
         ))
     }
 
@@ -1304,13 +1323,11 @@ impl DebugInfo {
         value_type: usize,
         scope: usize,
     ) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         self.node(format!(
             "!DILocalVariable(name: \"{}\", scope: !{scope}, file: !{}, line: {}, type: !{value_type})",
             llvm_string(name),
-            self.file,
+            file,
             position.line
         ))
     }
@@ -1323,24 +1340,20 @@ impl DebugInfo {
         value_type: &CompilerType,
         scope: usize,
     ) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         let argument = argument.map_or_else(String::new, |value| format!(", arg: {value}"));
         let value_type = self.type_id(value_type);
         self.node(format!(
             "!DILocalVariable(name: \"{}\"{argument}, scope: !{scope}, file: !{}, line: {}, type: !{})",
             llvm_string(name),
-            self.file,
+            file,
             position.line,
             value_type
         ))
     }
 
     fn location(&mut self, span: Span, scope: usize) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (_, position) = self.source_position(span);
         self.node(format!(
             "!DILocation(line: {}, column: {}, scope: !{scope})",
             position.line, position.column
@@ -1412,13 +1425,45 @@ fn function_llvm_return_type(function: &CompilerFunction) -> String {
 }
 
 #[derive(Clone, Copy)]
-struct TargetValueLayout {
-    size: u64,
-    alignment: u64,
+pub(crate) struct TargetValueLayout {
+    pub(crate) size: u64,
+    pub(crate) alignment: u64,
+}
+
+/// Ordinary Record representation shared by debug layout and owned systems
+/// projections. Offsets and extents are in bits, like TargetValueLayout.
+pub(crate) struct OrdinaryRecordLayout {
+    pub(crate) value: TargetValueLayout,
+    pub(crate) fields: Vec<u64>,
+    pub(crate) order: Vec<u64>,
+}
+
+pub(crate) fn ordinary_record_layout(fields: &[(String, CompilerType)]) -> OrdinaryRecordLayout {
+    let (mut size, mut alignment) = (0, 8);
+    let mut offsets = Vec::new();
+    let mut order = Vec::new();
+    for (_, field) in fields {
+        let layout = target_value_layout(field);
+        size = align_bits(size, layout.alignment);
+        offsets.push(size);
+        size += layout.size;
+        alignment = alignment.max(layout.alignment);
+    }
+    for _ in fields {
+        size = align_bits(size, 32);
+        order.push(size);
+        size += 32;
+        alignment = alignment.max(32);
+    }
+    OrdinaryRecordLayout {
+        value: TargetValueLayout { size: align_bits(size, alignment), alignment },
+        fields: offsets,
+        order,
+    }
 }
 
 #[allow(clippy::too_many_lines)] // Every semantic representation has an explicit target layout.
-fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
+pub(crate) fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
     match value_type {
         CompilerType::Unit
         | CompilerType::Completed
@@ -1472,7 +1517,8 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Character
         | CompilerType::String
         | CompilerType::Task(_)
-        | CompilerType::ExternalLocation(_) => TargetValueLayout {
+        | CompilerType::ExternalLocation(_)
+        | CompilerType::KernelByteRegion => TargetValueLayout {
             size: 64,
             alignment: 64,
         },
@@ -1491,21 +1537,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
             }
         }
         CompilerType::Record(fields) => {
-            let mut size = 0;
-            let mut alignment = 8;
-            for (_, field) in fields {
-                let field = target_value_layout(field);
-                size = align_bits(size, field.alignment) + field.size;
-                alignment = alignment.max(field.alignment);
-            }
-            for _ in fields {
-                size = align_bits(size, 32) + 32;
-                alignment = alignment.max(32);
-            }
-            TargetValueLayout {
-                size: align_bits(size, alignment),
-                alignment,
-            }
+            ordinary_record_layout(fields).value
         }
         CompilerType::Sum(sum) => {
             let mut size = 32;

@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/inspect_callback_bindings.py", line 192, in <module>
+    inspect(Path(sys.argv[1]).resolve(),Path(sys.argv[2]).resolve())
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/inspect_callback_bindings.py", line 67, in inspect
+    assert linked_root['value']+field+4+struct.unpack_from('<i',linked_body,field)[0] == target['value']
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

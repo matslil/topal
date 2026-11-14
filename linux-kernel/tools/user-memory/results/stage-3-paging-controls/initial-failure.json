@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "source_sha256": "052132ab8e095a607cae5fbaccd7cffdc3a912b917f541b4ae4dd73cdd0704fc",
+  "exception": "AssertionError at classify: assert words",
+  "cause": "LLVM listing contains three separate lock-prefix rows; initial parser required a mnemonic after stripping that prefix",
+  "native_execution": false,
+  "exact_original_stderr_retained": false
+}

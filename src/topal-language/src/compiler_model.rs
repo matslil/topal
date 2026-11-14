@@ -42,6 +42,9 @@ use crate::source::{
 
 include!("compiler_model/model.rs");
 include!("compiler_model/analysis_setup.rs");
+include!("compiler_model/kernel_regions.rs");
+include!("compiler_model/kernel_region_closure.rs");
+include!("compiler_model/kernel_region_reuse.rs");
 include!("compiler_model/collect_interface_sources.rs");
 include!("compiler_model/exact_boolean_local_function_generator_body.rs");
 include!("compiler_model/exact_recursive_nominal_generator_body.rs");
@@ -67,6 +70,36 @@ include!("compiler_model/known_constraint_predicate.rs");
 include!("compiler_model/adapt_custom_generator_initial.rs");
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn declared_systems_export_keeps_numeric_parameters_unconstrained() {
+        // TOPAL-SYSTEMS-NUMERIC-RUNTIME-001
+        let source = include_str!("../../../linux-kernel/kernel/policy/relative-sleep-deadline.t");
+        let client = format!(
+            "{source}\nseconds : Nat is 0\nnanoseconds : Nat is 1\nticks : Nat is 0\nsleep-deadline (seconds, nanoseconds, ticks, false)\n"
+        );
+        let modules = [super::CompilerSourceModule {
+            identity: vec!["support".into(), "clock".into()],
+            source_name: "support/clock.t".into(),
+            source: include_str!("../../../linux-kernel/kernel/support/clock.t").into(),
+        }];
+        let program = super::analyze_for_compiler_with_modules_and_declared_exports(
+            &client,
+            &modules,
+            &["sleep-deadline".into()],
+        )
+        .unwrap();
+        let entry = program
+            .functions
+            .iter()
+            .find(|f| f.source_name == "sleep-deadline")
+            .unwrap();
+        assert_eq!(entry.parameters.len(), 4);
+        assert!(entry.parameters.iter().all(|p| p.int_range.is_none()));
+        assert_eq!(entry.parameters[0].value_type, super::CompilerType::Nat);
+        assert_eq!(entry.parameters[3].value_type, super::CompilerType::Boolean);
+        assert_eq!(entry.result_type, super::CompilerType::Int);
+    }
+
     include!(
         "compiler_model/tests/analyzes_functions_and_boolean_decisions_for_the_native_backend.rs"
     );

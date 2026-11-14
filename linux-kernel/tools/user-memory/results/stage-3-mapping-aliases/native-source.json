@@ -1,0 +1,13 @@
+{
+  "new_native_execution": false,
+  "observation": {
+    "snapshot": "../stage-3-owner-intervals/native/observation/observations.json.gz",
+    "sha256": "6c55c06f17a105063f16c8fd7a76b2316837bb2db5bcfe2b1808f327b23915d9",
+    "bytes": 16604932,
+    "snapshot_sha256": "716b1414b3224001ee214456ab83dbd25c5c953487f1a517b709c89425b5aadb"
+  },
+  "run": "../stage-3-owner-intervals/native/run.json",
+  "run_sha256": "880d4957d8e535861ff6cc00c6bc8f1fa5f291143525fa8178b55bbbc7dc05cc",
+  "preceding_manifest": "../stage-3-owner-intervals/manifest.json",
+  "preceding_manifest_sha256": "7e4f51542d39b5f7d371b0b90f2fa325d000c75d79cf7985f398dc549f65165e"
+}

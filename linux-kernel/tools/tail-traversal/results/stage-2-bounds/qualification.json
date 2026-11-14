@@ -1,0 +1,285 @@
+{
+  "schema": "topal.tail-storage-bound-validation/1",
+  "complete": true,
+  "passed": true,
+  "base_commit": "7d07ba8761861a2329f0f4325c6e65dd439fefb0",
+  "scope": "Stage 2 conditional carried-range/allocation analysis only; native lowering, checkpoint, lifetime and execution remain unqualified",
+  "sources": {
+    "src/topal-compiler/src/systems_tail_bounds.rs": "674322f2b701e5f8022e1097ac5c904fc590e08c00756f9204f6c2b9f1f247bc",
+    "src/topal-compiler/src/systems_tail_linear.rs": "8cd4981d2a8419dea7893569ae9f931dfb4816c17c7ef16c25d03ac018186f52",
+    "src/topal-compiler/src/systems_tail_step_bounds.rs": "5cd7dc3c2d888d33a32e661f859652cf0c0ff90e2a418a5bb344c507ecd152ab",
+    "src/topal-compiler/src/systems_tail_call_bounds.rs": "942c9be4f20f253839aef2171f815577cd0da17c305a2c051a5e358c272cdecf",
+    "src/topal-compiler/src/systems_tail_bounds_tests.rs": "5afa3b4253b5a7c7db91a1031e0d106ff4bb0a421558d832c8df2592722f57ed",
+    "src/topal-compiler/src/systems_tail_plan.rs": "f15bc9de3993a05ab8256bfc297049fb9b1810285235beb2bd8ab074f291f6de",
+    "src/topal-compiler/src/systems_numeric_library.rs": "2f6ecc6ee5e3db73e7aa724be478ea21849849fe11f91f2429e7a6fb78cd33ff",
+    "src/topal-compiler/src/systems_region_bounds.rs": "d270c4c952eaa97546ca3b1c10621737a4bd9ac7549154167e291483727a5490",
+    "src/topal-compiler/src/systems_numeric_array_tests.rs": "c5b0edc4f7e8d7838d04e8f7a21e5eefd38951ec2f4e3b96b7314aa34ce88b31",
+    "src/topal-compiler/src/systems_numeric_record_tests.rs": "3926ebdc01cbd36fefb62e6311af56e47aa1c704a3014ce098205c763c0a6d8b",
+    "src/topal-compiler/src/lib.rs": "f90be93e1b31bcaf6bd02b3449f347016d7e2d1996bb6e2e5d4661189ff0e4b4",
+    "linux-kernel/kernel/algorithms/clear-prefix.t": "3aff9cbf8dca4bf49eb805583ebc36c1b6b5eb7ac927b63efe2fc06bc76b5f58",
+    "linux-kernel/design/tail-state-bounds.md": "0ef9433685d8326b323c8478efdf6d23fbf6dad92b25499689a29de22a4474a7",
+    "docs/systems-profile.md": "bec221c9a636cdf8d3fc967ec8b8b69b1e49348e821d803dbc2d4ea36efa8d2d",
+    "spec/systems-profile.md": "56f7b48ac1287dd36435b1540c808f2deb5b817a8cfed25777ddbb2ee05fe700",
+    "se/requirements.md": "8829890e836bc89408800413c9c41132990b3b6eac5b7c6903f50ba8ad70a198",
+    "src/topal-compiler/se-requirements.md": "96a46c3c7796e3c4badf3b849fd344abffeb899161aa317955359c584bdb0b49",
+    "se/core-language-coverage.md": "c1ba25a32a628d36f60ab8d26b82bf717188ec564dab998b411cfbd3d733d4d6",
+    "scripts/run_bounded.py": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560",
+    "src/topal-compiler/src/runtime/value_core.ll": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
+    "src/topal-compiler/src/runtime/kernel_regions.ll": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
+    "src/topal-compiler/src/runtime/kernel_region_unsigned.ll": "d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4",
+    "Cargo.lock": "d750aa418f985e8aaa54b540b46a302957a20e45920bf4eda10f22bda7f6f5ee"
+  },
+  "environment": {
+    "RUST_MIN_STACK": "16777216",
+    "TMPDIR": "/tmp/tk282-bounds-5ad1d5c1",
+    "scratch_backing": "/home/mats/git/topal/linux-kernel/.cache/tk282-bounds-5ad1d5c1"
+  },
+  "commands": [
+    {
+      "name": "tail-bounds",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_numeric_library::tail_bounds::tests"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 5.856815448030829,
+      "log": "tail-bounds.log.gz",
+      "encoding": "gzip",
+      "sha256": "9656a9181741c494b13ea5e9b07428871803de80afb3c004bdd8bab8727f1152",
+      "uncompressed_sha256": "03518118aa339aa09acf0306c95857a76c95528cdba36fedc2c17000b8a2f2bc"
+    },
+    {
+      "name": "compiler",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 331.9640925945714,
+      "log": "compiler.log.gz",
+      "encoding": "gzip",
+      "sha256": "563f1bc99de11c30e86758498a6e62a2be00df160a31ee18080c80e6a8e88dc6",
+      "uncompressed_sha256": "f39109fcd64b189acb1885718149d44249f91f0a253fe0e1d5f052cbfad2913c"
+    },
+    {
+      "name": "check",
+      "argv": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 7.1376598151400685,
+      "log": "check.log.gz",
+      "encoding": "gzip",
+      "sha256": "9e9dfc5eb49fa012769aaad4791318004d9ed0f9b4adb37f3d0db602c533c4d9",
+      "uncompressed_sha256": "54c63ac58f5fdcc0834c018c965485fc041b3b21933bedc113b866c820873ace"
+    },
+    {
+      "name": "coverage",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-language",
+        "--test",
+        "core_language_coverage",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.3165133744478226,
+      "log": "coverage.log.gz",
+      "encoding": "gzip",
+      "sha256": "70cbada165ffd498d2f34983a26a2e9502e33b695b368990d21d8d0215abe315",
+      "uncompressed_sha256": "3e0fe6974288e87de31913b33c6945b2f044655253401d910c330c344df10946"
+    },
+    {
+      "name": "format",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.8796741832047701,
+      "log": "format.log.gz",
+      "encoding": "gzip",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source-size",
+      "argv": [
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.11061307974159718,
+      "log": "source-size.log.gz",
+      "encoding": "gzip",
+      "sha256": "ec2081fbbd4cb149c4e4e646f81381a93e7dde0d218193d6f9f9c9fc1f8e52cc",
+      "uncompressed_sha256": "8db4cdb6759817728df4a07d9be35f2f839b2e2af6c976fc8913b0a10073e66f"
+    }
+  ],
+  "runner_sha256": "837024a5b1ba31570c5ab79fa21d3fb837d3ae199ee7c616f400e64fd7b0d2db",
+  "source_snapshots": {
+    "src/topal-compiler/src/systems_tail_bounds.rs": {
+      "file": "source-snapshots/674322f2b701e5f8022e1097ac5c904fc590e08c00756f9204f6c2b9f1f247bc.txt.gz",
+      "sha256": "a1488712feb1fbb0e7eefc715933bfe775e24803380eb6777a11897a8299eed0",
+      "uncompressed_sha256": "674322f2b701e5f8022e1097ac5c904fc590e08c00756f9204f6c2b9f1f247bc"
+    },
+    "src/topal-compiler/src/systems_tail_linear.rs": {
+      "file": "source-snapshots/8cd4981d2a8419dea7893569ae9f931dfb4816c17c7ef16c25d03ac018186f52.txt.gz",
+      "sha256": "d096d9201e7e26f530bcade3bd77d532ef8ba5a2bdc7c46b949f16c8c93dc51f",
+      "uncompressed_sha256": "8cd4981d2a8419dea7893569ae9f931dfb4816c17c7ef16c25d03ac018186f52"
+    },
+    "src/topal-compiler/src/systems_tail_step_bounds.rs": {
+      "file": "source-snapshots/5cd7dc3c2d888d33a32e661f859652cf0c0ff90e2a418a5bb344c507ecd152ab.txt.gz",
+      "sha256": "c3b5c8b01158a0d9e554585df701b8a76f537a7ac08317ad5dedd55c955a6998",
+      "uncompressed_sha256": "5cd7dc3c2d888d33a32e661f859652cf0c0ff90e2a418a5bb344c507ecd152ab"
+    },
+    "src/topal-compiler/src/systems_tail_call_bounds.rs": {
+      "file": "source-snapshots/942c9be4f20f253839aef2171f815577cd0da17c305a2c051a5e358c272cdecf.txt.gz",
+      "sha256": "d62077bcb146da24c3b1ceaccc4755a17ee28a287010790f616eefa0ab187f57",
+      "uncompressed_sha256": "942c9be4f20f253839aef2171f815577cd0da17c305a2c051a5e358c272cdecf"
+    },
+    "src/topal-compiler/src/systems_tail_bounds_tests.rs": {
+      "file": "source-snapshots/5afa3b4253b5a7c7db91a1031e0d106ff4bb0a421558d832c8df2592722f57ed.txt.gz",
+      "sha256": "f7b562c76d6665016cd3f06d4ce0ddfca4941d3df7dcb6ec44ceda0cf7529c54",
+      "uncompressed_sha256": "5afa3b4253b5a7c7db91a1031e0d106ff4bb0a421558d832c8df2592722f57ed"
+    },
+    "src/topal-compiler/src/systems_tail_plan.rs": {
+      "file": "source-snapshots/f15bc9de3993a05ab8256bfc297049fb9b1810285235beb2bd8ab074f291f6de.txt.gz",
+      "sha256": "bf205b7bfe53452a03be30d48ef3407648fcb41432fc2500b15f1c4d0fd50ad9",
+      "uncompressed_sha256": "f15bc9de3993a05ab8256bfc297049fb9b1810285235beb2bd8ab074f291f6de"
+    },
+    "src/topal-compiler/src/systems_numeric_library.rs": {
+      "file": "source-snapshots/2f6ecc6ee5e3db73e7aa724be478ea21849849fe11f91f2429e7a6fb78cd33ff.txt.gz",
+      "sha256": "ffd89749dafd847bad0ab6799a24f0ba9139b16ef044ac97d9173767f4fd1452",
+      "uncompressed_sha256": "2f6ecc6ee5e3db73e7aa724be478ea21849849fe11f91f2429e7a6fb78cd33ff"
+    },
+    "src/topal-compiler/src/systems_region_bounds.rs": {
+      "file": "source-snapshots/d270c4c952eaa97546ca3b1c10621737a4bd9ac7549154167e291483727a5490.txt.gz",
+      "sha256": "2a2d671fa9d7100bd637adffa83228a79277ea2611d514c6ff9704d477e30186",
+      "uncompressed_sha256": "d270c4c952eaa97546ca3b1c10621737a4bd9ac7549154167e291483727a5490"
+    },
+    "src/topal-compiler/src/systems_numeric_array_tests.rs": {
+      "file": "source-snapshots/c5b0edc4f7e8d7838d04e8f7a21e5eefd38951ec2f4e3b96b7314aa34ce88b31.txt.gz",
+      "sha256": "d4a8a674821b2b15501baf568eef26abae55a91c9ed1c873a11fa0da3a0973d7",
+      "uncompressed_sha256": "c5b0edc4f7e8d7838d04e8f7a21e5eefd38951ec2f4e3b96b7314aa34ce88b31"
+    },
+    "src/topal-compiler/src/systems_numeric_record_tests.rs": {
+      "file": "source-snapshots/3926ebdc01cbd36fefb62e6311af56e47aa1c704a3014ce098205c763c0a6d8b.txt.gz",
+      "sha256": "25907a53b2a4bcfdc637b7d814b361ee7a7e5ae3c85970b51c3d76874d428d82",
+      "uncompressed_sha256": "3926ebdc01cbd36fefb62e6311af56e47aa1c704a3014ce098205c763c0a6d8b"
+    },
+    "src/topal-compiler/src/lib.rs": {
+      "file": "source-snapshots/f90be93e1b31bcaf6bd02b3449f347016d7e2d1996bb6e2e5d4661189ff0e4b4.txt.gz",
+      "sha256": "f41434c685090bfbbb24e8156bec937db9dbc3e5f276549025510491cccc56b7",
+      "uncompressed_sha256": "f90be93e1b31bcaf6bd02b3449f347016d7e2d1996bb6e2e5d4661189ff0e4b4"
+    },
+    "linux-kernel/kernel/algorithms/clear-prefix.t": {
+      "file": "source-snapshots/3aff9cbf8dca4bf49eb805583ebc36c1b6b5eb7ac927b63efe2fc06bc76b5f58.txt.gz",
+      "sha256": "0dc5f6b46064720d9411657ec6a0f6f9aad0d458a3510ab0913121b7b38d41b2",
+      "uncompressed_sha256": "3aff9cbf8dca4bf49eb805583ebc36c1b6b5eb7ac927b63efe2fc06bc76b5f58"
+    },
+    "linux-kernel/design/tail-state-bounds.md": {
+      "file": "source-snapshots/0ef9433685d8326b323c8478efdf6d23fbf6dad92b25499689a29de22a4474a7.txt.gz",
+      "sha256": "c03b5a26f3a61e099b15367609be3e787d65358446959fb40857f8771e903422",
+      "uncompressed_sha256": "0ef9433685d8326b323c8478efdf6d23fbf6dad92b25499689a29de22a4474a7"
+    },
+    "docs/systems-profile.md": {
+      "file": "source-snapshots/bec221c9a636cdf8d3fc967ec8b8b69b1e49348e821d803dbc2d4ea36efa8d2d.txt.gz",
+      "sha256": "530d674a9107c3b91f73e4018abbb96b7d6ee23dd7e1b6cbc04b8623abc50095",
+      "uncompressed_sha256": "bec221c9a636cdf8d3fc967ec8b8b69b1e49348e821d803dbc2d4ea36efa8d2d"
+    },
+    "spec/systems-profile.md": {
+      "file": "source-snapshots/56f7b48ac1287dd36435b1540c808f2deb5b817a8cfed25777ddbb2ee05fe700.txt.gz",
+      "sha256": "7bdf8f13f7064996980b75a8d6e08999f706f0ea1a5c60b9ed9089834fae4176",
+      "uncompressed_sha256": "56f7b48ac1287dd36435b1540c808f2deb5b817a8cfed25777ddbb2ee05fe700"
+    },
+    "se/requirements.md": {
+      "file": "source-snapshots/8829890e836bc89408800413c9c41132990b3b6eac5b7c6903f50ba8ad70a198.txt.gz",
+      "sha256": "4ba6933df890b78522263a62680c8acc03669cb68653bf1f47ab7ee01147ed3b",
+      "uncompressed_sha256": "8829890e836bc89408800413c9c41132990b3b6eac5b7c6903f50ba8ad70a198"
+    },
+    "src/topal-compiler/se-requirements.md": {
+      "file": "source-snapshots/96a46c3c7796e3c4badf3b849fd344abffeb899161aa317955359c584bdb0b49.txt.gz",
+      "sha256": "7b0ac94f113af00534564884791cfc263099f21791efd52e65c526941f4f0a7a",
+      "uncompressed_sha256": "96a46c3c7796e3c4badf3b849fd344abffeb899161aa317955359c584bdb0b49"
+    },
+    "se/core-language-coverage.md": {
+      "file": "source-snapshots/c1ba25a32a628d36f60ab8d26b82bf717188ec564dab998b411cfbd3d733d4d6.txt.gz",
+      "sha256": "4f569bcfbc48dbbc358a213e5619e050779a26d9c30207251c8aea6b49d091d7",
+      "uncompressed_sha256": "c1ba25a32a628d36f60ab8d26b82bf717188ec564dab998b411cfbd3d733d4d6"
+    },
+    "scripts/run_bounded.py": {
+      "file": "source-snapshots/0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560.txt.gz",
+      "sha256": "37339cd7861089685d1f03b831cbe591315e9ff06ef6daf5a1d155b50d4c99b9",
+      "uncompressed_sha256": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560"
+    },
+    "src/topal-compiler/src/runtime/value_core.ll": {
+      "file": "source-snapshots/a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6.txt.gz",
+      "sha256": "3ee79d406921958ecd6cc5c0eec001ad67569b47841246a698aea00ebf37619f",
+      "uncompressed_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6"
+    },
+    "src/topal-compiler/src/runtime/kernel_regions.ll": {
+      "file": "source-snapshots/da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424.txt.gz",
+      "sha256": "2020ece3f48186d35523a0a573923ff4d300c10f9198d3458626590806b08768",
+      "uncompressed_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424"
+    },
+    "src/topal-compiler/src/runtime/kernel_region_unsigned.ll": {
+      "file": "source-snapshots/d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4.txt.gz",
+      "sha256": "83e3fa64091142534ecefa5b5095bbdd07611bb2b5c746f3c2f8ee7837c926da",
+      "uncompressed_sha256": "d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4"
+    },
+    "Cargo.lock": {
+      "file": "source-snapshots/d750aa418f985e8aaa54b540b46a302957a20e45920bf4eda10f22bda7f6f5ee.txt.gz",
+      "sha256": "32e39d602c17564fd7e340133cc58feb2d77ebdd8e2d7e1a157a2dadc0c61e3b",
+      "uncompressed_sha256": "d750aa418f985e8aaa54b540b46a302957a20e45920bf4eda10f22bda7f6f5ee"
+    }
+  },
+  "verification_inputs": {
+    "se/traceability.md": {
+      "file": "source-snapshots/310c34a3b64d7c436a93d1bc37e0d1c1340b1e3f6d7e2bc78f4be371f0544c36.txt.gz",
+      "sha256": "89d7f9cb50d44d5c152fe2ad5be32d652afffaecff3f45d930338b6e1862bb8d",
+      "uncompressed_sha256": "310c34a3b64d7c436a93d1bc37e0d1c1340b1e3f6d7e2bc78f4be371f0544c36"
+    },
+    "se/tool-conformance.md": {
+      "file": "source-snapshots/b294cbb3ae256fe32e173e2ec15e63e7b9feaf9c7a573e6262bea1539a42d820.txt.gz",
+      "sha256": "7d1ad6805bc0581603d082f776ebe05bdddc01d268b86facfcf409d22e60bae6",
+      "uncompressed_sha256": "b294cbb3ae256fe32e173e2ec15e63e7b9feaf9c7a573e6262bea1539a42d820"
+    },
+    "se/test-strategy.md": {
+      "file": "source-snapshots/9baa57dab2db95b3756a43e6383cfbf4332d536fe3b30ddac7096e2909d94425.txt.gz",
+      "sha256": "b7dabfebf14b47de9054a187ee1e9b9f3ea45456f1abe3883aafa0b6c2f75964",
+      "uncompressed_sha256": "9baa57dab2db95b3756a43e6383cfbf4332d536fe3b30ddac7096e2909d94425"
+    }
+  },
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+  "cgroup": {
+    "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-1379128-c372ad53.scope",
+    "memory.max": "3175583744",
+    "memory.swap.max": "0",
+    "memory.peak": "1094397952",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n"
+  }
+}

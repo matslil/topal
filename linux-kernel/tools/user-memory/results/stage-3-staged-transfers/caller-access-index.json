@@ -1,0 +1,725 @@
+{
+  "complete": false,
+  "kernel_sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+  "emitted_helper_calls": 91,
+  "calls_with_selected_local_intervals": 40,
+  "distinct_user_access_instructions": 249,
+  "selected_intervals": [
+    {
+      "call_offset": 27139,
+      "name": "uname-loop",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 38450,
+      "name": "header-command",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 39534,
+      "name": "refill-command",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 40444,
+      "name": "root-command",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 42436,
+      "name": "pwd-command",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 43425,
+      "name": "serial-command",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 52962,
+      "name": "console-stat",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 60174,
+      "name": "root-stat",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 62337,
+      "name": "empty-bin-stat",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 64531,
+      "name": "profile-stat",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 68177,
+      "name": "root-directory",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 70022,
+      "name": "empty-bin-directory",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 76007,
+      "name": "close-message",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 82375,
+      "name": "root-condition",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 83237,
+      "name": "empty-bin-message",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 84283,
+      "name": "executable-message",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 85284,
+      "name": "nonempty-message",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 86299,
+      "name": "open-message",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 87305,
+      "name": "header-message",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 92125,
+      "name": "banner",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 93521,
+      "name": "echo",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 94708,
+      "name": "exec-signal-reset",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 95395,
+      "name": "sigchld-install",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 95961,
+      "name": "process-name",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 99332,
+      "name": "named-stat",
+      "audit": "staged-transfer-audit.json.gz"
+    },
+    {
+      "call_offset": 101802,
+      "name": "missing-path",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 102873,
+      "name": "mail-path",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 103476,
+      "name": "config-path",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 107362,
+      "name": "stack-limit",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 144285,
+      "name": "descriptor-limit",
+      "audit": "fixed-transfer-audit.json"
+    },
+    {
+      "call_offset": 145214,
+      "name": "signal-action-input",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 145584,
+      "name": "signal-action-output",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 145783,
+      "name": "signal-mask-input",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 145968,
+      "name": "signal-mask-output",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 158576,
+      "name": "directory-output",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 161434,
+      "name": "named-directory-output",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 185975,
+      "name": "uname-output",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 186810,
+      "name": "clock-time-output",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 186999,
+      "name": "clock-resolution-output",
+      "audit": "copy-transfer-audit.json"
+    },
+    {
+      "call_offset": 187213,
+      "name": "sleep-interval-input",
+      "audit": "copy-transfer-audit.json"
+    }
+  ],
+  "calls_without_selected_local_intervals": [
+    {
+      "nearest_labels": [
+        "static-process-shell-getcwd"
+      ],
+      "offset": 27861,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-chdir-root-profile-ready"
+      ],
+      "offset": 28626,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-pwd-getcwd"
+      ],
+      "offset": 29345,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-initial-getcwd"
+      ],
+      "offset": 29969,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "owned-header-poll-profile-ready"
+      ],
+      "offset": 33496,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-bin-busybox-header-poll-ready"
+      ],
+      "offset": 33583,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-query-default-common"
+      ],
+      "offset": 36023,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-install-quit-ignore"
+      ],
+      "offset": 36684,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-bin-busybox-header-read-profile-ready"
+      ],
+      "offset": 41322,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "runtime-exec-path-byte"
+      ],
+      "offset": 44431,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 166,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "runtime-exec-vector-entry"
+      ],
+      "offset": 44792,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 189,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "runtime-exec-argument-byte"
+      ],
+      "offset": 44888,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 206,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-dev-tty-open-miss-exact"
+      ],
+      "offset": 55270,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-profile-open"
+      ],
+      "offset": 56053,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-bin-busybox-open-clean",
+        "static-process-shell-bin-busybox-open-profile-ready"
+      ],
+      "offset": 56936,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-bin-busybox-reopen-profile-ready"
+      ],
+      "offset": 57843,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-root-glob-open-profile-ready"
+      ],
+      "offset": 58659,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-empty-bin-glob-open-profile-ready"
+      ],
+      "offset": 59435,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-applet-newline-candidate-ready"
+      ],
+      "offset": 75142,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-warning-candidate"
+      ],
+      "offset": 76915,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-prompt"
+      ],
+      "offset": 80006,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-refill-prompt"
+      ],
+      "offset": 81477,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-condition-write-clean",
+        "static-process-shell-named-root-condition-write-profile-ready"
+      ],
+      "offset": 88236,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-pwd-write-profile-ready"
+      ],
+      "offset": 89191,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-third-prompt"
+      ],
+      "offset": 90027,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-fourth-prompt-profile-ready"
+      ],
+      "offset": 91024,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-bin-busybox-stat-path"
+      ],
+      "offset": 98915,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-shell-named-root-directory-stat-path"
+      ],
+      "offset": 99039,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "static-process-getrandom"
+      ],
+      "offset": 108204,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 365,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "runtime-console-payload",
+        "runtime-write-fd-ready"
+      ],
+      "offset": 131616,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_runtime.rs",
+      "source_line": 427,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-pread-count-ready"
+      ],
+      "offset": 140542,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_positional_transfer.rs",
+      "source_line": 60,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-read-count-ready"
+      ],
+      "offset": 141402,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "source_line": 480,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-serial-count-ready"
+      ],
+      "offset": 142334,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "source_line": 514,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "fd-stat"
+      ],
+      "offset": 143474,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_file_descriptions.rs",
+      "source_line": 586,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "namespace-copy-byte"
+      ],
+      "offset": 151753,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_namespace_walk.rs",
+      "source_line": 151,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "namespace-stat-object"
+      ],
+      "offset": 155270,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_namespace.rs",
+      "source_line": 327,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "namespace-cwd-length"
+      ],
+      "offset": 156830,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_namespace.rs",
+      "source_line": 422,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "realtime-seconds"
+      ],
+      "offset": 177579,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_realtime.rs",
+      "source_line": 45,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "child-thread-local"
+      ],
+      "offset": 190244,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_children.rs",
+      "source_line": 136,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "child-clear-registration-ready"
+      ],
+      "offset": 194631,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_children.rs",
+      "source_line": 316,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "child-wait-matched"
+      ],
+      "offset": 196557,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_children.rs",
+      "source_line": 413,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-descriptions-ready"
+      ],
+      "offset": 203337,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_create.rs",
+      "source_line": 109,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-read-count-ready"
+      ],
+      "offset": 204492,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_transfer.rs",
+      "source_line": 56,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-write-count-ready"
+      ],
+      "offset": 205322,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_pipe_transfer.rs",
+      "source_line": 131,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "pipe-ioctl"
+      ],
+      "offset": 207832,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_process_pipes.rs",
+      "source_line": 152,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-read-end"
+      ],
+      "offset": 221407,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 59,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-pread-end"
+      ],
+      "offset": 222189,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 59,
+      "target": "runtime-writable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-write-end"
+      ],
+      "offset": 222985,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "file-pwrite-end"
+      ],
+      "offset": 224056,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_volatile_transfer.rs",
+      "source_line": 201,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "runtime-environment-entry"
+      ],
+      "offset": 231462,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_exec_environment.rs",
+      "source_line": 25,
+      "target": "runtime-readable-extent"
+    },
+    {
+      "nearest_labels": [
+        "runtime-environment-byte"
+      ],
+      "offset": 231558,
+      "source_column": 9,
+      "source_file": "src/topal-compiler/src/systems_exec_environment.rs",
+      "source_line": 41,
+      "target": "runtime-readable-extent"
+    }
+  ],
+  "scope": "Identity-bound index of conditional local intervals only, not whole-caller coverage or safety/lifetime qualification; other accesses may remain after every listed interval"
+}

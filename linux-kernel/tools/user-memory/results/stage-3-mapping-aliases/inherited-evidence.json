@@ -1,0 +1,38 @@
+{
+  "../stage-3-owner-intervals/readback-owner-intervals.py": {
+    "sha256": "36b27ef895472021e2f108c5fb34a4d44867edcd74170e4231194412b91334bf",
+    "bytes": 5647
+  },
+  "../stage-3-owner-intervals/readback-owner-boundaries.py": {
+    "sha256": "c75603b20ff103c1bfa666c586587e5afc918494e33ae66c3e1e5be8af0c6b8b",
+    "bytes": 4107
+  },
+  "../stage-3-owner-intervals/readback-source-metadata.py": {
+    "sha256": "353e0ea17545a5eef4789451af74ea059a6ea36297b7b96480216abc016f4aba",
+    "bytes": 8501
+  },
+  "../stage-3-owner-intervals/control-owner-intervals.py": {
+    "sha256": "3fe98cb13ad17b014d1b1d1922bfb3b4a3609e9c5b27f5c19a723d99b1ebd2dd",
+    "bytes": 3892
+  },
+  "../stage-3-owner-intervals/native-readback.json": {
+    "sha256": "0925c87df1f7df4c72f2390e856e931ca0d47e9f3422713f7e444aff93c2bf91",
+    "bytes": 2180
+  },
+  "../stage-3-owner-intervals/owner-readback.json": {
+    "sha256": "d06b1e389cc1ae3ce0a966d234a1a8f92bab0b4248b7560bebf38656c55fe33c",
+    "bytes": 726
+  },
+  "../stage-3-owner-intervals/metadata-readback.json": {
+    "sha256": "016d9ffc972d2cd77eb3c6cb50dad0ac501909bc5f2d2980ef7584a3e1717446",
+    "bytes": 42963
+  },
+  "../stage-3-owner-intervals/controls/controls.json": {
+    "sha256": "62d63aaba2db1e4834a9e4bb7675363606a20d5f013a07e47c7a0efbcc8c53dd",
+    "bytes": 2940
+  },
+  "../stage-3-owner-intervals/native/observation/inspect.gdb.gz": {
+    "sha256": "25113b9ba772ebc5c8dea6ac7c06b357e12dca800d99e6c6ba019ebdda835ce7",
+    "bytes": 158292
+  }
+}

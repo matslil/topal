@@ -1,0 +1,12 @@
+{
+  "stage_complete": false,
+  "production_activation": false,
+  "remaining": [
+    "semantic classification and actual pointer/owner origins for every access",
+    "complete admission dominance, direction/length/error/staging/cleanup and lifetime proof",
+    "other roots/callees/exception entry and unvisited instruction coverage",
+    "three fallback coverage/reachability and native ownership/mode/stale-state obligations",
+    "canonical production binding and exact committed cold reconstruction",
+    "all remaining original MM/distribution/device/driver/container/VM-host acceptance"
+  ]
+}

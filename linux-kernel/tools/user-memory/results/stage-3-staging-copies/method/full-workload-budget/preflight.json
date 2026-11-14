@@ -1,0 +1,15 @@
+{
+  "applied": true,
+  "passed": true,
+  "previous_full_deadline_seconds": 1800,
+  "full_deadline_seconds": 3600,
+  "output_inactivity_seconds": 300,
+  "unit_tests": 4,
+  "observed_prior_helper_events": 17664,
+  "source_sha256": {
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": "fcadfbd0777b8ec22977bd9aeb81dc75d23bf639d2aa7a50d91e28445117b773",
+    "linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py": "21e36cf9ef8b6616f98a1250637ff88a4d6043fabbb5a14caa91a25f61ed2d9d",
+    "linux-kernel/labs/qemu/x86_64/test_frame_progress.py": "c8f5ae07b52aaa0ec7796aac6f842984591024bcff54a275ec89994b5129d1c5"
+  },
+  "rationale": "Full correctness test repeats four process images and retains the existing900s focused per-image budget. Earlier1800s attempt was still validating thousands of calls. Total3600s ceiling plus300s output-inactivity guard retain bounded execution and every correctness assertion. Prior timeouts remain failures; this is not a pass under the old deadline. VM memory, isolation and host limits are unchanged."
+}

@@ -1,0 +1,95 @@
+{
+  "base_commit": "9abb08666f0f915afcae7567530db4c426d39232",
+  "base_sources": {
+    "path": "../stage-3-mapping-aliases/source-identity.json",
+    "sha256": "f9bb7b930abcdc1591e23b22e47277b68b843c626c767fd2f127fb7838043c12",
+    "bytes": 69479
+  },
+  "base_artifacts": {
+    "path": "../stage-3-mapping-aliases/artifact-identity.json",
+    "sha256": "cadd521b937f274d6350c4573691152e233f6f2b09457c51d945279426717602",
+    "bytes": 29143
+  },
+  "base_manifest": {
+    "path": "../stage-3-mapping-aliases/manifest.json",
+    "sha256": "8b223848c0fddbd3a3755b751f86bc3ad864089b773cdf134efe64937940d5c7",
+    "bytes": 168976
+  },
+  "sources": {
+    "linux-kernel/tools/user-memory/translation_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/translation_publication.py.gz",
+      "sha256": "9b5b9a7fa9df253eea6b62a31c7589d61679b46c2abfdbeb372697265db369a3",
+      "bytes": 5409,
+      "snapshot_sha256": "5e97c54653fde873088aecf53f50a8bc43f78cafc8727c4f9fd30ae6700ee994"
+    },
+    "linux-kernel/tools/user-memory/test_translation_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_translation_publication.py.gz",
+      "sha256": "e9901b4bbb41b05e4dd1555b4051cb21be72687ebbfccfa5ca793df260c09300",
+      "bytes": 4965,
+      "snapshot_sha256": "5b635e848f975dae25e06f66c1d06ff6f3fce0a62817545ca698e7383510b33f"
+    },
+    "linux-kernel/tools/user-memory/qemu_publication_trace.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/qemu_publication_trace.py.gz",
+      "sha256": "3d0cadc81cfa602c68dafe81fc510621d0db547e5d57774af7ebd3b4454b10f0",
+      "bytes": 2669,
+      "snapshot_sha256": "4ab6e2733c260ab780f8943b11dd4afdf99df8dc3ae2885b89f6208157c7083c"
+    },
+    "linux-kernel/tools/user-memory/test_qemu_publication_trace.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/test_qemu_publication_trace.py.gz",
+      "sha256": "8dfac3d57f9a93fe869a8e09ff59d9d234871e9157ea5cbff28bc4fa84bd5f9d",
+      "bytes": 2783,
+      "snapshot_sha256": "eadd87e82f9e87302688a640fdd8f7e6ed7e651752d636067cbfba000623dc4e"
+    },
+    "linux-kernel/tools/user-memory/inspect_translation_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/inspect_translation_publication.py.gz",
+      "sha256": "53a25b8a1cca3710ebb0b1a07a8b546d7280dbd8a82ab23e0992eb2f997d267f",
+      "bytes": 3602,
+      "snapshot_sha256": "41a69ac5c763bd23d5e2c0aae63665a1e6e080f85f4bc850ff5439c30b897e93"
+    },
+    "linux-kernel/tools/user-memory/readback_translation_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/readback_translation_publication.py.gz",
+      "sha256": "ea075ac8ec0cf11db3e23fa12b0c8bb95f5e538e7a88dff85723f59ba0fe4679",
+      "bytes": 8747,
+      "snapshot_sha256": "aac5d6a88f701f8b7f0f682458a95cd56371c2550d4e5e78385ef229236c5602"
+    },
+    "linux-kernel/tools/user-memory/control_translation_publication.py": {
+      "snapshot": "inputs/linux-kernel/tools/user-memory/control_translation_publication.py.gz",
+      "sha256": "b26c3b85bf3169cc92d8c8d4144161716b8d2051dace043336f11b60a3f40aa9",
+      "bytes": 4146,
+      "snapshot_sha256": "a6ed365ff0bd4c9680722bea8027347d3766b3e8b426a2ac3bcb097607d96790"
+    },
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py.gz",
+      "sha256": "a95f8b8f332d06910b457cf1259bb4bad4a35ce7350e4a51faf33267a8c56099",
+      "bytes": 17623,
+      "snapshot_sha256": "618dad96e56ae0e646bd715b447b4902ff5c935b9f0bc7fe1cbf494c4fd9f931"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py.gz",
+      "sha256": "d09e4a449a1d9da8ee2530f135d914307f6d90626907d0881a31955206f4086e",
+      "bytes": 34954,
+      "snapshot_sha256": "d3d5e32efe70ec4598874ca200baa17d16a33d1ae9c36423fe75a87eb2b4c361"
+    },
+    "linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py": {
+      "snapshot": "inputs/linux-kernel/labs/qemu/x86_64/user_extent_translation_observer.py.gz",
+      "sha256": "97803532a0ad3bc3b7f779cdc5ccd95a103ebc4b145ed7aa4336d28071d183f4",
+      "bytes": 11471,
+      "snapshot_sha256": "e81b5eb9ee3c59bc45943d9c1f72d7ef80c2621cc8dd8a670b8f37ab59644037"
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": {
+      "snapshot": "inputs/src/topal-compiler/src/runtime/kernel_frame_memory.ll.gz",
+      "sha256": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be",
+      "bytes": 14321,
+      "snapshot_sha256": "40b16d2600a09ddb95fcbf5ba7233cda4a07cde41e6be5d87e0c6fec10f85a7e"
+    }
+  },
+  "artifacts": {
+    "dispatch.ll": {
+      "snapshot": "artifacts/dispatch.ll.gz",
+      "sha256": "1bfddb07fb32196a9d60aac0b5ea684daa69232f27c67cbaf251733bc7b5114a",
+      "bytes": 16699,
+      "snapshot_sha256": "d57d73f4e3fa958641f8e5fea6ef8c8524cf5f984dc86cb074223cf78c25ab38"
+    }
+  },
+  "scope": "Delta of eleven current sources and one current first-party IR over the preceding frozen selected inputs; no complete producer or new third-party binary"
+}

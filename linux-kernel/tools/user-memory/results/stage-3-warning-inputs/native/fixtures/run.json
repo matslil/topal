@@ -1,0 +1,40 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "source_fixture::",
+    "--",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "selected_tests": 2,
+  "exit_code": 0,
+  "elapsed_seconds": 0.6612204350531101,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794457691170954026/temporary",
+  "resources": {
+    "memory.max": "3178291200",
+    "memory.swap.max": "0",
+    "memory.peak": "43487232",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "a360417b57e87d1dbd0806151c97e1c62d3474561469589ae78a666ff216c69f",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "eb7ead1740a35c25d7da884e6278d6308a47c9eb7b2cd1323fd9bcd4371a59f0",
+    "linux-kernel/labs/qemu/x86_64/user_extent_warning_observer.py": "fd537b1b9cceb1731c22f5913aebbd217f4c16cc6d835dec5ff37f9862c7d951",
+    "linux-kernel/tools/user-memory/audit_warning_inputs.py": "5c1cb12795ffd333eabb25f58fce4ac968d8f87a9103ddeb0d22f167780547d8",
+    "linux-kernel/tools/user-memory/test_warning_inputs.py": "f4143756daddfac676c6b31ad090096463d46ec4a67a04f2030cb2050f92b2ef"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_call_coverage.py": "a360417b57e87d1dbd0806151c97e1c62d3474561469589ae78a666ff216c69f",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "eb7ead1740a35c25d7da884e6278d6308a47c9eb7b2cd1323fd9bcd4371a59f0",
+    "linux-kernel/labs/qemu/x86_64/user_extent_warning_observer.py": "fd537b1b9cceb1731c22f5913aebbd217f4c16cc6d835dec5ff37f9862c7d951",
+    "linux-kernel/tools/user-memory/audit_warning_inputs.py": "5c1cb12795ffd333eabb25f58fce4ac968d8f87a9103ddeb0d22f167780547d8",
+    "linux-kernel/tools/user-memory/test_warning_inputs.py": "f4143756daddfac676c6b31ad090096463d46ec4a67a04f2030cb2050f92b2ef"
+  },
+  "source_changes_during_run": false
+}

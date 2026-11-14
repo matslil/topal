@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "/home/mats/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld",
+    "-flavor",
+    "gnu",
+    "-m",
+    "elf_x86_64",
+    "-static",
+    "--no-dynamic-linker",
+    "--build-id=none",
+    "--entry",
+    "topal_user_extent_pipe_cases",
+    "-z",
+    "noexecstack",
+    "-T",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/source-user.ld",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/source-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/startup-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/file-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/shell-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/command-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/pipe-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/source-syscall.o",
+    "-o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2271066-1794399038949272774/source-user.elf"
+  ],
+  "exit_code": 0
+}

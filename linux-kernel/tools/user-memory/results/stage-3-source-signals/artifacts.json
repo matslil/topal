@@ -1,0 +1,141 @@
+{
+  "build": "linux-kernel/.cache/x86_64/user-extent-source-signals-2262028-1794395128473471226",
+  "files": [
+    {
+      "path": "boundary.o",
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    {
+      "path": "bzImage",
+      "bytes": 45232768,
+      "sha256": "5732aa9a697f1e995fcafde331d42d966a06469c63baa31859751ddc2d7ead31"
+    },
+    {
+      "path": "command-cases.o",
+      "bytes": 7864,
+      "sha256": "c56b4133db3f7c48dc7e58628e8cb43b849824bbd2f4d5315df6690fc94d808b"
+    },
+    {
+      "path": "controller.o",
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    {
+      "path": "dispatch.o",
+      "bytes": 12832,
+      "sha256": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457"
+    },
+    {
+      "path": "extent-bridge.o",
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    {
+      "path": "extent-callers.o",
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    {
+      "path": "extent.o",
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    {
+      "path": "file-cases.o",
+      "bytes": 16064,
+      "sha256": "7086953433a539b0953f77f0c33fae0ee6489e5347fbda1cbf0bdbf8790a2acd"
+    },
+    {
+      "path": "gateway.o",
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    {
+      "path": "initramfs.cpio",
+      "bytes": 2037200,
+      "sha256": "bc21f3c82cf51bbe182909b5f9f7979a72d119429aaf2d92710865a7a0d95f54"
+    },
+    {
+      "path": "kernel.elf",
+      "bytes": 1665296,
+      "sha256": "b0cd5685fb82879a8466f657b431aeee911977f1f3773888c7cfb2ca5777e175"
+    },
+    {
+      "path": "owner.o",
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    {
+      "path": "predecessor-gateway.o",
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    {
+      "path": "predecessor-provider.o",
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    {
+      "path": "provider.o",
+      "bytes": 1061624,
+      "sha256": "dc128426886ef18674b96c48dca73d90bd2fddae631e4f4eed1636e7c4ff3618"
+    },
+    {
+      "path": "root.o",
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    {
+      "path": "runtime.o",
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    {
+      "path": "shell-cases.o",
+      "bytes": 13592,
+      "sha256": "0ef86867aefa221590dca58eb97731c1909a9fe14ddbd68d09cf9d2d2300f769"
+    },
+    {
+      "path": "signal-cases.o",
+      "bytes": 37960,
+      "sha256": "8ea00affb7a59e9fca4eb2b31c39a89e7e02ab720423b0ebf3c34a46a4c38925"
+    },
+    {
+      "path": "source-cases.o",
+      "bytes": 8800,
+      "sha256": "b67ee2aed8e4f51abae13c25dee65204a944b14e1a7eb760f9a923bc3caf6c59"
+    },
+    {
+      "path": "source-syscall.o",
+      "bytes": 1056,
+      "sha256": "158f2f856adfab794a41c758848e8b009979233401e90c7780b190d9dc966111"
+    },
+    {
+      "path": "source-user.elf",
+      "bytes": 55744,
+      "sha256": "e68b3198b019793cadc1fa58b84646f4c18216267a407df1f369ad4499806362"
+    },
+    {
+      "path": "source.o",
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    },
+    {
+      "path": "startup-cases.o",
+      "bytes": 13936,
+      "sha256": "4df76955c4f990787f2b1cbbdc1cf43048e32d0a9ad9ce0416cf4fa9af459045"
+    },
+    {
+      "path": "static-elf-abi-fixture.elf",
+      "bytes": 2024544,
+      "sha256": "09b725dc3ab2d71b070806e98d4f77dfbf2d873edf2f9e044e52c6324995c057"
+    },
+    {
+      "path": "target.o",
+      "bytes": 27320,
+      "sha256": "b7abc95d8f6d85a69adb77ff0759193b40642e74cb29350e0908e80ce47a0a2e"
+    }
+  ],
+  "scope": "Digests only; no executable or third-party payload archived"
+}

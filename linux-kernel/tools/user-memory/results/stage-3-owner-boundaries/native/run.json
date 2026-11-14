@@ -1,0 +1,40 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_metadata_lifetimes",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "selected_tests": 1,
+  "exit_code": 0,
+  "elapsed_seconds": 348.8881009137258,
+  "temporary_directory": "/home/mats/git/topal/linux-kernel/.cache/x86_64/tk283-staging-focused-1794468400447512703/temporary",
+  "resources": {
+    "memory.max": "3200962560",
+    "memory.swap.max": "0",
+    "memory.peak": "668815360",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "a8046663f438994a8093dc3817b1d3f2bf15fdfca78036c4b9a5a9416f413ad4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_owner_observer.py": "ae0d290a1fff07466a4758fc9d662acc72f8aeabe7ac1ac7d92d8b8038308cb8",
+    "linux-kernel/tools/user-memory/owner_snapshot.py": "afd3147353ae9f95f9b5e9537adc451083d302970b476f02be1846710b8f34f2",
+    "linux-kernel/tools/user-memory/test_owner_snapshot.py": "148db9f84345d9dc741c942515c86f87315831e4676ee1d7df0f939d08cacf4f"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "a8046663f438994a8093dc3817b1d3f2bf15fdfca78036c4b9a5a9416f413ad4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_owner_observer.py": "ae0d290a1fff07466a4758fc9d662acc72f8aeabe7ac1ac7d92d8b8038308cb8",
+    "linux-kernel/tools/user-memory/owner_snapshot.py": "afd3147353ae9f95f9b5e9537adc451083d302970b476f02be1846710b8f34f2",
+    "linux-kernel/tools/user-memory/test_owner_snapshot.py": "148db9f84345d9dc741c942515c86f87315831e4676ee1d7df0f939d08cacf4f"
+  },
+  "source_changes_during_run": false
+}

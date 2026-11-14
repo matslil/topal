@@ -1,0 +1,14 @@
+test_control_register_encoding_and_rex (test_paging_controls.PagingControls.test_control_register_encoding_and_rex) ... ok
+test_decoder_disagreement_is_preserved (test_paging_controls.PagingControls.test_decoder_disagreement_is_preserved) ... ok
+test_invalidation_memory_group_is_not_swapgs (test_paging_controls.PagingControls.test_invalidation_memory_group_is_not_swapgs) ... ok
+test_linked_bytes_and_unique_row_starts (test_paging_controls.PagingControls.test_linked_bytes_and_unique_row_starts) ... ok
+test_missing_middle_or_tail_cannot_establish_coverage (test_paging_controls.PagingControls.test_missing_middle_or_tail_cannot_establish_coverage) ... ok
+test_msr_direction_cannot_be_relabelled (test_paging_controls.PagingControls.test_msr_direction_cannot_be_relabelled) ... ok
+test_opcode_embedded_in_immediate_remains_a_candidate (test_paging_controls.PagingControls.test_opcode_embedded_in_immediate_remains_a_candidate) ... ok
+test_padding_overlap_retains_both_interpretations (test_paging_controls.PagingControls.test_padding_overlap_retains_both_interpretations) ... ok
+test_separate_lock_prefix_retains_coverage (test_paging_controls.PagingControls.test_separate_lock_prefix_retains_coverage) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.001s
+
+OK

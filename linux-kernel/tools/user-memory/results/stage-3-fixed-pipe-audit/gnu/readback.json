@@ -1,0 +1,88 @@
+{
+  "passed": true,
+  "kernel_sha256": "991d86d0e8153652b75418bb30bd2ea54791d6b1514bf2dcd2a14d001dae942f",
+  "audit_sha256": "16b71dd3fbc06c1c5e990343fbc992696fdedaadaa67c4b676561696b7eba370",
+  "graph_sha256": "95f5ee1ce1acae19b8a1a4ea5529fa6fa5d93fce139520b4563167b91c49cffa",
+  "gnu_instructions": 135,
+  "gnu_windows": 3,
+  "output_operands": [
+    {
+      "offset": 203783,
+      "assembly": "mov    QWORD PTR [r8+0x0],rax"
+    },
+    {
+      "offset": 203790,
+      "assembly": "mov    r11,QWORD PTR [r8+0x0]"
+    },
+    {
+      "offset": 207828,
+      "assembly": "mov    DWORD PTR [r8],eax"
+    }
+  ],
+  "backward_success_edge_cuts": [
+    {
+      "offset": 203783,
+      "predecessors_visited": 74
+    },
+    {
+      "offset": 203790,
+      "predecessors_visited": 75
+    },
+    {
+      "offset": 207828,
+      "predecessors_visited": 3
+    }
+  ],
+  "pair_effects": {
+    "register_writes": [
+      "r11",
+      "r13",
+      "r14",
+      "rax",
+      "rcx"
+    ],
+    "memory_store_offsets": [
+      203329,
+      203344,
+      203408,
+      203425,
+      203449,
+      203456,
+      203485,
+      203506,
+      203521,
+      203585,
+      203602,
+      203626,
+      203633,
+      203662,
+      203683,
+      203690,
+      203697,
+      203704,
+      203711,
+      203728,
+      203745,
+      203752,
+      203783
+    ]
+  },
+  "count_effects": {
+    "register_writes": [
+      "rax"
+    ],
+    "memory_store_offsets": [
+      207828
+    ]
+  },
+  "lookup_effects": {
+    "register_writes": [
+      "r10",
+      "r11",
+      "rax",
+      "rcx"
+    ],
+    "memory_store_offsets": []
+  },
+  "scope": "Independent selected GNU file disassembly and reverse graph cuts. Exact restricted operand vocabulary supports explicit normal-return register effects only. No VM execution, actual owners, nonaliasing, continuous lifetime or complete exception/production qualification"
+}

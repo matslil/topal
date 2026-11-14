@@ -1,0 +1,157 @@
+{
+  "architecture": "x86_64",
+  "archive": {
+    "manifest": {
+      "bytes": 1062207,
+      "sha256": "9f6112232fd38c2b820356b99b6a0470cb5f8a560a986491487e27de7ecdca9c"
+    },
+    "path": "linux-kernel/tools/process-memory/results/stage-3-process-publication",
+    "report": {
+      "bytes": 1301958,
+      "sha256": "f5afd28e049a1c05763d42c814c5c48458fe14b8afda9c227f224f68c4330743"
+    }
+  },
+  "bounded_followup": {
+    "commands": {
+      "archive": {
+        "argv": [
+          "rtk",
+          "proxy",
+          "python3",
+          "linux-kernel/tools/process-memory/archive_publication.py",
+          "--matrix",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-matrix-retry-1",
+          "--driver",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-matrix-retry-1.py",
+          "--prior",
+          "linux-kernel/tools/process-memory/results/stage-3-application-corpus",
+          "--validation",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-final-validation-2",
+          "--output",
+          "/home/mats/git/topal/linux-kernel/tools/process-memory/results/stage-3-process-publication",
+          "--history",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-initial",
+          "--history",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-retry-1",
+          "--history",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-retry-2",
+          "--history",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-matrix"
+        ],
+        "elapsed_seconds": 348.76701239310205,
+        "exit_code": 0
+      },
+      "replay": {
+        "argv": [
+          "rtk",
+          "proxy",
+          "python3",
+          "linux-kernel/tools/process-memory/replay_publication.py",
+          "/home/mats/git/topal/linux-kernel/tools/process-memory/results/stage-3-process-publication",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-frozen-replay-final"
+        ],
+        "elapsed_seconds": 327.7320471452549,
+        "exit_code": 0
+      },
+      "validation": {
+        "argv": [
+          "rtk",
+          "proxy",
+          "python3",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/validate-publication-stage.py",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-matrix-retry-1",
+          "/home/mats/git/topal/linux-kernel/.cache/x86_64/process-mm-publication-final-validation-2"
+        ],
+        "elapsed_seconds": 10.39555735886097,
+        "exit_code": 0
+      }
+    },
+    "driver_sha256": "9d40886567b0504b8eb27526ab45af5334ee2a3a1937fa3638dc13d7aa06b83d",
+    "elapsed_seconds": 686.8968425085768,
+    "group": "/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-2484087-40d8e769.scope",
+    "passed": true,
+    "resources": {
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.max": "3350364160",
+      "memory.peak": "2125303808",
+      "memory.swap.max": "0"
+    },
+    "scope": "Completed matrix follow-up validation/archive/frozen replay with cumulative bounded-job resource sample; source/diff review, evidence commit and final PR update remain"
+  },
+  "document_review": {
+    "files": {
+      "linux-kernel/step-4-process-memory-ownership.md": {
+        "after_sha256": "b2b151c9edbbadbfe1a5af02a259a3418146304ac537ca865b8a899e6a82d295",
+        "before_sha256": "766732bc8481533a407f495702a628040d486c8d1b6ed006d3b50fa6bbb38915"
+      },
+      "linux-kernel/step-4-status.md": {
+        "after_sha256": "48e44711446dcfc54cc0b4a5595488d46c61d0d75dce2ed24a80fcf55c08369b",
+        "before_sha256": "19eebde112958ee56008d16720ea4cfe6ed8356ca91fdae13770b85d290cb1a9"
+      },
+      "linux-kernel/tools/process-memory/README.md": {
+        "after_sha256": "3c68474c5c4700f25ae524ed542e810fd7890135d59b59194e659d4c30be18bb",
+        "before_sha256": "050b5eb1c940d32aba63bce5676db79b29e534fe75185cffc3ef2f4ff6241cfe"
+      }
+    },
+    "passed": true,
+    "scope": "Descriptive updates from completed native/archive/replay evidence; fresh final source/document capture and publication review remain"
+  },
+  "passed": true,
+  "replay": {
+    "archive_manifest_sha256": "9f6112232fd38c2b820356b99b6a0470cb5f8a560a986491487e27de7ecdca9c",
+    "model_suites": {
+      "process-memory": {
+        "exit_code": 0,
+        "passed": true,
+        "tests": 59
+      },
+      "user-memory": {
+        "exit_code": 0,
+        "passed": true,
+        "tests": 203
+      }
+    },
+    "native_summary": {
+      "VMs": 21,
+      "cancelled_CPU_blocks": 22,
+      "controls": 252,
+      "equal_size_process_publications": 45,
+      "erased_bytes": 46915584,
+      "pages_invalidated": 26191,
+      "publications": 279,
+      "retirements": 166,
+      "root_switches": 21,
+      "tests": 7
+    },
+    "passed": true,
+    "publication_controls": [
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12
+    ],
+    "retained_applications": 51,
+    "retained_interfaces": 9,
+    "retained_processes": 20,
+    "scope": "Frozen source-bound saved-record comparisons and Python model suites; no VM execution or kernel rebuild"
+  },
+  "schema": "topal-process-mm-publication-replay-receipt-v1",
+  "scope": "Final closed-archive identity, current selected inputs, frozen saved-record/model success and actual bounded follow-up receipts; no additional VM execution, kernel rebuild, complete lifetime proof or public activation"
+}

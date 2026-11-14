@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "selected_inputs": 141,
+  "artifacts": 14,
+  "exact_six_reports_equal": true,
+  "models": 69,
+  "exact_native_record_readback_equal": true,
+  "exact_raw_source_link_section_readback_equal": true,
+  "scope": "Frozen selected source/artifact and saved-native correspondence replay only. No ELF, compiler, GNU, GDB or VM execution, complete producer, actual owner/lifetime or canonical qualification"
+}

@@ -1,0 +1,42 @@
+{
+  "disposable_overlay": true,
+  "dispositions": {
+    "create_dot": 21,
+    "create_missing_trailing": 21,
+    "create_regular_trailing": 21,
+    "exclusive_dot": 17,
+    "exclusive_existing": 17,
+    "exclusive_regular_trailing": 21,
+    "read_missing_trailing": 2,
+    "readonly_create_dot": 21,
+    "readonly_create_existing": 0,
+    "readonly_create_missing": 30,
+    "readonly_exclusive_existing": 17,
+    "readonly_unlink_long_final": 30,
+    "readonly_unlink_missing": 30,
+    "readonly_unlink_missing_trailing": 30,
+    "unlink_dot": 21,
+    "unlink_invalid_flags_before_copy": 22,
+    "unlink_missing_trailing": 2,
+    "unlink_parent": 21,
+    "unlink_regular_trailing": 20
+  },
+  "executable_sha256": "b3d7b1a0ff59c4009159b5fbb26dcfce5e042d19096aab7617c52e17ccceafd4",
+  "filesystem": "tmpfs rw,noatime,size=32k,nr_inodes=5",
+  "guest_libc": "2.41-12+deb13u4",
+  "harness_sha256": "53d71b9e3215cc0eb6b4b73d07d9ba923ea2753b60b9edff91786263ea5314df",
+  "kernel_release": "7.2.9",
+  "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+  "needed_glibc": [
+    "2.2.5",
+    "2.33",
+    "2.34",
+    "2.4"
+  ],
+  "output": "NAMED_FILE_CONTROL_PASS {\"create_missing_trailing\":21,\"create_regular_trailing\":21,\"exclusive_regular_trailing\":21,\"read_missing_trailing\":2,\"exclusive_existing\":17,\"create_dot\":21,\"exclusive_dot\":17,\"unlink_missing_trailing\":2,\"unlink_regular_trailing\":20,\"unlink_dot\":21,\"unlink_parent\":21,\"unlink_invalid_flags_before_copy\":22,\"readonly_create_missing\":30,\"readonly_create_existing\":0,\"readonly_exclusive_existing\":17,\"readonly_create_dot\":21,\"readonly_unlink_missing\":30,\"readonly_unlink_missing_trailing\":30,\"readonly_unlink_long_final\":30}",
+  "reference_kernel_sha256": "c005235648520b35e104e3d8025abf48f6f523697a54f491b9cf692db53fae0c",
+  "result": "pass",
+  "schema": "topal-named-file-linux-control/1",
+  "scope": "generic named-file error ordering, independent descriptions, unlink, capacity and long records; no full tmpfs-driver equivalence",
+  "source_sha256": "75bd1380eeefcd3f1501b015b288b55df4ae1f0200eb2076e9e9f23437f972cf"
+}

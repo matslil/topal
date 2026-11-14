@@ -1,0 +1,11 @@
+format []
+included-format []
+source-size []
+compiler ['test result: ok. 365 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 526.08s']
+language ['test result: ok. 648 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 37.91s']
+semantics ['test result: ok. 253 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.06s']
+check []
+coverage ['test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s']
+FRAME_ROOT_SUBCHECK_PASS 777 SOURCES; 151977 FRAMES; 67 REAL ROOT CALLS; 27 COMPONENT VM CASES; PUBLICATION/MM STILL UNQUALIFIED
+FRAME_MEMORY_READBACK_PASS 777 FROZEN SOURCES; 777 PRODUCER INPUTS; 80 USER MEMORY OPERATIONS; 12 SYSCALL VM CASES; 970 SMALL-VM FRAMES; 384 MAXIMUM FREE EXTENT; PUBLICATION/GENERAL-MM STILL UNQUALIFIED
+FRAME_RECONSTRUCTION_READBACK_PASS 777 FROZEN INPUTS; 20 FRESH OBJECTS; 804 RELOCATED CONTRIBUTIONS; 80 MEMORY CALLS; 12 NEW VM CASES; 972 SMALL-VM FRAMES; 386 MAX FREE EXTENT; PUBLIC ARTIFACT/BOOT COUPLING STILL CLOSED

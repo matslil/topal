@@ -1,0 +1,59 @@
+{
+  "passed": true,
+  "bindings": [
+    {
+      "offset": 15011,
+      "target_register": "rax",
+      "gs_slot": 984,
+      "source_role": "dispatch",
+      "local_load_offset": 14964,
+      "source": "src/topal-compiler/src/systems_process_dispatch.rs",
+      "scope": "Exact local GS load/null guard/alignment/call slice and no decoded direct entry into its interior; registration, callee and asynchronous reachability remain unqualified here"
+    },
+    {
+      "offset": 47427,
+      "target_register": "rax",
+      "gs_slot": 976,
+      "source_role": "header",
+      "local_load_offset": 47380,
+      "source": "src/topal-compiler/src/systems_process_header.rs",
+      "scope": "Exact local GS load/null guard/alignment/call slice and no decoded direct entry into its interior; registration, callee and asynchronous reachability remain unqualified here"
+    },
+    {
+      "offset": 153895,
+      "target_register": "rax",
+      "gs_slot": 952,
+      "source_role": "policy",
+      "local_load_offset": 153848,
+      "source": "src/topal-compiler/src/systems_process_policy.rs",
+      "scope": "Exact local GS load/null guard/alignment/call slice and no decoded direct entry into its interior; registration, callee and asynchronous reachability remain unqualified here"
+    },
+    {
+      "offset": 187631,
+      "target_register": "rax",
+      "gs_slot": 960,
+      "source_role": "numeric",
+      "local_load_offset": 187584,
+      "source": "src/topal-compiler/src/systems_process_numeric.rs",
+      "scope": "Exact local GS load/null guard/alignment/call slice and no decoded direct entry into its interior; registration, callee and asynchronous reachability remain unqualified here"
+    },
+    {
+      "offset": 191561,
+      "target_register": "rax",
+      "gs_slot": 992,
+      "source_role": "identity",
+      "local_load_offset": 191514,
+      "source": "src/topal-compiler/src/systems_process_identity.rs",
+      "scope": "Exact local GS load/null guard/alignment/call slice and no decoded direct entry into its interior; registration, callee and asynchronous reachability remain unqualified here"
+    },
+    {
+      "offset": 226667,
+      "target_register": "rax",
+      "gs_slot": 952,
+      "source_role": "policy",
+      "local_load_offset": 226620,
+      "source": "src/topal-compiler/src/systems_process_policy.rs",
+      "scope": "Exact local GS load/null guard/alignment/call slice and no decoded direct entry into its interior; registration, callee and asynchronous reachability remain unqualified here"
+    }
+  ]
+}

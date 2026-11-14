@@ -2,15 +2,25 @@
 """Reject Rust source files that exceed the repository reviewability ceiling."""
 
 from pathlib import Path
+import os
 import sys
 
 MAX_LINES = 2_000
 
 
 def rust_sources(root: Path):
-    for path in root.rglob("*.rs"):
-        if ".git" not in path.parts and "target" not in path.parts:
-            yield path
+    # Prune generated dependencies before traversal; retain the limit for every
+    # owned source file, including new files that have not been committed yet.
+    for directory, directories, files in os.walk(root):
+        linux_dependencies = Path(directory) == root / "linux-kernel"
+        directories[:] = [
+            name for name in directories
+            if name not in {".git", "target"}
+            and not (linux_dependencies and name == ".cache")
+        ]
+        for name in files:
+            if name.endswith(".rs"):
+                yield Path(directory) / name
 
 
 def main() -> int:
