@@ -1979,7 +1979,33 @@ and retain complete descriptor/shared-service cleanup independently of startup
 observations. See
 [TK-DEC-284](../linux-kernel/design/process-memory-ownership.md).
 
+## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
+
+A separately selected systems refinement shall bind the actual qualified
+kernel image and semantic placement to effective supervisor-only code, immutable
+data and mutable-data rights. Supported granules, required subdivision and
+complete owned translation backing shall follow the actual target/layout.
+Numeric geometry, ELF flags and source metadata shall not supply authority.
+Conflicting rights within a minimum granule, incompatible attributes, writable
+code/immutable aliases and user-accessible kernel aliases shall prevent success.
+
+The protected context shall cover every active, inactive, prepared or restorable
+root, including bootstrap return paths and subsequent root creation. Preserve
+exact owner identity, pinning, bounds, exclusion and lifetime checks and all
+existing user-backing obligations. Required mode controls, publication,
+translation/cache completion and participating-CPU/writer exclusion shall hold
+before success. Supervisor write protection shall not be temporarily disabled.
+Possible hardware-visible partial failure shall have no ordinary continuation
+or protected witness. Existing bootstrap-equivalent and predecessor profiles
+shall retain their contracts. Model, component, all-producer native, source/boot
+reconstruction and production acceptance shall remain separate gates. See
+[TK-DEC-285](../linux-kernel/design/kernel-image-protection.md).
+
 ## TOPAL-REQ-SYSTEMS-USER-EXTENT-001 — Owned user-memory admission
+
+The separately selected kernel-image protection refinement is specified by
+`TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001`; it shall preserve the user-admission
+ownership, permission and lifetime obligations below.
 
 Frame-profile user transfers shall validate complete runtime extents against
 actual current mapping and backing ownership, every relevant permission and a

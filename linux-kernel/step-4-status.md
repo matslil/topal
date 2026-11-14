@@ -7,7 +7,15 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
-The [calendar placement stage](tools/user-memory/results/stage-3-calendar-placement.md)
+The [kernel-image protection design/model stage](step-4-kernel-image-protection.md)
+adds an explicit role/ownership contract across all usable roots and aliases,
+preserving bootstrap-equivalent meaning and core semantics. Twelve new model
+tests include all 256 small role/hole patterns, current x86 subdivision and
+larger-granule conflicts. All 353 host models and exact frozen replay pass.
+This creates no live authority, native mapping, protected context or public
+activation. The current kernel and its hardware-permission gaps are unchanged.
+
+The preceding [calendar placement stage](tools/user-memory/results/stage-3-calendar-placement.md)
 moves 4,864 Gregorian data bytes out of the process instruction body into
 read-only/non-executable ELF data loads. Both fresh native builds produce the
 same new kernel; all 51 pinned workloads, four child-exec generations, sixteen

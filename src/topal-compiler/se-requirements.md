@@ -3176,6 +3176,25 @@ retain exact target/provider provenance, and have no relocation or undefined
 dependency. This partial provider object shall not by itself qualify target
 selection, linking, publication, or boot.
 
+## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
+
+Any selected kernel-image protection provider shall realize `TK-DEC-285` and
+`TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001`. Bind the actual publisher/boot image identity,
+semantic roles, target mode and complete root/alias set to provider-selected
+granules and exact owned backing. Validate page-rounded conflicts and preserve
+all root/table/backing identity, pin, exclusion, user-permission and lifetime
+checks when changing a representation. A changed count alone shall not replace
+those checks.
+
+Cover bootstrap and separately constructed process roots, current and future
+activation/restoration, permission-control preservation, publication/cache/TLB
+completion, competing writers and fatal/retirement effects. Keep native address
+and descriptor formats behind systems resources. Do not silently change
+bootstrap-equivalent behavior or grant public selection from a portable model.
+Qualification shall retain actual-control/table observations and native gaps,
+ordinary source-built guest cases, unchanged pinned binaries, bounded resource
+limits and source/artifact reconstruction. No core-language change is implied.
+
 ## TOPAL-COMP-SYSTEMS-ARTIFACT-001 — Kernel artifact publication
 
 The systems publisher shall use a distinct target/data-layout/object/relocation

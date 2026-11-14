@@ -213,3 +213,12 @@ This native driver currently uses the preceding local
 `process-mm-applications-corpus/run.json` cache to locate the pinned image.
 The report's retained frozen replay works from committed archives without that
 original cache. This driver is not a cold production-reconstruction path.
+
+## Kernel-image protection model
+
+The [kernel-image protection model stage](../../step-4-kernel-image-protection.md)
+uses [kernel_image_plan.py](kernel_image_plan.py) for supplied physical role
+partitioning, necessary subdivision and primary/alias compatibility. Twelve
+counterexample tests include 256 small role/hole patterns. Model values create
+no native owner or protected context; entry binding, complete root discovery,
+hardware mode, publication and lifetime remain native obligations.

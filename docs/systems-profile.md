@@ -2284,3 +2284,27 @@ and direction/result convention. Their return words, saved values, alignment
 and normal or terminal cleanup belong to the complete caller proof. The backend
 derives its inner retirement window after accounting for this outer storage
 within the existing caller reserve. Earlier profiles keep their exact layout.
+
+### Kernel-image protection refinement
+
+A separately qualified systems refinement may combine semantic kernel-image
+placement with actual translation/backing ownership. It makes kernel code
+readable/executable, immutable data readable/non-executable, and mutable data
+readable/writable/non-executable, with supervisor-only kernel routes and
+compatible memory attributes. Final relocation storage becomes immutable only
+after its declared initialization. The provider selects supported granules,
+subdivision and exact owned backing from the actual image and target. Source
+does not acquire PTE formats, native addresses or a portable table-count limit.
+
+The protected context covers every active and restorable root, including
+bootstrap return paths, and every alias of image backing. Construction,
+activation, restoration, writer exclusion, maintenance and retirement preserve
+that binding. The actual mode must enforce the requested rights; supervisor
+write protection cannot be temporarily disabled. Partial hardware-visible
+failure cannot return an ordinary protected continuation. Missing ownership,
+mapping or asynchronous evidence remains a qualification gap.
+
+This is an explicit additional refinement; `bootstrap-equivalent` and existing
+predecessor profiles keep their meaning. A descriptive plan or model creates
+no authority or public activation. Core language semantics remain unchanged.
+See the [kernel-image protection design](../linux-kernel/design/kernel-image-protection.md).

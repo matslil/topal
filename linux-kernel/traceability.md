@@ -401,6 +401,21 @@ ELF entry, selected first instruction, and `AT_PHDR`/`AT_PHENT`/`AT_PHNUM`
 facts, exact constructed validation and stack consumption, an ordered witness,
 and deterministic physical execution without admitting a general loader.
 
+## Kernel-image protection design and models
+
+`TK-DEC-285`, `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` trace through the
+[design](design/kernel-image-protection.md) to
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PLAN-001`,
+`TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001`,
+`TOPAL-SYSTEMS-KERNEL-IMAGE-PUBLISH-001` and
+`TOPAL-SYSTEMS-KERNEL-IMAGE-LIFETIME-001`.
+The [model-stage report](step-4-kernel-image-protection.md)
+records supplied-description role/subdivision/alias counterexamples and 353
+host-model tests with frozen source replay. This is partial model evidence;
+actual ownership, entry binding, mode/publication/lifetime, all-producer native
+integration and production qualification remain required.
+
 ## Calendar provider data placement
 
 The existing realtime/artifact contracts also trace through the

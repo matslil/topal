@@ -1,0 +1,21 @@
+{
+  "archive_manifest": {
+    "bytes": 2720,
+    "sha256": "e250d39b6c0cf29acf468a0152f0688f041ac1e60707ff217266318f29711b4d"
+  },
+  "entries": 18,
+  "frozen_replay": true,
+  "models": 353,
+  "new_native_execution": false,
+  "overlays": 9,
+  "passed": true,
+  "qualification_complete": false,
+  "resources": {
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "memory.max": "3387641856",
+    "memory.peak": "83853312",
+    "memory.swap.max": "0"
+  },
+  "shared_sources": 753,
+  "sources": 762
+}

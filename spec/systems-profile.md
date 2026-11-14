@@ -9034,6 +9034,72 @@ SHALL NOT name an object section, linker directive, or physical register. The
 artifact provider SHALL prove that its concrete placement satisfies every
 requirement.
 
+### TOPAL-SYSTEMS-KERNEL-IMAGE-PLAN-001 — Qualified image roles
+
+When a profile selects kernel-image protection, its plan SHALL be bound to the
+actual qualified image, semantic placements, provider, interpretation mode and
+address-space domain. A source integer, copied metadata or user ELF SHALL NOT
+construct that authority. Primary kernel code views SHALL be readable/executable
+and non-writable; primary immutable-data views SHALL be readable, non-writable
+and non-executable; primary mutable-data views SHALL be readable/writable and
+non-executable. All kernel-image views SHALL deny user access. Final relocation
+storage SHALL become immutable only after its declared initialization.
+
+The provider SHALL derive supported granules and complete required backing from
+the actual qualified topology. Page-rounded incompatible roles SHALL be refused
+or resolved by a separately validated placement; they SHALL NOT be combined into
+a writable/executable mapping. Native table shapes, bit encodings and numeric
+addresses SHALL remain provider details. Additional image aliases MAY narrow
+their backing role's rights but SHALL NOT add rights or incompatible memory
+attributes. Every declared primary view SHALL retain its required coverage.
+
+### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
+
+Preparation SHALL retain exact actual image, root and table/backing ownership,
+including issuer, generation, complete extent, alignment, pins, disjointness,
+exclusion and lifetime. Descriptive geometry SHALL NOT supply that authority.
+Every active, inactive, prepared and restorable root, including the bootstrap
+return root, SHALL participate in the selected image-protection binding.
+No writable alias to code or immutable backing and no user-accessible alias to
+kernel backing SHALL be eligible. Existing user-image/stack/heap ownership and
+admission checks SHALL remain in force. Changing table geometry SHALL preserve
+all obligations of the prior representation's checks; deletion of a numerical
+check alone SHALL NOT qualify its replacement.
+
+### TOPAL-SYSTEMS-KERNEL-IMAGE-PUBLISH-001 — Effective publication
+
+The protected context SHALL be granted only after the actual mode enforces the
+required rights and the qualified publication, translation/cache maintenance,
+synchronization and completion protocol covers every relevant root, CPU and
+writer. Existing supervisor write protection SHALL remain enabled; execute
+disable controls SHALL precede dependent entries. Current/returning code,
+stacks, data and interrupt/exception/fatal paths SHALL remain valid throughout
+the transition. An incomplete publication SHALL NOT admit untrusted execution
+or unqualified competing writers. Observed table bytes alone SHALL NOT establish
+effective protection or continuous exclusion.
+
+Pre-publication failure SHALL preserve the existing context's declared state
+and discharge temporary ownership. Possible hardware-visible partial failure
+SHALL retain or poison affected authority and enter the qualified fatal path,
+without ordinary continuation or a protected witness.
+
+### TOPAL-SYSTEMS-KERNEL-IMAGE-LIFETIME-001 — Retained protection and evidence
+
+Root construction, activation, exec, handoff, cancellation, restoration and
+retirement SHALL preserve the selected image binding. New roots SHALL acquire
+it before becoming eligible for activation/restoration; no usable unsealed
+fallback root SHALL survive the refinement. Backing SHALL remain owned/pinned
+until every reference and architecture maintenance obligation is discharged.
+Unsupported modes, aliases, root sets or asynchronous participants SHALL remain
+unqualified. Model or boundary evidence SHALL NOT establish native execution,
+continuous lifetime, all-producer integration or production qualification.
+Missing native observations SHALL remain explicit acceptance gaps.
+
+These rules apply only to the separately selected refinement. Existing
+bootstrap-equivalent and predecessor contracts SHALL retain their meaning.
+The refinement SHALL NOT change core language semantics or independently grant
+complete Linux compatibility or public production activation.
+
 ### TOPAL-SYSTEMS-ARTIFACT-001 — Validated freestanding publication
 
 A systems artifact SHALL record a distinct target profile, architecture model,
