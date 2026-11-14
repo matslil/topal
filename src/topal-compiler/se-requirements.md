@@ -3178,6 +3178,15 @@ selection, linking, publication, or boot.
 
 ## TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001 — Image protection realization
 
+An explicitly selected private startup-storage adapter shall reconstruct its
+complete loaded setup extent, derive a boot-owned full page and validate actual
+header/bytes, bounded firmware provenance and all conflicting live extents before
+writes. Native whole-page probe/restore and later revalidation shall preserve
+boot lifetime ownership and ordinary allocator exclusion, without changing old
+profiles or granting CPU control. Independent VM bytes and source/adapter/image
+binding shall qualify `TOPAL-SYSTEMS-BOOT-STARTUP-STORAGE-001`; journals alone
+shall not supply authority.
+
 Checked source/IR shall preserve explicit participant initialization, its typed
 provider-selected entry descriptor/failure disposition and exact kernel-lifetime
 retention consumer. Traces shall express actual-arrival obligations without

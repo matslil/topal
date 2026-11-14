@@ -65,6 +65,9 @@ mod fixture;
 pub(crate) mod image_contract;
 #[cfg(test)]
 pub(crate) use fixture::unpublished_component_fixture;
+#[cfg(test)]
+#[path = "systems_boot_startup.rs"]
+pub(crate) mod startup;
 
 static NEXT_BOOT_STAGE: AtomicU64 = AtomicU64::new(0);
 

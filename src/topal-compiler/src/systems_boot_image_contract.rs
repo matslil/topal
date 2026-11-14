@@ -34,7 +34,19 @@ fn retained_roles() -> [(&'static str, u64, u64); 7] {
 }
 
 pub(crate) fn inspect(kernel: &[u8], image: &[u8]) -> Result<serde_json::Value, CompileError> {
-    let fresh = unpublished_component_fixture(kernel)?;
+    inspect_selected(kernel, image, false)
+}
+
+pub(crate) fn inspect_selected(
+    kernel: &[u8],
+    image: &[u8],
+    startup: bool,
+) -> Result<serde_json::Value, CompileError> {
+    let fresh = if startup {
+        super::startup::fixture(kernel)?
+    } else {
+        unpublished_component_fixture(kernel)?
+    };
     if fresh != image {
         return Err(CompileError::Tool(
             "boot adapter differs from fresh kernel reconstruction".into(),
@@ -55,7 +67,7 @@ pub(crate) fn inspect(kernel: &[u8], image: &[u8]) -> Result<serde_json::Value, 
             .map(|address| serde_json::json!({"symbol":name,"address":address}))
     })
     .collect::<Result<Vec<_>, _>>()?;
-    Ok(serde_json::json!({
+    let mut result = serde_json::json!({
         "schema":"topal.kernel-image.boot-binding.x86_64/1",
         "scope":"Fresh complete private adapter/kernel reconstruction and retained-role identities; no activation, CPU lifetime or production publication",
         "kernel_sha256":sha256(kernel),"boot_image_sha256":sha256(image),
@@ -71,7 +83,12 @@ pub(crate) fn inspect(kernel: &[u8], image: &[u8]) -> Result<serde_json::Value, 
             "madt_bytes":4096,"participants":16,"retained_bytes":8192,
             "inventory_only":true},
         "protected_context":false,"production_qualified":false,
-    }))
+    });
+    if startup {
+        result["adapter_revision"] = super::startup::REVISION.into();
+        result["boot_startup_storage"] = super::startup::contract();
+    }
+    Ok(result)
 }
 
 pub(crate) fn llvm() -> Result<String, CompileError> {

@@ -1501,10 +1501,19 @@ fn build_guest(
                 .arg(work),
         );
     }
-    let boot_image = crate::systems_boot_image::unpublished_component_fixture(&kernel).unwrap();
+    let startup = image_backing.is_some_and(|(plan, _)| plan.has_startup_storage());
+    let boot_image = if startup {
+        crate::systems_boot_image::startup::fixture(&kernel).unwrap()
+    } else {
+        crate::systems_boot_image::unpublished_component_fixture(&kernel).unwrap()
+    };
     if image_backing.is_some_and(|(plan, _)| plan.is_tables()) {
-        let binding =
-            crate::systems_boot_image::image_contract::inspect(&kernel, &boot_image).unwrap();
+        let binding = if startup {
+            crate::systems_boot_image::image_contract::inspect_selected(&kernel, &boot_image, true)
+                .unwrap()
+        } else {
+            crate::systems_boot_image::image_contract::inspect(&kernel, &boot_image).unwrap()
+        };
         fs::write(
             work.join("kernel-image-boot-binding.json"),
             serde_json::to_vec_pretty(&binding).unwrap(),

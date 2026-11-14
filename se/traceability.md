@@ -1,5 +1,19 @@
 # Traceability
 
+The boot-owned startup-storage refinement (`TK-DEC-295`) connects
+`TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
+`TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the
+[systems design](../linux-kernel/design/boot-startup-storage.md) and
+`TOPAL-SYSTEMS-BOOT-STARTUP-STORAGE-001` to
+[adapter reconstruction](../src/topal-compiler/src/systems_boot_startup.rs),
+[native ownership/page checks](../src/topal-compiler/src/runtime/kernel_boot_startup.ll)
+and [independent readback](../linux-kernel/tools/user-memory/boot_startup_storage.py).
+The [stage report](../linux-kernel/step-4-boot-startup-storage.md) and
+[receipt](../linux-kernel/tools/user-memory/results/stage-4-boot-startup-storage.json)
+record loaded/probed/restored/retained bytes through ordinary execution.
+Native failure gaps, CPU entry, continuous protection and full kernel acceptance
+remain open.
+
 The boot-participant source refinement (`TK-DEC-294`) connects
 `TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001` and
 `TOPAL-COMP-SYSTEMS-KERNEL-IMAGE-001` through the

@@ -62,6 +62,7 @@ class RetainedEvent(gdb.Breakpoint):
                 assert all(end<=b['base'] or base>=b['base']+b['bytes'] for b in initial['banks'])
                 event['ordinary_owners'].append(dict(owner=owner,token=token,record=record,cells=cells,base=base))
             assert event['controls']['cr3']==event['ordinary_owners'][1]['base']
+            if profile.get('startup_storage'):event['startup_storage']=capture_startup('event-'+str(len(events)))
             events.append(event)
             print('RETAINED_TABLES_SYSCALL',number,len(events),flush=True)
             return False

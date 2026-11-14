@@ -17,6 +17,7 @@ pub(crate) struct Plan {
     pages: u64,
     tables: bool,
     retained: bool,
+    startup_storage: bool,
     #[cfg(test)]
     table_plan: Option<crate::systems_kernel_image_layout::InactiveTablePlan>,
 }
@@ -30,6 +31,7 @@ impl Plan {
             pages: crate::systems_kernel_image_layout::preparation_pages(layout)?,
             tables: false,
             retained: false,
+            startup_storage: false,
             table_plan: None,
         })
     }
@@ -42,6 +44,7 @@ impl Plan {
             pages: table_plan.pages(),
             tables: true,
             retained: false,
+            startup_storage: false,
             table_plan: Some(table_plan),
         })
     }
@@ -50,6 +53,17 @@ impl Plan {
     }
     pub(crate) fn is_retained(&self) -> bool {
         self.retained
+    }
+    pub(crate) fn has_startup_storage(&self) -> bool {
+        self.startup_storage
+    }
+    #[cfg(test)]
+    pub(crate) fn for_startup_storage(
+        layout: &crate::SystemsKernelImageLayout,
+    ) -> Result<Self, CompileError> {
+        let mut plan = Self::for_retained_tables(layout)?;
+        plan.startup_storage = true;
+        Ok(plan)
     }
     #[cfg(test)]
     pub(crate) fn for_retained_tables(

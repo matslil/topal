@@ -2287,6 +2287,15 @@ within the existing caller reserve. Earlier profiles keep their exact layout.
 
 ### Kernel-image protection refinement
 
+An explicitly selected boot adapter may retain a complete startup-storage page
+from its loaded setup image. The provider must bind the actual boot instance,
+whole loaded bytes, RAM provenance and disjoint boot/firmware/input extents
+before writing. It retains that page through kernel lifetime and revalidates
+it independently of historical register observations. Ordinary frame reservation
+alone does not create the owner. This storage grants no CPU startup or arrival
+authority. See `TOPAL-SYSTEMS-BOOT-STARTUP-STORAGE-001` and
+[TK-DEC-295](../linux-kernel/design/boot-startup-storage.md).
+
 The retained-table scope may explicitly request `context boot participants
 initialize (entry is provider-selected)`. Its success branch consumes the exact
 `BootParticipantArrivals` resource with `context boot participants retain

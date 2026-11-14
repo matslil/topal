@@ -9372,6 +9372,42 @@ Initialization SHALL retain semantic identity
 retain `topal.systems.boot-participants.retain-kernel-lifetime/1`. The checked
 trace SHALL preserve the typed entry descriptor on the arrival requirement.
 
+### TOPAL-SYSTEMS-BOOT-STARTUP-STORAGE-001 — Boot-owned startup backing
+
+An explicitly selected boot adapter MAY derive an internal `BootStartupStorage`
+owner from its complete qualified loaded setup extent. The provider SHALL bind
+the actual boot instance, exact profile/header, whole page geometry and loaded
+bytes before writing. It SHALL separately retain the boot-parameter and startup
+roles, excluding BDA/EBDA/BIOS, command-line/extended inputs, continuation/stack,
+kernel/boot/resource extents and conflicting firmware claims. Complete raw E820
+reads/copies SHALL be bounded by the owned boot-parameter page. Whole startup
+storage SHALL have available-RAM provenance without a conflicting claim.
+
+The initial private x86 profile SHALL declare an 8,192-byte setup extent and
+derive its second complete 4,096-byte page as startup storage. The provider
+SHALL validate the pinned supported loader/handoff route and full pattern before
+one whole-page write/readback/restore check. Existing profiles SHALL retain
+their exact geometry and behavior. Allocator reservation SHALL preserve the
+already owned page's exclusion; it SHALL NOT independently mint ownership,
+replace a whole frame owner or permit release through another issuer.
+
+The startup owner SHALL remain retained for kernel lifetime. Before the inactive
+table scope retires, the provider SHALL revalidate its exact binding, complete
+relevant firmware table and page bytes under the current context, without
+asserting unchanged historical registers. Failed checks SHALL retain/poison
+affected boot ownership and enter fatal. Source SHALL receive no raw pointer,
+native geometry, reclamation, CPU-startup or arrival authority from this
+resource. A journal or altered saved record SHALL NOT constitute native proof.
+Participant entry and all image publication/lifetime obligations SHALL remain
+independently mandatory.
+
+Both actual inactive banks SHALL retain supervisor RW/NX identity coverage of
+the complete startup page with the supported direct-memory cache encoding.
+Validate their exact whole owners/templates before those bounded table reads,
+and repeat coverage before retirement. The existing eleven-role journal SHALL
+retain its meaning; this additional role SHALL be checked separately and SHALL
+grant no execution, activation or effective-permission witness.
+
 ### TOPAL-SYSTEMS-KERNEL-IMAGE-OWNERS-001 — Complete root and backing authority
 
 Preparation SHALL retain exact actual image, root and table/backing ownership,

@@ -161,7 +161,8 @@ def inspect(native,contract,kernel,boot_image,read):
         check_pages(buffers['entry-tables']); check_gdt(buffers['gdt']); check_idt(buffers['idt'],handlers)
         check_idt_pointer(buffers['idt-pointer'])
         transition=buffers['transition']
-        require(len(transition)==registers[26] and transition==boot_image[2560:2560+len(transition)],'actual complete adapter handoff bytes')
+        payload=8192 if contract.get('boot_startup_storage') else 2560
+        require(len(transition)==registers[26] and transition==boot_image[payload:payload+len(transition)],'actual complete adapter handoff bytes')
         require(transition[-12:-10]==b'\x48\xb8' and transition[-2:]==b'\xff\xe0' and
                 int.from_bytes(transition[-10:-2],'little')==handlers[HANDLERS[0]],'closed jump handoff to actual entry')
     constructed=native['phases'][2]['banks']

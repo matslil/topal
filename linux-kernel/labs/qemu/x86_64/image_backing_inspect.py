@@ -16,6 +16,7 @@ PROGRAM = r'''
 import gdb, hashlib, json, os, traceback
 tables=profile.get('tables',False)
 retained=profile.get('retained',False)
+startup_storage=profile.get('startup_storage',False)
 released=6 if retained else (4 if tables else 3)
 boot_capture_phases=[0,3] if retained else [0,released]
 extent_owners=profile['bindings']['banks']+([profile['bindings']['low_user_leaf']] if tables else [])
@@ -44,7 +45,8 @@ class Initialization(gdb.Breakpoint):
             observed['initial_stack']=reg('rsp')
             assert observed['initial_stack']-profile['component']['combined_boot_stack_bytes']>=0x109040
             self.enabled=False
-            if retained: RetainedEvent()
+            if startup_storage: StartupCheckpoint()
+            elif retained: RetainedEvent()
             return False
         except Exception: fail()
 
@@ -103,6 +105,7 @@ class Checkpoint(gdb.Breakpoint):
                     if slot!=owner['slot']: assert words(tokens+slot*24,3)==[0,0,0]
                 observed['final_bootstrap']=dict(token=token,record=record,controls=controls,
                     base=base,bank_sha256=hashlib.sha256(data).hexdigest())
+                if startup_storage: observed['final_bootstrap']['startup_storage']=capture_startup('terminal')
                 if retained: observed['retention_event_count']=len(observed['retention_events'])
                 observed['passed']=True
                 with open(observation_path,'w') as f: json.dump(observed,f,indent=2)
@@ -114,6 +117,7 @@ class Checkpoint(gdb.Breakpoint):
                 assert controls['cr3']==journal[4]
                 if observed['phases']: assert controls==observed['phases'][0]['controls']
             row=dict(phase=phase,journal=journal,context=ctx,controls=controls,stack=reg('rsp'),banks=[])
+            if startup_storage: row['startup_storage']=capture_startup('table-'+str(phase))
             if tables:
                 boot_registers=words(address('topal_x86_image_boot_observation_v1'),128)
                 assert boot_registers[0]==1
@@ -233,7 +237,7 @@ except Exception: fail()
 '''
 
 
-def main(*, tables=False, retained=False):
+def main(*, tables=False, retained=False, startup_storage=False):
     build = Path(sys.argv[1]).resolve()
     assert build.is_relative_to(topal_gate.LINUX_KERNEL.resolve())
     group = next(line.split(':', 2)[2] for line in Path('/proc/self/cgroup').read_text().splitlines()
@@ -243,6 +247,7 @@ def main(*, tables=False, retained=False):
     role = 'image-tables' if tables else 'image-backing'
     plan = json.loads((build / (role+'-plan-binding.json')).read_text())
     assert plan.get('retained',False)==retained and (not retained or tables)
+    assert plan.get('startup_storage',False)==startup_storage and (not startup_storage or retained)
     binding = json.loads((build / 'private-image-binding.json').read_text())
     kernel = topal_gate.digest(build / 'kernel.elf')
     assert plan['kernel_sha256'] == binding['layout']['kernel_sha256'] == kernel
@@ -271,6 +276,9 @@ def main(*, tables=False, retained=False):
     profile = dict(bindings=owners, pages=pages, tables=tables, retained=retained, layout=plan['layout'],
                    component=component,
                    active_owners=json.loads((build / 'root-backing-owners.json').read_text()))
+    if startup_storage:
+        assert 'boot_startup_storage' in boot_contract
+        profile['startup_storage']=True
     if tables: profile['boot_contract']=boot_contract
     if retained:
         from boot_image_binding import symbols
@@ -292,6 +300,9 @@ def main(*, tables=False, retained=False):
             if retained:
                 from retained_tables_inspect import GDB_HELPERS as RETAINED_HELPERS
                 prefix+=RETAINED_HELPERS
+            if startup_storage:
+                from boot_startup_storage_inspect import GDB_HELPERS as STARTUP_HELPERS
+                prefix+=STARTUP_HELPERS
         harness.main(work_name=role+'-native', program_prefix=prefix,
                      guest_timeout_seconds=600, input_scope='ordinary source-built transfer workload')
         native = json.loads((build / (role+'-native/observations.json')).read_text())
@@ -328,6 +339,10 @@ def main(*, tables=False, retained=False):
             assert (build/(role+'-native/serial.log')).read_bytes().count(b'TOPAL_KERNEL_PROCESS_EXEC_COMMITTED')==3
             result.update(retained=True,retention_events=len(events),exec_attempts=sum(e['syscall']==59 for e in events),successful_execs=3,
                           scope='Actual pinned inactive owners across initial user execution, three execs and ordinary root restoration; same-owner byte checks and whole retirement, no activation')
+        if startup_storage:
+            from boot_startup_storage import inspect as startup_inspect
+            result['boot_startup_storage']=startup_inspect(native,boot_contract,(build/'bzImage').read_bytes(),
+                lambda path:(build/(role+'-native')/path).read_bytes())
         result.update(passed=True,native_execution=True)
     finally:
         result['resources'] = {name: (resources / name).read_text().strip() for name in

@@ -7,6 +7,15 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [startup-storage stage](step-4-boot-startup-storage.md) qualifies a whole
+boot-owned low page before writes, probes/restores it and retains/revalidates
+it through ordinary execution and final root restoration. All nineteen leaf
+commands pass over 1,009 stable inputs, including one native VM run, two
+independent readers and 406 memory-model checks. Readback checks 44 snapshots
+and rejects 13 new offline controls; the legacy kernel remains byte-identical.
+Native failure gaps, actual CPU entry and all-root/CPU protection remain
+acceptance blockers. The page supplies no startup, arrival or protection witness.
+
 The [boot-participant source stage](step-4-boot-participant-source.md) adds an
 explicit initialization request, typed provider entry and exact affine lifetime
 consumer to the checked source/IR pipeline. All fourteen commands pass over

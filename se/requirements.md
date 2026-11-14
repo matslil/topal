@@ -1981,6 +1981,14 @@ observations. See
 
 ## TOPAL-REQ-SYSTEMS-KERNEL-IMAGE-001 — Explicit image protection
 
+Startup storage shall derive from an explicitly selected complete boot-adapter
+handoff, with exact loaded extent/bytes, RAM provenance, firmware/input exclusion
+and retained ownership checked before writes. It shall stay unavailable to
+ordinary allocation and remain retained/revalidated for kernel lifetime. A
+reserved prefix or copied journal shall not create its ownership. Existing
+adapter layouts, frame validators and participant/protection gates shall remain
+unchanged unless their separate realization is qualified.
+
 The initial source request shall select a typed provider participant entry and
 return one affine arrival resource under the retained initial boot binding.
 Its exact consumer shall retain the supporting domain for kernel lifetime

@@ -11,6 +11,12 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
+The [startup-storage stage](step-4-boot-startup-storage.md) qualifies a complete
+boot-owned low page before writes and retains it through ordinary execution.
+Independent native readback checks 44 snapshots across three successful exec
+replacements and final root restoration. CPU startup, arrival and all-root
+protection remain separate unfinished obligations.
+
 The [boot-participant source stage](step-4-boot-participant-source.md) checks an
 explicit typed entry request and affine domain retention. All fourteen commands
 pass, and the legacy kernel rebuild retains its bytes. Native startup remains

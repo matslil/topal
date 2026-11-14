@@ -1,5 +1,13 @@
 # Owned user-memory model
 
+The [startup-storage stage](../../step-4-boot-startup-storage.md) binds actual
+loaded setup bytes, whole RAM provenance, exclusions and lifetime to a private
+boot owner. The [bounded runner](run_boot_startup_storage.py) exercises native
+claim/probe/restore and ordinary continuation. The [byte oracle](boot_startup_storage.py),
+[model controls](test_boot_startup_storage.py) and
+[offline reader](readback_boot_startup_storage.py) distinguish real VM evidence
+from altered saved records. They grant no CPU-startup or protection authority.
+
 The [boot-participant source stage](../../step-4-boot-participant-source.md)
 connects explicit source initialization and a typed provider entry to affine
 semantic retention and native refusal boundaries. Its
