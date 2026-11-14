@@ -18,9 +18,14 @@ mod systems_file_region_boot;
 mod systems_frame_controller;
 mod systems_frame_policy_binding;
 mod systems_frame_publication;
+mod systems_kernel_image_layout;
 pub use systems_frame_publication::{
     Binding as SystemsFrameRootBinding, Bounds as SystemsFrameRootBounds,
     LinkerExtent as SystemsFrameLinkerExtent,
+};
+pub use systems_kernel_image_layout::{
+    SystemsKernelImageLayout, SystemsKernelImageRole, SystemsKernelImageSpan,
+    plan_x86_64_systems_frame_kernel_image,
 };
 mod systems_frame_target;
 mod systems_inode_region_boot;

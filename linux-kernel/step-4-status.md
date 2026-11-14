@@ -7,7 +7,14 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
-The [kernel-image protection design/model stage](step-4-kernel-image-protection.md)
+The [compiler image-layout component](step-4-compiler-image-layout.md) now derives
+image roles and additional leaf storage after complete fresh source/native/link
+reconstruction. Five Rust tests, workspace/static checks and 354 host models
+pass over 764 stable inputs. An unowned GOT entry remains refused. This is an
+opt-in descriptive compiler product; complete native backing, mapping builders,
+effective protection and production integration remain unfinished.
+
+The preceding [kernel-image protection design/model stage](step-4-kernel-image-protection.md)
 adds an explicit role/ownership contract across all usable roots and aliases,
 preserving bootstrap-equivalent meaning and core semantics. Twelve new model
 tests include all 256 small role/hole patterns, current x86 subdivision and

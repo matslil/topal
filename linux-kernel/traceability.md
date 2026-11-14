@@ -416,6 +416,13 @@ host-model tests with frozen source replay. This is partial model evidence;
 actual ownership, entry binding, mode/publication/lifetime, all-producer native
 integration and production qualification remain required.
 
+The [compiler layout component](step-4-compiler-image-layout.md) implements part
+of the plan rule through fresh complete source/native reconstruction, semantic
+role partitioning and artifact-specific additional leaf storage. Five Rust
+checks include independent page-cell comparisons and stale/incomplete/altered
+artifact controls; 354 host models and static checks pass. Descriptive layout
+data does not satisfy native owner/publication/lifetime obligations.
+
 ## Calendar provider data placement
 
 The existing realtime/artifact contracts also trace through the

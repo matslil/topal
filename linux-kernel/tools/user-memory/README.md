@@ -1,5 +1,11 @@
 # Owned user-memory model
 
+The [compiler image-layout component](../../step-4-compiler-image-layout.md)
+rebuilds complete source/native inputs before deriving image roles and additional
+x86 leaf storage. Its bounded compiler/model matrix is available through
+[run_compiler_image_layout.py](run_compiler_image_layout.py). It executes no
+guest or generated host code and does not activate image protection.
+
 This independent model exercises `TOPAL-SYSTEMS-USER-EXTENT-001` and the
 [design](../../design/owned-user-extents.md). Its immutable inputs describe
 already established table, backing and entry observations. Constructing those
